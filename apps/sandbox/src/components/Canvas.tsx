@@ -26,7 +26,6 @@ import { MarqueeRect } from './canvas/MarqueeRect';
 import { computeCanvasHeights } from '../utils/canvasLayout';
 import { resolveSnapGuideline } from '../utils/snapGuideline';
 import { nearestFadeAlignment, nearestClipEdge, FADE_ALIGN_THRESHOLD_PX } from '../utils/fadeAlignment';
-import { countSelectedClips } from '../utils/clipSelectionCount';
 import { snapToGrid } from '../utils/snapToGrid';
 import { deriveEnvelopePointSizes } from '../utils/envelopePointSizes';
 import { useDragHighlightIds } from '../hooks/useDragHighlightIds';
@@ -457,7 +456,6 @@ export function Canvas({
   const [fadeInHandClipId, setFadeInHandClipId] = useState<string | number | null>(null);
   // Handles follow the pointer — except that ONE selected clip keeps
   // its trim/stretch handles (2026-10-01); counted across the project
-  const singleSelection = useMemo(() => countSelectedClips(tracks) === 1, [tracks]);
   // The handle under the pointer goes to the status bar (HandleHintContext)
   const { setHint: setHandleHint } = useHandleHint();
   // (Keyed on the settings, not on `snapOptions` — that object is
@@ -884,7 +882,6 @@ export function Canvas({
           alignFadeBoundary={alignFadeBoundary}
           onFadeSnapGuideline={onFadeSnapGuideline}
           fadeInHandClipId={fadeInHandClipId}
-          singleSelection={singleSelection}
           onFadeDragChange={setFadeInHandClipId}
           onHandleHint={setHandleHint}
           onFadeContextMenu={onFadeContextMenu}

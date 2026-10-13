@@ -211,6 +211,10 @@ export interface ClipDragState {
    *  `selectedClipsInitialPositions` already lists them — selects them
    *  and drops the bracket. Cleared once that has happened. */
   sweepOnFirstMove?: boolean;
+  /** A plain press on an UNSELECTED clip (2026-10-13): the first movement
+   *  drops a selection the clip is not in and selects nothing — a move is
+   *  an edit, not a selecting gesture; the click (no movement) selects */
+  dropSelectionOnFirstMove?: boolean;
   /** Shift+drag on an UNSELECTED clip: the press selected nothing (a
    *  Shift+click that never moves is the range select), so the first
    *  movement selects the dragged clip. Cleared once that has happened. */

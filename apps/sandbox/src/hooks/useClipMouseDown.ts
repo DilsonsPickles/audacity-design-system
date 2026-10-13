@@ -210,9 +210,18 @@ export function useClipMouseDown({
                 sweepMembers = members;
               }
 
-              // If clicking on an unselected clip, select it exclusively first
-              // and only include this clip in the drag
+              // THE PRESS DOES NOT SELECT (user decision 2026-10-13, "should
+              // moving a clip select it?" — no: selection is for deleting
+              // and bulk actions, and a move is a single edit). A press
+              // that is released without moving is a CLICK, and the click
+              // selects (CanvasTrackList.onClipClick); a press that moves
+              // is a DRAG, which drops a selection the clip is not in and
+              // selects nothing (useClipDragging, `dropSelectionOnFirstMove`
+              // — the edit rule). The clip takes the focus on the press
+              // either way, so Delete / Copy after a drag still find it.
+              // (Until then the press selected the clip exclusively.)
               let selectedClipsInitialPositions;
+              let dropSelectionOnFirstMove = false;
               if (!clip.selected) {
                 // (A modified press changes nothing at the press. A
                 // duplicating drag selects its copies when it moves; a
@@ -222,14 +231,7 @@ export function useClipMouseDown({
                   // Clear time selection when starting drag on unselected clip
                   dispatch({ type: 'SET_TIME_SELECTION', payload: null });
                   setSpectralSelection(null);
-
-                  dispatch({
-                    type: 'SELECT_CLIP',
-                    payload: { trackIndex, clipId: clip.id },
-                  });
-
-                  // Mark that we just selected on mouse down to prevent immediate deselection on click
-                  justSelectedOnMouseDownRef.current = true;
+                  dropSelectionOnFirstMove = true;
                 }
 
                 // If the clip is in a group, include every member in the drag (state from
@@ -281,6 +283,7 @@ export function useClipMouseDown({
                 initialStartTime: clip.start,
                 selectedClipsInitialPositions: sweepMembers ?? selectedClipsInitialPositions,
                 ...(sweepMembers ? { sweepOnFirstMove: true } : {}),
+                ...(dropSelectionOnFirstMove && !sweepMembers ? { dropSelectionOnFirstMove: true } : {}),
                 ...(duplicating ? { duplicateOnFirstMove: true } : {}),
                 ...(e.shiftKey && !duplicating && !clip.selected ? { selectOnFirstMove: true } : {}),
               };

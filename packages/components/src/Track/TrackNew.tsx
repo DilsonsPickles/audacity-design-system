@@ -436,10 +436,6 @@ export interface TrackProps {
    *  them hide their other clips' handles (2026-10-01). */
   fadeInHandClipId?: string | number | null;
   onFadeDragChange?: (clipId: string | number | null) => void;
-  /** The project's selection is ONE clip (the host counts across
-   *  tracks): that clip keeps its trim and stretch handles without the
-   *  pointer. Otherwise handles follow the pointer only (2026-10-01). */
-  singleSelection?: boolean;
   /** The clip handle under the pointer, for a status bar (user decision
    *  2026-10-01): which handle, with Alt folded in (an edge zone with
    *  Alt down is 'edge-stretch', the crossfade node 'crossfade-roll'),
@@ -748,7 +744,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onFadeSnapGuideline,
   fadeInHandClipId,
   onFadeDragChange,
-  singleSelection = false,
   onHandleHint,
   onFadeShapePreset,
   onFadeContextMenu,
@@ -2358,17 +2353,19 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   );
   // The clip whose trim/stretch handles are up: a SELECTED clip under
   // the pointer, or with one of them (or a fade handle) in hand (see
-  // handleHoverClipId) — or THE one selected clip, when the selection
-  // is a single clip (`singleSelection`, the host's count): one clip's
-  // furniture is not the mess, and it says "this is the clip you have".
-  // An UNSELECTED clip shows none, hovered or not — it trims by its edge
+  // handleHoverClipId). A LONE selection wears none without the pointer
+  // (2026-10-13 — until then THE one selected clip kept its handles up,
+  // "this is the clip you have", 2026-10-01; retired with the edits that
+  // no longer read a single clip's selection: the handles you see must
+  // be the handles that act, and selection is for bulk work). An
+  // UNSELECTED clip shows none, hovered or not — it trims by its edge
   // zone (user decision 2026-10-01: "unselected items don't need to
   // show handles on hover"). The fade handles are a separate rule:
   // hover-only, selected or not.
   const handlesFollow = React.useCallback(
     (clip: TrackClip) => !!clip.selected
-      && (handleHoverClipId === clip.id || edgeDragClipId === clip.id || fadeDragClipId === clip.id || singleSelection),
-    [handleHoverClipId, edgeDragClipId, fadeDragClipId, singleSelection],
+      && (handleHoverClipId === clip.id || edgeDragClipId === clip.id || fadeDragClipId === clip.id),
+    [handleHoverClipId, edgeDragClipId, fadeDragClipId],
   );
   // (A handle holding KEYBOARD focus is mounted by Clip's `keyboardHandle`
   // on its own — ONLY that one on a clip the pointer rule shows none for.)

@@ -123,6 +123,43 @@ describe('Clip selection', () => {
   });
 });
 
+describe('a press does not select; a click does, a drag drops the selection (2026-10-13)', () => {
+  const tracks = (): Track[] => [
+    {
+      id: 1,
+      name: 'Track 1',
+      clips: [
+        { id: 1, name: 'Clip 1', start: 0, duration: 2, envelopePoints: [], trimStart: 0, fullDuration: 2, selected: true },
+        { id: 2, name: 'Clip 2', start: 5, duration: 2, envelopePoints: [], trimStart: 0, fullDuration: 2 },
+      ],
+    },
+  ];
+  it('a press on an unselected clip leaves the selection alone; the click on release selects it', () => {
+    const { container } = renderCanvas(tracks());
+    const header = clipHeaderEl(container, 2);
+    fireEvent.mouseDown(header, { clientX: 560, clientY: 10, button: 0 });
+    expect(isClipSelected(container, 1)).toBe(true);
+    expect(isClipSelected(container, 2)).toBe(false);
+    fireEvent.mouseUp(document, { clientX: 560, clientY: 10 });
+    fireEvent.click(header, { clientX: 560, clientY: 10 });
+    expect(isClipSelected(container, 2)).toBe(true);
+    expect(isClipSelected(container, 1)).toBe(false);
+  });
+  it('a drag of an unselected clip moves it alone, drops the selection and selects nothing', () => {
+    const { container } = renderCanvas(tracks());
+    const header = clipHeaderEl(container, 2);
+    fireEvent.mouseDown(header, { clientX: 560, clientY: 10, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 600, clientY: 10 });
+    fireEvent.mouseMove(document, { clientX: 620, clientY: 10 });
+    fireEvent.mouseUp(document, { clientX: 620, clientY: 10 });
+    fireEvent.click(header, { clientX: 620, clientY: 10 });
+    expect(isClipSelected(container, 1)).toBe(false);
+    expect(isClipSelected(container, 2)).toBe(false);
+    expect(parseFloat(clipEl(container, 2).style.left)).toBeGreaterThan(parseFloat(clipEl(container, 1).style.left) + 500);
+    expect(clipEl(container, 1).style.left).toBe(`${12}px`);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Row 2: Shift+Click after a selection -> time-selection extends, scoped to
 // the gesture's rows.
@@ -723,6 +760,7 @@ describe('Clip drag below a track group', () => {
     fireEvent.mouseMove(document, { clientX: 120, clientY: rowTop + 18 });
     await waitFor(() => expect(parseInt(clipEl(container, 2).style.left, 10)).toBe(leftBefore + 60));
     fireEvent.mouseUp(document, { clientX: 120, clientY: rowTop + 18 });
-    expect(isClipSelected(container, 2)).toBe(true);
+    // A drag no longer selects the clip it moved (2026-10-13)
+    expect(isClipSelected(container, 2)).toBe(false);
   });
 });

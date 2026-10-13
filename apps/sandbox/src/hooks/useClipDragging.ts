@@ -130,8 +130,18 @@ export function useClipDragging(options: UseClipDraggingOptions): UseClipDraggin
         dispatch({ type: 'SET_TIME_SELECTION', payload: null });
       }
 
+      // A plain drag from an UNSELECTED clip (2026-10-13): the press did
+      // not select; the drag's first movement DROPS a selection the clip
+      // is not in and selects nothing — the edit rule (an edit on another
+      // clip deselects the selected clip)
+      if (dragState.dropSelectionOnFirstMove) {
+        dragState.dropSelectionOnFirstMove = false;
+        const anySelected = tracks.some((t) => t.clips.some((c) => c.selected) || (t.midiClips ?? []).some((c) => c.selected));
+        if (anySelected) dispatch({ type: 'DESELECT_ALL_CLIPS' });
+      }
+
       // Shift+drag from an unselected clip: the press left the selection
-      // alone; the drag's first movement takes it (as a plain press does)
+      // alone; the drag's first movement takes it (the selecting gesture)
       if (dragState.selectOnFirstMove) {
         dragState.selectOnFirstMove = false;
         dispatch({ type: 'SET_TIME_SELECTION', payload: null });

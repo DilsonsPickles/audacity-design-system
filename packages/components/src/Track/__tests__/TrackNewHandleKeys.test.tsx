@@ -115,10 +115,12 @@ describe('T and S focus the trim and stretch handles (2026-10-12)', () => {
     expect(live().sort()).toEqual(['fade-in', 'fade-out']);
     expect(dimmed().sort()).toEqual(['stretch-left', 'stretch-right', 'trim-left', 'trim-right']);
     cleanup();
-    const sel = setup({ selected: true }, { singleSelection: true });
+    // A selected clip without the pointer shows none either (2026-10-13):
+    // T mounts the four with the stretch pair dimmed, as on any clip
+    const sel = setup({ selected: true });
     fireEvent.keyDown(sel.clip, { key: 't', code: 'KeyT' });
     expect(sel.container.querySelectorAll('[data-clip-id="1"] [data-handle-kind]').length).toBe(4);
-    expect(sel.container.querySelectorAll('[data-clip-id="1"] [data-handle-kind][data-disabled]').length).toBe(0);
+    expect(sel.container.querySelectorAll('[data-clip-id="1"] [data-handle-kind][data-disabled]').length).toBe(2);
   });
 
   it('Shift+S on the clip is NOT taken (Solo is app-wide)', () => {

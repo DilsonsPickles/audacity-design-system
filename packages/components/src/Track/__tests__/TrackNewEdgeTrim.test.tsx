@@ -121,7 +121,7 @@ describe('trimming an unselected clip by its edge', () => {
 
   it('a SELECTED clip under the pointer has its handles and no edge zones; every other clip the reverse (2026-10-01)', () => {
     // Two clips selected elsewhere, so no single-selection exception
-    const { container, zone } = renderTrack({ singleSelection: false });
+    const { container, zone } = renderTrack({});
     // At rest: zones everywhere, handles nowhere — selection alone shows none
     expect(zone(1, 'left')).toBeTruthy();
     expect(zone(1, 'right')).toBeTruthy();
@@ -472,24 +472,14 @@ describe('a crossfaded edge belongs to the crossfade (2026-10-01): no trim or st
   });
 });
 
-describe('a SINGLE selected clip keeps its trim and stretch handles without the pointer (2026-10-01)', () => {
-  it('with singleSelection the selected clip has handles and no zones, unhovered; its fade handles still wait for the pointer', () => {
-    const { container, zone } = renderTrack({ singleSelection: true, onClipStretchEdge: vi.fn() });
-    expect(container.querySelectorAll('[data-clip-id="1"] .clip-display__handle')).toHaveLength(4);
-    expect(zone(1, 'left')).toBeNull();
-    expect(zone(1, 'right')).toBeNull();
-    expect(container.querySelector('[data-fade-handle][data-fade-clip="1"]')).toBeNull(); // fades: hover only
-    // The unselected clip is as ever: zones, no handles
-    expect(container.querySelectorAll('[data-clip-id="2"] .clip-display__handle')).toHaveLength(0);
-    expect(zone(2, 'left')).toBeTruthy();
-    // Under the pointer the selected clip gains its fade handles too
-    fireEvent.mouseEnter(container.querySelector('[data-clip-id="1"]') as HTMLElement, { buttons: 0 });
-    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(2);
-  });
-
-  it('without singleSelection (the host counted more than one) selection shows nothing', () => {
-    const { container, zone } = renderTrack({ singleSelection: false });
-    expect(container.querySelectorAll('.clip-display__handle')).toHaveLength(0);
+describe('a LONE selected clip wears no handles without the pointer (2026-10-13; until then it kept them up, 2026-10-01)', () => {
+  it('unhovered, the selected clip has zones and no handles, like any other; under the pointer it gains its trim, stretch and fade handles', () => {
+    const { container, zone } = renderTrack({ onClipStretchEdge: vi.fn() });
+    expect(container.querySelectorAll('[data-clip-id="1"] .clip-display__handle')).toHaveLength(0);
     expect(zone(1, 'left')).toBeTruthy();
+    expect(container.querySelector('[data-fade-handle][data-fade-clip="1"]')).toBeNull();
+    fireEvent.mouseEnter(container.querySelector('[data-clip-id="1"]') as HTMLElement, { buttons: 0 });
+    expect(container.querySelectorAll('[data-clip-id="1"] .clip-display__handle')).toHaveLength(4);
+    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="1"]')).toHaveLength(2);
   });
 });
