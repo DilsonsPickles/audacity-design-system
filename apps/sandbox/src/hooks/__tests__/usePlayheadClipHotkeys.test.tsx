@@ -76,8 +76,10 @@ describe('⌥F / ⌥T / ⌥S / ⌥Enter from a TRACK: the clip under the playhea
     act(() => { getByTestId('field').focus(); });
     act(() => { press(getByTestId('field'), 'KeyT'); });
     expect(seen.clips[0].slice(1, 3)).toEqual([1, 3]);
+    // Drain the edit's focus-on-next-frame so it cannot leak into the next test
+    await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
   });
-  it('⌥S stretches the nearer edge to the playhead (the far half: the end comes in)', () => {
+  it('⌥S stretches the nearer edge to the playhead (the far half: the end comes in)', async () => {
     const seen: Seen = { clips: [] };
     const { getByTestId } = render(<TracksProvider initialTracks={seed()}><Probe seen={seen} /></TracksProvider>);
     const header = getByTestId('header0');
@@ -89,8 +91,10 @@ describe('⌥F / ⌥T / ⌥S / ⌥Enter from a TRACK: the clip under the playhea
     const [, start, duration] = seen.clips[0];
     expect(start).toBeCloseTo(1);
     expect(duration).toBeCloseTo(3);
+    // Drain the edit's focus-on-next-frame so it cannot leak into the next test
+    await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
   });
-  it('⌥Enter selects the clip under the playhead and moves the focus to it; with no clip there it does nothing', async () => {
+  it('⌥Enter selects the clip under the playhead and leaves the focus where it is (2026-10-13); with no clip there it does nothing', async () => {
     const seen: Seen = { clips: [] };
     const { getByTestId } = render(<TracksProvider initialTracks={seed()}><Probe seen={seen} /></TracksProvider>);
     const header = getByTestId('header0');
@@ -98,8 +102,9 @@ describe('⌥F / ⌥T / ⌥S / ⌥Enter from a TRACK: the clip under the playhea
     expect(seen.clips[0][5]).toBe(false);
     act(() => { fireEvent.keyDown(header, { code: 'Enter', key: 'Enter', altKey: true }); });
     expect(seen.clips[0][5]).toBe(true);
+    expect(document.activeElement?.getAttribute('data-testid')).toBe('header0'); // sync
     await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
-    expect(document.activeElement).toBe(getByTestId('clip'));
+    expect(document.activeElement?.getAttribute('data-testid')).toBe('header0'); // after a frame
   });
 });
 

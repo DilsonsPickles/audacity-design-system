@@ -16,13 +16,14 @@
  *           the fade-out in its second (utils/fadeToPlayhead.ts)
  *   ⌥T      trims its NEARER edge to the playhead (the same halves)
  *   ⌥S      stretches its nearer edge to the playhead
- *   ⌥Enter  SELECTS it and gives it the focus — the clip becomes the
- *           one you have, so F / T / S and Enter follow
+ *   ⌥Enter  SELECTS it — and nothing more: the focus stays where it is
+ *           (2026-10-13, "not add visible focus")
  *
- * EVERY ONE OF THEM MOVES THE FOCUS TO THAT CLIP (2026-10-13, "if we do
+ * THE THREE EDITS MOVE THE FOCUS TO THAT CLIP (2026-10-13, "if we do
  * that option + enter, we can move the focus to the new target"): after
  * a cursor-based edit the clip you just edited is the clip you are on,
- * so the two ways of pointing — the focus and the cursor — meet.
+ * so the two ways of pointing — the focus and the cursor — meet. The
+ * select does not move it.
  *
  * The edits take the fade / trim rule's targets (the clip, or every
  * selected audio clip when it is selected), each to the same playhead.
@@ -100,10 +101,13 @@ export function usePlayheadClipHotkeys(): void {
         document.querySelector<HTMLElement>(`[data-clip-id="${hit.clipId}"][data-track-index="${hit.trackIndex}"]`)?.focus({ preventScroll: true });
       });
       if (chord === 'select') {
+        // SELECTS, AND NOTHING MORE (2026-10-13, "pressing option + enter
+        // should select the clip under the playhead but not add visible
+        // focus"): the focus stays where it is — the three edits move it,
+        // the select does not
         d({ type: 'SELECT_CLIP', payload: { trackIndex: hit.trackIndex, clipId: hit.clipId } });
         const name = s.tracks[hit.trackIndex]?.clips.find((c) => c.id === hit.clipId)?.name ?? 'Clip';
         announce(`${name} selected`);
-        focusIt();
         return;
       }
       focusIt();

@@ -83,7 +83,7 @@ export const SHORTCUT_ROWS: ReadonlyArray<ShortcutRow> = [
     { id: '35h', action: 'Fade to the playhead: the clip under the playhead on the track you are on (the fade-in in its first half, the fade-out in its second), whichever clip is focused; a focused fade handle: that fade', shortcut: '⌥F', contexts: ['global', 'fade-handle'] },
     { id: '35k', action: 'Trim to the playhead: the clip under the playhead on the track you are on, its nearer edge (the start in its first half, the end in its second); a focused handle: that edge', shortcut: '⌥T', contexts: ['global', 'fade-handle', 'edge-handle'] },
     { id: '35l', action: 'Stretch to the playhead: the clip under the playhead on the track you are on, its nearer edge; a focused handle: that edge', shortcut: '⌥S', contexts: ['global', 'fade-handle', 'edge-handle'] },
-    { id: '35n', action: 'Select the clip under the playhead on the track you are on, and focus it', shortcut: '⌥Enter' },
+    { id: '35n', action: 'Select the clip under the playhead on the track you are on (the focus stays where it is)', shortcut: '⌥Enter' },
     { id: '35o', action: 'Clip focus to the nearest clip on the track above / below (a track with no clip is stepped over; the track row when none has one)', shortcut: '↑ ↓', contexts: ['clip'] },
     { id: '35i', action: 'Fades dialog (fade-in and fade-out length and shape) for the focused clip', shortcut: '⌥⇧F', contexts: ['clip', 'fade-handle'] },
     { id: '36', action: 'Find clipping', shortcut: '' },
