@@ -509,7 +509,7 @@ describe('Bottom drawer', () => {
       if (!p) throw new Error('not yet');
       return p;
     });
-    const input = palette.querySelector<HTMLInputElement>('.command-palette__input')!;
+    const input = palette.querySelector<HTMLInputElement>('.search-field__input')!;
     fireEvent.change(input, { target: { value: 'go to' } });
     expect(palette.querySelector('[role="option"][aria-selected="true"]')?.textContent).toContain('Go to');
     fireEvent.keyDown(input, { key: 'Enter' });

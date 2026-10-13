@@ -1,7 +1,7 @@
 import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
-import { CommandPalette, rankPaletteCommands, formatPaletteShortcut } from '../CommandPalette';
+import { CommandPalette, rankPaletteCommands, formatPaletteShortcut, paletteMatchRange } from '../CommandPalette';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 
 afterEach(cleanup);
@@ -42,7 +42,7 @@ describe('the command palette (2026-10-13)', () => {
         <CommandPalette isOpen commands={COMMANDS} onRun={onRun} onClose={onClose} />
       </ThemeProvider>,
     );
-    const input = container.querySelector<HTMLInputElement>('.command-palette__input')!;
+    const input = container.querySelector<HTMLInputElement>('.search-field__input')!;
     await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
     expect(document.activeElement).toBe(input);
     const rows = () => [...container.querySelectorAll('[role="option"]')].map((r) => r.getAttribute('data-command-id'));
@@ -77,7 +77,7 @@ describe('the command palette (2026-10-13)', () => {
     fireEvent.click(container.querySelector('[data-command-id="edit:go-to"]')!);
     await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
     expect(onRun).toHaveBeenCalledWith('edit:go-to');
-    const input = container.querySelector<HTMLInputElement>('.command-palette__input')!;
+    const input = container.querySelector<HTMLInputElement>('.search-field__input')!;
     fireEvent.change(input, { target: { value: 'nothing like this' } });
     expect(container.querySelector('.command-palette__empty')?.textContent).toBe('No matching command');
   });
@@ -91,11 +91,47 @@ describe('an empty query shows the host\'s short list (2026-10-13)', () => {
       </ThemeProvider>,
     );
     const rows = () => [...container.querySelectorAll('[role="option"]')].map((r) => r.getAttribute('data-command-id'));
-    const input = container.querySelector<HTMLInputElement>('.command-palette__input')!;
+    const input = container.querySelector<HTMLInputElement>('.search-field__input')!;
     expect(rows()).toEqual(['clip:fades', 'edit:go-to']);
     fireEvent.change(input, { target: { value: 'imp' } });
     expect(rows()).toEqual(['file:import']);
     fireEvent.change(input, { target: { value: '' } });
     expect(rows()).toEqual(['clip:fades', 'edit:go-to']);
+  });
+});
+
+describe('fuzzy matching and the highlight (2026-10-13, the Figma "Command Palette Fuzzy" frame)', () => {
+  const cmds = [
+    { id: 'split', label: 'Split', shortcut: 'Ctrl+I' },
+    { id: 'split-tool', label: 'Split tool', shortcut: 'C' },
+    { id: 'silences', label: 'Remove silences' },
+    { id: 'zoom-in', label: 'Zoom in' },
+  ];
+  it('a query one slip away finds the word — after every exact tier — and short queries never fuzz', () => {
+    expect(rankPaletteCommands(cmds, 'spilt').map((c) => c.id)).toEqual(['split', 'split-tool']);
+    expect(rankPaletteCommands(cmds, 'zomo').map((c) => c.id)).toEqual(['zoom-in']);
+    expect(rankPaletteCommands(cmds, 'spl').map((c) => c.id)).toEqual(['split', 'split-tool']); // exact prefix, no fuzz needed
+    expect(rankPaletteCommands(cmds, 'zim').map((c) => c.id)).toEqual([]); // under four characters: no slip allowed
+    expect(rankPaletteCommands(cmds, 'xxxxx')).toEqual([]);
+  });
+  it('the range to highlight: the substring, or the fuzzy word', () => {
+    expect(paletteMatchRange('Zoom in', 'zoom')).toEqual([0, 4]);
+    expect(paletteMatchRange('Remove silences', 'sil')).toEqual([7, 10]);
+    expect(paletteMatchRange('Split tool', 'spilt')).toEqual([0, 5]);
+    expect(paletteMatchRange('Split tool', '')).toBeNull();
+  });
+  it('the row wraps the match in a mark', () => {
+    const { container } = render(
+      <ThemeProvider>
+        <CommandPalette isOpen commands={cmds} onRun={vi.fn()} onClose={vi.fn()} />
+      </ThemeProvider>,
+    );
+    const input = container.querySelector<HTMLInputElement>('.search-field__input')!;
+    fireEvent.change(input, { target: { value: 'spilt' } });
+    const marks = [...container.querySelectorAll('[role="option"] mark')].map((m) => m.textContent);
+    expect(marks).toEqual(['Split', 'Split']);
+    // The field is the design system's, with its clear button
+    expect(container.querySelector('.command-palette__field .search-field--large')).not.toBeNull();
+    expect(container.querySelector('.search-field__clear')).not.toBeNull();
   });
 });

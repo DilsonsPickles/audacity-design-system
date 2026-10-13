@@ -87,3 +87,16 @@
 .search-field__clear svg {
   display: block;
 }
+
+/* The command palette's field (2026-10-13): taller, larger text */
+.search-field--large {
+  height: 40px;
+  padding: 0 12px;
+  gap: 10px;
+  border-radius: 4px;
+}
+
+.search-field--large .search-field__input {
+  font-size: 13px;
+  line-height: 18px;
+}

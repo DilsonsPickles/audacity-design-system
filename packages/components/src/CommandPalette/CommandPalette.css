@@ -17,7 +17,7 @@
    state keeps the same box. */
 .command-palette {
   width: min(560px, calc(100vw - 32px));
-  height: 276px; /* 40px field + seven 32px rows + the list's padding */
+  height: 290px; /* the 40px field in its 14px of padding + seven 32px rows + the list's padding */
   max-height: calc(100vh - 32px);
   display: flex;
   flex-direction: column;
@@ -31,43 +31,12 @@
   font-size: 12px;
 }
 
-/* The search row: the magnifier, then the text. No line under it (the
-   divider read as a harsh stroke — dropped 2026-10-13); the list's own
-   top padding keeps the two apart. Never squeezed by a long list (the
-   list shrinks, the field does not — "search bar is shrinking, don't
-   like that", the same day). */
+/* The search row: the design system's field, nested in the container
+   (2026-10-13). Never squeezed by a long list (the list shrinks, the row
+   does not — "search bar is shrinking, don't like that"). */
 .command-palette__field {
-  flex: 0 0 40px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 40px;
-  padding: 0 14px;
-  background: var(--palette-input-bg);
-}
-
-.command-palette__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  color: var(--palette-icon);
   flex: 0 0 auto;
-}
-
-.command-palette__input {
-  flex: 1 1 auto;
-  min-width: 0;
-  box-sizing: border-box;
-  height: 40px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--palette-text);
-  font: inherit;
-  font-size: 13px;
-  outline: none;
+  padding: 10px 10px 4px;
 }
 
 .command-palette__list {
@@ -120,4 +89,13 @@
 .command-palette__empty {
   padding: 10px 14px;
   opacity: 0.6;
+}
+
+/* Where the query matched (the design's highlight) */
+.command-palette__match {
+  background: color-mix(in srgb, var(--palette-match) 28%, transparent);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+  margin: 0 -1px;
 }

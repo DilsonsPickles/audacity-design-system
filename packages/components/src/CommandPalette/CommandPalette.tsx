@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTheme } from '../ThemeProvider/ThemeProvider';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { SearchField } from '../SearchField/SearchField';
 import './CommandPalette.css';
 
 /** One runnable thing: a menu item, a keyboard-only command, a dialog */
@@ -52,10 +53,52 @@ export function formatPaletteShortcut(shortcut: string, os: 'macos' | 'windows')
   return text + keys.join('');
 }
 
+/** Optimal-string-alignment distance (Levenshtein + a transposition),
+ *  capped: the fuzzy tier's "one slip" — "spilt" finds Split */
+function slipDistance(a: string, b: string, max: number): number {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  const prev2: number[] = []; let prev = Array.from({ length: b.length + 1 }, (_, j) => j); let cur: number[] = [];
+  for (let i = 1; i <= a.length; i++) {
+    cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      let v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, prev2[j - 2] + 1);
+      cur.push(v);
+    }
+    prev2.splice(0, prev2.length, ...prev); prev = cur;
+  }
+  return prev[b.length];
+}
+
+const WORD_SPLIT = /[\s/]+/;
+
+/** Where the query matches a label — the characters to highlight — or
+ *  null: the substring (case-insensitive), else the WORD within one slip
+ *  of the query (the fuzzy tier; a query of four or more characters). */
+export function paletteMatchRange(label: string, query: string): [number, number] | null {
+  const q = query.trim().toLowerCase();
+  if (!q) return null;
+  const low = label.toLowerCase();
+  const at = low.indexOf(q);
+  if (at >= 0) return [at, at + q.length];
+  if (q.length < 4) return null;
+  let pos = 0;
+  for (const word of label.split(WORD_SPLIT)) {
+    const start = label.indexOf(word, pos);
+    pos = start + word.length;
+    const w = word.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (w.length >= 3 && slipDistance(w, q, 1) <= 1) return [start, start + word.length];
+  }
+  return null;
+}
+
 /** The commands that match, best first: a label that STARTS with the
  *  query, then one with a WORD starting with it, then any that contains
- *  it (the group counts as a last resort); an empty query lists them all
- *  in their given order. Case-insensitive; stable within a rank. */
+ *  it, then the group, then a FUZZY word within one slip ("spilt" finds
+ *  Split — the Figma "Command Palette Fuzzy" variant, 2026-10-13); an
+ *  empty query lists them all in their given order. Case-insensitive;
+ *  stable within a rank. */
 export function rankPaletteCommands<T extends PaletteCommand>(commands: ReadonlyArray<T>, query: string): T[] {
   const q = query.trim().toLowerCase();
   if (!q) return [...commands];
@@ -64,12 +107,27 @@ export function rankPaletteCommands<T extends PaletteCommand>(commands: Readonly
     const label = c.label.toLowerCase();
     let score: number | null = null;
     if (label.startsWith(q)) score = 0;
-    else if (label.split(/[\s/]+/).some((w) => w.startsWith(q))) score = 1;
+    else if (label.split(WORD_SPLIT).some((w) => w.startsWith(q))) score = 1;
     else if (label.includes(q)) score = 2;
     else if ((c.group ?? '').toLowerCase().includes(q)) score = 3;
+    else if (paletteMatchRange(c.label, q)) score = 4;
     if (score !== null) scored.push({ c, score, i });
   });
   return scored.sort((a, b) => a.score - b.score || a.i - b.i).map((s) => s.c);
+}
+
+/** The label with its match wrapped in <mark> (the design's highlight) */
+function HighlightedLabel({ label, query }: { label: string; query: string }) {
+  const range = paletteMatchRange(label, query);
+  if (!range) return <>{label}</>;
+  const [a, b] = range;
+  return (
+    <>
+      {label.slice(0, a)}
+      <mark className="command-palette__match">{label.slice(a, b)}</mark>
+      {label.slice(b)}
+    </>
+  );
 }
 
 /**
@@ -80,7 +138,9 @@ export function rankPaletteCommands<T extends PaletteCommand>(commands: Readonly
  * run with Enter, the chord shown beside each so the palette teaches
  * the shortcuts. ↑ ↓ move the highlight (wrapping), Enter runs it,
  * Escape leaves, a click runs a row; the list is a combobox + listbox
- * for assistive tech. Centred in the window; an empty query shows the
+ * for assistive tech; the field is the design system's SearchField,
+ * large, nested in the container, and each row highlights where the
+ * query matched. Centred in the window; an empty query shows the
  * host's SHORT list (recents, then its common commands — `suggestedIds`),
  * never the whole catalogue (2026-10-13, "in the middle of the screen
  * and not show so many options, just the common ones"). The palette CLOSES AND RESTORES FOCUS to what had
@@ -92,7 +152,6 @@ export function CommandPalette({ isOpen, commands, onRun, onClose, os = 'macos',
   const [query, setQuery] = React.useState('');
   const [highlight, setHighlight] = React.useState(0);
   const rootRef = React.useRef<HTMLDivElement>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
   const listRef = React.useRef<HTMLUListElement>(null);
   const openerRef = React.useRef<HTMLElement | null>(null);
   const listId = React.useId();
@@ -103,7 +162,7 @@ export function CommandPalette({ isOpen, commands, onRun, onClose, os = 'macos',
     setQuery('');
     setHighlight(0);
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const id = requestAnimationFrame(() => inputRef.current?.focus());
+    const id = requestAnimationFrame(() => rootRef.current?.querySelector<HTMLInputElement>('.search-field__input')?.focus());
     return () => cancelAnimationFrame(id);
   }, [isOpen]);
 
@@ -148,10 +207,6 @@ export function CommandPalette({ isOpen, commands, onRun, onClose, os = 'macos',
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (results.length > 0) setHighlight((clampedHighlight - 1 + results.length) % results.length);
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      const c = results[clampedHighlight];
-      if (c) pick(c);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
@@ -168,6 +223,7 @@ export function CommandPalette({ isOpen, commands, onRun, onClose, os = 'macos',
     '--palette-hover': theme.background.menu.item.hover,
     '--palette-input-bg': theme.background.surface.default,
     '--palette-icon': theme.foreground.icon.primary,
+    '--palette-match': theme.background.control.button.primary.idle,
   } as React.CSSProperties;
   const activeId = results[clampedHighlight] ? `${listId}-${clampedHighlight}` : undefined;
 
@@ -188,30 +244,31 @@ export function CommandPalette({ isOpen, commands, onRun, onClose, os = 'macos',
         onKeyDown={onKeyDown}
       >
         <div className="command-palette__field">
-          {/* The design system's magnifier (SearchField's), before the text —
-              "put the search icon in before the search", 2026-10-13 */}
-          <span className="command-palette__icon" aria-hidden="true">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M7 12C9.76142 12 12 9.76142 12 7C12 4.23858 9.76142 2 7 2C4.23858 2 2 4.23858 2 7C2 9.76142 4.23858 12 7 12Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
-        <input
-          ref={inputRef}
-          className="command-palette__input"
-          type="text"
-          role="combobox"
-          aria-expanded="true"
-          aria-controls={listId}
-          aria-activedescendant={activeId}
-          aria-autocomplete="list"
-          aria-label="Command"
-          placeholder={placeholder}
-          value={query}
-          onChange={(e) => { setQuery(e.target.value); setHighlight(0); }}
-          autoComplete="off"
-          spellCheck={false}
-        />
+          {/* The design system's search field, nested in the container (the
+              Figma "Command Palette" frame; "it can be a search input nested
+              in a container", 2026-10-13): magnifier, text, a clear X. Enter
+              is its onSubmit; ↑ ↓ Escape bubble to the palette. No focus
+              frame on the input: the palette is the focus, and a text field
+              counts as focus-visible however it was focused. */}
+          <SearchField
+            size="large"
+            fullWidth
+            value={query}
+            placeholder={placeholder}
+            onChange={(v) => { setQuery(v); setHighlight(0); }}
+            onSubmit={() => { const c = results[clampedHighlight]; if (c) pick(c); }}
+            inputProps={{
+              role: 'combobox',
+              'aria-expanded': true,
+              'aria-controls': listId,
+              'aria-activedescendant': activeId,
+              'aria-autocomplete': 'list',
+              'aria-label': 'Command',
+              'data-no-focus-frame': '',
+              autoComplete: 'off',
+              spellCheck: false,
+            } as React.InputHTMLAttributes<HTMLInputElement>}
+          />
         </div>
         <ul ref={listRef} id={listId} className="command-palette__list" role="listbox" aria-label="Commands">
           {results.length === 0 && (
@@ -230,7 +287,7 @@ export function CommandPalette({ isOpen, commands, onRun, onClose, os = 'macos',
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => pick(c)}
             >
-              <span className="command-palette__label">{c.label}</span>
+              <span className="command-palette__label"><HighlightedLabel label={c.label} query={query} /></span>
               {c.group && <span className="command-palette__group">{c.group}</span>}
               {c.shortcut && <kbd className="command-palette__shortcut">{formatPaletteShortcut(c.shortcut, os)}</kbd>}
             </li>

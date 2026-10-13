@@ -38,6 +38,13 @@ export interface SearchFieldProps {
    * Optional className for custom styling
    */
   className?: string;
+  /** 'large' is the command palette's field: 40px, 13px text (2026-10-13) */
+  size?: 'default' | 'large';
+  /** Fill the container instead of the fixed `width` */
+  fullWidth?: boolean;
+  /** Attributes for the input itself — a role, aria-*, data-* (the
+   *  palette's combobox wiring); never value, onChange or placeholder */
+  inputProps?: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'placeholder' | 'disabled' | 'type'>;
 }
 
 /**
@@ -56,6 +63,9 @@ export function SearchField({
   onSubmit,
   width = 162,
   className = '',
+  size = 'default',
+  fullWidth = false,
+  inputProps,
 }: SearchFieldProps) {
   const { theme } = useTheme();
   const [isFocused, setIsFocused] = React.useState(false);
@@ -95,8 +105,8 @@ export function SearchField({
 
   return (
     <div
-      className={`search-field ${isFocused ? 'search-field--focused' : ''} ${disabled ? 'search-field--disabled' : ''} ${className}`}
-      style={{ width: `${width}px`, ...style }}
+      className={`search-field ${isFocused ? 'search-field--focused' : ''} ${disabled ? 'search-field--disabled' : ''} ${size === 'large' ? 'search-field--large' : ''} ${className}`}
+      style={{ width: fullWidth ? '100%' : `${width}px`, ...style }}
     >
       <span className="search-field__icon">
         {/* Zoom/Search icon */}
@@ -118,6 +128,7 @@ export function SearchField({
         </svg>
       </span>
       <input
+        {...inputProps}
         ref={inputRef}
         type="text"
         className="search-field__input"
@@ -125,9 +136,9 @@ export function SearchField({
         placeholder={placeholder}
         disabled={disabled}
         onChange={handleChange}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        onKeyDown={handleKeyDown}
+        onFocus={(e) => { setIsFocused(true); inputProps?.onFocus?.(e); }}
+        onBlur={(e) => { setIsFocused(false); inputProps?.onBlur?.(e); }}
+        onKeyDown={(e) => { handleKeyDown(e); inputProps?.onKeyDown?.(e); }}
       />
       {hasValue && !disabled && (
         <button
