@@ -91,16 +91,18 @@ const FADE_CONTROLS_MIN_CLIP_HEIGHT = 44;
 // CLIP_COLLAPSE_HEIGHT, where Clip hides the header until hovered and
 // the body takes the whole height), from the border alone (user
 // decision 2026-10-12, "when the clip header gets hidden, the fade curve
-// needs to close the gap left by the header"). Everything drawn ON the
-// body at track level — the fade curves and their dims, the shape dots,
-// the crossfade node, the crossfade ghost — takes this one geometry, so
-// the dots stay on the curves. The hovered header of a collapsed clip
-// overlays the body's top; the curve keeps its place under it. (The fade
-// LENGTH handles are not body drawing: they keep their row under the
-// 20px header whatever the clip, 2026-10-08.)
+// needs to close the gap left by the header") — and back under the
+// header while it is UP, on hover ("on rollover when the header appears
+// again, we need to move the fade again", 2026-10-13): `headerShown` is
+// the component's `headerShownFor`, which Clip takes too, so the drawing
+// and the header never disagree. Everything drawn ON the body at track
+// level — the fade curves and their dims, the shape dots, the crossfade
+// node, the crossfade ghost — takes this one geometry, so the dots stay
+// on the curves. (The fade LENGTH handles are not body drawing: they
+// keep their row under the 20px header whatever the clip, 2026-10-08.)
 const CLIP_HEADER_H = 20;
-const clipBodyGeometry = (height: number) => {
-  const bodyTop = (isClipCollapsed(height) ? 0 : CLIP_HEADER_H) + 1;
+const clipBodyGeometry = (height: number, headerShown: boolean) => {
+  const bodyTop = (headerShown ? CLIP_HEADER_H : 0) + 1;
   return { bodyTop, bodyHeight: Math.max(0, height - bodyTop - 1) };
 };
 
@@ -976,6 +978,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // fade hover above, this one is not "well inside": the handles ARE
   // the edges.
   const [handleHoverClipId, setHandleHoverClipId] = React.useState<string | number | null>(null);
+  // Is a clip's HEADER up? Always, with the room for it; on a COLLAPSED
+  // clip (under CLIP_COLLAPSE_HEIGHT) only while the pointer is on the
+  // clip — Clip shows it on hover, and takes this as `headerShown` so
+  // the body drawing (clipBodyGeometry) and the header move together
+  // (2026-10-13). A crossfade's parts belong to two clips: either one.
+  const clipCollapsed = isClipCollapsed(height);
+  const headerShownFor = (...clipIds: Array<string | number>) =>
+    !clipCollapsed || clipIds.some((id) => handleHoverClipId === id);
   // The clip with DOM focus: its FADE handles show without the pointer
   // (user decision 2026-10-01, "if a clip is in focus we need to show
   // fade handles") — the keyboard user's way to see them. Focus moving
@@ -1151,7 +1161,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if ((!onCrossfadeShapeChange && !onCrossfadeRoll) || crossfadeNodes.length === 0) return null;
     // A clip at the FLOOR shows its edge handles only (2026-10-07, below)
     if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT) return null;
-    const { bodyTop, bodyHeight } = clipBodyGeometry(height);
     const NODE_R = 5;
     return crossfadeNodes.map((n) => {
       // Shown under the SAME rules as the quick-fade shape handle (user
@@ -1159,6 +1168,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // of the two clips it belongs to (or on the node itself), or
       // while it is being dragged. Selection alone does not show it.
       const nodeKey = `${n.outgoingClipId}-${n.incomingClipId}`;
+      const { bodyTop, bodyHeight } = clipBodyGeometry(height, headerShownFor(n.outgoingClipId, n.incomingClipId));
       const active = xNodeActive.includes(nodeKey);
       const leaving = !active && leavingXNodes.has(nodeKey);
       if (!active && !leaving) return null;
@@ -1328,7 +1338,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if (!onClipFadeShapeChange) return null;
     // A clip at the FLOOR shows its edge handles only (2026-10-07, below)
     if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT) return null;
-    const { bodyTop, bodyHeight } = clipBodyGeometry(height);
     const NODE_R = 5;
     // Under the pointer or mid-drag the handle ENLARGES, subtly, and
     // nothing else (user decision 2026-09-29, replacing the envelope
@@ -1341,6 +1350,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const clipActive = shapeActive.includes(String(clip.id));
       const leaving = !clipActive && leavingShape.has(String(clip.id));
       if (!clipActive && !leaving) continue;
+      const { bodyTop, bodyHeight } = clipBodyGeometry(height, headerShownFor(clip.id));
       const eff = clipQuickFadeGeometry(clip);
       for (const side of ['in', 'out'] as const) {
         const fade = side === 'in' ? eff.fadeIn : eff.fadeOut;
@@ -1497,8 +1507,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if (fadeCurves.length === 0) return null;
     // The clip draws with a 1px border, so the header's true bottom is
     // wrapper-top + 21 — the overlay starts exactly there; on a collapsed
-    // clip, at wrapper-top + 1 (clipBodyGeometry)
-    const { bodyTop, bodyHeight } = clipBodyGeometry(height);
+    // clip with its header hidden, at wrapper-top + 1 (clipBodyGeometry,
+    // per clip below)
     const geometry = (region: (typeof fadeCurves)[number]) => ({
       left: Math.round(CLIP_CONTENT_OFFSET + region.start * pixelsPerSecond),
       width: Math.max(1, Math.round((region.end - region.start) * pixelsPerSecond)),
@@ -1537,6 +1547,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       if (!data) return null;
       const left = Math.round(CLIP_CONTENT_OFFSET + n.overlapStart * pixelsPerSecond);
       const width = Math.max(1, Math.round((n.overlapEnd - n.overlapStart) * pixelsPerSecond));
+      const { bodyTop, bodyHeight } = clipBodyGeometry(height, headerShownFor(n.outgoingClipId, n.incomingClipId));
       return (
         <CrossfadeGhost
           key={`crossfade-ghost-${n.outgoingClipId}-${n.incomingClipId}`}
@@ -1584,6 +1595,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // dim alone says there is a fade. A crossfade's line belongs to
       // both its clips. CSS fades it in and out at the handles' tempo.
       const owners = crossfadeOf ? [crossfadeOf.outgoingClipId, crossfadeOf.incomingClipId] : [region.clipId];
+      const { bodyTop, bodyHeight } = clipBodyGeometry(height, headerShownFor(...owners));
       const lineVisible = editing || owners.some((id) =>
         clips.find((c) => c.id === id)?.selected
         || focusedClipId === id
@@ -2153,6 +2165,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             onHandleHover={setHintHover}
             keyboardHandle={handleKeyFocus?.clipId === clip.id ? { kind: handleKeyFocus.kind, edge: handleKeyFocus.edge } : null}
             ghostHandles={fadeKeyFocus?.clipId === clip.id}
+            headerShown={headerShownFor(clip.id)}
             onHandleKeyDown={(kind, edge, e) => handleKeyOnHandle(clip, clipIndex, kind, edge, e)}
             onHandleFocus={(kind, edge) => setHandleKeyFocus((prev) => (prev?.clipId === clip.id && prev.kind === kind && prev.edge === edge ? prev : { clipId: clip.id, kind, edge }))}
             onHandleBlur={(kind, edge, to) => {

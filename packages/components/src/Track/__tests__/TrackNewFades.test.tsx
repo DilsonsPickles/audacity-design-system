@@ -315,7 +315,7 @@ describe('clip fades', () => {
     expect(onFadeDragChange.mock.calls).toEqual([[1], [null]]);
   });
 
-  it('on a COLLAPSED clip the fade curve, the shape dot and the crossfade node start under the border, not the hidden header (2026-10-12)', () => {
+  it('on a COLLAPSED clip the fade drawing starts under the border while the header is hidden, and moves back under the header when hover shows it (2026-10-12/13)', () => {
     const renderAt = (height: number) => render(
       <Providers>
         <TrackNew
@@ -334,32 +334,39 @@ describe('clip fades', () => {
       </Providers>,
     );
     const measure = (container: HTMLElement) => {
-      hoverClip(container, 1);
       const curve = container.querySelector<HTMLElement>('[data-fade-curve="in"][data-fade-authored="true"]')!;
-      const dot = container.querySelector<HTMLElement>('[data-quickfade-node="in"]')!;
-      const node = container.querySelector<HTMLElement>('[data-crossfade-node]')!;
+      const dot = container.querySelector<HTMLElement>('[data-quickfade-node="in"]');
+      const node = container.querySelector<HTMLElement>('[data-crossfade-node]');
       const ghost = container.querySelector<HTMLElement>('[data-crossfade-ghost]');
-      return { curveTop: curve.style.top, curveHeight: curve.style.height, dotTop: dot.style.top, nodeTop: node.style.top, ghostTop: ghost?.style.top };
+      const header = container.querySelector('[data-clip-id="1"] .clip-header');
+      return { curveTop: curve.style.top, curveHeight: curve.style.height, dotTop: dot?.style.top, nodeTop: node?.style.top, ghostTop: ghost?.style.top, header: !!header };
     };
-    // Full height: under the 20px header and the 1px border
+    const wrapper = (container: HTMLElement) => container.querySelector('[data-clip-id="1"]') as HTMLElement;
+    // Full height: under the 20px header and the 1px border, hovered or not
     const full = renderAt(114);
-    const f = measure(full.container);
-    expect(f.curveTop).toBe('21px');
-    expect(f.curveHeight).toBe('92px');
+    expect(measure(full.container)).toMatchObject({ curveTop: '21px', curveHeight: '92px', header: true });
+    hoverClip(full.container, 1);
+    expect(measure(full.container)).toMatchObject({ curveTop: '21px', curveHeight: '92px', header: true, dotTop: `${Math.round(21 + 92 / 2 - 8)}px` });
+    const fullNodeTop = parseFloat(measure(full.container).nodeTop!);
     cleanup();
-    // Collapsed (under 72): the body takes the whole clip, so the curve
-    // closes the gap — from the border — and the dots move with it
+    // Collapsed (under 72), at rest: no header, the body is the whole
+    // clip, the curve closes the gap — from the border
     const collapsed = renderAt(60);
-    const c = measure(collapsed.container);
-    expect(c.curveTop).toBe('1px');
-    expect(c.curveHeight).toBe('58px');
-    // The S-curve's default handle sits at half gain: the dot's centre at
-    // bodyTop + bodyHeight / 2, drawn NODE_R + 3 = 8 above it
-    expect(c.dotTop).toBe(`${Math.round(1 + 58 / 2 - 8)}px`);
-    expect(f.dotTop).toBe(`${Math.round(21 + 92 / 2 - 8)}px`);
-    // The crossfade node and ghost share the geometry
-    expect(parseFloat(c.nodeTop)).toBeLessThan(parseFloat(f.nodeTop));
-    if (c.ghostTop !== undefined) expect(c.ghostTop).toBe('1px');
+    expect(measure(collapsed.container)).toMatchObject({ curveTop: '1px', curveHeight: '58px', header: false });
+    // Hovered: the header comes up and the drawing goes back under it —
+    // the curve, and the dot (the S-curve's default handle at half gain:
+    // bodyTop + bodyHeight / 2, drawn NODE_R + 3 = 8 above) with it
+    hoverClip(collapsed.container, 1);
+    expect(measure(collapsed.container)).toMatchObject({ curveTop: '21px', curveHeight: '38px', header: true, dotTop: `${Math.round(21 + 38 / 2 - 8)}px` });
+    expect(parseFloat(measure(collapsed.container).nodeTop!)).toBeLessThan(fullNodeTop);
+    // Left: hidden again, the drawing back at the top
+    fireEvent.mouseLeave(wrapper(collapsed.container));
+    expect(measure(collapsed.container)).toMatchObject({ curveTop: '1px', curveHeight: '58px', header: false });
+    // Held by the KEYBOARD (F) with no pointer, the header stays hidden
+    // and the dot sits on the top-anchored curve
+    act(() => { wrapper(collapsed.container).focus(); });
+    fireEvent.keyDown(wrapper(collapsed.container), { key: 'f', code: 'KeyF' });
+    expect(measure(collapsed.container)).toMatchObject({ curveTop: '1px', header: false, dotTop: `${Math.round(1 + 58 / 2 - 8)}px` });
   });
 
   it('the fade handle wears the pressed look for the whole drag, and only the one in hand', () => {

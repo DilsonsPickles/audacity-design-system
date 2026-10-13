@@ -158,6 +158,11 @@ export interface ClipProps {
    *  non-interactive where the pointer rule shows none, so the whole set
    *  is in view while the keyboard works one of it (2026-10-12). */
   ghostHandles?: boolean;
+  /** Whether the header is UP. Unset, Clip decides for itself: always,
+   *  or on hover when collapsed. TrackNew passes its own answer so the
+   *  fade drawing it lays over the body moves with the header
+   *  (2026-10-13). */
+  headerShown?: boolean;
   /** A key on a handle holding keyboard focus — the host runs the gesture */
   onHandleKeyDown?: (kind: 'trim' | 'stretch', edge: 'left' | 'right', e: React.KeyboardEvent<HTMLButtonElement>) => void;
   /** A handle took the focus */
@@ -233,6 +238,7 @@ const ClipComponent: React.FC<ClipProps> = ({
   handlesHiddenAt,
   keyboardHandle = null,
   ghostHandles = false,
+  headerShown: headerShownProp,
   onHandleKeyDown,
   onHandleFocus,
   onHandleBlur,
@@ -310,13 +316,13 @@ const ClipComponent: React.FC<ClipProps> = ({
   // The trim and stretch rows follow the clip's height by the real
   // app's rule (utils/clipHandleRows.ts); Clip.css reads these
   const handleRows = clipHandleRows(height);
-  const showHeader = !isTruncated || isHovering;
+  const showHeader = headerShownProp ?? (!isTruncated || isHovering);
 
   const className = [
     'clip-display',
     selected && 'clip-display--selected',
     isTruncated && 'clip-display--truncated',
-    isTruncated && isHovering && 'clip-display--truncated-hover',
+    isTruncated && showHeader && 'clip-display--truncated-hover',
     isRecording && 'clip-display--recording',
   ]
     .filter(Boolean)
