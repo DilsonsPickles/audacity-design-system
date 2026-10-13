@@ -2852,6 +2852,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         : ghosted ? []
         : (['in', 'out'] as const).filter((side) =>
           (side === 'in' ? fadeInSec : fadeOutSec) > 0 && !crossfadedEdges.has(`${clip.id}:${side}`));
+      // From where the curve meets the body's top — under the header, or
+      // at the clip's top while a collapsed clip's header is hidden, as
+      // the curve itself (clipBodyGeometry; "same for the dashed line",
+      // 2026-10-13) — to the clip's bottom
+      const guideTop = clipBodyGeometry(height, headerShownFor(clip.id)).bodyTop - 1;
       for (const side of guidelineSides) {
         const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
         nodes.push(
@@ -2863,10 +2868,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             data-leaving={leaving ? 'true' : undefined}
             style={{
               position: 'absolute',
-              top: HEADER_H,
+              top: guideTop,
               left: `${Math.round(xBase + boundaryX)}px`,
               width: 1,
-              height: height - HEADER_H,
+              height: height - guideTop,
               pointerEvents: 'none',
               // Over the handles (455) and the shape dots (460): a line
               // this thin must not be cut by a box it crosses

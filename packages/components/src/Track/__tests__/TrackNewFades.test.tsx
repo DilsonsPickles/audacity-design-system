@@ -339,14 +339,15 @@ describe('clip fades', () => {
       const node = container.querySelector<HTMLElement>('[data-crossfade-node]');
       const ghost = container.querySelector<HTMLElement>('[data-crossfade-ghost]');
       const header = container.querySelector('[data-clip-id="1"] .clip-header');
-      return { curveTop: curve.style.top, curveHeight: curve.style.height, dotTop: dot?.style.top, nodeTop: node?.style.top, ghostTop: ghost?.style.top, header: !!header };
+      const guide = container.querySelector<HTMLElement>('[data-fade-guideline="in"][data-fade-clip="1"]');
+      return { curveTop: curve.style.top, curveHeight: curve.style.height, dotTop: dot?.style.top, nodeTop: node?.style.top, ghostTop: ghost?.style.top, header: !!header, guideTop: guide?.style.top, guideHeight: guide?.style.height };
     };
     const wrapper = (container: HTMLElement) => container.querySelector('[data-clip-id="1"]') as HTMLElement;
     // Full height: under the 20px header and the 1px border, hovered or not
     const full = renderAt(114);
     expect(measure(full.container)).toMatchObject({ curveTop: '21px', curveHeight: '92px', header: true });
     hoverClip(full.container, 1);
-    expect(measure(full.container)).toMatchObject({ curveTop: '21px', curveHeight: '92px', header: true, dotTop: `${Math.round(21 + 92 / 2 - 8)}px` });
+    expect(measure(full.container)).toMatchObject({ curveTop: '21px', curveHeight: '92px', header: true, dotTop: `${Math.round(21 + 92 / 2 - 8)}px`, guideTop: '20px', guideHeight: '94px' });
     const fullNodeTop = parseFloat(measure(full.container).nodeTop!);
     cleanup();
     // Collapsed (under 72), at rest: no header, the body is the whole
@@ -357,7 +358,7 @@ describe('clip fades', () => {
     // the curve, and the dot (the S-curve's default handle at half gain:
     // bodyTop + bodyHeight / 2, drawn NODE_R + 3 = 8 above) with it
     hoverClip(collapsed.container, 1);
-    expect(measure(collapsed.container)).toMatchObject({ curveTop: '21px', curveHeight: '38px', header: true, dotTop: `${Math.round(21 + 38 / 2 - 8)}px` });
+    expect(measure(collapsed.container)).toMatchObject({ curveTop: '21px', curveHeight: '38px', header: true, dotTop: `${Math.round(21 + 38 / 2 - 8)}px`, guideTop: '20px', guideHeight: '40px' });
     expect(parseFloat(measure(collapsed.container).nodeTop!)).toBeLessThan(fullNodeTop);
     // Left: hidden again, the drawing back at the top
     fireEvent.mouseLeave(wrapper(collapsed.container));
@@ -366,7 +367,8 @@ describe('clip fades', () => {
     // and the dot sits on the top-anchored curve
     act(() => { wrapper(collapsed.container).focus(); });
     fireEvent.keyDown(wrapper(collapsed.container), { key: 'f', code: 'KeyF' });
-    expect(measure(collapsed.container)).toMatchObject({ curveTop: '1px', header: false, dotTop: `${Math.round(1 + 58 / 2 - 8)}px` });
+    // — and the dashed guideline runs from the clip's top, with the curve
+    expect(measure(collapsed.container)).toMatchObject({ curveTop: '1px', header: false, dotTop: `${Math.round(1 + 58 / 2 - 8)}px`, guideTop: '0px', guideHeight: '60px' });
   });
 
   it('the fade handle wears the pressed look for the whole drag, and only the one in hand', () => {
