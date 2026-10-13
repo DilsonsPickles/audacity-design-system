@@ -69,8 +69,25 @@ export interface EditStepDialogProps {
 
 /** Small dialog for editing a step's parameters string. Exported for
  *  reuse by MacroBuilderDialog (the schema-less parameters fallback). */
+
+/** The variables MacroEditorDialog.css reads, from the theme (2026-10-13:
+ *  nothing set them before, so the dialogs stayed light in dark mode) */
+function editorVarsFor(theme: ReturnType<typeof useTheme>['theme']): React.CSSProperties {
+  return {
+    '--accent-primary': theme.background.control.button.primary.idle,
+    '--ghost-bg-hover': theme.background.menu.item.hover,
+    '--macro-editor-list-bg': theme.background.surface.subtle,
+    '--macro-editor-step-bg': theme.background.surface.default,
+    '--macro-editor-step-action-bg': theme.background.surface.default,
+    '--stroke-primary': theme.border.default,
+    '--text-primary': theme.foreground.text.primary,
+    '--text-secondary': theme.foreground.text.secondary,
+  } as React.CSSProperties;
+}
+
 export function EditStepDialog({ isOpen, step, onClose, onSave, os = 'macos' }: EditStepDialogProps) {
   const { theme } = useTheme();
+  const editorVars = editorVarsFor(theme);
   const [parameters, setParameters] = React.useState('');
 
   React.useEffect(() => {
@@ -92,6 +109,7 @@ export function EditStepDialog({ isOpen, step, onClose, onSave, os = 'macos' }: 
       title="Edit step"
       onClose={onClose}
       os={os}
+        style={editorVars}
       width={480}
       minHeight={0}
       footer={
@@ -264,6 +282,8 @@ export function MacroEditorDialog({
   availableCommands = [],
   os = 'macos',
 }: MacroEditorDialogProps) {
+  const { theme } = useTheme();
+  const editorVars = editorVarsFor(theme);
   const [isSelectCommandDialogOpen, setIsSelectCommandDialogOpen] = React.useState(false);
   // A picked command that has parameters waits here while its
   // parameters window sits ON TOP of the still-open picker: OK adds the
@@ -380,6 +400,7 @@ export function MacroEditorDialog({
         title="Edit macro"
         onClose={onClose}
         os={os}
+        style={editorVars}
         nonModal
         closeOnClickOutside={false}
         width={480}

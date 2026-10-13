@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { Dialog } from '../Dialog';
+import { useTheme } from '../ThemeProvider';
 import { Button } from '../Button';
 import { GhostButton } from '../GhostButton';
 import { Icon } from '../Icon';
@@ -159,6 +160,30 @@ export function MacroBuilderDialog({
   getCommandParameters,
   os = 'macos',
 }: MacroBuilderDialogProps) {
+  const { theme } = useTheme();
+  // THE DIALOG FOLLOWS THE THEME (2026-10-13, "check macro manager… in
+  // dark mode, seems broken": MacroBuilderDialog.css reads these
+  // variables with light fallbacks and nothing set them, so the command
+  // list and the steps table stayed light in a dark window)
+  const accent = theme.background.control.button.primary.idle;
+  const builderVars = {
+    '--accent-primary': accent,
+    '--accent-primary-tint': `color-mix(in srgb, ${accent} 20%, transparent)`,
+    '--bg-table-header': theme.background.surface.subtle,
+    '--bg-table-item-idle': theme.background.surface.default,
+    '--button-ghost-hover': theme.background.menu.item.hover,
+    '--dialog-header-bg': theme.background.surface.default,
+    '--focus-border-color': theme.border.focus,
+    '--input-bg': theme.background.control.input.idle,
+    '--input-border': theme.border.input.idle,
+    '--input-border-active': theme.border.focus,
+    '--macro-builder-list-bg': theme.background.surface.subtle,
+    '--macro-builder-well-bg': theme.background.surface.subtle,
+    '--stroke-primary': theme.border.default,
+    '--stroke-table-item': theme.border.default,
+    '--text-primary': theme.foreground.text.primary,
+    '--text-secondary': theme.foreground.text.secondary,
+  } as React.CSSProperties;
   const [searchQuery, setSearchQuery] = React.useState('');
   // ONE selected command. It stays selected after it is added, so its
   // + is still there to add it again.
@@ -803,6 +828,7 @@ export function MacroBuilderDialog({
         title="Edit macro"
         onClose={onClose}
         os={os}
+        style={builderVars}
         nonModal
         // Tab goes round the window rather than out into the app
         // behind it (user decision 2026-09-29)

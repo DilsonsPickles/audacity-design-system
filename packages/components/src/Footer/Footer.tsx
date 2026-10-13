@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { Button } from '../Button';
+import { useTheme } from '../ThemeProvider';
 import './Footer.css';
 
 export interface FooterProps {
@@ -75,8 +76,16 @@ export function Footer({
   rightContent,
   className = '',
 }: FooterProps) {
+  const { theme } = useTheme();
+  // The footer follows the theme (2026-10-13: Footer.css read two token
+  // variables with light fallbacks that nothing set, so the macro and
+  // plugin dialogs' footers stayed light in dark mode)
+  const vars = {
+    '--background-surface-bg-surface-primary-idle': theme.background.surface.default,
+    '--stroke-main-stroke-primary': theme.border.default,
+  } as React.CSSProperties;
   return (
-    <div className={`footer ${className}`}>
+    <div className={`footer ${className}`} style={vars}>
       {leftContent ? (
         <div className="footer__left-group">
           {leftContent}
