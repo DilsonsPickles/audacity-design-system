@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import { Dialog } from '../Dialog';
 import { Footer } from '../Footer/Footer';
 import { Button } from '../Button';
@@ -69,6 +70,7 @@ export interface EditStepDialogProps {
 /** Small dialog for editing a step's parameters string. Exported for
  *  reuse by MacroBuilderDialog (the schema-less parameters fallback). */
 export function EditStepDialog({ isOpen, step, onClose, onSave, os = 'macos' }: EditStepDialogProps) {
+  const { theme } = useTheme();
   const [parameters, setParameters] = React.useState('');
 
   React.useEffect(() => {
@@ -122,7 +124,9 @@ export function EditStepDialog({ isOpen, step, onClose, onSave, os = 'macos' }: 
           style={{
             padding: '7px 8px',
             fontSize: '12px',
-            border: '1px solid #D2D6DD',
+            border: `1px solid ${theme.border.input.idle}`,
+            background: theme.background.control.input.idle,
+            color: theme.foreground.text.primary,
             borderRadius: '3px',
             outline: 'none',
           }}

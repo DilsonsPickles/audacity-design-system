@@ -75,6 +75,7 @@ export const NumberStepper = React.forwardRef<HTMLInputElement, NumberStepperPro
   const [isEditMode, setIsEditMode] = useState(false);
 
   const style = {
+    '--number-stepper-bg': theme.background.control.input.idle,
     '--number-stepper-border': theme.border.default,
     '--number-stepper-border-focus': theme.border.focus,
     '--number-stepper-success-outline': theme.foreground.icon.success,

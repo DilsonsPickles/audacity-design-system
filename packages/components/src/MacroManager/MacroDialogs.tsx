@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import { Dialog } from '../Dialog';
 import { Footer } from '../Footer/Footer';
 
@@ -24,6 +25,7 @@ export interface RenameMacroDialogProps {
 }
 
 export function NewMacroDialog({ isOpen, onClose, onCreate, os = 'macos' }: NewMacroDialogProps) {
+  const { theme } = useTheme();
   const [macroName, setMacroName] = React.useState('');
 
   const handleCreate = () => {
@@ -77,7 +79,9 @@ export function NewMacroDialog({ isOpen, onClose, onCreate, os = 'macos' }: NewM
           style={{
             padding: '7px 8px',
             fontSize: '12px',
-            border: '1px solid #D2D6DD',
+            border: `1px solid ${theme.border.input.idle}`,
+            background: theme.background.control.input.idle,
+            color: theme.foreground.text.primary,
             borderRadius: '3px',
             outline: 'none',
           }}
@@ -88,6 +92,7 @@ export function NewMacroDialog({ isOpen, onClose, onCreate, os = 'macos' }: NewM
 }
 
 export function RenameMacroDialog({ isOpen, onClose, onRename, currentName, os = 'macos' }: RenameMacroDialogProps) {
+  const { theme } = useTheme();
   const [macroName, setMacroName] = React.useState(currentName);
 
   // Update local state when currentName changes
@@ -147,7 +152,9 @@ export function RenameMacroDialog({ isOpen, onClose, onRename, currentName, os =
           style={{
             padding: '7px 8px',
             fontSize: '12px',
-            border: '1px solid #D2D6DD',
+            border: `1px solid ${theme.border.input.idle}`,
+            background: theme.background.control.input.idle,
+            color: theme.foreground.text.primary,
             borderRadius: '3px',
             outline: 'none',
           }}

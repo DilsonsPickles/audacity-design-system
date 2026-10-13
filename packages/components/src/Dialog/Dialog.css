@@ -37,6 +37,9 @@
 
 .dialog {
   background-color: var(--dialog-bg);
+  /* The text colour follows the theme too (2026-10-13: in dark mode the
+     body text inherited black onto the dark surface — "seems broken") */
+  color: var(--dialog-fg, inherit);
   border: 1px solid var(--dialog-border);
   border-radius: 8px;
   box-shadow: var(--dialog-shadow);

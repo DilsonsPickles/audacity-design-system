@@ -1,7 +1,7 @@
 .number-stepper {
   display: flex;
   align-items: stretch;
-  background-color: white;
+  background-color: var(--number-stepper-bg, white);
   border: 1px solid var(--number-stepper-border);
   border-radius: 3px;
   height: 28px;
