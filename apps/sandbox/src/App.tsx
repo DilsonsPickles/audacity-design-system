@@ -18,6 +18,7 @@ import { InstallerWizardDialog } from './components/InstallerWizardDialog';
 import { setTrackDeleteConfirmHandler } from './utils/confirmTrackDelete';
 import { EditorLayout } from './components/EditorLayout';
 import { GoToDialog } from './components/GoToDialog';
+import { CommandPaletteHost } from './components/CommandPaletteHost';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
 import { computeProjectEnd } from './hooks/handlers/navigationHandlers';
 import { TransportToolbarContainer, type TransportToolbarContainerProps } from './components/TransportToolbarContainer';
@@ -115,6 +116,7 @@ function CanvasDemoContent() {
     setIsShareDialogOpen,
     setIsSaveProjectModalOpen, setIsPreferencesModalOpen,
     isGoToOpen, setIsGoToOpen,
+    setIsCommandPaletteOpen,
     setIsExportModalOpen, setIsLabelEditorOpen,
     setIsPluginManagerOpen,
     setAlertDialogOpen,
@@ -581,7 +583,7 @@ function CanvasDemoContent() {
     toggleLoopRegion,
     audioManagerRef,
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
-    onGoTo: () => setIsGoToOpen(true),
+    onCommandPalette: () => setIsCommandPaletteOpen(true),
     onFitTracksToHeight: handleFitTracksToHeight,
     onExpandAllTracks: handleExpandAllTracks,
     onCollapseAllTracks: handleCollapseAllTracks,
@@ -1242,7 +1244,10 @@ function CanvasDemoContent() {
       )}
 
       {/* Toast Container */}
-      {/* Go to… (⌘P, Edit › Go to…): the playhead to a typed position (2026-10-13) */}
+      {/* The command palette (⌘P, 2026-10-13): the menus' items and the
+          keyboard-only commands by name, with their chords */}
+      <CommandPaletteHost menuDefinitions={menuDefinitions} os={preferences.operatingSystem} />
+      {/* Go to… (Edit › Go to…, or the palette): the playhead to a typed position (2026-10-13) */}
       <GoToDialog
         isOpen={isGoToOpen}
         initialSeconds={state.playheadPosition}

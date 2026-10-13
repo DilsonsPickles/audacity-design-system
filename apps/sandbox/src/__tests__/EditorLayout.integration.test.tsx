@@ -499,16 +499,26 @@ describe('Bottom drawer', () => {
     expect(drawer.style.height).toBe('326px');
   });
 
-  it('Cmd+P opens Go to… on the playhead; Escape leaves it where it was (2026-10-13)', async () => {
+  it('Cmd+P opens the command palette; typing "go to" and Enter opens Go to… on the playhead; Escape leaves it (2026-10-13)', async () => {
     const rendered = renderApp();
     await gotoProject(rendered);
-    expect(document.body.querySelector('.go-to-dialog')).toBeNull();
+    expect(document.body.querySelector('[data-command-palette]')).toBeNull();
     fireEvent.keyDown(document.body, { key: 'p', code: 'KeyP', metaKey: true });
+    const palette = await waitFor(() => {
+      const p = document.body.querySelector<HTMLElement>('[data-command-palette]');
+      if (!p) throw new Error('not yet');
+      return p;
+    });
+    const input = palette.querySelector<HTMLInputElement>('.command-palette__input')!;
+    fireEvent.change(input, { target: { value: 'go to' } });
+    expect(palette.querySelector('[role="option"][aria-selected="true"]')?.textContent).toContain('Go to');
+    fireEvent.keyDown(input, { key: 'Enter' });
     const dialog = await waitFor(() => {
       const d = document.body.querySelector<HTMLElement>('.go-to-dialog');
       if (!d) throw new Error('not yet');
       return d;
     });
+    expect(document.body.querySelector('[data-command-palette]')).toBeNull();
     const timecode = dialog.querySelector<HTMLElement>('[data-go-to-dialog] .timecode')!;
     expect(timecode.getAttribute('aria-label')).toBe('Playhead position');
     fireEvent.keyDown(timecode, { key: 'Escape' });

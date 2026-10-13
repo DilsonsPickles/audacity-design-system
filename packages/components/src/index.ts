@@ -107,6 +107,7 @@ export * from './ClipPropertiesPanel';
 export * from './MacroEditorDialog';
 export * from './MacroBuilderDialog';
 export * from './RunMacroOnFilesDialog';
+export * from './CommandPalette';
 export * from './CommandParametersDialog';
 export * from './SelectCommandDialog';
 export * from './VSTEffectOptionsDialog';

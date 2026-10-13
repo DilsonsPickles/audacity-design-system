@@ -1,0 +1,91 @@
+/* The command palette (2026-10-13): a search field over a list of every
+   named action, centred high in the window like the ones people know. */
+.command-palette__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.command-palette {
+  width: min(560px, calc(100vw - 32px));
+  max-height: 64vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--palette-bg);
+  color: var(--palette-text);
+  border: 1px solid var(--palette-border);
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+}
+
+.command-palette__input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--palette-divider);
+  background: var(--palette-input-bg);
+  color: var(--palette-text);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.command-palette__list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+  overflow-y: auto;
+}
+
+.command-palette__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 14px;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.command-palette__row--active {
+  background: var(--palette-hover);
+}
+
+.command-palette__row--disabled {
+  opacity: 0.45;
+}
+
+.command-palette__label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.command-palette__group {
+  flex: 0 0 auto;
+  opacity: 0.6;
+}
+
+.command-palette__shortcut {
+  flex: 0 0 auto;
+  min-width: 2.5em;
+  text-align: right;
+  font: inherit;
+  opacity: 0.75;
+  letter-spacing: 0.04em;
+}
+
+.command-palette__empty {
+  padding: 10px 14px;
+  opacity: 0.6;
+}

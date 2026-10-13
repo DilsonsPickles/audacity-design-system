@@ -100,7 +100,8 @@ export function ShortcutsPage() {
     { id: '59', action: 'Phaser', shortcut: '' },
     { id: '60', action: 'Play', shortcut: 'Space' },
     { id: '61', action: 'Play/Stop', shortcut: 'Space' },
-    { id: '61a', action: 'Go to… (move the playhead to a typed position)', shortcut: '⌘P' },
+    { id: '61a', action: 'Go to… (move the playhead to a typed position; Edit menu or the command palette)', shortcut: '' },
+    { id: '61b', action: 'Command palette (every command by name, with its shortcut)', shortcut: '⌘P' },
     { id: '62', action: 'Preferences', shortcut: '⌘,' },
   ];
 

@@ -73,8 +73,8 @@ export interface UseKeyboardShortcutsOptions {
   onFitSelectedTracksToHeight?: () => void;
   /** Cmd/Ctrl+= and Cmd/Ctrl+-: horizontal zoom in / out (2026-10-12 —
    *  the real app's Ctrl+= / Ctrl+-; Cmd+1 / Cmd+3 were Audacity 3's) */
-  /** ⌘P: the Go to… dialog — the playhead to a typed position (2026-10-13) */
-  onGoTo?: () => void;
+  /** ⌘P: the command palette (2026-10-13) */
+  onCommandPalette?: () => void;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
 }
@@ -114,7 +114,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onCollapseSelectedTracks,
     onExpandSelectedTracks,
     onFitSelectedTracksToHeight,
-    onGoTo,
+    onCommandPalette,
     onZoomIn,
     onZoomOut,
   } = options;
@@ -277,15 +277,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         }
       }
 
-      // --- Cmd/Ctrl+P : Go to… (2026-10-13) — the playhead to a typed
-      // position. ⌘G, the usual "go to", is Group in the real build and in
-      // our Tracks menu; ⌘J / ⌘L / ⌘T are the real build's Join / Silence
-      // / Trim; ⌘P is free there, here and in the Electron menu, and
-      // Final Cut's own "position playhead" is a P. Before the bare-P
-      // Pause further down the chain.
-      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && (e.code === 'KeyP' || (!e.code && e.key.toLowerCase() === 'p')) && onGoTo) {
+      // --- Cmd/Ctrl+P : the COMMAND PALETTE (2026-10-13, "I want command
+      // palette on cmd + p") — every named action by name, the chord
+      // shown beside it. ⌘P was Go to… for an hour the same day; Go to…
+      // is now Edit › Go to… and a palette command. ⌘P is free in the
+      // real build and the Electron menu. Before the bare-P Pause
+      // further down the chain.
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && (e.code === 'KeyP' || (!e.code && e.key.toLowerCase() === 'p')) && onCommandPalette) {
         e.preventDefault();
-        onGoTo();
+        onCommandPalette();
         return;
       }
 

@@ -84,7 +84,6 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
     },
     {
       label: 'Go to...',
-      shortcut: 'Ctrl+P',
       onClick: deps.onOpenGoTo,
     },
     {
