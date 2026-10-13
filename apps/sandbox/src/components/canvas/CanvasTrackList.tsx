@@ -16,6 +16,9 @@ import {
   computeKeyboardTrimAnnouncement,
   computeKeyboardStretch,
   computeKeyboardStretchAnnouncement,
+  computeKeyboardStretchToTimeBatch,
+  computeKeyboardStretchToTimeAnnouncement,
+  nearerEdgeForTime,
 } from '../../utils/clipKeyboardEdit';
 import { pendingClipMoveResolution } from '../../utils/pendingClipMoveResolution';
 import { provisionalKeyboardTrackIds } from '../../utils/provisionalKeyboardTrackIds';
@@ -818,12 +821,17 @@ const CanvasTrack = React.memo(function CanvasTrack({
           if (updates.length > 0) announce(`${side === 'in' ? 'Fade-in' : 'Fade-out'} ${updates[0].seconds.toFixed(2)} seconds, to the playhead`);
           return updates.length > 0;
         }}
-        onClipTrimToPlayhead={(clipId, edge) => {
-          // TRIM TO THE PLAYHEAD (Option+[ / ], 2026-10-12): the trim's
-          // targets (utils/keyboardEditTargets.ts — the focused clip with
-          // every selected clip if it is selected, alone if not), each
-          // edge to the SAME playhead by its own delta, the nudge's clamps
+        onClipTrimToPlayhead={(clipId, requested) => {
+          // TRIM TO THE PLAYHEAD (Option+[ / ], 2026-10-12; ⌥T with the
+          // edge 'auto', 2026-10-13 — the NEARER edge of the focused
+          // clip, first half = the start): the trim's targets
+          // (utils/keyboardEditTargets.ts — the focused clip with every
+          // selected clip if it is selected, alone if not), each edge to
+          // the SAME playhead by its own delta, the nudge's clamps
           const uniqueTargets = keyboardEditTargets(tracksRef.current, trackIndex, clipId);
+          const own0 = uniqueTargets.find((t) => t.trackIndex === trackIndex && t.clip.id === clipId);
+          if (!own0) return false;
+          const edge: 'left' | 'right' = requested === 'auto' ? nearerEdgeForTime(own0.clip, playheadRef.current) : requested;
           const { updates } = computeKeyboardTrimToTimeBatch(uniqueTargets, edge, playheadRef.current);
           for (const update of updates) {
             dispatch({
@@ -839,6 +847,25 @@ const CanvasTrack = React.memo(function CanvasTrack({
           }
           const own = updates.find((u) => u.trackIndex === trackIndex && u.clipId === clipId);
           if (own) announce(computeKeyboardTrimToTimeAnnouncement(own.newDuration));
+          return updates.length > 0;
+        }}
+        onClipStretchToPlayhead={(clipId, requested) => {
+          // ⌥S: STRETCH TO THE PLAYHEAD (2026-10-13, "can we have that to
+          // trim and stretch too?"): the trim's targets, each edge to the
+          // same playhead; 'auto' = the focused clip's nearer edge
+          const uniqueTargets = keyboardEditTargets(tracksRef.current, trackIndex, clipId);
+          const own0 = uniqueTargets.find((t) => t.trackIndex === trackIndex && t.clip.id === clipId);
+          if (!own0) return false;
+          const edge: 'left' | 'right' = requested === 'auto' ? nearerEdgeForTime(own0.clip, playheadRef.current) : requested;
+          const { updates } = computeKeyboardStretchToTimeBatch(uniqueTargets, edge, playheadRef.current);
+          for (const u of updates) {
+            dispatch({
+              type: 'STRETCH_CLIP',
+              payload: { trackIndex: u.trackIndex, clipId: u.clipId, newDuration: u.newDuration, newStretchFactor: u.newStretchFactor, newStart: u.newStart },
+            });
+          }
+          const own = updates.find((u) => u.trackIndex === trackIndex && u.clipId === clipId);
+          if (own) announce(computeKeyboardStretchToTimeAnnouncement(own.newDuration));
           return updates.length > 0;
         }}
         onClipStretch={(clipId, edge, deltaSeconds) => {

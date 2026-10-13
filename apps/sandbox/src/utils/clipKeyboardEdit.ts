@@ -241,6 +241,45 @@ export function computeKeyboardStretch(args: KeyboardStretchArgs): KeyboardStret
   };
 }
 
+/** THE NEARER EDGE (2026-10-13, ⌥T / ⌥S "to the cursor" with no edge
+ *  said — the ⌥F rule for edges): in the clip's first half its START,
+ *  in its second its END. */
+export function nearerEdgeForTime(clip: { start: number; duration: number }, time: number): 'left' | 'right' {
+  return time < clip.start + clip.duration / 2 ? 'left' : 'right';
+}
+
+export interface KeyboardStretchUpdate extends KeyboardStretchResult {
+  trackIndex: number;
+  clipId: number;
+}
+
+/** ⌥S: STRETCH an edge TO THE PLAYHEAD (2026-10-13, "can we have that
+ *  to trim and stretch too?"): each target's edge to the SAME playhead
+ *  by its own delta through computeKeyboardStretch's clamps; a playhead
+ *  on the wrong side of the OTHER edge is refused for that clip, as the
+ *  trim's is; MIDI clips never stretch. */
+export function computeKeyboardStretchToTimeBatch(
+  targets: Array<{ trackIndex: number; clip: KeyboardEditableClip }>,
+  edge: 'left' | 'right',
+  time: number,
+): { updates: KeyboardStretchUpdate[] } {
+  const updates: KeyboardStretchUpdate[] = [];
+  for (const { trackIndex, clip } of targets) {
+    if ('notes' in clip) continue;
+    const end = clip.start + clip.duration;
+    if (edge === 'left' ? time >= end : time <= clip.start) continue;
+    const deltaSeconds = edge === 'left' ? time - clip.start : end - time;
+    const result = computeKeyboardStretch({ clip, edge, deltaSeconds });
+    if (!result) continue;
+    updates.push({ trackIndex, clipId: clip.id, ...result });
+  }
+  return { updates };
+}
+
+export function computeKeyboardStretchToTimeAnnouncement(newDuration: number): string {
+  return `Stretched to the playhead, now ${newDuration.toFixed(2)} seconds`;
+}
+
 /** Screen-reader text for a keyboard stretch, computed from the
  *  focused clip's pre-stretch duration and the raw delta (matches
  *  computeKeyboardTrimAnnouncement's unconditional-announce behavior). */

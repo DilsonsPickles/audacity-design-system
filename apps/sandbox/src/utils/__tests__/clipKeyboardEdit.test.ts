@@ -6,6 +6,8 @@ import {
   computeKeyboardTrimToTimeBatch,
   computeKeyboardStretch,
   computeKeyboardStretchAnnouncement,
+  computeKeyboardStretchToTimeBatch,
+  nearerEdgeForTime,
   type KeyboardTrimTarget,
 } from '../clipKeyboardEdit';
 import type { Clip } from '../../contexts/TracksContext';
@@ -246,5 +248,29 @@ describe('computeKeyboardTrimToTimeBatch — Option+[ / ] take the edge to the p
     const b = makeClip({ id: 2, start: 2, duration: 4, trimStart: 0, fullDuration: 4 });
     const { updates } = computeKeyboardTrimToTimeBatch([{ trackIndex: 0, clip: a }, { trackIndex: 1, clip: b }], 'left', 3);
     expect(updates.map((u) => u.newStart)).toEqual([3, 3]);
+  });
+});
+
+describe('⌥S: stretch to the playhead, and the nearer edge (2026-10-13)', () => {
+  const audio = { id: 1, name: 'A', start: 2, duration: 4, trimStart: 0, fullDuration: 4 } as Clip; // 2..6
+  it('the nearer edge is the start in the first half, the end in the second', () => {
+    expect(nearerEdgeForTime(audio, 3)).toBe('left');
+    expect(nearerEdgeForTime(audio, 4)).toBe('right');
+    expect(nearerEdgeForTime(audio, 5.9)).toBe('right');
+  });
+  it('each target\'s edge reaches the same playhead by its own delta; the wrong side of the other edge is refused; MIDI never stretches', () => {
+    const other = { ...audio, id: 2, start: 0, duration: 10 } as Clip; // 0..10
+    const targets = [{ trackIndex: 0, clip: audio }, { trackIndex: 1, clip: other }];
+    const left = computeKeyboardStretchToTimeBatch(targets, 'left', 3).updates;
+    expect(left.map((u) => [u.clipId, u.newStart, u.newDuration])).toEqual([[1, 3, 3], [2, 3, 7]]);
+    expect(left[0].newStretchFactor).toBeCloseTo(0.75);
+    const right = computeKeyboardStretchToTimeBatch(targets, 'right', 5).updates;
+    expect(right.map((u) => [u.clipId, u.newDuration])).toEqual([[1, 3], [2, 5]]);
+    // A playhead past the end cannot bring the start to it
+    expect(computeKeyboardStretchToTimeBatch(targets, 'left', 7).updates.map((u) => u.clipId)).toEqual([2]);
+    // A playhead before the start cannot bring the end to it
+    expect(computeKeyboardStretchToTimeBatch(targets, 'right', 1).updates.map((u) => u.clipId)).toEqual([2]);
+    const midi = { id: 9, name: 'M', start: 0, duration: 4, notes: [] } as unknown as Clip;
+    expect(computeKeyboardStretchToTimeBatch([{ trackIndex: 0, clip: midi }], 'left', 1).updates).toEqual([]);
   });
 });

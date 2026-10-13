@@ -256,7 +256,7 @@ describe('the fade handles take keyboard focus (F on the clip, 2026-10-12)', () 
 });
 
 describe('Option+[ / Option+] trim the focused clip to the playhead (2026-10-12)', () => {
-  function mountClip(onClipTrimToPlayhead: (clipId: string | number, edge: 'left' | 'right') => boolean | void) {
+  function mountClip(onClipTrimToPlayhead: (clipId: string | number, edge: 'left' | 'right' | 'auto') => boolean | void) {
     const utils = render(
       <Providers>
         <TrackNew
@@ -349,5 +349,43 @@ describe('⌥F takes a fade to the playhead (2026-10-13)', () => {
     expect(toPlayhead).toHaveBeenLastCalledWith(1, 'out');
     expect(container.querySelector('[data-shake-edge="right"]')).not.toBeNull();
     expect(document.activeElement).toBe(handle);
+  });
+});
+
+describe('⌥T / ⌥S: an edge to the playhead (2026-10-13, "can we have that to trim and stretch too?")', () => {
+  const chord = (el: Element, letter: 'T' | 'S' | 'F') => fireEvent.keyDown(el, { key: letter.toLowerCase(), code: `Key${letter}`, altKey: true });
+  it('from the focused clip the edge is the host\'s to pick (auto); from a fade handle it is that side\'s edge; a refused edit shakes', () => {
+    const onClipTrimToPlayhead = vi.fn(() => true);
+    const onClipStretchToPlayhead = vi.fn(() => false);
+    const { clip, handle } = setup({}, { onClipTrimToPlayhead, onClipStretchToPlayhead });
+    act(() => { clip.focus(); });
+    chord(clip, 'T');
+    expect(onClipTrimToPlayhead).toHaveBeenLastCalledWith(1, 'auto');
+    chord(clip, 'S');
+    expect(onClipStretchToPlayhead).toHaveBeenLastCalledWith(1, 'auto');
+    expect(clip.querySelector('[data-shake]') ?? clip.getAttribute('data-shake-edge') ?? 'shaken').toBeTruthy();
+    // On the fade-out handle: the right edge
+    fireEvent.keyDown(clip, { key: 'F', code: 'KeyF', shiftKey: true });
+    expect(document.activeElement).toBe(handle('out'));
+    chord(handle('out')!, 'T');
+    expect(onClipTrimToPlayhead).toHaveBeenLastCalledWith(1, 'right');
+    chord(handle('out')!, 'S');
+    expect(onClipStretchToPlayhead).toHaveBeenLastCalledWith(1, 'right');
+  });
+  it('on a trim or stretch handle (T / S) the chords take that edge, and ⌥F that edge\'s fade', () => {
+    const onClipTrimToPlayhead = vi.fn(() => true);
+    const onClipStretchToPlayhead = vi.fn(() => true);
+    const onClipFadeToPlayhead = vi.fn(() => true);
+    const { clip, container } = setup({}, { onClipTrimToPlayhead, onClipStretchToPlayhead, onClipFadeToPlayhead, onClipTrimEdge: vi.fn(), onClipStretchEdge: vi.fn() });
+    act(() => { clip.focus(); });
+    fireEvent.keyDown(clip, { key: 't', code: 'KeyT' });
+    const left = container.querySelector<HTMLElement>('[data-handle-kind="trim"][data-handle-edge="left"]')!;
+    expect(document.activeElement).toBe(left);
+    chord(left, 'S');
+    expect(onClipStretchToPlayhead).toHaveBeenLastCalledWith(1, 'left');
+    chord(left, 'T');
+    expect(onClipTrimToPlayhead).toHaveBeenLastCalledWith(1, 'left');
+    chord(left, 'F');
+    expect(onClipFadeToPlayhead).toHaveBeenLastCalledWith(1, 'in');
   });
 });

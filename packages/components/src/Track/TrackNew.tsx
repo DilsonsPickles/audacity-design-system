@@ -501,7 +501,13 @@ export interface TrackProps {
    * there already, or there is no source to reveal) and the edge shakes
    * as a blocked nudge does.
    */
-  onClipTrimToPlayhead?: (clipId: string | number, edge: 'left' | 'right') => boolean | void;
+  onClipTrimToPlayhead?: (clipId: string | number, edge: 'left' | 'right' | 'auto') => boolean | void;
+  /** ⌥S: an edge STRETCHED to the playhead (2026-10-13, "can we have that
+   *  to trim and stretch too?") — ⌥T is the trim through
+   *  onClipTrimToPlayhead with 'auto'. From the clip the edge is 'auto'
+   *  (the host picks the nearer: first half = the start), from a trim /
+   *  stretch / fade handle it is that handle's edge. False shakes it. */
+  onClipStretchToPlayhead?: (clipId: string | number, edge: 'left' | 'right' | 'auto') => boolean | void;
   /** ⌥F: a fade's boundary to the playhead (2026-10-13). From the clip
    *  the side is 'auto' — the host infers it from where the playhead
    *  sits (its first half = the fade-in); from a focused fade handle it
@@ -731,6 +737,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onClipMove,
   onClipTrim,
   onClipTrimToPlayhead,
+  onClipStretchToPlayhead,
   onClipFadeToPlayhead,
   onClipStretch,
   onClipMoveToTrack,
@@ -801,8 +808,23 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const moved = onClipFadeToPlayhead?.(clipId, side);
     if (moved === false) shakeClipEdge(clipId, side === 'out' ? 'right' : 'left');
   };
-  const isOptionF = (e: React.KeyboardEvent) =>
-    (e.code === 'KeyF' || (!e.code && e.key.toLowerCase() === 'f')) && e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey;
+  const isOptionLetter = (e: React.KeyboardEvent, letter: 'f' | 't' | 's') =>
+    (e.code === `Key${letter.toUpperCase()}` || (!e.code && e.key.toLowerCase() === letter)) && e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey;
+  const isOptionF = (e: React.KeyboardEvent) => isOptionLetter(e, 'f');
+  // ⌥T / ⌥S: THIS edge (or, from the clip, the nearer one — 'auto') to
+  // the playhead (2026-10-13). Returns whether the chord was taken.
+  const edgeToPlayheadByKeys = (e: React.KeyboardEvent, clipId: string | number, edge: 'left' | 'right' | 'auto'): boolean => {
+    const isT = isOptionLetter(e, 't');
+    const isS = isOptionLetter(e, 's');
+    if (!isT && !isS) return false;
+    const fn = isT ? onClipTrimToPlayhead : onClipStretchToPlayhead;
+    if (!fn || (isS && isMidiTrack)) return false;
+    e.preventDefault();
+    e.stopPropagation();
+    const moved = fn(clipId, edge);
+    if (moved === false) shakeClipEdge(clipId, edge === 'auto' ? 'left' : edge);
+    return true;
+  };
   const trackRef = React.useRef<HTMLDivElement>(null);
   const focusFromMouseRef = React.useRef(false);
   const trackClickXRef = React.useRef<number | null>(null);
@@ -1753,6 +1775,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const renderClips = () => {
     // A key on a trim / stretch handle holding keyboard focus (T / S)
     const handleKeyOnHandle = (clip: TrackClip, clipIndex: number, kind: 'trim' | 'stretch', edge: 'left' | 'right', e: React.KeyboardEvent<HTMLButtonElement>) => {
+      // ⌥T / ⌥S / ⌥F on a handle: THIS edge to the playhead (2026-10-13)
+      if (edgeToPlayheadByKeys(e, clip.id, edge)) return;
+      if (isOptionF(e) && onClipFadeToPlayhead) { e.preventDefault(); e.stopPropagation(); fadeToPlayheadByKeys(clip.id, edge === 'left' ? 'in' : 'out'); return; }
       if (e.metaKey || e.ctrlKey || e.altKey) return; // the app's chords pass
       const stop = () => { e.preventDefault(); e.stopPropagation(); };
       const clipEl = () => trackRef.current?.querySelector<HTMLElement>(`[data-clip-id="${clip.id}"]`);
@@ -2095,6 +2120,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               fadeToPlayheadByKeys(clip.id, 'auto');
               return;
             }
+            // ⌥T / ⌥S: the NEARER edge trimmed / stretched to the playhead
+            if (edgeToPlayheadByKeys(e, clip.id, 'auto')) return;
             // OPTION+[ / OPTION+]: the START / END to the playhead. Matched
             // on the code — Option+[ types a quotation mark on macOS.
             if ((isBracketLeft || isBracketRight) && e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
@@ -2665,6 +2692,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 fadeToPlayheadByKeys(clip.id, side);
                 return;
               }
+              // ⌥T / ⌥S: this fade's edge trimmed / stretched to the playhead
+              if (edgeToPlayheadByKeys(e, clip.id, side === 'in' ? 'left' : 'right')) return;
               // The app's other chords (Cmd+…, Option+…) pass through untouched
               if (e.metaKey || e.ctrlKey || e.altKey) return;
               const ownFade = side === 'in' ? fadeInSec : fadeOutSec;

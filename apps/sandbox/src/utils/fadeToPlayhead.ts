@@ -93,7 +93,10 @@ export function clipAtTime<C extends { start: number; duration: number }>(track:
 export interface TrackFadeToPlayhead {
   trackIndex: number;
   clipId: number;
+  /** The fade the playhead means (⌥F) */
   side: 'in' | 'out';
+  /** The edge the playhead means (⌥T / ⌥S): the same halves */
+  edge: 'left' | 'right';
 }
 
 /** What ⌥F from a track would fade: the clip under the playhead on the
@@ -108,5 +111,6 @@ export function resolveTrackFadeToPlayhead(
   if (trackIndex === null) return null;
   const clip = clipAtTime(tracks[trackIndex], time);
   if (!clip) return null;
-  return { trackIndex, clipId: clip.id, side: fadeSideForTime(clip, time) };
+  const side = fadeSideForTime(clip, time);
+  return { trackIndex, clipId: clip.id, side, edge: side === 'in' ? 'left' : 'right' };
 }

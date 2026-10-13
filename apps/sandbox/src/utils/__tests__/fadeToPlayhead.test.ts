@@ -58,10 +58,11 @@ describe('⌥F from a TRACK (2026-10-13, "a track focus and a cursor… x,y coor
     expect(clipAtTime(tracks[0], 1)).toBeNull();
     expect(clipAtTime(tracks[0], 7)).toBeNull();
     expect(clipAtTime(tracks[1], 3)).toBeNull();
-    expect(resolveTrackFadeToPlayhead(tracks, 0, null, 2)).toEqual({ trackIndex: 0, clipId: 1, side: 'in' });
-    expect(resolveTrackFadeToPlayhead(tracks, 0, null, 4.5)).toEqual({ trackIndex: 0, clipId: 2, side: 'in' });
-    expect(resolveTrackFadeToPlayhead(tracks, 0, null, 5.5)).toEqual({ trackIndex: 0, clipId: 2, side: 'out' });
+    // The side (⌥F) and the edge (⌥T / ⌥S) come from the same halves
+    expect(resolveTrackFadeToPlayhead(tracks, 0, null, 2)).toEqual({ trackIndex: 0, clipId: 1, side: 'in', edge: 'left' });
+    expect(resolveTrackFadeToPlayhead(tracks, 0, null, 4.5)).toEqual({ trackIndex: 0, clipId: 2, side: 'in', edge: 'left' });
+    expect(resolveTrackFadeToPlayhead(tracks, 0, null, 5.5)).toEqual({ trackIndex: 0, clipId: 2, side: 'out', edge: 'right' });
     expect(resolveTrackFadeToPlayhead(tracks, 2, null, 2)).toBeNull();
-    expect(resolveTrackFadeToPlayhead(tracks, null, el('<div data-track-panel-index="0"></div>'), 2)).toEqual({ trackIndex: 0, clipId: 1, side: 'in' });
+    expect(resolveTrackFadeToPlayhead(tracks, null, el('<div data-track-panel-index="0"></div>'), 2)).toEqual({ trackIndex: 0, clipId: 1, side: 'in', edge: 'left' });
   });
 });
