@@ -167,6 +167,7 @@ export function CommandPalette({ isOpen, commands, onRun, onClose, os = 'macos',
     '--palette-text': theme.foreground.text.primary,
     '--palette-hover': theme.background.menu.item.hover,
     '--palette-input-bg': theme.background.surface.default,
+    '--palette-icon': theme.foreground.icon.primary,
   } as React.CSSProperties;
   const activeId = results[clampedHighlight] ? `${listId}-${clampedHighlight}` : undefined;
 
@@ -186,6 +187,15 @@ export function CommandPalette({ isOpen, commands, onRun, onClose, os = 'macos',
         style={style}
         onKeyDown={onKeyDown}
       >
+        <div className="command-palette__field">
+          {/* The design system's magnifier (SearchField's), before the text —
+              "put the search icon in before the search", 2026-10-13 */}
+          <span className="command-palette__icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M7 12C9.76142 12 12 9.76142 12 7C12 4.23858 9.76142 2 7 2C4.23858 2 2 4.23858 2 7C2 9.76142 4.23858 12 7 12Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
         <input
           ref={inputRef}
           className="command-palette__input"
@@ -202,6 +212,7 @@ export function CommandPalette({ isOpen, commands, onRun, onClose, os = 'macos',
           autoComplete="off"
           spellCheck={false}
         />
+        </div>
         <ul ref={listRef} id={listId} className="command-palette__list" role="listbox" aria-label="Commands">
           {results.length === 0 && (
             <li className="command-palette__empty" aria-live="polite">No matching command</li>

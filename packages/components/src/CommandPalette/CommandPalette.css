@@ -31,17 +31,39 @@
   font-size: 12px;
 }
 
-.command-palette__input {
-  /* Never squeezed by a long list (the list shrinks, the field does not —
-     "search bar is shrinking, don't like that", 2026-10-13) */
+/* The search row: the magnifier, then the text. No line under it (the
+   divider read as a harsh stroke — dropped 2026-10-13); the list's own
+   top padding keeps the two apart. Never squeezed by a long list (the
+   list shrinks, the field does not — "search bar is shrinking, don't
+   like that", the same day). */
+.command-palette__field {
   flex: 0 0 40px;
-  box-sizing: border-box;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   height: 40px;
   padding: 0 14px;
-  border: 0;
-  border-bottom: 1px solid var(--palette-divider);
   background: var(--palette-input-bg);
+}
+
+.command-palette__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--palette-icon);
+  flex: 0 0 auto;
+}
+
+.command-palette__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--palette-text);
   font: inherit;
   font-size: 13px;
