@@ -5,7 +5,7 @@ import { useTracksDispatch, type Clip, type Track, type TimeSelection } from '..
 import { buildTrimParticipants } from '../../utils/trimParticipants';
 import { keyboardEditTargets } from '../../utils/keyboardEditTargets';
 import { fadeTargets, clampFadeSeconds } from '../../utils/fadeTargets';
-import { computeFadeToTime } from '../../utils/fadeToPlayhead';
+import { computeFadeToTime, fadeSideForTime } from '../../utils/fadeToPlayhead';
 import { computeKeyboardTrimToTimeBatch, computeKeyboardTrimToTimeAnnouncement } from '../../utils/clipKeyboardEdit';
 import { FADE_SHAPE_PRESETS } from '../../utils/fadeShapePresets';
 import type { EnvelopePointSizes } from '../../utils/envelopePointSizes';
@@ -796,11 +796,17 @@ const CanvasTrack = React.memo(function CanvasTrack({
             announce(computeKeyboardTrimAnnouncement(focused.clip, deltaSeconds));
           }
         }}
-        onClipFadeToPlayhead={(clipId, side) => {
-          // A FADE TO THE PLAYHEAD (Option+Shift+[ / ], 2026-10-13): the
-          // fade rule's targets, each boundary to the SAME playhead; a
-          // playhead outside a clip is refused for it (utils/fadeToPlayhead.ts)
+        onClipFadeToPlayhead={(clipId, requested) => {
+          // A FADE TO THE PLAYHEAD (⌥F, 2026-10-13): the fade rule's
+          // targets, each boundary to the SAME playhead; from the clip the
+          // SIDE is inferred from where the playhead sits in the FOCUSED
+          // clip (its first half = the fade-in), from a handle it is that
+          // handle's; a playhead outside a clip is refused for it
+          // (utils/fadeToPlayhead.ts)
           const tracksNow = tracksRef.current;
+          const focusedClip = tracksNow[trackIndex]?.clips.find((c) => c.id === clipId);
+          if (!focusedClip) return false;
+          const side: 'in' | 'out' = requested === 'auto' ? fadeSideForTime(focusedClip, playheadRef.current) : requested;
           const targets = fadeTargets(tracksNow, trackIndex, clipId as number)
             .map((t) => ({ ...t, clip: tracksNow[t.trackIndex]?.clips.find((c) => c.id === t.clipId) }))
             .filter((t) => !!t.clip)

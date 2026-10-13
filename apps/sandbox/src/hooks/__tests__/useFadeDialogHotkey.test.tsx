@@ -20,18 +20,19 @@ function Probe({ seen }: { seen: { dialog: unknown } }) {
   );
 }
 
-const press = (el: Element | Document = document) => fireEvent.keyDown(el, { code: 'KeyF', key: 'ƒ', altKey: true });
+const press = (el: Element | Document = document) => fireEvent.keyDown(el, { code: 'KeyF', key: 'Ï', altKey: true, shiftKey: true });
 
-describe('⌥F opens the fades dialog on the focused clip (2026-10-13)', () => {
-  it('is the chord ⌥F by key code — not F, ⇧F, ⌘F or ⌥⌘F', () => {
+describe('⌥⇧F opens the fades dialog on the focused clip (2026-10-13)', () => {
+  it('is the chord ⌥⇧F by key code — not F, ⇧F, ⌥F (to the playhead), ⌘⇧F or ⌥⌘F', () => {
     const ev = (o: Partial<KeyboardEvent>) => ({ metaKey: false, ctrlKey: false, altKey: false, shiftKey: false, code: 'KeyF', ...o }) as KeyboardEvent;
-    expect(isFadeDialogHotkey(ev({ altKey: true }))).toBe(true);
-    expect(isFadeDialogHotkey(ev({ altKey: true, key: 'ƒ' }))).toBe(true);
+    expect(isFadeDialogHotkey(ev({ altKey: true, shiftKey: true }))).toBe(true);
+    expect(isFadeDialogHotkey(ev({ altKey: true, shiftKey: true, key: 'Ï' }))).toBe(true);
     expect(isFadeDialogHotkey(ev({}))).toBe(false);
     expect(isFadeDialogHotkey(ev({ shiftKey: true }))).toBe(false);
-    expect(isFadeDialogHotkey(ev({ metaKey: true }))).toBe(false);
+    expect(isFadeDialogHotkey(ev({ altKey: true }))).toBe(false);
+    expect(isFadeDialogHotkey(ev({ metaKey: true, shiftKey: true }))).toBe(false);
     expect(isFadeDialogHotkey(ev({ metaKey: true, altKey: true }))).toBe(false);
-    expect(isFadeDialogHotkey(ev({ altKey: true, code: 'KeyT' }))).toBe(false);
+    expect(isFadeDialogHotkey(ev({ altKey: true, shiftKey: true, code: 'KeyT' }))).toBe(false);
   });
 
   it('from the focused clip it opens on the fade-in; from a focused fade-out handle, on the fade-out', () => {

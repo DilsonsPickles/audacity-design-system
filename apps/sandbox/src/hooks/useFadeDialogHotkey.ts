@@ -1,17 +1,18 @@
 /**
- * ⌥F opens the FADES dialog on the focused clip (user decision
+ * ⌥⇧F opens the FADES dialog on the focused clip (user decision
  * 2026-10-13: "a dialog for setting fade out / fade in… accessible via
  * keyboard shortcut with the clip in focus, preferably using the F key
- * with a modifier"). Option is the modifier because the bare letter is
- * the handle (F / ⇧F focus the fade handles, 2026-10-12) and the
- * Option form is its TYPED FORM — the pattern ⌥T and ⌥S can follow;
- * ⌘F reads as Find on a Mac (and as Fit to width to Audacity 3 users),
- * ⌘⇧F and ⌥⌘F are the track-height commands.
+ * with a modifier"). The F family: F / ⇧F focus the fade handles
+ * (2026-10-12), ⌥F takes a fade TO THE PLAYHEAD (the frequent action,
+ * on the lighter chord — TrackNew's, with the clip inferring the side),
+ * ⌥⇧F is the typed form, the dialog (Shift = the fuller form, as
+ * elsewhere); ⌘F reads as Find on a Mac (and as Fit to width to
+ * Audacity 3 users), ⌘⇧F and ⌥⌘F are the track-height commands.
  *
  * From a focused FADE HANDLE it opens on that side's length field; from
  * the clip, on the fade-in's. Matched on `e.code` — Option+F types "ƒ"
  * on macOS, so `e.key` is useless (the ⌥⌘I rule) — and refused inside a
- * text field, where the keystroke is that character. Lives in its own
+ * text field, where the keystroke is a character. Lives in its own
  * document listener, like ⌥⌘I: the dialog's state is the context-menu
  * state (useContextMenuState.fadeDialog), which useKeyboardShortcuts,
  * running in App above the provider, cannot reach. Yields to a dialog
@@ -24,10 +25,10 @@ import { useContextMenus } from '../contexts/ContextMenuContext';
 import { clipOfElement } from './useFocusedClip';
 import { dialogOwnsKeyboard } from '../utils/focusRouting';
 
-export const FADE_DIALOG_HOTKEY_LABEL = '⌥F';
+export const FADE_DIALOG_HOTKEY_LABEL = '⌥⇧F';
 
 export function isFadeDialogHotkey(e: KeyboardEvent): boolean {
-  return e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey && e.code === 'KeyF';
+  return e.altKey && e.shiftKey && !e.metaKey && !e.ctrlKey && e.code === 'KeyF';
 }
 
 export function useFadeDialogHotkey(): void {

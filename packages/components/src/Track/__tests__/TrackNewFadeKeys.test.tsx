@@ -286,8 +286,8 @@ describe('Option+[ / Option+] trim the focused clip to the playhead (2026-10-12)
   });
 });
 
-describe('Option+Shift+[ / ] take the fade-in / fade-out to the playhead (2026-10-13)', () => {
-  function setupWith(onClipFadeToPlayhead: (clipId: string | number, side: 'in' | 'out') => boolean) {
+describe('⌥F takes a fade to the playhead (2026-10-13)', () => {
+  function setupWith(onClipFadeToPlayhead: (clipId: string | number, side: 'in' | 'out' | 'auto') => boolean) {
     const utils = render(
       <Providers>
         <TrackNew
@@ -305,31 +305,28 @@ describe('Option+Shift+[ / ] take the fade-in / fade-out to the playhead (2026-1
     act(() => { clip.focus(); });
     return { ...utils, clip };
   }
-  const chord = (el: Element, which: 'left' | 'right') =>
-    fireEvent.keyDown(el, { code: which === 'left' ? 'BracketLeft' : 'BracketRight', key: which === 'left' ? '{' : '}', altKey: true, shiftKey: true });
+  const chord = (el: Element) => fireEvent.keyDown(el, { code: 'KeyF', key: 'ƒ', altKey: true });
 
-  it('from the focused clip: [ is the fade-in, ] the fade-out — and the plain Option bracket stays the trim', () => {
+  it('from the focused clip the side is the host\'s to infer (auto); bare F and ⌥⇧F are not it', () => {
     const toPlayhead = vi.fn(() => true);
-    const { clip } = setupWith(toPlayhead);
-    chord(clip, 'left');
-    expect(toPlayhead).toHaveBeenLastCalledWith(1, 'in');
-    chord(clip, 'right');
-    expect(toPlayhead).toHaveBeenLastCalledWith(1, 'out');
+    const { clip, container } = setupWith(toPlayhead);
+    chord(clip);
+    expect(toPlayhead).toHaveBeenLastCalledWith(1, 'auto');
+    expect(container.querySelector('[data-fade-handle]')).toBeNull(); // the chord did not focus a handle
     toPlayhead.mockClear();
-    fireEvent.keyDown(clip, { code: 'BracketLeft', key: '“', altKey: true });
+    fireEvent.keyDown(clip, { code: 'KeyF', key: 'Ï', altKey: true, shiftKey: true }); // the dialog's, left to the document
     expect(toPlayhead).not.toHaveBeenCalled();
   });
 
-  it('from a focused fade handle too; nothing moved shakes that edge', () => {
+  it('from a focused fade handle it is THAT fade; nothing moved shakes that edge and the handle keeps the focus', () => {
     const toPlayhead = vi.fn(() => false);
     const { clip, container } = setupWith(toPlayhead);
-    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF' });
-    const handle = container.querySelector<HTMLElement>('[data-fade-handle="in"][data-fade-clip="1"]')!;
+    fireEvent.keyDown(clip, { key: 'f', code: 'KeyF', shiftKey: true }); // ⇧F: the fade-out handle
+    const handle = container.querySelector<HTMLElement>('[data-fade-handle="out"][data-fade-clip="1"]')!;
     expect(document.activeElement).toBe(handle);
-    chord(handle, 'right');
+    chord(handle);
     expect(toPlayhead).toHaveBeenLastCalledWith(1, 'out');
     expect(container.querySelector('[data-shake-edge="right"]')).not.toBeNull();
-    // The handle keeps the focus — the chord is not a leave
     expect(document.activeElement).toBe(handle);
   });
 });

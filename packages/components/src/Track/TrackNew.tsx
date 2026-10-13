@@ -496,10 +496,13 @@ export interface TrackProps {
    * as a blocked nudge does.
    */
   onClipTrimToPlayhead?: (clipId: string | number, edge: 'left' | 'right') => boolean | void;
-  /** Option+Shift+[ / ]: the clip's FADE-IN / FADE-OUT boundary to the
-   *  playhead (2026-10-13), the fade's form of the trim brackets; the host
-   *  returns whether any fade moved — false shakes that edge. */
-  onClipFadeToPlayhead?: (clipId: string | number, side: 'in' | 'out') => boolean | void;
+  /** ⌥F: a fade's boundary to the playhead (2026-10-13). From the clip
+   *  the side is 'auto' — the host infers it from where the playhead
+   *  sits (its first half = the fade-in); from a focused fade handle it
+   *  is that handle's. The host returns whether any fade moved — false
+   *  shakes the edge (the host's chosen side is unknown here for 'auto',
+   *  so the clip's left edge shakes). */
+  onClipFadeToPlayhead?: (clipId: string | number, side: 'in' | 'out' | 'auto') => boolean | void;
 
   /**
    * Callback when a clip should be moved to a different track (Cmd+Arrow Up/Down)
@@ -783,17 +786,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       shakeTimeoutRef.current = null;
     }, 180);
   };
-  // OPTION+SHIFT+[ / ]: the fade-in / fade-out boundary to the playhead
-  // (2026-10-13), from the clip or from a fade handle; nothing moved
-  // (the playhead outside the clip) shakes the fade's edge
-  const fadeToPlayheadByKeys = (clipId: string | number, side: 'in' | 'out') => {
+  // ⌥F: a fade's boundary to the playhead (2026-10-13), from the clip
+  // (the host picks the side from the playhead) or from a fade handle
+  // (that side); nothing moved (the playhead outside the clip) shakes
+  // the fade's edge
+  const fadeToPlayheadByKeys = (clipId: string | number, side: 'in' | 'out' | 'auto') => {
     const moved = onClipFadeToPlayhead?.(clipId, side);
-    if (moved === false) shakeClipEdge(clipId, side === 'in' ? 'left' : 'right');
+    if (moved === false) shakeClipEdge(clipId, side === 'out' ? 'right' : 'left');
   };
-  const isBracketKey = (e: React.KeyboardEvent): 'left' | 'right' | null =>
-    (e.code === 'BracketLeft' || e.key === '[' || e.key === '{' || (e as any).keyCode === 219) ? 'left' // justified: keyCode deprecated but needed for cross-layout compat — pending components sweep
-      : (e.code === 'BracketRight' || e.key === ']' || e.key === '}' || (e as any).keyCode === 221) ? 'right' // justified: keyCode deprecated but needed for cross-layout compat — pending components sweep
-        : null;
+  const isOptionF = (e: React.KeyboardEvent) =>
+    (e.code === 'KeyF' || (!e.code && e.key.toLowerCase() === 'f')) && e.altKey && !e.shiftKey && !e.metaKey && !e.ctrlKey;
   const trackRef = React.useRef<HTMLDivElement>(null);
   const focusFromMouseRef = React.useRef(false);
   const trackClickXRef = React.useRef<number | null>(null);
@@ -2064,12 +2066,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             const isBracketRight = e.code === 'BracketRight'
               || e.key === ']' || e.key === '}'
               || (e as any).keyCode === 221; // justified: keyCode deprecated but needed for cross-layout compat — pending components sweep
-            // OPTION+SHIFT+[ / ]: the FADE-IN / FADE-OUT boundary to the
-            // playhead (2026-10-13) — the fade's form of the chord below
-            if ((isBracketLeft || isBracketRight) && e.altKey && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+            // ⌥F: a fade to the playhead (2026-10-13) — the clip infers
+            // which from where the playhead sits, so there is no side to
+            // remember; ⌥⇧F (the dialog) is the host's document listener
+            if (isOptionF(e) && onClipFadeToPlayhead) {
               e.preventDefault();
               e.stopPropagation();
-              fadeToPlayheadByKeys(clip.id, isBracketLeft ? 'in' : 'out');
+              fadeToPlayheadByKeys(clip.id, 'auto');
               return;
             }
             // OPTION+[ / OPTION+]: the START / END to the playhead. Matched
@@ -2627,14 +2630,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               setFadeKeyFocus((prev) => (prev?.clipId === clip.id ? null : prev));
             }}
             onKeyDown={(e) => {
-              // OPTION+SHIFT+[ / ]: this clip's fade-in / fade-out to the
-              // playhead, as on the clip (the handle sits outside the
-              // wrapper, so the clip's handler never sees it)
-              const bracket = isBracketKey(e);
-              if (bracket && e.altKey && e.shiftKey && !e.metaKey && !e.ctrlKey) {
+              // ⌥F: THIS fade to the playhead — the side is the handle's,
+              // the screen reader has said which (the handle sits outside
+              // the wrapper, so the clip's handler never sees the chord)
+              if (isOptionF(e) && onClipFadeToPlayhead) {
                 e.preventDefault();
                 e.stopPropagation();
-                fadeToPlayheadByKeys(clip.id, bracket === 'left' ? 'in' : 'out');
+                fadeToPlayheadByKeys(clip.id, side);
                 return;
               }
               // The app's other chords (Cmd+…, Option+…) pass through untouched
