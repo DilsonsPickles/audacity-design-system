@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../ThemeProvider';
 import { Button } from '../Button';
 import { GhostButton } from '../GhostButton';
 import { Icon } from '../Icon';
@@ -230,6 +231,7 @@ export function MacrosPanel({
   os = 'macos',
   placement = 'start',
 }: MacrosPanelProps) {
+  const { theme } = useTheme();
   const [isNewMacroDialogOpen, setIsNewMacroDialogOpen] = React.useState(false);
   const [macroToRename, setMacroToRename] = React.useState<string | null>(null);
   const [panelMenuOpen, setPanelMenuOpen] = React.useState(false);
@@ -422,8 +424,26 @@ export function MacrosPanel({
     setPanelMenuOpen(true);
   };
 
+  // THE PANEL FOLLOWS THE THEME (2026-10-13, "check macro manager… in dark
+  // mode, seems broken": MacrosPanel.css reads these variables with LIGHT
+  // fallbacks and nothing set them, so the docked panel stayed light on
+  // a dark app). The same tokens the other dock panels and the keyboard
+  // map use.
+  const panelVars = {
+    '--dock-bg': theme.background.surface.default,
+    '--text-primary': theme.foreground.text.primary,
+    '--text-secondary': theme.foreground.text.secondary,
+    '--list-item-text': theme.foreground.text.primary,
+    '--macros-list-bg': theme.background.surface.subtle,
+    '--macros-row-bg': theme.background.surface.default,
+    '--macros-row-bg-hover': theme.background.surface.hover,
+    '--macros-row-divider': theme.border.default,
+    '--stroke-primary': theme.border.default,
+    '--accent-primary': theme.background.control.button.primary.idle,
+  } as React.CSSProperties;
+
   return (
-    <div className="macros-panel" role="region" aria-label="Macro manager" data-placement={placement}>
+    <div className="macros-panel" role="region" aria-label="Macro manager" data-placement={placement} style={panelVars}>
       <div className="macros-panel__header">
         <span className="macros-panel__title" id="macros-panel-title">Macros</span>
         <div
