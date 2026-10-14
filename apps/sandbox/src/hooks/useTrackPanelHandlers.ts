@@ -13,6 +13,7 @@ import React from 'react';
 import { flushSync } from 'react-dom';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import { useTracksDispatch, type Track, type TimeSelection } from '../contexts/TracksContext';
+import { trackAudioExtent } from '../utils/trackAudioExtent';
 import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
 import type { EffectsPanelState, TrackContextMenuState } from '../hooks/useContextMenuState';
 import {
@@ -104,6 +105,11 @@ export interface UseTrackPanelHandlersReturn {
   onAddLabelClick: (index: number) => void;
   onMenuClick: (e: React.MouseEvent<HTMLButtonElement>, index: number) => void;
   onClick: (index: number) => void;
+  /** A double-click on the header SELECTS ALL AUDIO IN THE TRACK (2026-10-14):
+   *  a time selection over the track's whole extent, scoped to it, the
+   *  playhead at its start — Audacity 3's double-click in the Track Control
+   *  Panel. A track with no clips is just selected. */
+  onDoubleClick: (index: number) => void;
   onRangeSelection: (index: number) => void;
   onTabOut: (index: number) => void;
   onShiftTabOut: (index: number) => void;
@@ -495,6 +501,21 @@ export function useTrackPanelHandlers(
     });
   };
 
+  const onDoubleClick = (index: number) => {
+    const extent = tracks[index] ? trackAudioExtent(tracks[index]) : null;
+    if (!extent) {
+      selectTrackExclusive(index, dispatch);
+      dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
+      setSelectionAnchor(index);
+      return;
+    }
+    // The payload's tracks mirror into the track selection (the reducer's rule)
+    dispatch({ type: 'SET_TIME_SELECTION', payload: { startTime: extent.startTime, endTime: extent.endTime, tracks: [index] } });
+    dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
+    dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: extent.startTime });
+    setSelectionAnchor(index);
+  };
+
   const onClick = (index: number) => {
     if (timeSelection) {
       // Active time range: a plain header click TRANSFERS the range to
@@ -597,6 +618,7 @@ export function useTrackPanelHandlers(
     onAddLabelClick,
     onMenuClick,
     onClick,
+    onDoubleClick,
     onRangeSelection,
     onTabOut,
     onShiftTabOut,

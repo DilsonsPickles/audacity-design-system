@@ -512,6 +512,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     onAddLabelClick: onTrackAddLabelClick,
     onMenuClick: onTrackMenuClick,
     onClick: onTrackPanelClick,
+    onDoubleClick: onTrackPanelDoubleClick,
     onRangeSelection: onTrackRangeSelection,
     onTabOut: onTrackPanelTabOut,
     onShiftTabOut: onTrackPanelShiftTabOut,
@@ -1009,6 +1010,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 height={heightState}
                 trackHeight={trackHeight}
                 onClick={() => onTrackPanelClick(index)}
+                onDoubleClick={() => onTrackPanelDoubleClick(index)}
                 onToggleSelection={() => toggleScopeOrTrackSelection(index)}
                 onRangeSelection={() => onTrackRangeSelection(index)}
                 onTabOut={() => onTrackPanelTabOut(index)}

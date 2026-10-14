@@ -1694,6 +1694,35 @@ describe('Track management', () => {
     expect(await paletteRowEnabled('Ungroup clips')).toBe(true);
   });
 
+  it('a double-click on a track header selects all audio in the track: a time selection over its extent, scoped to it, the playhead at its start (2026-10-14)', async () => {
+    const rendered = renderApp();
+    const { container, getByText } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+    // The selection bar's end timecode reads the range; all zeros before
+    const selectionEnd = () => (container.querySelector('[aria-label="Selection end"]') as HTMLElement).textContent?.replace(/\s/g, '') ?? '';
+    const before = selectionEnd(); // all zeros (plus the caret's glyph)
+    expect(before).toContain('00h00m00s');
+
+    // Double-click track 2's header on its own surface — the name renames
+    // on double-click, so aim at the panel, not the name
+    const panel = trackPanels(container)[1];
+    fireEvent.doubleClick(panel);
+    await waitFor(() => expect(selectionEnd()).not.toBe(before));
+    // The band is drawn in scope on track 2 (the canvas row's overlay colour, the Canvas tests' evidence)
+    const bandColor = (idx: number) => ((container.querySelector(`[data-track-index="${idx}"] .track`) as HTMLElement).children[0] as HTMLElement).style.backgroundColor;
+    expect(bandColor(1)).toContain('98, 119, 136');
+    // The clicked track is the selection's one track
+    expect(panel.className).toContain('track-control-panel--active');
+    expect(trackPanels(container)[0].className).not.toContain('track-control-panel--active');
+    expect(trackPanels(container)[2].className).not.toContain('track-control-panel--active');
+
+    // A double-click on the NAME renames instead: no change to the selection scope
+    const name = trackPanels(container)[2].querySelector('.track-control-panel__track-name-text') as HTMLElement;
+    fireEvent.doubleClick(name);
+    expect(trackPanels(container)[2].className).not.toContain('track-control-panel--active');
+  });
+
   it('deleting a track with content routes through the confirm dialog and reindexes the remaining tracks', async () => {
     const rendered = renderApp();
     const { container, getByText } = rendered;

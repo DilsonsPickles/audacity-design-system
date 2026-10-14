@@ -73,6 +73,10 @@ export interface TrackControlPanelProps {
    *  folder rows and collapsed children make the two diverge. */
   trackIndex?: number;
   onClick?: () => void;
+  /** A double-click on the header's own surface — not the name (which
+   *  renames) nor a control: the host selects all audio in the track
+   *  (2026-10-14, Audacity 3's double-click in the Track Control Panel) */
+  onDoubleClick?: () => void;
   onToggleSelection?: () => void; // Cmd/Ctrl+Click to toggle
   onRangeSelection?: () => void; // Shift+Click for range selection
   className?: string;
@@ -151,6 +155,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   groupPosition,
   trackIndex,
   onClick,
+  onDoubleClick,
   onToggleSelection,
   onRangeSelection,
   className = '',
@@ -692,6 +697,16 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     '--tcp-focus-color': theme.border.focus,
   } as React.CSSProperties;
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (!onDoubleClick) return;
+    // The name renames on double-click; the controls (knob, slider, M/S,
+    // Effects, the kebab) keep their own double-clicks
+    const t = e.target as HTMLElement;
+    if (t.closest('.track-control-panel__track-name-text, input, button, [role="slider"], [role="button"], [contenteditable="true"]')) return;
+    e.preventDefault();
+    onDoubleClick();
+  };
+
   const handleClick = (e: React.MouseEvent) => {
     // A drag-reorder that just committed synthesises a click on the
     // panel — suppress it so the header isn't also treated as a
@@ -899,6 +914,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       tabIndex={tabIndex}
       role={tabIndex !== undefined ? "group" : undefined}
       aria-label={tabIndex !== undefined ? `${trackName} track controls` : undefined}
