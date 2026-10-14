@@ -17,14 +17,17 @@
  *     button is turning it on" — no checkbox, no switch; the host
  *     derives `enabled` from the speed). The word is NOT pressable
  *     (the same day); back to 1× is the popover's 1× preset, or typing 1.
- *   - the DISPLAY: the remembered speed as bold Lato digits ("0.500") with
- *     a "×" unit chip. A click (or Enter / Space with the focus) TYPES A
- *     VALUE, as the BPM display does ("what if I wanted to enter a very
- *     specific value?", 2026-10-14): Enter commits (clamped to the range)
- *     and switches on, Escape reverts. The wheel over it dials the speed
- *     (a tenth per notch, Shift a hundredth, up = faster) and never
- *     switches on; ↑ ↓ with the focus do the same.
- *   - the CARET: the popover with the slider, the value and ½× / 1× / 2×.
+ *   - the DISPLAY, on the dark face: the MINI SLIDER with its 1× mark —
+ *     the thumb's place is the state, off the mark is visibly on, and a
+ *     drag near the mark snaps to it (DETENT_SPEED) — then the speed as
+ *     bold Lato digits ("0.500") with a "×" unit chip. A click on the
+ *     digits TYPES A VALUE, as the BPM display does ("what if I wanted to
+ *     enter a very specific value?", 2026-10-14): Enter commits (clamped
+ *     to the range), Escape reverts. The wheel over the face dials the
+ *     speed (a tenth per notch, Shift a hundredth, up = faster); ↑ ↓ on
+ *     the face do the same, and the slider's own arrows step a hundredth.
+ *   The popover with the big slider and the ½× / 1× / 2× presets is gone
+ *   with the caret (the same day): the slider is on the face now.
  * Until then it was a split CHIP in the transport group (Logic's button
  * model), whose value half was the switch; it read a bare "0.500×" until
  * the "Speed" label of the same day.
@@ -43,9 +46,6 @@
  * preference.
  */
 import React from 'react';
-import { ContextMenu } from '../ContextMenu';
-import { Icon } from '../Icon';
-import { Slider } from '../Slider';
 import { useTheme } from '../ThemeProvider';
 import { TimeCodeUnit } from '../TimeCode/TimeCodeUnit';
 import './VarispeedControl.css';
@@ -86,6 +86,8 @@ export const stepVarispeedFine = (speed: number, notches: number) => clampSpeed(
 /** Wheel travel per notch — trackpads deliver many small deltas, mice one
  *  large one; both accumulate to steps of this many pixels */
 const WHEEL_NOTCH_PX = 24;
+/** The detent: a mouse drag this close to 1× lands on 1× (the 0.9–1.1 band) */
+export const DETENT_SPEED = 0.1;
 
 export interface VarispeedControlProps {
   /** The remembered speed — what the display reads, and what the switch turns on to */
@@ -104,12 +106,10 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
   const { theme } = useTheme();
   const displayRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const caretRef = React.useRef<HTMLButtonElement>(null);
-  const [open, setOpen] = React.useState(false);
-  const [pos, setPos] = React.useState({ x: 0, y: 0 });
+  const sliderRef = React.useRef<HTMLInputElement>(null);
+  const draggingRef = React.useRef(false);
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState('');
-  const close = React.useCallback(() => setOpen(false), []);
   // Ref-mirror (see CLAUDE.md): the wheel listener is native — React's
   // onWheel is passive and cannot preventDefault — bound once, reading
   // the live speed and handler through refs.
@@ -166,12 +166,10 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
     '--varispeed-on-hover-bg': theme.background.control.button.primary.hover,
     '--focus-color': theme.border.focus,
     '--varispeed-label-text': theme.foreground.text.primary,
-    // The Slider keeps its 16px thumb inside the track (centre at
-    // f·(W−16)+8, not f·W), so the mark takes the thumb's formula and
-    // sits under it at exactly 1×
-    '--varispeed-unity': `calc(${VARISPEED_UNITY_FRACTION * 100}% - ${VARISPEED_UNITY_FRACTION * 16 - 8}px)`,
+    // The 1× mark's x on the 72px mini slider: the native 10px thumb keeps
+    // inside the track, so its centre at 1× is f·(72−10)+5
+    '--varispeed-unity': `${Math.round((VARISPEED_UNITY_FRACTION * (72 - 10) + 5) * 10) / 10}px`,
   } as React.CSSProperties;
-  const presetPressed = (preset: number) => Math.abs(speed - preset) < 0.0005;
   return (
     <span
       className="varispeed"
@@ -188,25 +186,51 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
         ref={displayRef}
         className="varispeed__display"
         data-varispeed-display
-        role="spinbutton"
+        role="group"
         aria-label="Playback speed"
-        aria-valuemin={VARISPEED_MIN}
-        aria-valuemax={VARISPEED_MAX}
-        aria-valuenow={speed}
-        aria-valuetext={formatVarispeed(speed)}
-        tabIndex={0}
         onKeyDown={(e) => {
-          if (editing) return;
+          // ↑ ↓ anywhere on the face (the slider's own arrows step it a
+          // hundredth; these are the wheel's tenth) — and Enter / Space on
+          // the digits type a value
+          if (editing || e.target === sliderRef.current) return;
           if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
             e.preventDefault();
             const step = e.shiftKey ? stepVarispeedFine : stepVarispeed;
             onDial(step(speed, e.key === 'ArrowUp' ? 1 : -1));
-          } else if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            beginEdit();
           }
         }}
       >
+        {/* THE MINI SLIDER WITH A DETENT (2026-10-14, "I'm stumped" → "a
+            slider with a detent: its position IS the state, off-centre is
+            visibly on, and a thumb is unmistakably something you drag" —
+            REAPER's Rate slider, the tape machine's varispeed pot with its
+            centre click): AU3's linear 0.01–3 track with the 1× mark a
+            third of the way along; a mouse drag within DETENT_SPEED of 1×
+            snaps to it (Dan's sticky 1×, pr-12271: drag only — the keys and
+            the wheel step through), so letting go near normal lands on
+            normal, which is off. */}
+        <span className="varispeed__track" data-varispeed-track>
+          <input
+            ref={sliderRef}
+            type="range"
+            className="varispeed__slider"
+            data-varispeed-slider
+            min={1}
+            max={300}
+            step={1}
+            value={speedToSlider(speed)}
+            aria-label="Playback speed"
+            aria-valuetext={formatVarispeed(speed)}
+            onPointerDown={() => { draggingRef.current = true; }}
+            onPointerUp={() => { draggingRef.current = false; }}
+            onPointerCancel={() => { draggingRef.current = false; }}
+            onChange={(e) => {
+              const v = sliderToSpeed(Number(e.target.value));
+              onChange(draggingRef.current && Math.abs(v - 1) <= DETENT_SPEED ? 1 : v);
+            }}
+          />
+          <span className="varispeed__unity" data-varispeed-unity aria-hidden="true" />
+        </span>
         {editing ? (
           <input
             ref={inputRef}
@@ -227,8 +251,7 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
             type="button"
             className="varispeed__digits"
             data-varispeed-readout
-            tabIndex={-1}
-            aria-hidden="true"
+            aria-label={`Playback speed ${formatVarispeed(speed)}, type a value`}
             onClick={beginEdit}
           >
             {formatVarispeedDigits(speed)}
@@ -236,48 +259,7 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
         )}
         <TimeCodeUnit unit="times" />
       </div>
-      <button
-        ref={caretRef}
-        type="button"
-        className="varispeed__caret"
-        aria-label="Playback speed options"
-        aria-haspopup="true"
-        aria-expanded={open}
-        onClick={() => {
-          const r = caretRef.current?.parentElement?.getBoundingClientRect();
-          if (r) setPos({ x: r.left, y: r.bottom + 4 });
-          setOpen((o) => !o);
-        }}
-      >
-        <Icon name="caret-down" size={14} />
-      </button>
       </span>
-      <ContextMenu isOpen={open} onClose={close} x={pos.x} y={pos.y} className="varispeed__menu">
-        <div className="varispeed__panel" role="group" aria-label="Playback speed" data-varispeed-panel>
-          <div className="varispeed__row">
-            <span className="varispeed__title">Playback speed</span>
-            <span className="varispeed__value" data-varispeed-value>{formatVarispeed(speed)}</span>
-          </div>
-          <div className="varispeed__slider">
-            <Slider value={speedToSlider(speed)} min={1} max={300} ariaLabel="Playback speed" onChange={(v) => onChange(sliderToSpeed(v))} />
-            <span className="varispeed__unity" data-varispeed-unity aria-hidden="true" />
-          </div>
-          <div className="varispeed__presets">
-            {VARISPEED_PRESETS.map((p) => (
-              <button
-                key={p.label}
-                type="button"
-                className="varispeed__preset"
-                data-varispeed-preset={p.speed}
-                aria-pressed={presetPressed(p.speed)}
-                onClick={() => onChange(p.speed)}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </ContextMenu>
     </span>
   );
 }
