@@ -95,8 +95,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The mini slider: a native range styled as a thin track on the face with a
-   small white thumb (lit in the primary tone while on) and the 1× mark */
+/* The mini slider sits on the TOOLBAR between the caption and the dark
+   number box (2026-10-14): a thin track in the border tone, a small thumb in
+   the text tone (amber while on), and the 1× mark */
 .varispeed__track {
   position: relative;
   display: inline-flex;
@@ -125,7 +126,7 @@
 .varispeed__slider::-webkit-slider-runnable-track {
   height: 3px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--varispeed-track);
 }
 
 .varispeed__slider::-webkit-slider-thumb {
@@ -135,14 +136,14 @@
   margin-top: -3.5px;
   border-radius: 50%;
   border: 0;
-  background: var(--timecode-text);
+  background: var(--varispeed-thumb);
   transition: background-color 0.12s ease;
 }
 
 .varispeed__slider::-moz-range-track {
   height: 3px;
   border-radius: 2px;
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--varispeed-track);
 }
 
 .varispeed__slider::-moz-range-thumb {
@@ -150,12 +151,11 @@
   height: 10px;
   border-radius: 50%;
   border: 0;
-  background: var(--timecode-text);
+  background: var(--varispeed-thumb);
 }
 
 .varispeed[data-varispeed-active] .varispeed__slider::-webkit-slider-thumb {
   background: var(--varispeed-on-bg);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
 }
 
 .varispeed[data-varispeed-active] .varispeed__slider::-moz-range-thumb {
@@ -173,7 +173,7 @@
   height: 9px;
   margin-left: -0.5px;
   transform: translateY(-50%);
-  background: var(--timecode-text);
-  opacity: 0.55;
+  background: var(--varispeed-thumb);
+  opacity: 0.45;
   pointer-events: none;
 }

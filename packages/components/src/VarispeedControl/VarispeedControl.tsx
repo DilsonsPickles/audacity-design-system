@@ -135,6 +135,8 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
     '--varispeed-on-hover-bg': theme.semantic.warning.border,
     '--focus-color': theme.border.focus,
     '--varispeed-label-text': theme.foreground.text.primary,
+    '--varispeed-track': theme.border.default,
+    '--varispeed-thumb': theme.foreground.text.primary,
     // The 1× mark's x on the 72px mini slider: the native 10px thumb keeps
     // inside the track, so its centre at 1× is f·(72−10)+5
     '--varispeed-unity': `${Math.round((VARISPEED_UNITY_FRACTION * (72 - 10) + 5) * 10) / 10}px`,
@@ -150,6 +152,37 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
           pressable"): the word names the readout and lights while a
           speed is on; the value is the only control */}
       <span className="varispeed__label" data-varispeed-label aria-hidden="true">Speed</span>
+      {/* THE MINI SLIDER WITH A DETENT, ON THE TOOLBAR beside the caption — not on the dark face, which holds the number alone (2026-10-14, "perhaps the slider ought to be not in the black background, just the text but in the same one input number per box dealio"); "I'm stumped" → "a
+          slider with a detent: its position IS the state, off-centre is
+          visibly on, and a thumb is unmistakably something you drag" —
+          REAPER's Rate slider, the tape machine's varispeed pot with its
+          centre click): AU3's linear 0.01–3 track with the 1× mark a
+          third of the way along; a mouse drag within DETENT_SPEED of 1×
+          snaps to it (Dan's sticky 1×, pr-12271: drag only — the keys and
+          the wheel step through), so letting go near normal lands on
+          normal, which is off. */}
+      <span className="varispeed__track" data-varispeed-track>
+        <input
+          ref={sliderRef}
+          type="range"
+          className="varispeed__slider"
+          data-varispeed-slider
+          min={1}
+          max={300}
+          step={1}
+          value={speedToSlider(speed)}
+          aria-label="Playback speed"
+          aria-valuetext={formatVarispeed(speed)}
+          onPointerDown={() => { draggingRef.current = true; }}
+          onPointerUp={() => { draggingRef.current = false; }}
+          onPointerCancel={() => { draggingRef.current = false; }}
+          onChange={(e) => {
+            const v = sliderToSpeed(Number(e.target.value));
+            onChange(draggingRef.current && Math.abs(v - 1) <= DETENT_SPEED ? 1 : v);
+          }}
+        />
+        <span className="varispeed__unity" data-varispeed-unity aria-hidden="true" />
+      </span>
       <span className="varispeed__face">
       <div
         ref={displayRef}
@@ -168,37 +201,6 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
           }
         }}
       >
-        {/* THE MINI SLIDER WITH A DETENT (2026-10-14, "I'm stumped" → "a
-            slider with a detent: its position IS the state, off-centre is
-            visibly on, and a thumb is unmistakably something you drag" —
-            REAPER's Rate slider, the tape machine's varispeed pot with its
-            centre click): AU3's linear 0.01–3 track with the 1× mark a
-            third of the way along; a mouse drag within DETENT_SPEED of 1×
-            snaps to it (Dan's sticky 1×, pr-12271: drag only — the keys and
-            the wheel step through), so letting go near normal lands on
-            normal, which is off. */}
-        <span className="varispeed__track" data-varispeed-track>
-          <input
-            ref={sliderRef}
-            type="range"
-            className="varispeed__slider"
-            data-varispeed-slider
-            min={1}
-            max={300}
-            step={1}
-            value={speedToSlider(speed)}
-            aria-label="Playback speed"
-            aria-valuetext={formatVarispeed(speed)}
-            onPointerDown={() => { draggingRef.current = true; }}
-            onPointerUp={() => { draggingRef.current = false; }}
-            onPointerCancel={() => { draggingRef.current = false; }}
-            onChange={(e) => {
-              const v = sliderToSpeed(Number(e.target.value));
-              onChange(draggingRef.current && Math.abs(v - 1) <= DETENT_SPEED ? 1 : v);
-            }}
-          />
-          <span className="varispeed__unity" data-varispeed-unity aria-hidden="true" />
-        </span>
         {editing ? (
           <input
             ref={inputRef}
