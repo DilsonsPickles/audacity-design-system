@@ -153,6 +153,19 @@ describe('keyboard shortcuts on clips', () => {
     expect(onClipMenuClick.mock.calls[0][3]).toBe(true);
   });
 
+  it('a right-click on the clip asks the host for the clip menu at the pointer and selects nothing (2026-10-14)', () => {
+    const onClipContextMenu = vi.fn();
+    const onClipClick = vi.fn();
+    const onClipMenuClick = vi.fn();
+    const { clip } = renderTrack({ onClipContextMenu, onClipClick, onClipMenuClick });
+    const el = clip(1);
+    const ev = fireEvent.contextMenu(el, { clientX: 120, clientY: 44 });
+    expect(onClipContextMenu).toHaveBeenCalledWith(1, 120, 44);
+    expect(ev).toBe(false); // default prevented — no browser menu
+    expect(onClipClick).not.toHaveBeenCalled();
+    expect(onClipMenuClick).not.toHaveBeenCalled(); // the host decides (a right-drag is the marquee)
+  });
+
   it('Cmd+ArrowRight calls onClipMove with positive delta', () => {
     const onClipMove = vi.fn();
     const { clip } = renderTrack({ onClipMove });

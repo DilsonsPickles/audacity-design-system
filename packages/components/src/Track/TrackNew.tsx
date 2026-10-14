@@ -394,6 +394,12 @@ export interface TrackProps {
    * Callback when a clip menu button is clicked
    */
   onClipMenuClick?: (clipId: string | number, x: number, y: number, openedViaKeyboard?: boolean) => void;
+  /** A RIGHT-CLICK on the clip (2026-10-14): the clip menu at the pointer,
+   *  the clip LEFT UNSELECTED (user decision — the menu acts on the clicked
+   *  clip, or on the selection when it is part of it). The host declines
+   *  after a right-DRAG (the marquee). Handles stop their own contextmenu
+   *  first (the fade / crossfade menus). */
+  onClipContextMenu?: (clipId: string | number, x: number, y: number) => void;
 
   /**
    * Callback when a clip edge is being trimmed
@@ -735,6 +741,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   onEnvelopePointsChange,
   onClipHeaderClick,
   onClipMenuClick,
+  onClipContextMenu,
   onClipTrimEdge,
   onClipStretchEdge,
   onClipFadeChange,
@@ -1968,6 +1975,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             onHoverClip?.(null);
             clipSurfaceHoverProps(clip.id).onMouseLeave();
             handleHoverProps(clip.id).onMouseLeave();
+          }}
+          onContextMenu={(e) => {
+            // Right-click → the clip menu at the pointer, nothing selected
+            // (2026-10-14); stopped here so the canvas's own contextmenu
+            // (the time-selection menu) does not open beneath it
+            if (!onClipContextMenu) return;
+            e.preventDefault();
+            e.stopPropagation();
+            onClipContextMenu(clip.id, e.clientX, e.clientY);
           }}
           onMouseDown={(e) => {
             // Clip receives DOM focus naturally via its tabIndex.

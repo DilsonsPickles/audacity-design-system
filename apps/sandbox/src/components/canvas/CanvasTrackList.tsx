@@ -911,6 +911,11 @@ const CanvasTrack = React.memo(function CanvasTrack({
         onClipMenuClick={(clipId, x, y, openedViaKeyboard) => {
           onClipMenuClick?.(clipId as number, trackIndex, x, y, openedViaKeyboard);
         }}
+        onClipContextMenu={(clipId, x, y) => {
+          // A right-DRAG is the marquee; only a right-CLICK opens the menu
+          if (wasMarqueeing?.()) return;
+          onClipMenuClick?.(clipId as number, trackIndex, x, y, false);
+        }}
         onClipRename={(clipId, newName) => {
           dispatch({
             type: 'UPDATE_CLIP',
