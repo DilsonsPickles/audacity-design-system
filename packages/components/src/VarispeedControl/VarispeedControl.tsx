@@ -148,17 +148,24 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
         ref={chipRef}
         type="button"
         className="varispeed__chip"
-        aria-label="Varispeed"
         aria-pressed={enabled}
         onClick={() => onEnabledChange(!enabled)}
       >
-        {formatVarispeed(speed)}
+        {/* THE WORD IS ON THE CHIP (2026-10-14, "let's try the speed label":
+            a bare "0.500×" in the transport said nothing about what it was —
+            Audacity 3's Play-at-Speed toolbar had the same gap, its name only
+            in a tooltip; REAPER's "Rate: 1.0" is the pattern). "Speed", not
+            "Rate" (which means sample rate to Audacity's users) and not
+            "Varispeed" (tape jargon that promises the pitch follows); the
+            word in the secondary tone, the value in the primary, one button. */}
+        <span className="varispeed__label">Speed</span>
+        <span className="varispeed__readout" data-varispeed-readout>{formatVarispeed(speed)}</span>
       </button>
       <button
         ref={caretRef}
         type="button"
         className="varispeed__caret"
-        aria-label="Varispeed options"
+        aria-label="Playback speed options"
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => {
@@ -170,9 +177,9 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
         <Icon name="caret-down" size={14} />
       </button>
       <ContextMenu isOpen={open} onClose={close} x={pos.x} y={pos.y} className="varispeed__menu">
-        <div className="varispeed__panel" role="group" aria-label="Varispeed" data-varispeed-panel>
+        <div className="varispeed__panel" role="group" aria-label="Playback speed" data-varispeed-panel>
           <div className="varispeed__row">
-            <span className="varispeed__title">Varispeed</span>
+            <span className="varispeed__title">Playback speed</span>
             <span className="varispeed__value" data-varispeed-value>{formatVarispeed(speed)}</span>
           </div>
           <div className="varispeed__slider">

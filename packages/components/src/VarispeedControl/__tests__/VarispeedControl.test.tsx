@@ -40,7 +40,8 @@ describe('VarispeedControl (2026-10-07)', () => {
 
   it('the chip reads the remembered speed and its press TOGGLES varispeed (the chip toggle)', () => {
     const { container, chip, onEnabledChange, onChange } = mount();
-    expect(chip.textContent).toBe('0.500×');
+    expect(chip.querySelector('[data-varispeed-readout]')?.textContent).toBe('0.500×');
+    expect(chip.textContent).toBe('Speed0.500×');
     expect(chip.getAttribute('aria-pressed')).toBe('false');
     expect(container.querySelector('[data-varispeed-active]')).toBeNull();
     fireEvent.click(chip);
@@ -53,7 +54,7 @@ describe('VarispeedControl (2026-10-07)', () => {
   it('on, the chip is lit and reads the speed; its press switches off', () => {
     const { container, chip, onEnabledChange } = mount({ speed: 2, enabled: true });
     expect(container.querySelector('[data-varispeed-active]')).toBeTruthy();
-    expect(chip.textContent).toBe('2.000×');
+    expect(chip.querySelector('[data-varispeed-readout]')?.textContent).toBe('2.000×');
     expect(chip.getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(chip);
     expect(onEnabledChange).toHaveBeenCalledWith(false);

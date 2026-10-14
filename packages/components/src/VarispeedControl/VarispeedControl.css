@@ -27,9 +27,17 @@
 
 .varispeed__chip {
   min-width: 58px;
-  padding: 0 6px;
+  padding: 0 8px;
+  gap: 5px;
   font: 600 12px/28px Inter, system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
+}
+
+/* "Speed" beside the value: the word in the secondary tone, the value in
+   the primary — one button that reads as a label and a readout */
+.varispeed__label {
+  font-weight: 500;
+  opacity: 0.72;
 }
 
 .varispeed__caret {
