@@ -14,7 +14,8 @@ export type TimeCodeUnitType =
   | 'period'
   | 'samples'
   | 'frames'
-  | 'Hz';
+  | 'Hz'
+  | 'times';
 
 export interface TimeCodeUnitProps {
   /**
@@ -41,6 +42,8 @@ const UNIT_LABELS: Record<TimeCodeUnitType, string> = {
   samples: 'samples',
   frames: 'frames',
   Hz: 'Hz',
+  /** The play-at-speed readout's multiplier sign (2026-10-14) */
+  times: '×',
 };
 
 /**

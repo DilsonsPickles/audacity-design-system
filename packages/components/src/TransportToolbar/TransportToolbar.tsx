@@ -437,9 +437,6 @@ export function TransportToolbar({
               onClick={handleToggleLoop}
             />
             )}
-            {show('varispeed') && onVarispeedChange && onVarispeedToggle && (
-              <VarispeedControl speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onDial={onVarispeedDial ?? onVarispeedChange} onEnabledChange={onVarispeedToggle} />
-            )}
           </ToolbarButtonGroup>
 
           {workspace === 'classic' && (
@@ -630,6 +627,15 @@ export function TransportToolbar({
             </>
           )}
 
+
+          {/* Play-at-speed sits with the readouts, after the timecode (and
+              BPM / time signature in the music workspace), not among the
+              transport buttons — where the other DAWs keep it (2026-10-14) */}
+          {show('varispeed') && onVarispeedChange && onVarispeedToggle && (
+          <ToolbarButtonGroup gap={2}>
+            <VarispeedControl speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onDial={onVarispeedDial ?? onVarispeedChange} onEnabledChange={onVarispeedToggle} />
+          </ToolbarButtonGroup>
+          )}
 
           {show('snapping') && (
           <ToolbarButtonGroup gap={8}>

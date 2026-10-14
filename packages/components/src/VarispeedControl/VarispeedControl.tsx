@@ -1,48 +1,59 @@
 /**
  * VarispeedControl — the toolbar's playback-speed control (user request
- * 2026-10-07, "a varispeed playback option"; the chip became a TOGGLE the
- * same day, "try the chip toggle" — Logic's Varispeed button, not AU3's
- * second play button): a split chip reading the remembered speed
- * ("0.500×") whose VALUE half switches varispeed on and off, and whose
- * CARET half opens a popover with the slider, the value, and ½× / 1× / 2×
- * presets. Off, playback runs at 1× whatever the chip reads; on, the chip
- * is lit. Setting a speed in the popover switches it on; the presets are
- * speeds, nothing more — 1× is a speed like the others, the CHIP is the
- * only switch ("there's some weird logic where 1× turns it off", the same
- * day).
+ * 2026-10-07, "a varispeed playback option").
+ *
+ * SINCE 2026-10-14 IT IS A READOUT IN THE TIMECODE'S FAMILY ("our timecode
+ * is rendered with a dark black background, perhaps our play-at-speed
+ * could join that family?", then "in all other DAWs this is kept away
+ * from the play button and more towards timecode" — Logic's Varispeed is
+ * a section of its LCD): the dark face the timecode, BPM and time
+ * signature share, placed with them after the timecode, not among the
+ * transport buttons. Three parts, left to right:
+ *   - the "Speed" LABEL: lit in the primary tone while play-at-speed is
+ *     on — and ON IS THE VALUE NOT BEING 1× ("the slider is popular
+ *     because we can say, if it's different… then it's on", 2026-10-14,
+ *     after an hour with a separate switch segment: "it's so unclear
+ *     what button is turning it on" — no checkbox, no switch; the host
+ *     derives `enabled` from the speed). Its press is the A/B: at a
+ *     speed it goes back to 1×, at 1× it brings back the last speed
+ *     (the host's `onEnabledChange`), one press each way.
+ *   - the DISPLAY: the remembered speed as bold Lato digits ("0.500") with
+ *     a "×" unit chip. A click (or Enter / Space with the focus) TYPES A
+ *     VALUE, as the BPM display does ("what if I wanted to enter a very
+ *     specific value?", 2026-10-14): Enter commits (clamped to the range)
+ *     and switches on, Escape reverts. The wheel over it dials the speed
+ *     (a tenth per notch, Shift a hundredth, up = faster) and never
+ *     switches on; ↑ ↓ with the focus do the same.
+ *   - the CARET: the popover with the slider, the value and ½× / 1× / 2×.
+ * Until then it was a split CHIP in the transport group (Logic's button
+ * model), whose value half was the switch; it read a bare "0.500×" until
+ * the "Speed" label of the same day.
  *
  * THE SLIDER IS AUDACITY 3'S ("in terms of scale being linear or w/e we
- * just stick to Audacity 3", the same day — AU3's SPEED_SLIDER in
+ * just stick to Audacity 3", 2026-10-07 — AU3's SPEED_SLIDER in
  * ASlider.cpp): LINEAR from 0.01× to 3.0×, continuous, the readout to
- * three decimals ("1.000×", AU3's "%.3fx"), 1× marked on the track (a
- * log ¼×–4× scale with 1× in the middle came first and was dropped for
- * it). Varispeed is tape-style, as AU3's: the pitch follows the speed
- * (the engine scales its tempo and every player's rate); no preserve-
- * pitch (AU3 has none — that is an AU4 pull request, 2026-09-23).
+ * three decimals ("1.000×", AU3's "%.3fx"), 1× marked on the track.
+ * Tape-style, as AU3's: the pitch follows the speed; no preserve-pitch
+ * (Dan Fabulich's AU4 branch pr-12271 has one, default off).
  *
- * A WHEEL on the value half steps the speed ("what if we scroll on the
- * button?", the same day): a TENTH of a speed per notch on the tenths
- * grid (AU4's Play-at-Speed step; AU3's wheel is a tenth of the RANGE,
- * ~0.3×, too coarse for a chip), SHIFT makes it FINE — a hundredth per
- * notch ("a fine tune precise change") — and it turns the DIAL ONLY: it
- * never switches varispeed on ("you think scrolling should turn it
- * on?", the same day — a wheel is not deliberate the way opening the
- * popover is: trackpad inertia or a scroll meant for the canvas would
- * silently engage a playback mode, the trap the toggle closes); the dim
- * chip reads where the dial went, and the press plays it. Session
- * state, not a preference.
+ * THE WHEEL turns the DIAL ONLY ("you think scrolling should turn it
+ * on?", 2026-10-07 — trackpad inertia or a scroll meant for the canvas
+ * would silently engage a playback mode); the UP gesture = faster, a
+ * positive deltaY under macOS natural scrolling. Session state, not a
+ * preference.
  */
 import React from 'react';
 import { ContextMenu } from '../ContextMenu';
 import { Icon } from '../Icon';
 import { Slider } from '../Slider';
 import { useTheme } from '../ThemeProvider';
+import { TimeCodeUnit } from '../TimeCode/TimeCodeUnit';
 import './VarispeedControl.css';
 
 /** AU3's range: SPEED_SLIDER 0.01..3.0 */
 export const VARISPEED_MIN = 0.01;
 export const VARISPEED_MAX = 3;
-/** What the chip switches on to before the user has set a speed — the
+/** What the switch turns on to before the user has set a speed — the
  *  transcriber's half speed, so the first press does something useful */
 export const VARISPEED_DEFAULT_SPEED = 0.5;
 export const VARISPEED_PRESETS: ReadonlyArray<{ label: string; speed: number }> = [
@@ -59,6 +70,13 @@ export const sliderToSpeed = (v: number) => clampSpeed(v / 100);
 /** Where 1× sits along the track, as a fraction — the marker's place */
 export const VARISPEED_UNITY_FRACTION = (1 - VARISPEED_MIN) / (VARISPEED_MAX - VARISPEED_MIN);
 export const formatVarispeed = (speed: number) => `${speed.toFixed(3)}×`;
+/** The digits alone, the "×" being the unit chip */
+export const formatVarispeedDigits = (speed: number) => speed.toFixed(3);
+/** A typed value: "0.875", "0,875", "0.875×", "0.875 x" — null when it is not a number */
+export const parseVarispeed = (text: string): number | null => {
+  const n = Number(text.trim().replace(',', '.').replace(/\s*[×x]\s*$/i, ''));
+  return Number.isFinite(n) && text.trim() !== '' ? clampSpeed(n) : null;
+};
 
 /** The speed one wheel notch away: a tenth of a speed, on the tenths grid */
 export const stepVarispeed = (speed: number, notches: number) => clampSpeed((Math.round(speed * 10) + notches) / 10);
@@ -70,26 +88,29 @@ export const stepVarispeedFine = (speed: number, notches: number) => clampSpeed(
 const WHEEL_NOTCH_PX = 24;
 
 export interface VarispeedControlProps {
-  /** The remembered speed — what the chip reads, and what it switches on to */
+  /** The remembered speed — what the display reads, and what the switch turns on to */
   speed: number;
-  /** Whether varispeed is on; off, playback runs at 1× whatever `speed` is */
+  /** Whether play-at-speed is on — the host derives it: the speed is not 1× */
   enabled: boolean;
-  /** A speed set in the popover (slider, preset); the host stores it
-   *  and switches varispeed on */
+  /** A speed SET — the popover's slider or a preset, or a value typed into
+   *  the display; 1× is off */
   onChange: (speed: number) => void;
-  /** A speed turned to by the wheel; the host stores it and leaves the
-   *  switch where it is (live while on, remembered while off) */
+  /** A speed turned to by the wheel or the arrow keys — the same value;
+   *  a separate name from the chip days, hosts may pass onChange */
   onDial: (speed: number) => void;
-  /** The chip's press (toggle) */
+  /** The label's press: the A/B (back to 1×, or back to the last speed) */
   onEnabledChange: (enabled: boolean) => void;
 }
 
 export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledChange }: VarispeedControlProps) {
   const { theme } = useTheme();
-  const chipRef = React.useRef<HTMLButtonElement>(null);
+  const displayRef = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
   const caretRef = React.useRef<HTMLButtonElement>(null);
   const [open, setOpen] = React.useState(false);
   const [pos, setPos] = React.useState({ x: 0, y: 0 });
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState('');
   const close = React.useCallback(() => setOpen(false), []);
   // Ref-mirror (see CLAUDE.md): the wheel listener is native — React's
   // onWheel is passive and cannot preventDefault — bound once, reading
@@ -97,8 +118,8 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
   const liveRef = React.useRef({ speed, onDial });
   React.useEffect(() => { liveRef.current = { speed, onDial }; }, [speed, onDial]);
   React.useEffect(() => {
-    const chip = chipRef.current;
-    if (!chip) return;
+    const display = displayRef.current;
+    if (!display) return;
     let travel = 0;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -112,25 +133,40 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
       travel -= notches * WHEEL_NOTCH_PX;
       // Shift = the fine step, a hundredth per notch
       const step = e.shiftKey ? stepVarispeedFine : stepVarispeed;
-      // The UP gesture = faster. On macOS with natural scrolling (the
-      // default, trackpad and mouse alike) fingers or wheel moving up
-      // deliver a POSITIVE deltaY — the browser cannot tell the setting,
-      // so the Mac default wins; a non-natural wheel reads the other way
-      // ("you'd think scrolling up would make it faster", 2026-10-07,
-      // after the negative-delta mapping went the wrong way on his Mac).
+      // The UP gesture = faster: a POSITIVE deltaY under macOS natural
+      // scrolling, the default ("you'd think scrolling up would make it
+      // faster", 2026-10-07)
       liveRef.current.onDial(step(liveRef.current.speed, notches));
     };
-    chip.addEventListener('wheel', onWheel, { passive: false });
-    return () => chip.removeEventListener('wheel', onWheel);
+    display.addEventListener('wheel', onWheel, { passive: false });
+    return () => display.removeEventListener('wheel', onWheel);
   }, []);
+  // Typing: the input mounts, then takes the focus with its text selected
+  React.useEffect(() => {
+    if (!editing) return;
+    const id = requestAnimationFrame(() => { inputRef.current?.focus(); inputRef.current?.select(); });
+    return () => cancelAnimationFrame(id);
+  }, [editing]);
+  const beginEdit = () => { setDraft(formatVarispeedDigits(speed)); setEditing(true); };
+  const commitDraft = () => {
+    const parsed = parseVarispeed(draft);
+    if (parsed !== null) onChange(parsed);
+    setEditing(false);
+  };
+  const cancelEdit = () => setEditing(false);
+
+  // The timecode's own tokens, as BpmStepper takes them — the family's face
   const style = {
-    '--varispeed-off-bg': theme.background.control.button.secondary.idle,
-    '--varispeed-off-hover-bg': theme.background.control.button.secondary.hover,
-    '--varispeed-off-pressed-bg': theme.background.control.button.secondary.active,
-    '--varispeed-off-text': theme.foreground.text.primary,
+    '--timecode-bg': theme.background.control.timecode.idle,
+    '--timecode-text': '#f4f5f9',
+    '--timecode-hover': '#4a5068',
+    '--timecode-unit-bg': theme.background.control.timecode.idle,
+    '--timecode-unit-text': '#c5c6cd',
+    '--timecode-unit-hover-bg': '#4a5068',
+    '--timecode-unit-hover-text': '#f4f5f9',
     '--varispeed-on-bg': theme.background.control.button.primary.idle,
     '--varispeed-on-hover-bg': theme.background.control.button.primary.hover,
-    '--varispeed-on-text': '#FFFFFF',
+    '--focus-color': theme.border.focus,
     // The Slider keeps its 16px thumb inside the track (centre at
     // f·(W−16)+8, not f·W), so the mark takes the thumb's formula and
     // sits under it at exactly 1×
@@ -145,22 +181,67 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
       data-varispeed-active={enabled ? 'true' : undefined}
     >
       <button
-        ref={chipRef}
         type="button"
-        className="varispeed__chip"
+        className="varispeed__switch"
+        data-varispeed-switch
+        aria-label="Play-at-Speed"
         aria-pressed={enabled}
         onClick={() => onEnabledChange(!enabled)}
       >
-        {/* THE WORD IS ON THE CHIP (2026-10-14, "let's try the speed label":
-            a bare "0.500×" in the transport said nothing about what it was —
-            Audacity 3's Play-at-Speed toolbar had the same gap, its name only
-            in a tooltip; REAPER's "Rate: 1.0" is the pattern). "Speed", not
-            "Rate" (which means sample rate to Audacity's users) and not
-            "Varispeed" (tape jargon that promises the pitch follows); the
-            word in the secondary tone, the value in the primary, one button. */}
-        <span className="varispeed__label">Speed</span>
-        <span className="varispeed__readout" data-varispeed-readout>{formatVarispeed(speed)}</span>
+        Speed
       </button>
+      <div
+        ref={displayRef}
+        className="varispeed__display"
+        data-varispeed-display
+        role="spinbutton"
+        aria-label="Playback speed"
+        aria-valuemin={VARISPEED_MIN}
+        aria-valuemax={VARISPEED_MAX}
+        aria-valuenow={speed}
+        aria-valuetext={formatVarispeed(speed)}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (editing) return;
+          if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const step = e.shiftKey ? stepVarispeedFine : stepVarispeed;
+            onDial(step(speed, e.key === 'ArrowUp' ? 1 : -1));
+          } else if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            beginEdit();
+          }
+        }}
+      >
+        {editing ? (
+          <input
+            ref={inputRef}
+            className="varispeed__input"
+            data-varispeed-input
+            type="text"
+            inputMode="decimal"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitDraft}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commitDraft(); }
+              else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelEdit(); }
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className="varispeed__digits"
+            data-varispeed-readout
+            tabIndex={-1}
+            aria-hidden="true"
+            onClick={beginEdit}
+          >
+            {formatVarispeedDigits(speed)}
+          </button>
+        )}
+        <TimeCodeUnit unit="times" />
+      </div>
       <button
         ref={caretRef}
         type="button"
@@ -205,5 +286,3 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
     </span>
   );
 }
-
-export default VarispeedControl;

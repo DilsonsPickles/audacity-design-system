@@ -51,18 +51,16 @@ export interface UsePlaybackControlsReturn {
    *  playback off returns the playhead here (Audacity behavior). */
   playbackStartTime: number | null;
   setPlaybackStartTime: React.Dispatch<React.SetStateAction<number | null>>;
-  /** Varispeed (2026-10-07): the remembered playback speed, pitch
-   *  following — the chip reads it and switches on to it */
+  /** Play-at-speed (2026-10-07; one value since 2026-10-14): the speed the
+   *  transport runs at, 1× = normal, pitch following (tape-style) */
   varispeed: number;
-  /** Whether varispeed is on; off, the transport runs at 1× whatever
-   *  `varispeed` remembers (the chip toggle, 2026-10-07) */
+  /** DERIVED: the speed is not 1× — the timecode tints while it is */
   varispeedOn: boolean;
-  /** Store a speed AND switch varispeed on (the popover's slider and presets) */
+  /** Set the speed (slider, preset, typed value, wheel, arrows); 1× = off */
   setVarispeed: (speed: number) => void;
-  /** Store a speed and leave the switch where it is (the chip's wheel):
-   *  live while on, remembered while off */
+  /** The same as setVarispeed — the name the wheel's wiring uses */
   dialVarispeed: (speed: number) => void;
-  /** Switch varispeed on or off, keeping the remembered speed */
+  /** The A/B: on → 1×; off → the last speed that was not 1× */
   setVarispeedOn: (on: boolean) => void;
 }
 
@@ -96,25 +94,29 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
   // on the canvas; toggling playback off (Space / play button) returns the
   // playhead here and clears it.
   const [playbackStartTime, setPlaybackStartTime] = useState<number | null>(null);
-  // Varispeed is two pieces of state — the remembered speed and the
-  // switch — and the engine hears their product: the speed while on, 1×
-  // while off. The chip toggles the switch; the popover sets the speed
-  // (and switches on). A speed set while off is not lost on the way.
-  const [varispeed, setVarispeedState] = useState(VARISPEED_DEFAULT_SPEED);
-  const [varispeedOn, setVarispeedOnState] = useState(false);
+  // PLAY-AT-SPEED IS ONE VALUE (2026-10-14, "the slider is popular because
+  // we can say, if it's different… then it's on"): the speed the engine
+  // runs at, 1× = normal. "On" is DERIVED — the speed is not 1× — not a
+  // second switch (the chip model of 2026-10-07 kept a remembered speed
+  // and a switch and the engine heard their product; "it's so unclear
+  // what button is turning it on"). The "Speed" label's press is the A/B:
+  // off 1× it goes back to 1×, at 1× it brings back the LAST speed that
+  // was not 1× (half speed before any was set), so one press each way.
+  const [varispeed, setVarispeedState] = useState(1);
+  const lastVarispeedRef = useRef(VARISPEED_DEFAULT_SPEED);
   const varispeedRef = useRef(varispeed);
   useEffect(() => { varispeedRef.current = varispeed; }, [varispeed]);
-  const applyVarispeed = useCallback((speed: number, on: boolean) => {
-    audioManagerRef.current.setVarispeed(on ? speed : 1);
-    setVarispeedOnState(on);
-    if (on) setVarispeedState(audioManagerRef.current.getVarispeed());
-    else setVarispeedState(Math.max(VARISPEED_MIN, Math.min(VARISPEED_MAX, speed)));
+  const setVarispeed = useCallback((speed: number) => {
+    const clamped = Math.max(VARISPEED_MIN, Math.min(VARISPEED_MAX, speed));
+    audioManagerRef.current.setVarispeed(clamped);
+    const applied = audioManagerRef.current.getVarispeed();
+    setVarispeedState(applied);
+    if (Math.abs(applied - 1) >= 0.0005) lastVarispeedRef.current = applied;
   }, []);
-  const setVarispeed = useCallback((speed: number) => applyVarispeed(speed, true), [applyVarispeed]);
-  const varispeedOnRef = useRef(varispeedOn);
-  useEffect(() => { varispeedOnRef.current = varispeedOn; }, [varispeedOn]);
-  const dialVarispeed = useCallback((speed: number) => applyVarispeed(speed, varispeedOnRef.current), [applyVarispeed]);
-  const setVarispeedOn = useCallback((on: boolean) => applyVarispeed(varispeedRef.current, on), [applyVarispeed]);
+  const varispeedOn = Math.abs(varispeed - 1) >= 0.0005;
+  /** The wheel and the arrows turn the same value now — kept as a name for the host's wiring */
+  const dialVarispeed = setVarispeed;
+  const setVarispeedOn = useCallback((on: boolean) => setVarispeed(on ? lastVarispeedRef.current : 1), [setVarispeed]);
 
   // Ref-mirror (see CLAUDE.md): the playback-complete callback below is
   // registered once in the init effect but must read the live time
