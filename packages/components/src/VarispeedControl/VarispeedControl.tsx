@@ -9,14 +9,14 @@
  * a section of its LCD): the dark face the timecode, BPM and time
  * signature share, placed with them after the timecode, not among the
  * transport buttons. Three parts, left to right:
- *   - the "Speed" LABEL: lit in the primary tone while play-at-speed is
- *     on — and ON IS THE VALUE NOT BEING 1× ("the slider is popular
- *     because we can say, if it's different… then it's on", 2026-10-14,
- *     after an hour with a separate switch segment: "it's so unclear
- *     what button is turning it on" — no checkbox, no switch; the host
- *     derives `enabled` from the speed). Its press is the A/B: at a
- *     speed it goes back to 1×, at 1× it brings back the last speed
- *     (the host's `onEnabledChange`), one press each way.
+ *   - the "Speed" CAPTION, on the toolbar beside the dark face as the
+ *     Snap label is, lit in the primary tone while play-at-speed is on —
+ *     and ON IS THE VALUE NOT BEING 1× ("the slider is popular because
+ *     we can say, if it's different… then it's on", 2026-10-14, after
+ *     an hour with a separate switch segment: "it's so unclear what
+ *     button is turning it on" — no checkbox, no switch; the host
+ *     derives `enabled` from the speed). The word is NOT pressable
+ *     (the same day); back to 1× is the popover's 1× preset, or typing 1.
  *   - the DISPLAY: the remembered speed as bold Lato digits ("0.500") with
  *     a "×" unit chip. A click (or Enter / Space with the focus) TYPES A
  *     VALUE, as the BPM display does ("what if I wanted to enter a very
@@ -98,11 +98,9 @@ export interface VarispeedControlProps {
   /** A speed turned to by the wheel or the arrow keys — the same value;
    *  a separate name from the chip days, hosts may pass onChange */
   onDial: (speed: number) => void;
-  /** The label's press: the A/B (back to 1×, or back to the last speed) */
-  onEnabledChange: (enabled: boolean) => void;
 }
 
-export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledChange }: VarispeedControlProps) {
+export function VarispeedControl({ speed, enabled, onChange, onDial }: VarispeedControlProps) {
   const { theme } = useTheme();
   const displayRef = React.useRef<HTMLDivElement>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -181,16 +179,10 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
       data-varispeed
       data-varispeed-active={enabled ? 'true' : undefined}
     >
-      <button
-        type="button"
-        className="varispeed__switch"
-        data-varispeed-switch
-        aria-label="Play-at-Speed"
-        aria-pressed={enabled}
-        onClick={() => onEnabledChange(!enabled)}
-      >
-        Speed
-      </button>
+      {/* A CAPTION, NOT A BUTTON (2026-10-14, "I don't want the word to be
+          pressable"): the word names the readout and lights while a
+          speed is on; the value is the only control */}
+      <span className="varispeed__label" data-varispeed-label aria-hidden="true">Speed</span>
       <span className="varispeed__face">
       <div
         ref={displayRef}

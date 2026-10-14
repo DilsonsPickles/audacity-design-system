@@ -12,17 +12,16 @@ afterEach(cleanup);
 function mount(props: Partial<React.ComponentProps<typeof VarispeedControl>> = {}) {
   const onChange = vi.fn();
   const onDial = vi.fn();
-  const onEnabledChange = vi.fn();
   const utils = render(
     <ThemeProvider>
-      <VarispeedControl speed={0.5} enabled={false} onChange={onChange} onDial={onDial} onEnabledChange={onEnabledChange} {...props} />
+      <VarispeedControl speed={0.5} enabled={false} onChange={onChange} onDial={onDial} {...props} />
     </ThemeProvider>,
   );
   const root = utils.container.querySelector('.varispeed') as HTMLElement;
-  const switchBtn = utils.container.querySelector('[data-varispeed-switch]') as HTMLButtonElement;
+  const label = utils.container.querySelector('[data-varispeed-label]') as HTMLElement;
   const display = utils.container.querySelector('[data-varispeed-display]') as HTMLDivElement;
   const caret = utils.container.querySelector('.varispeed__caret') as HTMLButtonElement;
-  return { ...utils, root, switchBtn, display, caret, onChange, onDial, onEnabledChange };
+  return { ...utils, root, label, display, caret, onChange, onDial };
 }
 
 describe('VarispeedControl (2026-10-07; the timecode-family readout since 2026-10-14)', () => {
@@ -41,27 +40,23 @@ describe('VarispeedControl (2026-10-07; the timecode-family readout since 2026-1
     expect(VARISPEED_UNITY_FRACTION).toBeCloseTo(0.99 / 2.99, 9);
   });
 
-  it('reads "Speed 0.500 ×" on the dark face: the switch, the digits, the unit; the switch TOGGLES play-at-speed', () => {
-    const { container, switchBtn, display, onEnabledChange, onChange } = mount();
-    expect(switchBtn.textContent + display.textContent).toBe('Speed0.500×'); // the caret's glyph aside
+  it('reads "Speed 0.500 ×": a CAPTION (not a button), the digits and the unit on the dark face; off at 1×, on at any other speed', () => {
+    const { container, label, display, onChange } = mount({ speed: 0.5, enabled: false });
+    expect(label.tagName).toBe('SPAN');
+    expect(label.textContent).toBe('Speed');
+    expect(label.textContent + display.textContent).toBe('Speed0.500×');
     expect(container.querySelector('[data-varispeed-readout]')?.textContent).toBe('0.500');
     expect(container.querySelector('.timecode-unit[data-unit="times"]')?.textContent).toBe('×');
-    expect(switchBtn.getAttribute('aria-pressed')).toBe('false');
     expect(container.querySelector('[data-varispeed-active]')).toBeNull();
-    fireEvent.click(switchBtn);
-    expect(onEnabledChange).toHaveBeenCalledWith(true);
-    expect(onChange).not.toHaveBeenCalled();
-    // The press never opens the popover
+    fireEvent.click(label);
+    expect(onChange).not.toHaveBeenCalled(); // the word does nothing
     expect(document.body.querySelector('[data-varispeed-panel]')).toBeNull();
   });
 
-  it('on, the switch is lit and the display reads the speed; its press switches off', () => {
-    const { container, switchBtn, onEnabledChange } = mount({ speed: 2, enabled: true });
+  it('on, the caption is lit and the display reads the speed', () => {
+    const { container } = mount({ speed: 2, enabled: true });
     expect(container.querySelector('[data-varispeed-active]')).toBeTruthy();
     expect(container.querySelector('[data-varispeed-readout]')?.textContent).toBe('2.000');
-    expect(switchBtn.getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(switchBtn);
-    expect(onEnabledChange).toHaveBeenCalledWith(false);
   });
 
   it('a click on the digits TYPES A VALUE (2026-10-14, "a very specific value"): Enter sets it — clamped — and so switches on; Escape reverts', () => {
@@ -71,7 +66,7 @@ describe('VarispeedControl (2026-10-07; the timecode-family readout since 2026-1
     expect(parseVarispeed('9')).toBe(3); // clamped to the range
     expect(parseVarispeed('')).toBeNull();
     expect(parseVarispeed('fast')).toBeNull();
-    const { container, onChange, onEnabledChange, onDial } = mount({ speed: 0.5, enabled: false });
+    const { container, onChange, onDial } = mount({ speed: 0.5, enabled: false });
     fireEvent.click(container.querySelector('[data-varispeed-readout]') as HTMLElement);
     const input = container.querySelector('[data-varispeed-input]') as HTMLInputElement;
     expect(input).toBeTruthy();
@@ -94,7 +89,6 @@ describe('VarispeedControl (2026-10-07; the timecode-family readout since 2026-1
     fireEvent.change(input3, { target: { value: 'fast' } });
     fireEvent.keyDown(input3, { key: 'Enter' });
     expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onEnabledChange).not.toHaveBeenCalled();
     expect(onDial).not.toHaveBeenCalled();
   });
 
@@ -107,8 +101,8 @@ describe('VarispeedControl (2026-10-07; the timecode-family readout since 2026-1
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('the caret opens the popover; the slider and every preset report a speed — 1× too, the switch is the only switch', () => {
-    const { caret, onChange, onEnabledChange } = mount({ speed: 0.5, enabled: true });
+  it('the caret opens the popover; the slider and every preset report a speed — 1× too, 1× is off', () => {
+    const { caret, onChange } = mount({ speed: 0.5, enabled: true });
     fireEvent.click(caret);
     const panel = document.body.querySelector('[data-varispeed-panel]') as HTMLElement;
     expect(panel).toBeTruthy();
@@ -127,10 +121,9 @@ describe('VarispeedControl (2026-10-07; the timecode-family readout since 2026-1
     expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(2.75, 9));
     fireEvent.click(panel.querySelector('[data-varispeed-preset="1"]') as HTMLElement);
     expect(onChange).toHaveBeenLastCalledWith(1);
-    expect(onEnabledChange).not.toHaveBeenCalled();
   });
 
-  it('off, the popover still reads the remembered speed and checks its preset — the switch says on or off', () => {
+  it('off, the popover still reads the remembered speed and checks its preset ', () => {
     const { caret } = mount({ speed: 0.5, enabled: false });
     fireEvent.click(caret);
     const panel = document.body.querySelector('[data-varispeed-panel]') as HTMLElement;
@@ -145,7 +138,7 @@ describe('VarispeedControl (2026-10-07; the timecode-family readout since 2026-1
     expect(stepVarispeed(0.53, 1)).toBeCloseTo(0.6, 9); // snaps to the grid first
     expect(stepVarispeed(3, 1)).toBe(3);
     expect(stepVarispeed(0.01, -1)).toBe(0.01);
-    const { display, onChange, onDial, onEnabledChange } = mount({ speed: 0.5, enabled: false });
+    const { display, onChange, onDial } = mount({ speed: 0.5, enabled: false });
     // Positive deltaY is the UP gesture under macOS natural scrolling (the default) = faster
     fireEvent.wheel(display, { deltaY: 100 });
     expect(onDial).toHaveBeenCalledTimes(1);
@@ -155,8 +148,7 @@ describe('VarispeedControl (2026-10-07; the timecode-family readout since 2026-1
     fireEvent.wheel(display, { deltaY: -18 }); // −24 = one notch down = slower
     expect(onDial).toHaveBeenCalledTimes(2);
     expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.4, 9));
-    expect(onChange).not.toHaveBeenCalled(); // the dial is not a set speed — it does not switch on
-    expect(onEnabledChange).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled(); // the dial goes out through onDial
   });
 
   it('Shift+wheel is the fine step: a hundredth of a speed per notch on the hundredths grid, read from either axis', () => {

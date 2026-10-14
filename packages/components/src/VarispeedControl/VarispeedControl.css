@@ -12,28 +12,21 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-/* The "Speed" copy sits OUTSIDE the dark face, on the toolbar, as the
+/* The "Speed" caption sits OUTSIDE the dark face, on the toolbar, as the
    "Snap" label beside its checkbox does (2026-10-14, "can we try moving
-   the speed copy out of the dark area?"); it is still the A/B press. Off:
-   the toolbar's text colour; on: the primary tone, bold. */
-.varispeed__switch {
-  height: 28px;
+   the speed copy out of the dark area?") — and it is a caption, not a
+   button ("I don't want the word to be pressable"). Off: the toolbar's
+   text colour; on: the primary tone, bold. */
+.varispeed__label {
   padding: 0 2px;
-  border: 0;
-  margin: 0;
-  background: transparent;
   color: var(--varispeed-label-text);
   font: 500 12px/28px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  cursor: pointer;
   white-space: nowrap;
+  user-select: none;
   transition: color 0.12s ease;
 }
 
-.varispeed__switch:hover {
-  color: var(--varispeed-on-bg);
-}
-
-.varispeed[data-varispeed-active] .varispeed__switch {
+.varispeed[data-varispeed-active] .varispeed__label {
   color: var(--varispeed-on-bg);
   font-weight: 700;
 }
@@ -121,7 +114,6 @@
   background: var(--timecode-hover);
 }
 
-.varispeed__switch:focus-visible,
 .varispeed__caret:focus-visible {
   outline: 2px solid var(--focus-color);
   outline-offset: -2px;
