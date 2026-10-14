@@ -735,6 +735,24 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
       return { ...state, tracks: newTracks };
     }
 
+    case 'DELETE_CLIP_CLOSE_GAP': {
+      // The clip menu's "close gap" forms (2026-10-14): the clip's span
+      // is ripple-cut — the clip goes, what follows slides left by its
+      // length — on its own track or on every track (the real build's
+      // cut/delete-per-track-ripple and -all-tracks-ripple). The ripple is
+      // applyRippleCut's, the Edit menu's ripple cut, so a clip that
+      // overlaps the span is trimmed as that cut would trim it.
+      const { trackIndex, clipId, scope } = action.payload;
+      const clip = state.tracks[trackIndex]?.clips.find(c => c.id === clipId);
+      if (!clip) return state;
+      const indices = scope === 'all' ? state.tracks.map((_, i) => i) : [trackIndex];
+      return {
+        ...state,
+        tracks: dissolveDegenerateGroups(applyCut(state.tracks, clip.start, clip.start + clip.duration, 'ripple', indices)),
+        clipDurationIndicator: clip.selected ? null : state.clipDurationIndicator,
+      };
+    }
+
     case 'DELETE_TIME_RANGE': {
       const { startTime, endTime } = action.payload;
 

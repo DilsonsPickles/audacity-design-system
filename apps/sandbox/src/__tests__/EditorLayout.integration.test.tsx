@@ -271,12 +271,6 @@ function menuItem(container: HTMLElement, label: string): HTMLElement {
   return item as HTMLElement;
 }
 
-/** Closes whichever ContextMenu is currently open (Escape is bound on
- *  `document` with capture — see ContextMenu.tsx). */
-function closeOpenMenu(): void {
-  fireEvent.keyDown(document, { key: 'Escape' });
-}
-
 /**
  * Clicks whatever `getEl()` resolves to, retrying (via waitFor) until it
  * stops throwing. Element getters like clipMenuButton/menuItem throw
@@ -304,17 +298,40 @@ function clipHeaderEl(container: HTMLElement, clipId: number): HTMLElement {
   return el as HTMLElement;
 }
 
-function clipMenuButton(container: HTMLElement, clipId: number): HTMLButtonElement {
-  const el = container.querySelector(`[data-clip-id="${clipId}"] button[aria-label="Clip menu"]`);
-  if (!el) throw new Error(`Clip menu button for clip ${clipId} not found`);
-  return el as HTMLButtonElement;
-}
-
 /** Reads whether the "Ungroup clips" item is enabled for the clip whose
  *  menu is CURRENTLY open — the only DOM-observable signal of
  *  `clip.groupId` (no groupId is ever stamped into the DOM directly). */
-function isUngroupEnabled(container: HTMLElement): boolean {
-  return menuItem(container, 'Ungroup clips').getAttribute('aria-disabled') !== 'true';
+/** The command palette's row for a menu command (⌘P, typed, found by
+ *  label) — the Edit menu's Group / Ungroup clips are reached this way
+ *  since the clip menu lost them to the Figma frame (2026-10-14). The
+ *  palette carries each row's enabled state (aria-disabled). */
+async function paletteRow(label: string): Promise<HTMLElement> {
+  fireEvent.keyDown(document.body, { key: 'p', code: 'KeyP', metaKey: true });
+  const palette = await waitFor(() => {
+    const p = document.body.querySelector<HTMLElement>('[data-command-palette]');
+    if (!p) throw new Error('palette not open yet');
+    return p;
+  });
+  const input = palette.querySelector<HTMLInputElement>('.search-field__input')!;
+  fireEvent.change(input, { target: { value: label } });
+  return waitFor(() => {
+    const row = Array.from(palette.querySelectorAll<HTMLElement>('[role="option"]')).find((r) => r.textContent?.includes(label));
+    if (!row) throw new Error(`palette row "${label}" not found`);
+    return row;
+  });
+}
+async function paletteRowEnabled(label: string): Promise<boolean> {
+  const row = await paletteRow(label);
+  const enabled = row.getAttribute('aria-disabled') !== 'true';
+  fireEvent.keyDown(document.body.querySelector('[data-command-palette] .search-field__input')!, { key: 'Escape' });
+  await waitFor(() => expect(document.body.querySelector('[data-command-palette]')).toBeNull());
+  return enabled;
+}
+async function runFromPalette(label: string): Promise<void> {
+  const row = await paletteRow(label);
+  expect(row.getAttribute('aria-selected')).toBe('true');
+  fireEvent.keyDown(document.body.querySelector('[data-command-palette] .search-field__input')!, { key: 'Enter' });
+  await waitFor(() => expect(document.body.querySelector('[data-command-palette]')).toBeNull());
 }
 
 async function addTrackType(
@@ -1622,19 +1639,19 @@ describe('Track management', () => {
     // clips' `selected` alone, per selectionReducer.ts). ---
     fireEvent.click(clipHeaderEl(container, 1), { metaKey: true });
 
-    // --- Group them via the real Clip menu -> "Group clips" path
-    // (enabled once >=2 clips are selected). ---
-    await clickWhenReady(() => clipMenuButton(container, 1));
-    await waitFor(() => expect(menuItem(container, 'Group clips').getAttribute('aria-disabled')).not.toBe('true'));
-    await clickWhenReady(() => menuItem(container, 'Group clips'));
+    // --- Group them via Edit › Group clips, run from the command palette
+    // (2026-10-14: the clip menu lost its Group / Ungroup rows to the
+    // Figma frame; the pair lives in the Edit menu, on the selection). ---
+    expect(await paletteRowEnabled('Group clips')).toBe(true);
+    await runFromPalette('Group clips');
 
-    // Sanity: both clips are now grouped (Ungroup enabled on each).
-    await clickWhenReady(() => clipMenuButton(container, 1));
-    await waitFor(() => expect(isUngroupEnabled(container)).toBe(true));
-    closeOpenMenu();
-    await clickWhenReady(() => clipMenuButton(container, 32));
-    await waitFor(() => expect(isUngroupEnabled(container)).toBe(true));
-    closeOpenMenu();
+    // Sanity: both clips are now grouped — with either selected alone,
+    // Edit › Ungroup clips is live (a plain header click selects the one
+    // clip, 2026-10-13).
+    fireEvent.click(clipHeaderEl(container, 1));
+    expect(await paletteRowEnabled('Ungroup clips')).toBe(true);
+    fireEvent.click(clipHeaderEl(container, 32));
+    expect(await paletteRowEnabled('Ungroup clips')).toBe(true);
 
     // --- Duplicate track 0 via the real TrackControlSidePanel "Duplicate"
     // path (the block under test). nextClipId is now
@@ -1655,23 +1672,26 @@ describe('Track management', () => {
     // Ungroup-enabled state (no groupId is ever stamped into the DOM):
     // the whole source group (clips 1+32) was copied whole, so the clones
     // (33+34) come out grouped together in a FRESH group — never sharing
-    // the source's group. ---
-    await clickWhenReady(() => clipMenuButton(container, 33));
-    await waitFor(() => expect(isUngroupEnabled(container)).toBe(true)); // clone has *a* group
-    await clickWhenReady(() => menuItem(container, 'Ungroup clips')); // ungroups whatever group clip 33 is in
+    // the source's group. The duplicate copies the clips' selected flags,
+    // so every clip is selected now; Escape drops the clip selection
+    // (2026-10-13) and a header click then selects that clip's group alone.
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    fireEvent.click(clipHeaderEl(container, 33));
+    expect(await paletteRowEnabled('Ungroup clips')).toBe(true); // clone has *a* group
+    await runFromPalette('Ungroup clips'); // ungroups whatever group clip 33 is in
 
     // If 33 and 34 shared the clone group, ungrouping via 33 cleared 34's
     // groupId too.
-    await clickWhenReady(() => clipMenuButton(container, 34));
-    await waitFor(() => expect(isUngroupEnabled(container)).toBe(false));
-    closeOpenMenu();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    fireEvent.click(clipHeaderEl(container, 34));
+    expect(await paletteRowEnabled('Ungroup clips')).toBe(false);
 
     // The SOURCE group (clips 1+32) must be untouched — proving the
     // clones' group was a distinct, fresh id, not a reference to the
     // source's.
-    await clickWhenReady(() => clipMenuButton(container, 1));
-    await waitFor(() => expect(isUngroupEnabled(container)).toBe(true));
-    closeOpenMenu();
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    fireEvent.click(clipHeaderEl(container, 1));
+    expect(await paletteRowEnabled('Ungroup clips')).toBe(true);
   });
 
   it('deleting a track with content routes through the confirm dialog and reindexes the remaining tracks', async () => {

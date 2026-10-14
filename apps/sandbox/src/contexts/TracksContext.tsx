@@ -365,6 +365,10 @@ export type TracksAction =
   | { type: 'TOGGLE_CLIP_SELECTION'; payload: { trackIndex: number; clipId: number } }
   | { type: 'DESELECT_ALL_CLIPS' }
   | { type: 'DELETE_CLIP'; payload: { trackIndex: number; clipId: number } }
+  /** Delete a clip and CLOSE THE GAP it leaves — the clip menu's "Cut and… / Delete and…" (2026-10-14):
+   *  the clip's span ripple-cut on its own track ('track') or every track ('all'), the real build's
+   *  per-track-ripple / all-tracks-ripple; 'leave-gap' is plain DELETE_CLIP */
+  | { type: 'DELETE_CLIP_CLOSE_GAP'; payload: { trackIndex: number; clipId: number; scope: 'track' | 'all' } }
   | { type: 'TRIM_CLIP'; payload: { trackIndex: number; clipId: number; newTrimStart: number; newDuration: number; newStart?: number } }
   | { type: 'STRETCH_CLIP'; payload: { trackIndex: number; clipId: number; newDuration: number; newStretchFactor: number; newStart?: number } }
   | { type: 'REVERSE_CLIP'; payload: { trackIndex: number; clipId: number } }
@@ -489,6 +493,7 @@ const UNDOABLE_ACTIONS = new Set<TracksAction['type']>([
   // Clip lifecycle / edits
   'ADD_CLIP',
   'DELETE_CLIP',
+  'DELETE_CLIP_CLOSE_GAP',
   'UPDATE_CLIP',
   'APPLY_CLIP_PLACEMENT',
   'DELETE_TIME_RANGE',

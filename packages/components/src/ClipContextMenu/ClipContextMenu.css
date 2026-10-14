@@ -7,3 +7,15 @@
   background-color: var(--clip-context-menu-divider-bg);
   margin: 4px 0;
 }
+
+/* Every row has a 16px LEADING SLOT — the Figma "Context menu/Clip"
+   frame's "checkmark frame" (2026-10-14): the check, the row's icon, or
+   nothing, so every label starts on one line. ContextMenuItem renders
+   the slot only for a checked/unchecked or iconed row; a row with
+   neither gets an empty one here. */
+.clip-context-menu .context-menu-item-content:not(:has(.context-menu-item-checkmark, .context-menu-item-icon))::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}

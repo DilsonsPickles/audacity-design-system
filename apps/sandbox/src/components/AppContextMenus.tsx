@@ -1,15 +1,14 @@
 import React from 'react';
-import { ClipContextMenu, FadeMenuItems, TrackContextMenu, TimelineRulerContextMenu, ContextMenu, ContextMenuItem, Dialog, DialogFooter, Button } from '@audacity-ui/components';
+import { ClipContextMenu, type GapMode, FadeMenuItems, TrackContextMenu, TimelineRulerContextMenu, ContextMenu, ContextMenuItem, Dialog, DialogFooter, Button } from '@audacity-ui/components';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { Effect } from '@audacity-ui/components';
 import { useDialogs } from '../contexts/DialogContext';
 import { useContextMenus } from '../contexts/ContextMenuContext';
-import { useClipProperties } from '../contexts/ClipPropertiesContext';
 import { useLoopRegionContext } from '../contexts/LoopRegionContext';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { useTracks } from '../contexts/TracksContext';
-import type { Track, Clip } from '../contexts/TracksContext';
+import type { Clip } from '../contexts/TracksContext';
 import type { ClipboardState } from '../hooks/useKeyboardShortcuts';
 import { FadeDialog, FADE_MIXED, type FadeDialogEdits, type FadeDialogValues } from './FadeDialog';
 import { fadeTargets } from '../utils/fadeTargets';
@@ -125,7 +124,6 @@ export function AppContextMenus({
     // Read at OPEN only
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fadeDialog]);
-  const { openClipProperties } = useClipProperties();
   const {
     loopRegionEnabled, setLoopRegionEnabled,
     loopRegionStart, setLoopRegionStart,
@@ -184,30 +182,45 @@ export function AppContextMenus({
       {clipContextMenu && (() => {
         const targetTrack = tracks[clipContextMenu.trackIndex];
         const targetClip = targetTrack?.clips.find((c: Clip) => c.id === clipContextMenu.clipId);
-        const targetGroupId = targetClip?.groupId;
-        const selectedClipsCount = tracks.reduce(
-          (sum: number, t: Track) => sum + t.clips.filter((c: Clip) => c.selected).length,
-          0
-        );
-        const canGroup = selectedClipsCount >= 2;
-        const canUngroup = !!targetGroupId;
+        // Pitch & speed off their defaults — Reset and Render light up
+        // (the real build's updatePitchSpeedModifiedEnabledState)
+        const stretchOf = (clip: Clip) => (clip as { stretchFactor?: number }).stretchFactor ?? 1;
+        const pitchSpeedModified = !!targetClip && ((targetClip.pitchSemitones ?? 0) !== 0 || stretchOf(targetClip) !== 1);
+        const { trackIndex, clipId } = clipContextMenu;
+        // The clicked clip, audio or MIDI
+        const clickedClip = () => targetClip
+          // justified: midiClips uses @audacity-ui/core MidiClip which shares id:number
+          || (targetTrack?.midiClips || []).find((c) => c.id === clipId);
+        const toClipboard = (operation: 'cut' | 'copy') => {
+          const clip = clickedClip();
+          if (clip) onClipboardSet({ clips: [{ ...clip, trackIndex }], operation, wholeGroupIds: [] });
+        };
+        // Cut and… / Delete and… (2026-10-14, the real build's three forms):
+        // leave the gap = the plain delete; close it on this track / on
+        // every track = DELETE_CLIP_CLOSE_GAP's ripple
+        const removeClip = (mode: GapMode) => {
+          if (mode === 'leave-gap') dispatch({ type: 'DELETE_CLIP', payload: { trackIndex, clipId } });
+          else dispatch({ type: 'DELETE_CLIP_CLOSE_GAP', payload: { trackIndex, clipId, scope: mode === 'close-gap-all' ? 'all' : 'track' } });
+        };
+        const resetPitchSpeed = () => {
+          // The properties panel's Reset, for the clicked clip or every
+          // selected clip when the clicked one is selected (the fade rule)
+          for (const t of fadeTargets(tracks, trackIndex, clipId)) {
+            const clip = tracks[t.trackIndex]?.clips.find((c: Clip) => c.id === t.clipId);
+            if (!clip) continue;
+            if (clip.pitchSemitones) dispatch({ type: 'UPDATE_CLIP', payload: { trackIndex: t.trackIndex, clipId: t.clipId, updates: { pitchSemitones: undefined } } });
+            if (stretchOf(clip) !== 1) dispatch({ type: 'STRETCH_CLIP', payload: { trackIndex: t.trackIndex, clipId: t.clipId, newDuration: clip.duration / stretchOf(clip), newStretchFactor: 1 } });
+          }
+        };
 
         return (
           <ClipContextMenu
             isOpen={clipContextMenu.isOpen}
             x={clipContextMenu.x}
             y={clipContextMenu.y}
+            os={os}
             autoFocus={clipContextMenu.openedViaKeyboard}
             onClose={() => setClipContextMenu(null)}
-            onOpenProperties={() => {
-              // The panel follows the selection, so opening it on a clip
-              // selects that clip — the two never disagree
-              if (!targetClip?.selected) {
-                dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: clipContextMenu.trackIndex, clipId: clipContextMenu.clipId } });
-              }
-              openClipProperties({ trackIndex: clipContextMenu.trackIndex, clipId: clipContextMenu.clipId });
-              setClipContextMenu(null);
-            }}
             onRename={() => {
               setClipContextMenu(null);
             }}
@@ -216,72 +229,24 @@ export function AppContextMenus({
               // every selected clip when the clicked one is selected —
               // the fade menu's rule. 'track' takes the override away.
               const ownColor = color === 'track' ? undefined : (color as Clip['ownColor']);
-              for (const t of fadeTargets(tracks, clipContextMenu.trackIndex, clipContextMenu.clipId)) {
+              for (const t of fadeTargets(tracks, trackIndex, clipId)) {
                 dispatch({ type: 'UPDATE_CLIP', payload: { trackIndex: t.trackIndex, clipId: t.clipId, updates: { ownColor } } });
               }
               setClipContextMenu(null);
             }}
-            onCut={() => {
-              if (clipContextMenu) {
-                const track = tracks[clipContextMenu.trackIndex];
-                const clip = track?.clips.find((c: Clip) => c.id === clipContextMenu.clipId)
-                  // justified: midiClips uses @audacity-ui/core MidiClip which shares id:number
-                  || (track?.midiClips || []).find((c) => c.id === clipContextMenu.clipId);
-
-                if (clip) {
-                  onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'cut', wholeGroupIds: [] });
-
-                  dispatch({
-                    type: 'DELETE_CLIP',
-                    payload: {
-                      trackIndex: clipContextMenu.trackIndex,
-                      clipId: clipContextMenu.clipId,
-                    },
-                  });
-
-                }
-                setClipContextMenu(null);
-              }
-            }}
-            onCopy={() => {
-              if (clipContextMenu) {
-                const track = tracks[clipContextMenu.trackIndex];
-                const clip = track?.clips.find((c: Clip) => c.id === clipContextMenu.clipId)
-                  // justified: midiClips uses @audacity-ui/core MidiClip which shares id:number
-                  || (track?.midiClips || []).find((c) => c.id === clipContextMenu.clipId);
-
-                if (clip) {
-                  onClipboardSet({ clips: [{ ...clip, trackIndex: clipContextMenu.trackIndex }], operation: 'copy', wholeGroupIds: [] });
-                }
-                setClipContextMenu(null);
-              }
-            }}
+            onCut={() => { toClipboard('cut'); removeClip('leave-gap'); setClipContextMenu(null); }}
+            onCopy={() => { toClipboard('copy'); setClipContextMenu(null); }}
             onDuplicate={() => {
               setClipContextMenu(null);
             }}
-            onDelete={() => {
-              if (clipContextMenu) {
-                dispatch({
-                  type: 'DELETE_CLIP',
-                  payload: {
-                    trackIndex: clipContextMenu.trackIndex,
-                    clipId: clipContextMenu.clipId,
-                  },
-                });
-                setClipContextMenu(null);
-              }
-            }}
+            onDelete={() => { removeClip('leave-gap'); setClipContextMenu(null); }}
+            onCutAnd={(mode) => { toClipboard('cut'); removeClip(mode); setClipContextMenu(null); }}
+            onDeleteAnd={(mode) => { removeClip(mode); setClipContextMenu(null); }}
+            onEditFades={() => openFadeDialog('in')}
             onSplit={() => {
               setClipContextMenu(null);
             }}
-            onFadeIn={() => openFadeDialog('in')}
-            onFadeOut={() => openFadeDialog('out')}
-            fadePresets={FADE_SHAPE_PRESETS}
-            fadeInState={targetClip ? { presetId: fadeShapePresetOf(targetClip.fadeInShape), hasFade: (targetClip.fadeIn ?? 0) > 0 } : undefined}
-            fadeOutState={targetClip ? { presetId: fadeShapePresetOf(targetClip.fadeOutShape), hasFade: (targetClip.fadeOut ?? 0) > 0 } : undefined}
-            onFadeShape={(side, presetId) => { setFadeShape(clipContextMenu.trackIndex, clipContextMenu.clipId, side, presetId); setClipContextMenu(null); }}
-            onRemoveFade={(side) => { removeFade(clipContextMenu.trackIndex, clipContextMenu.clipId, side); setClipContextMenu(null); }}
-            onExport={() => {
+            onSplitAtSilences={() => {
               setClipContextMenu(null);
             }}
             stretchWithTempo={false}
@@ -290,21 +255,9 @@ export function AppContextMenus({
             onOpenPitchSpeedDialog={() => {
               setClipContextMenu(null);
             }}
+            pitchSpeedModified={pitchSpeedModified}
+            onResetPitchSpeed={() => { resetPitchSpeed(); setClipContextMenu(null); }}
             onRenderPitchSpeed={() => {
-              setClipContextMenu(null);
-            }}
-            canGroup={canGroup}
-            canUngroup={canUngroup}
-            onGroup={() => {
-              if (canGroup) {
-                dispatch({ type: 'GROUP_SELECTED_CLIPS' });
-              }
-              setClipContextMenu(null);
-            }}
-            onUngroup={() => {
-              if (targetGroupId) {
-                dispatch({ type: 'UNGROUP_CLIPS', payload: { groupId: targetGroupId } });
-              }
               setClipContextMenu(null);
             }}
           />

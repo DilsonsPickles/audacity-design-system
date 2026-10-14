@@ -12,6 +12,14 @@ export interface MenuDefinitionDeps {
   // Edit menu deps
   onOpenLabelEditor: () => void;
   onOpenGoTo: () => void;
+  /** Edit › Group clips / Ungroup clips (2026-10-14): the clip menu lost
+   *  its Group / Ungroup rows to the Figma frame, so the pair moved here,
+   *  where the real build's app menu keeps them (appmenumodel.cpp, Clip);
+   *  they act on the SELECTED clips */
+  canGroupClips: boolean;
+  canUngroupClips: boolean;
+  onGroupClips: () => void;
+  onUngroupClips: () => void;
   onOpenKeyboardMap: () => void;
   /** View › Mixer (M): the mixer panel on / off */
   onToggleMixer: () => void;
@@ -88,6 +96,16 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
     {
       label: 'Go to...',
       onClick: deps.onOpenGoTo,
+    },
+    {
+      label: 'Group clips',
+      disabled: !deps.canGroupClips,
+      onClick: deps.onGroupClips,
+    },
+    {
+      label: 'Ungroup clips',
+      disabled: !deps.canUngroupClips,
+      onClick: deps.onUngroupClips,
     },
     {
       label: 'Preferences',

@@ -145,6 +145,13 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     }
   };
 
+  // Edit › Group / Ungroup clips act on the SELECTED clips (2026-10-14)
+  const selectedClipGroupIds = (() => {
+    const ids = new Set<string>();
+    let count = 0;
+    for (const t of state.tracks) for (const c of t.clips) if (c.selected) { count++; if (c.groupId !== undefined) ids.add(c.groupId); }
+    return { count, ids: Array.from(ids) };
+  })();
   const menuDefinitions = createMenuDefinitions({
     isCloudProject,
     dontShowSaveModalAgain,
@@ -155,6 +162,10 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onOpenLabelEditor: () => setIsLabelEditorOpen(true),
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
     onOpenGoTo: () => setIsGoToOpen(true),
+    canGroupClips: selectedClipGroupIds.count >= 2,
+    canUngroupClips: selectedClipGroupIds.ids.length > 0,
+    onGroupClips: () => dispatch({ type: 'GROUP_SELECTED_CLIPS' }),
+    onUngroupClips: () => { for (const groupId of selectedClipGroupIds.ids) dispatch({ type: 'UNGROUP_CLIPS', payload: { groupId } }); },
     onOpenKeyboardMap: () => setIsKeyboardMapOpen(true),
     onToggleMixer: () => setMixerPanelOpen((prev) => !prev),
     effectsPanelOpen: effectsPanel?.isOpen ?? false,
