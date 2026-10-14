@@ -271,7 +271,8 @@ describe('Persistent selection vs track-background clicks', () => {
 
 // ---------------------------------------------------------------------------
 // Double-click on a clip BODY selects the audio inside it (a time
-// selection over its span, 2026-10-14); triple-click selects the
+// selection over its span, 2026-10-14); triple-click INSIDE A CLIP selects
+// all the clips on the track (the same day); on bare canvas it selects the
 // whole track's extent (gaps included) as a track-scoped time selection.
 // Seam: useCanvasPointerHandlers onDoubleClick (audio branch) + onClick's
 // click-chain triple branch (three clicks within 400 ms / 6 px each —
@@ -305,6 +306,20 @@ describe('Double / triple click', () => {
     expect(overlayColor(1)).toContain('49, 56, 70'); // out of scope
     const probe = container.querySelector('[data-testid="tracks-state-probe"]') as HTMLElement;
     expect(probe.getAttribute('data-playhead')).toBe('5');
+  });
+
+  it('triple-click INSIDE A CLIP selects all the clips on the track — a clip selection, no time range (2026-10-14)', () => {
+    const { container } = renderCanvas(twoClipTrack());
+    const el = clipEl(container, 1);
+    // A genuine triple on the clip: three rapid clicks at one spot
+    fireEvent.click(el, { clientX: 20, clientY: 50 });
+    fireEvent.click(el, { clientX: 20, clientY: 50 });
+    fireEvent.click(el, { clientX: 20, clientY: 50 });
+    expect(isClipSelected(container, 1)).toBe(true);
+    expect(isClipSelected(container, 2)).toBe(true);
+    // No time selection: track 0's row shows no in-scope band
+    const overlayColor = (idx: number) => (trackEl(container, idx).children[0] as HTMLElement).style.backgroundColor;
+    expect(overlayColor(0)).not.toContain('98, 119, 136');
   });
 
   it('triple-click selects the full track extent as a track-scoped time selection', () => {

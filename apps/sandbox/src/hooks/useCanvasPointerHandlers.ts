@@ -203,6 +203,25 @@ export function useCanvasPointerHandlers(
     // and gaps between clips included, scoped to that track. Runs before
     // the body-deselect and playhead paths and consumes the click.
     if (chainCount >= 3 && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // INSIDE A CLIP, a triple-click SELECTS ALL THE CLIPS ON THE TRACK
+      // (2026-10-14, "triple click inside a clip to select all clips on
+      // the track" — a clip selection, for the bulk actions; the
+      // double-click selected the audio inside the one clip). On bare
+      // canvas it stays the track-extent time selection below.
+      const clipEl = (e.target as HTMLElement).closest('[data-clip-id]') as HTMLElement | null;
+      if (clipEl) {
+        const ti = Number(clipEl.getAttribute('data-track-index'));
+        const t = tracks[ti];
+        if (t && t.type !== 'label' && t.type !== 'folder') {
+          const all = [...t.clips, ...(t.midiClips || [])].map((c) => ({ trackIndex: ti, clipId: c.id }));
+          if (all.length > 0) {
+            dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+            dispatch({ type: 'SELECT_CLIPS', payload: all });
+            dispatch({ type: 'SET_FOCUSED_TRACK', payload: ti });
+          }
+        }
+        return;
+      }
       const rect = e.currentTarget.getBoundingClientRect();
       const y = e.clientY - rect.top;
       const ti = resolveTrackIndexFromY(y, tracks);
