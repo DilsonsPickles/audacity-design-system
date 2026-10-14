@@ -167,6 +167,7 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
     '--varispeed-on-bg': theme.background.control.button.primary.idle,
     '--varispeed-on-hover-bg': theme.background.control.button.primary.hover,
     '--focus-color': theme.border.focus,
+    '--varispeed-label-text': theme.foreground.text.primary,
     // The Slider keeps its 16px thumb inside the track (centre at
     // f·(W−16)+8, not f·W), so the mark takes the thumb's formula and
     // sits under it at exactly 1×
@@ -190,6 +191,7 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
       >
         Speed
       </button>
+      <span className="varispeed__face">
       <div
         ref={displayRef}
         className="varispeed__display"
@@ -257,6 +259,7 @@ export function VarispeedControl({ speed, enabled, onChange, onDial, onEnabledCh
       >
         <Icon name="caret-down" size={14} />
       </button>
+      </span>
       <ContextMenu isOpen={open} onClose={close} x={pos.x} y={pos.y} className="varispeed__menu">
         <div className="varispeed__panel" role="group" aria-label="Playback speed" data-varispeed-panel>
           <div className="varispeed__row">
