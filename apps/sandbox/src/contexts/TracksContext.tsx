@@ -248,6 +248,14 @@ export interface TracksState {
    *  COALESCE_TIMEOUT_MS to break two consecutive same-group gestures
    *  apart when the user clearly paused between them. */
   lastUndoTimestamp: number | null;
+  /** AN UNDO GESTURE IN PROGRESS (2026-10-14, the Fades dialog's live
+   *  preview): the `tracks` as they were at BEGIN_UNDO_GESTURE. While it
+   *  is set, undoable actions apply without pushing to `past` — the
+   *  dialog's every keystroke previews on the clip — END_UNDO_GESTURE
+   *  pushes this one snapshot (one undo step for the whole dialog) and
+   *  CANCEL_UNDO_GESTURE restores it and pushes nothing. Null between
+   *  gestures. Unlike the coalesce groups, no timeout breaks it. */
+  undoGesture: Track[] | null;
   selectedTrackIndices: number[];
   focusedTrackIndex: number | null;
   selectedLabelIds: string[]; // Array of selected label IDs (format: "trackIndex-labelId")
@@ -293,6 +301,9 @@ export type TracksAction =
   | { type: 'RESET_STATE' }
   | { type: 'UNDO' }
   | { type: 'REDO' }
+  | { type: 'BEGIN_UNDO_GESTURE' }
+  | { type: 'END_UNDO_GESTURE' }
+  | { type: 'CANCEL_UNDO_GESTURE' }
   | { type: 'SET_TRACKS'; payload: Track[] }
   | { type: 'REPLACE_TRACKS_EDIT'; payload: Track[] }
   | { type: 'ADD_TRACK'; payload: Track | (Track & { insertAt?: number }) }
@@ -419,6 +430,7 @@ export const initialState: TracksState = {
   future: [],
   lastUndoCoalesceGroup: null,
   lastUndoTimestamp: null,
+  undoGesture: null,
   selectedTrackIndices: [],
   focusedTrackIndex: null,
   selectedLabelIds: [],
@@ -564,6 +576,30 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
       lastUndoTimestamp: null,
     };
   }
+  // THE UNDO GESTURE BRACKET (2026-10-14): BEGIN snapshots the tracks;
+  // every undoable action until END applies without its own history
+  // entry; END pushes the one snapshot (if anything changed); CANCEL
+  // puts the snapshot back and pushes nothing. Built for the Fades
+  // dialog's live preview — one undo step for a dialog's worth of edits,
+  // and Cancel is a real cancel — usable by any dialog that previews.
+  if (action.type === 'BEGIN_UNDO_GESTURE') {
+    if (state.undoGesture) return state;
+    return { ...state, undoGesture: state.tracks, lastUndoCoalesceGroup: null, lastUndoTimestamp: null };
+  }
+  if (action.type === 'END_UNDO_GESTURE') {
+    if (!state.undoGesture) return state;
+    const changed = state.tracks !== state.undoGesture;
+    return {
+      ...state,
+      undoGesture: null,
+      past: changed ? [...state.past, state.undoGesture].slice(-MAX_UNDO_HISTORY) : state.past,
+      future: changed ? [] : state.future,
+    };
+  }
+  if (action.type === 'CANCEL_UNDO_GESTURE') {
+    if (!state.undoGesture) return state;
+    return { ...state, tracks: state.undoGesture, undoGesture: null };
+  }
   if (action.type === 'REDO') {
     if (state.future.length === 0) return state;
     const nextTracks = state.future[0];
@@ -613,6 +649,8 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
   const focusable = resolveFocusedTrack(next.tracks, next.focusedTrackIndex, state.focusedTrackIndex);
   if (focusable !== next.focusedTrackIndex) next = { ...next, focusedTrackIndex: focusable };
   if (UNDOABLE_ACTIONS.has(action.type) && next.tracks !== before) {
+    // Inside an undo gesture the entry is the gesture's, pushed at END
+    if (state.undoGesture) return next;
     const group = UNDO_COALESCE_GROUP[action.type] ?? null;
     const now = Date.now();
     const withinTimeout =

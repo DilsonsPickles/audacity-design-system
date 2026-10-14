@@ -90,3 +90,23 @@ describe('the fades dialog (2026-10-13)', () => {
     expect(onApply).not.toHaveBeenCalled();
   });
 });
+
+describe('live preview (2026-10-14)', () => {
+  it('every valid change goes out through onPreview as the edits so far; nothing on open; a field typed back sends an empty edit', async () => {
+    const onPreview = vi.fn();
+    const { length } = setup(single, { onPreview });
+    await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
+    expect(onPreview).not.toHaveBeenCalled();
+    fireEvent.change(length('in'), { target: { value: '2' } });
+    expect(onPreview).toHaveBeenLastCalledWith({ fadeIn: 2 });
+    fireEvent.change(length('out'), { target: { value: '0.25' } });
+    expect(onPreview).toHaveBeenLastCalledWith({ fadeIn: 2, fadeOut: 0.25 });
+    fireEvent.change(length('in'), { target: { value: String(single.in.seconds) } });
+    expect(onPreview).toHaveBeenLastCalledWith({ fadeOut: 0.25 });
+    fireEvent.change(length('out'), { target: { value: 'x' } }); // invalid: no preview
+    const calls = onPreview.mock.calls.length;
+    expect(calls).toBeGreaterThan(0);
+    fireEvent.change(length('out'), { target: { value: 'xy' } });
+    expect(onPreview.mock.calls.length).toBe(calls);
+  });
+});

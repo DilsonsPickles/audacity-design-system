@@ -103,6 +103,28 @@ export function AppContextMenus({
     effectSelectorMenu, setEffectSelectorMenu,
     setEffectDialog,
   } = useContextMenus();
+  // The Fades dialog's undo gesture and snapshot (2026-10-14, live
+  // preview): begun when the dialog opens — with the edit rule's
+  // deselect, since the edit begins here — and the targets' fades noted
+  // so a field typed back to its opening value restores that side
+  const fadeDialogApplied = React.useRef(false);
+  const fadeDialogSnapshotRef = React.useRef<Array<{ trackIndex: number; clipId: number; fadeIn: number; fadeOut: number }> | null>(null);
+  React.useEffect(() => {
+    if (!fadeDialog) return;
+    const dialogTargets = fadeTargets(tracks, fadeDialog.trackIndex, fadeDialog.clipId);
+    const own = tracks[fadeDialog.trackIndex]?.clips.find((c: Clip) => c.id === fadeDialog.clipId);
+    if (own && !own.selected && tracks.some((t) => t.clips.some((c: Clip) => c.selected))) {
+      dispatch({ type: 'DESELECT_ALL_CLIPS' });
+    }
+    fadeDialogSnapshotRef.current = dialogTargets.map((t) => {
+      const c = tracks[t.trackIndex]?.clips.find((x: Clip) => x.id === t.clipId);
+      return { trackIndex: t.trackIndex, clipId: t.clipId, fadeIn: c?.fadeIn ?? 0, fadeOut: c?.fadeOut ?? 0 };
+    });
+    fadeDialogApplied.current = false;
+    dispatch({ type: 'BEGIN_UNDO_GESTURE' });
+    // Read at OPEN only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fadeDialog]);
   const { openClipProperties } = useClipProperties();
   const {
     loopRegionEnabled, setLoopRegionEnabled,
@@ -635,8 +657,33 @@ export function AppContextMenus({
           in: { seconds: merge(targets.map((t) => t.clip.fadeIn ?? 0)), shape: merge(targets.map((t) => fadeShapePresetOf(t.clip.fadeInShape))) },
           out: { seconds: merge(targets.map((t) => t.clip.fadeOut ?? 0)), shape: merge(targets.map((t) => fadeShapePresetOf(t.clip.fadeOutShape))) },
         };
+        // THE DIALOG PREVIEWS LIVE (2026-10-14): its edits apply at once,
+        // inside an undo gesture begun when it opened (the effect below),
+        // so the fade handles follow the fields; Apply ENDS the gesture
+        // (one undo step), Cancel / Escape CANCELS it (the snapshot comes
+        // back). `fadeDialogApplied` tells close() which.
+        const applyFadeEdits = (edits: FadeDialogEdits) => {
+          const restoreSide = (t: typeof targets[number], side: 'in' | 'out') => {
+            const snap = fadeDialogSnapshotRef.current?.find((s) => s.trackIndex === t.trackIndex && s.clipId === t.clipId);
+            if (!snap) return;
+            dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side, seconds: side === 'in' ? snap.fadeIn : snap.fadeOut } });
+          };
+          for (const t of targets) {
+            if (edits.fadeIn !== undefined) dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'in', seconds: Math.min(edits.fadeIn, t.clip.duration) } });
+            else restoreSide(t, 'in');
+            if (edits.fadeOut !== undefined) dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'out', seconds: Math.min(edits.fadeOut, t.clip.duration) } });
+            else restoreSide(t, 'out');
+            const inPreset = edits.fadeInShape ? FADE_SHAPE_PRESETS.find((p) => p.id === edits.fadeInShape) : undefined;
+            if (inPreset) dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'in', shape: inPreset.shape } });
+            const outPreset = edits.fadeOutShape ? FADE_SHAPE_PRESETS.find((p) => p.id === edits.fadeOutShape) : undefined;
+            if (outPreset) dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'out', shape: outPreset.shape } });
+          }
+        };
         const close = () => {
           const was = fadeDialog;
+          dispatch({ type: fadeDialogApplied.current ? 'END_UNDO_GESTURE' : 'CANCEL_UNDO_GESTURE' });
+          fadeDialogApplied.current = false;
+          fadeDialogSnapshotRef.current = null;
           setFadeDialog(null);
           // Focus back to the clip (the global rule for a closing menu;
           // the fade handle it may have come from is gone by now)
@@ -654,22 +701,10 @@ export function AppContextMenus({
             focusSide={fadeDialog?.focusSide ?? 'in'}
             os={os}
             onClose={close}
+            onPreview={applyFadeEdits}
             onApply={(edits: FadeDialogEdits) => {
-              // An edit on another clip drops the selection (2026-10-13):
-              // the dialog's clip, when it was not selected, clears
-              // whatever was (the targets are then that clip alone)
-              if (fadeDialog && targets.length === 1 && !targets[0].clip.selected
-                && tracks.some((t) => t.clips.some((c: Clip) => c.selected))) {
-                dispatch({ type: 'DESELECT_ALL_CLIPS' });
-              }
-              for (const t of targets) {
-                if (edits.fadeIn !== undefined) dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'in', seconds: Math.min(edits.fadeIn, t.clip.duration) } });
-                if (edits.fadeOut !== undefined) dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'out', seconds: Math.min(edits.fadeOut, t.clip.duration) } });
-                const inPreset = edits.fadeInShape ? FADE_SHAPE_PRESETS.find((p) => p.id === edits.fadeInShape) : undefined;
-                if (inPreset) dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'in', shape: inPreset.shape } });
-                const outPreset = edits.fadeOutShape ? FADE_SHAPE_PRESETS.find((p) => p.id === edits.fadeOutShape) : undefined;
-                if (outPreset) dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side: 'out', shape: outPreset.shape } });
-              }
+              fadeDialogApplied.current = true;
+              applyFadeEdits(edits);
             }}
           />
         );

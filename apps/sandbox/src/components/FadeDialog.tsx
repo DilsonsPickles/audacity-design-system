@@ -39,6 +39,13 @@ export interface FadeDialogProps {
   /** Which length field takes the focus on open: the side the user came from */
   focusSide: 'in' | 'out';
   onApply: (edits: FadeDialogEdits) => void;
+  /** LIVE PREVIEW (2026-10-14, "can we make it so that the Edit fades
+   *  dialog makes live updates to the fade handles?"): called with the
+   *  edits so far on every valid change of a field — the host applies
+   *  them at once, inside an undo gesture it began when the dialog
+   *  opened, so the clip's fade follows the typing; Apply keeps them
+   *  (one undo step), Cancel / Escape puts them back. */
+  onPreview?: (edits: FadeDialogEdits) => void;
   onClose: () => void;
   os?: 'macos' | 'windows';
 }
@@ -55,7 +62,7 @@ export interface FadeDialogProps {
  * length clamped to the shortest target's length on apply. The words
  * (2026-10-07): "Fade-in" / "Fade-out", hyphenated, are the nouns.
  */
-export function FadeDialog({ isOpen, targetCount, values, maxSeconds, presets, focusSide, onApply, onClose, os = 'macos' }: FadeDialogProps) {
+export function FadeDialog({ isOpen, targetCount, values, maxSeconds, presets, focusSide, onApply, onPreview, onClose, os = 'macos' }: FadeDialogProps) {
   const textOf = (seconds: number | FadeMixed) => (seconds === FADE_MIXED ? '' : String(+seconds.toFixed(3)));
   const shapeOf = (shape: string | undefined | FadeMixed) => (typeof shape === 'string' && shape !== FADE_MIXED ? shape : '');
   const [inText, setInText] = React.useState('');
@@ -94,14 +101,29 @@ export function FadeDialog({ isOpen, targetCount, values, maxSeconds, presets, f
   const changed = inText !== initial.current.inText || outText !== initial.current.outText
     || inShape !== initial.current.inShape || outShape !== initial.current.outShape;
 
-  const apply = () => {
-    if (!valid) return;
+  const buildEdits = (): FadeDialogEdits => {
     const edits: FadeDialogEdits = {};
     if (inText !== initial.current.inText) edits.fadeIn = Math.min(parse(inText), maxSeconds);
     if (outText !== initial.current.outText) edits.fadeOut = Math.min(parse(outText), maxSeconds);
     if (inShape !== initial.current.inShape && inShape) edits.fadeInShape = inShape;
     if (outShape !== initial.current.outShape && outShape) edits.fadeOutShape = outShape;
-    onApply(edits);
+    return edits;
+  };
+  // The live preview: every valid change goes out as the edits so far
+  // (the host applies them inside its undo gesture). A field typed back
+  // to what it opened with sends an empty edit — the host then restores
+  // that side from its own snapshot. Not on open: nothing has changed.
+  const previewRef = React.useRef(onPreview);
+  React.useEffect(() => { previewRef.current = onPreview; }, [onPreview]);
+  React.useEffect(() => {
+    if (!isOpen || !changed || !valid) return;
+    previewRef.current?.(buildEdits());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inText, outText, inShape, outShape]);
+
+  const apply = () => {
+    if (!valid) return;
+    onApply(buildEdits());
     onClose();
   };
   const onInputKeyDown = (e: React.KeyboardEvent) => {
