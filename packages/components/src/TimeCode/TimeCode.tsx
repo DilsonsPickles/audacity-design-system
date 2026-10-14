@@ -415,14 +415,14 @@ export function TimeCode({
     // Dark-variant chip background is theme-aware: #212433 in the light app
     // theme (unchanged) and #171F25 in dark. The light variant (label editor)
     // stays white.
-    '--timecode-bg': accent ? theme.background.control.button.primary.idle : variant === 'alt' ? theme.background.control.input.idle : isLight ? '#FFFFFF' : theme.background.control.timecode.idle,
+    '--timecode-bg': accent ? theme.accent.secondary : variant === 'alt' ? theme.background.control.input.idle : isLight ? '#FFFFFF' : theme.background.control.timecode.idle,
     '--timecode-text': isLight ? theme.foreground.text.primary : '#f4f5f9',
-    '--timecode-hover': accent ? theme.background.control.button.primary.hover : isLight ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
+    '--timecode-hover': accent ? theme.semantic.warning.border : isLight ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
     '--timecode-border': variant === 'alt' ? theme.border.input.idle : variant === 'light' ? '#D4D5D9' : 'transparent',
     '--timecode-border-focus': theme.border.focus,
-    '--timecode-unit-bg': accent ? theme.background.control.button.primary.idle : variant === 'alt' ? theme.background.control.input.idle : isLight ? '#FFFFFF' : theme.background.control.timecode.idle,
+    '--timecode-unit-bg': accent ? theme.accent.secondary : variant === 'alt' ? theme.background.control.input.idle : isLight ? '#FFFFFF' : theme.background.control.timecode.idle,
     '--timecode-unit-text': variant === 'alt' ? theme.foreground.text.secondary : isLight ? theme.foreground.text.primary : '#c5c6cd',
-    '--timecode-unit-hover-bg': accent ? theme.background.control.button.primary.hover : isLight ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
+    '--timecode-unit-hover-bg': accent ? theme.semantic.warning.border : isLight ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
     '--timecode-unit-hover-text': isLight ? theme.foreground.text.primary : '#f4f5f9',
   } as React.CSSProperties;
 

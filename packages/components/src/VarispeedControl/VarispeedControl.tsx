@@ -23,9 +23,11 @@
  *     bold Lato digits ("0.500") with a "×" unit chip. A click on the
  *     digits TYPES A VALUE, as the BPM display does ("what if I wanted to
  *     enter a very specific value?", 2026-10-14): Enter commits (clamped
- *     to the range), Escape reverts. The wheel over the face dials the
- *     speed (a tenth per notch, Shift a hundredth, up = faster); ↑ ↓ on
- *     the face do the same, and the slider's own arrows step a hundredth.
+ *     to the range), Escape reverts. ↑ ↓ with the digits focused step a
+ *     tenth (Shift a hundredth); the slider's own arrows step a hundredth.
+ *     NO WHEEL ("let's lose the scroll on the number readout", 2026-10-14):
+ *     the chip's wheel went with the chip — a scroll over the toolbar
+ *     should never change the speed.
  *   The popover with the big slider and the ½× / 1× / 2× presets is gone
  *   with the caret (the same day): the slider is on the face now.
  * Until then it was a split CHIP in the transport group (Logic's button
@@ -39,11 +41,7 @@
  * Tape-style, as AU3's: the pitch follows the speed; no preserve-pitch
  * (Dan Fabulich's AU4 branch pr-12271 has one, default off).
  *
- * THE WHEEL turns the DIAL ONLY ("you think scrolling should turn it
- * on?", 2026-10-07 — trackpad inertia or a scroll meant for the canvas
- * would silently engage a playback mode); the UP gesture = faster, a
- * positive deltaY under macOS natural scrolling. Session state, not a
- * preference.
+ * Session state, not a preference.
  */
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
@@ -78,14 +76,11 @@ export const parseVarispeed = (text: string): number | null => {
   return Number.isFinite(n) && text.trim() !== '' ? clampSpeed(n) : null;
 };
 
-/** The speed one wheel notch away: a tenth of a speed, on the tenths grid */
+/** The speed one arrow step away: a tenth of a speed, on the tenths grid */
 export const stepVarispeed = (speed: number, notches: number) => clampSpeed((Math.round(speed * 10) + notches) / 10);
-/** The fine step (Shift+wheel, "a fine tune precise change", 2026-10-07):
- *  a hundredth of a speed per notch, on the hundredths grid */
+/** The fine step (Shift+arrow, "a fine tune precise change", 2026-10-07):
+ *  a hundredth of a speed per step, on the hundredths grid */
 export const stepVarispeedFine = (speed: number, notches: number) => clampSpeed((Math.round(speed * 100) + notches) / 100);
-/** Wheel travel per notch — trackpads deliver many small deltas, mice one
- *  large one; both accumulate to steps of this many pixels */
-const WHEEL_NOTCH_PX = 24;
 /** The detent: a mouse drag this close to 1× lands on 1× (the 0.9–1.1 band) */
 export const DETENT_SPEED = 0.1;
 
@@ -97,8 +92,8 @@ export interface VarispeedControlProps {
   /** A speed SET — the popover's slider or a preset, or a value typed into
    *  the display; 1× is off */
   onChange: (speed: number) => void;
-  /** A speed turned to by the wheel or the arrow keys — the same value;
-   *  a separate name from the chip days, hosts may pass onChange */
+  /** A speed turned to by the arrow keys — the same value; a separate
+   *  name from the chip days, hosts may pass onChange */
   onDial: (speed: number) => void;
 }
 
@@ -110,35 +105,6 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
   const draggingRef = React.useRef(false);
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState('');
-  // Ref-mirror (see CLAUDE.md): the wheel listener is native — React's
-  // onWheel is passive and cannot preventDefault — bound once, reading
-  // the live speed and handler through refs.
-  const liveRef = React.useRef({ speed, onDial });
-  React.useEffect(() => { liveRef.current = { speed, onDial }; }, [speed, onDial]);
-  React.useEffect(() => {
-    const display = displayRef.current;
-    if (!display) return;
-    let travel = 0;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      // Shift turns a mouse wheel's vertical delta horizontal (Chromium,
-      // macOS); read whichever axis carries it
-      const delta = e.deltaY !== 0 ? e.deltaY : e.shiftKey ? e.deltaX : 0;
-      // deltaMode 1 = lines (Firefox mice): a line is a notch
-      travel += e.deltaMode === 1 ? delta * WHEEL_NOTCH_PX : delta;
-      const notches = Math.trunc(travel / WHEEL_NOTCH_PX);
-      if (notches === 0) return;
-      travel -= notches * WHEEL_NOTCH_PX;
-      // Shift = the fine step, a hundredth per notch
-      const step = e.shiftKey ? stepVarispeedFine : stepVarispeed;
-      // The UP gesture = faster: a POSITIVE deltaY under macOS natural
-      // scrolling, the default ("you'd think scrolling up would make it
-      // faster", 2026-10-07)
-      liveRef.current.onDial(step(liveRef.current.speed, notches));
-    };
-    display.addEventListener('wheel', onWheel, { passive: false });
-    return () => display.removeEventListener('wheel', onWheel);
-  }, []);
   // Typing: the input mounts, then takes the focus with its text selected
   React.useEffect(() => {
     if (!editing) return;
@@ -162,8 +128,11 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
     '--timecode-unit-text': '#c5c6cd',
     '--timecode-unit-hover-bg': '#4a5068',
     '--timecode-unit-hover-text': '#f4f5f9',
-    '--varispeed-on-bg': theme.background.control.button.primary.idle,
-    '--varispeed-on-hover-bg': theme.background.control.button.primary.hover,
+    // THE ON COLOUR IS AMBER (2026-10-14, "while I like the colour change,
+    // the blue is awful"): the theme's secondary accent — the master
+    // track's gold, the tape machine's varispeed lamp, Logic's orange LCD
+    '--varispeed-on-bg': theme.accent.secondary,
+    '--varispeed-on-hover-bg': theme.semantic.warning.border,
     '--focus-color': theme.border.focus,
     '--varispeed-label-text': theme.foreground.text.primary,
     // The 1× mark's x on the 72px mini slider: the native 10px thumb keeps
@@ -189,9 +158,8 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
         role="group"
         aria-label="Playback speed"
         onKeyDown={(e) => {
-          // ↑ ↓ anywhere on the face (the slider's own arrows step it a
-          // hundredth; these are the wheel's tenth) — and Enter / Space on
-          // the digits type a value
+          // ↑ ↓ with the digits focused step a tenth (the slider's own
+          // arrows step it a hundredth)
           if (editing || e.target === sliderRef.current) return;
           if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
             e.preventDefault();

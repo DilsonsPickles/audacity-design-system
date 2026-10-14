@@ -112,7 +112,7 @@ describe('VarispeedControl (2026-10-07; the timecode-family readout with a mini 
     expect(onDial).not.toHaveBeenCalled();
   });
 
-  it('↑ ↓ on the face (not the slider) dial the speed a tenth (Shift a hundredth) — the wheel\'s rule', () => {
+  it('↑ ↓ on the face (not the slider) step the speed a tenth (Shift a hundredth)', () => {
     const { display, onDial, onChange } = mount({ speed: 0.5, enabled: false });
     fireEvent.keyDown(display, { key: 'ArrowUp' });
     expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.6, 9));
@@ -121,38 +121,14 @@ describe('VarispeedControl (2026-10-07; the timecode-family readout with a mini 
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('a wheel notch on the face steps the speed a tenth — the up gesture = faster — on the tenths grid, as a DIAL turn', () => {
+  it('no wheel on the readout (2026-10-14): a scroll over it changes nothing', () => {
     expect(stepVarispeed(0.5, 5)).toBeCloseTo(1, 9);
-    expect(stepVarispeed(1, -5)).toBeCloseTo(0.5, 9);
-    expect(stepVarispeed(0.53, 1)).toBeCloseTo(0.6, 9); // snaps to the grid first
-    expect(stepVarispeed(3, 1)).toBe(3);
-    expect(stepVarispeed(0.01, -1)).toBe(0.01);
+    expect(stepVarispeed(0.53, 1)).toBeCloseTo(0.6, 9); // the arrow step snaps to the grid first
+    expect(stepVarispeedFine(0.504, -1)).toBeCloseTo(0.49, 9);
     const { display, onChange, onDial } = mount({ speed: 0.5, enabled: false });
-    // Positive deltaY is the UP gesture under macOS natural scrolling (the default) = faster
     fireEvent.wheel(display, { deltaY: 100 });
-    expect(onDial).toHaveBeenCalledTimes(1);
-    expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.9, 9)); // 100px = four 24px notches
-    fireEvent.wheel(display, { deltaY: -10 }); // 100 left 4 of travel; −10 brings it to −6
-    expect(onDial).toHaveBeenCalledTimes(1); // under a notch: accumulates
-    fireEvent.wheel(display, { deltaY: -18 }); // −24 = one notch down = slower
-    expect(onDial).toHaveBeenCalledTimes(2);
-    expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.4, 9));
-    expect(onChange).not.toHaveBeenCalled(); // the dial goes out through onDial
-  });
-
-  it('Shift+wheel is the fine step: a hundredth of a speed per notch on the hundredths grid, read from either axis', () => {
-    expect(stepVarispeedFine(0.5, 1)).toBeCloseTo(0.51, 9);
-    expect(stepVarispeedFine(0.504, -1)).toBeCloseTo(0.49, 9); // snaps to the grid first
-    expect(stepVarispeedFine(3, 1)).toBe(3);
-    expect(stepVarispeedFine(0.01, -1)).toBe(0.01);
-    const { display, onDial } = mount({ speed: 0.5, enabled: false });
-    fireEvent.wheel(display, { deltaY: 24, shiftKey: true });
-    expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.51, 9));
-    // Chromium turns a Shift+wheel's vertical delta horizontal: the X axis counts too
-    fireEvent.wheel(display, { deltaY: 0, deltaX: 48, shiftKey: true });
-    expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.52, 9));
-    // Without Shift, a horizontal delta is not a notch
-    fireEvent.wheel(display, { deltaY: 0, deltaX: 48 });
-    expect(onDial).toHaveBeenCalledTimes(2);
+    fireEvent.wheel(display, { deltaY: -100, shiftKey: true });
+    expect(onDial).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
   });
 });
