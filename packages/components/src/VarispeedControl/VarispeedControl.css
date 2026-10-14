@@ -51,53 +51,12 @@
   gap: 1px;
 }
 
-.varispeed__digits {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  height: 28px;
-  padding: 0 2px;
-  border: 0;
-  background: transparent;
-  font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 28px;
-  color: var(--timecode-text);
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.varispeed__digits:hover {
-  background-color: var(--timecode-hover);
-}
-
-/* The typed value, the BPM display's edit field */
-.varispeed__input {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 28px;
-  padding: 0 2px;
-  border: 0;
-  outline: 0;
-  background-color: #677ce4;
-  color: #f4f5f9;
-  font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 28px;
-  text-align: center;
-  caret-color: #f4f5f9;
-  font-variant-numeric: tabular-nums;
-}
+/* The digit cells are TimeCodeDigit's (TimeCodeDigit.css); the box's
+   padding and the 1px seams come from the face */
 
 /* The mini slider sits on the TOOLBAR between the caption and the dark
-   number box (2026-10-14): a thin track in the border tone, a small thumb in
-   the text tone (amber while on), and the 1× mark */
+   number box: the design system's Slider (the volume slider's track, fill
+   and handle), 72px wide, with the 1× mark under it */
 .varispeed__track {
   position: relative;
   display: inline-flex;
@@ -106,60 +65,9 @@
   padding: 0 2px;
 }
 
-.varispeed__slider {
-  -webkit-appearance: none;
-  appearance: none;
+.varispeed__track .slider.varispeed__slider {
+  flex: none;
   width: 72px;
-  height: 28px;
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.varispeed__slider:focus-visible {
-  outline: 2px solid var(--focus-color);
-  outline-offset: -2px;
-  border-radius: 2px;
-}
-
-.varispeed__slider::-webkit-slider-runnable-track {
-  height: 3px;
-  border-radius: 2px;
-  background: var(--varispeed-track);
-}
-
-.varispeed__slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 10px;
-  height: 10px;
-  margin-top: -3.5px;
-  border-radius: 50%;
-  border: 0;
-  background: var(--varispeed-thumb);
-  transition: background-color 0.12s ease;
-}
-
-.varispeed__slider::-moz-range-track {
-  height: 3px;
-  border-radius: 2px;
-  background: var(--varispeed-track);
-}
-
-.varispeed__slider::-moz-range-thumb {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 0;
-  background: var(--varispeed-thumb);
-}
-
-.varispeed[data-varispeed-active] .varispeed__slider::-webkit-slider-thumb {
-  background: var(--varispeed-on-bg);
-}
-
-.varispeed[data-varispeed-active] .varispeed__slider::-moz-range-thumb {
-  background: var(--varispeed-on-bg);
 }
 
 /* The 1× mark: a tick under the track where the thumb's centre sits at
@@ -173,7 +81,8 @@
   height: 9px;
   margin-left: -0.5px;
   transform: translateY(-50%);
-  background: var(--varispeed-thumb);
+  background: var(--varispeed-mark);
   opacity: 0.45;
   pointer-events: none;
+  z-index: 1;
 }

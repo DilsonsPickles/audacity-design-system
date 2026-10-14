@@ -20,10 +20,13 @@
  *   - the DISPLAY, on the dark face: the MINI SLIDER with its 1× mark —
  *     the thumb's place is the state, off the mark is visibly on, and a
  *     drag near the mark snaps to it (DETENT_SPEED) — then the speed as
- *     bold Lato digits ("0.500") with a "×" unit chip. A click on the
- *     digits TYPES A VALUE, as the BPM display does ("what if I wanted to
- *     enter a very specific value?", 2026-10-14): Enter commits (clamped
- *     to the range), Escape reverts. ↑ ↓ with the digits focused step a
+ *     the TIMECODE'S DIGIT CELLS ("0.500", one TimeCodeDigit per digit,
+ *     a "." and a "×" unit chip — "make the number units like the other
+ *     timecode", 2026-10-14): a click on a digit edits THAT digit, as the
+ *     timecode does (0–9 set it and move on, ↑ ↓ wrap it, ← → move,
+ *     Enter / Escape / a click outside leave), every change committing at
+ *     once — which is the "very specific value" (0.875 is three
+ *     keystrokes). ↑ ↓ with the box focused and no digit active step a
  *     tenth (Shift a hundredth); the slider's own arrows step a hundredth.
  *     NO WHEEL ("let's lose the scroll on the number readout", 2026-10-14):
  *     the chip's wheel went with the chip — a scroll over the toolbar
@@ -45,7 +48,9 @@
  */
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
+import { Slider } from '../Slider';
 import { TimeCodeUnit } from '../TimeCode/TimeCodeUnit';
+import { TimeCodeDigit } from '../TimeCode/TimeCodeDigit';
 import './VarispeedControl.css';
 
 /** AU3's range: SPEED_SLIDER 0.01..3.0 */
@@ -100,24 +105,67 @@ export interface VarispeedControlProps {
 export function VarispeedControl({ speed, enabled, onChange, onDial }: VarispeedControlProps) {
   const { theme } = useTheme();
   const displayRef = React.useRef<HTMLDivElement>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
-  const sliderRef = React.useRef<HTMLInputElement>(null);
   const draggingRef = React.useRef(false);
-  const [editing, setEditing] = React.useState(false);
-  const [draft, setDraft] = React.useState('');
-  // Typing: the input mounts, then takes the focus with its text selected
-  React.useEffect(() => {
-    if (!editing) return;
-    const id = requestAnimationFrame(() => { inputRef.current?.focus(); inputRef.current?.select(); });
-    return () => cancelAnimationFrame(id);
-  }, [editing]);
-  const beginEdit = () => { setDraft(formatVarispeedDigits(speed)); setEditing(true); };
-  const commitDraft = () => {
-    const parsed = parseVarispeed(draft);
-    if (parsed !== null) onChange(parsed);
-    setEditing(false);
+  // DIGIT-BY-DIGIT EDITING, THE TIMECODE'S (2026-10-14, "make the number
+  // units like the other timecode" — one digit per cell, TimeCodeDigit):
+  // a click on a digit makes it the active cell; 0–9 set it and move on,
+  // ↑ ↓ wrap it 0–9, ← → move, Enter / Escape / a click outside leave;
+  // every change commits at once through onChange (the timecode's rule),
+  // clamped to the range. The digits are "d.ddd": indices 0..3.
+  const [editingDigit, setEditingDigit] = React.useState<number | null>(null);
+  const [hoverDigit, setHoverDigit] = React.useState<number | null>(null);
+  const digitRefs = React.useRef<Array<HTMLSpanElement | null>>([]);
+  const speedRef = React.useRef(speed);
+  React.useEffect(() => { speedRef.current = speed; }, [speed]);
+  const onChangeRef = React.useRef(onChange);
+  React.useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+  /** The four digits of "d.ddd" */
+  const digitsOf = (v: number) => formatVarispeedDigits(v).replace('.', '').split('');
+  const speedFromDigits = (d: string[]) => clampSpeed(Number(`${d[0]}.${d[1]}${d[2]}${d[3]}`));
+  const setDigit = (index: number, digit: string) => {
+    const d = digitsOf(speedRef.current);
+    d[index] = digit;
+    onChangeRef.current(speedFromDigits(d));
   };
-  const cancelEdit = () => setEditing(false);
+  const focusDigit = (index: number) => {
+    setEditingDigit(index);
+    digitRefs.current[index]?.focus();
+  };
+  React.useEffect(() => {
+    if (editingDigit === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Tab') { setEditingDigit(null); return; }
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault(); e.stopPropagation();
+        setDigit(editingDigit, e.key);
+        if (editingDigit < 3) focusDigit(editingDigit + 1);
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault(); e.stopPropagation();
+        const cur = Number(digitsOf(speedRef.current)[editingDigit]);
+        setDigit(editingDigit, String(e.key === 'ArrowUp' ? (cur + 1) % 10 : (cur + 9) % 10));
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault(); e.stopPropagation();
+        focusDigit((editingDigit + 1) % 4);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault(); e.stopPropagation();
+        focusDigit((editingDigit + 3) % 4);
+      } else if (e.key === 'Enter' || e.key === 'Escape') {
+        e.preventDefault(); e.stopPropagation();
+        setEditingDigit(null);
+        displayRef.current?.focus();
+      }
+    };
+    const onClick = (e: MouseEvent) => {
+      if (displayRef.current && !displayRef.current.contains(e.target as Node)) setEditingDigit(null);
+    };
+    document.addEventListener('keydown', onKey, true);
+    document.addEventListener('mousedown', onClick, true);
+    return () => {
+      document.removeEventListener('keydown', onKey, true);
+      document.removeEventListener('mousedown', onClick, true);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingDigit]);
 
   // The timecode's own tokens, as BpmStepper takes them — the family's face
   const style = {
@@ -135,11 +183,10 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
     '--varispeed-on-hover-bg': theme.semantic.warning.border,
     '--focus-color': theme.border.focus,
     '--varispeed-label-text': theme.foreground.text.primary,
-    '--varispeed-track': theme.border.default,
-    '--varispeed-thumb': theme.foreground.text.primary,
-    // The 1× mark's x on the 72px mini slider: the native 10px thumb keeps
-    // inside the track, so its centre at 1× is f·(72−10)+5
-    '--varispeed-unity': `${Math.round((VARISPEED_UNITY_FRACTION * (72 - 10) + 5) * 10) / 10}px`,
+    '--varispeed-mark': theme.foreground.text.primary,
+    // The 1× mark's x on the 72px Slider: its 16px handle keeps inside the
+    // track (left = f·W − f·16), so the handle's centre at 1× is f·(72−16)+8
+    '--varispeed-unity': `${Math.round((VARISPEED_UNITY_FRACTION * (72 - 16) + 8) * 10) / 10}px`,
   } as React.CSSProperties;
   return (
     <span
@@ -161,24 +208,26 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
           snaps to it (Dan's sticky 1×, pr-12271: drag only — the keys and
           the wheel step through), so letting go near normal lands on
           normal, which is off. */}
-      <span className="varispeed__track" data-varispeed-track>
-        <input
-          ref={sliderRef}
-          type="range"
-          className="varispeed__slider"
-          data-varispeed-slider
+      <span
+        className="varispeed__track"
+        data-varispeed-track
+        // The detent is a DRAG's: pointer down/up on the slider's input
+        onPointerDownCapture={() => { draggingRef.current = true; }}
+        onPointerUpCapture={() => { draggingRef.current = false; }}
+        onPointerCancelCapture={() => { draggingRef.current = false; }}
+      >
+        {/* The design system's Slider — the track header's volume slider
+            ("make the slider look like the other sliders in app",
+            2026-10-14): its track, fill and 16px handle, 72px wide here */}
+        <Slider
+          value={speedToSlider(speed)}
           min={1}
           max={300}
-          step={1}
-          value={speedToSlider(speed)}
-          aria-label="Playback speed"
-          aria-valuetext={formatVarispeed(speed)}
-          onPointerDown={() => { draggingRef.current = true; }}
-          onPointerUp={() => { draggingRef.current = false; }}
-          onPointerCancel={() => { draggingRef.current = false; }}
-          onChange={(e) => {
-            const v = sliderToSpeed(Number(e.target.value));
-            onChange(draggingRef.current && Math.abs(v - 1) <= DETENT_SPEED ? 1 : v);
+          ariaLabel={`Playback speed ${formatVarispeed(speed)}`}
+          className="varispeed__slider"
+          onChange={(v) => {
+            const next = sliderToSpeed(v);
+            onChange(draggingRef.current && Math.abs(next - 1) <= DETENT_SPEED ? 1 : next);
           }}
         />
         <span className="varispeed__unity" data-varispeed-unity aria-hidden="true" />
@@ -189,44 +238,37 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
         className="varispeed__display"
         data-varispeed-display
         role="group"
-        aria-label="Playback speed"
+        aria-label={`Playback speed ${formatVarispeed(speed)}`}
+        tabIndex={0}
         onKeyDown={(e) => {
-          // ↑ ↓ with the digits focused step a tenth (the slider's own
-          // arrows step it a hundredth)
-          if (editing || e.target === sliderRef.current) return;
+          if (editingDigit !== null) return;
+          // With the box focused and no digit active: ↑ ↓ step a tenth
+          // (Shift a hundredth), Enter starts editing at the first digit
           if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
             e.preventDefault();
             const step = e.shiftKey ? stepVarispeedFine : stepVarispeed;
             onDial(step(speed, e.key === 'ArrowUp' ? 1 : -1));
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            focusDigit(0);
           }
         }}
       >
-        {editing ? (
-          <input
-            ref={inputRef}
-            className="varispeed__input"
-            data-varispeed-input
-            type="text"
-            inputMode="decimal"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commitDraft}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); commitDraft(); }
-              else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cancelEdit(); }
-            }}
-          />
-        ) : (
-          <button
-            type="button"
-            className="varispeed__digits"
-            data-varispeed-readout
-            aria-label={`Playback speed ${formatVarispeed(speed)}, type a value`}
-            onClick={beginEdit}
-          >
-            {formatVarispeedDigits(speed)}
-          </button>
-        )}
+        {digitsOf(speed).map((digit, i) => (
+          <React.Fragment key={i}>
+            {i === 1 && <TimeCodeUnit unit="period" />}
+            <TimeCodeDigit
+              ref={(el) => { digitRefs.current[i] = el; }}
+              value={digit}
+              state={editingDigit === i ? 'active' : hoverDigit === i ? 'hover' : 'default'}
+              onClick={() => focusDigit(i)}
+              onMouseEnter={() => setHoverDigit(i)}
+              onMouseLeave={() => setHoverDigit(null)}
+              tabIndex={-1}
+              className="varispeed__digit"
+            />
+          </React.Fragment>
+        ))}
         <TimeCodeUnit unit="times" />
       </div>
       </span>

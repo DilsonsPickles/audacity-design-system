@@ -19,7 +19,7 @@ function mount(props: Partial<React.ComponentProps<typeof VarispeedControl>> = {
   );
   const label = utils.container.querySelector('[data-varispeed-label]') as HTMLElement;
   const display = utils.container.querySelector('[data-varispeed-display]') as HTMLDivElement;
-  const slider = utils.container.querySelector('[data-varispeed-slider]') as HTMLInputElement;
+  const slider = utils.container.querySelector('.varispeed__track input[type="range"]') as HTMLInputElement;
   return { ...utils, label, display, slider, onChange, onDial };
 }
 
@@ -48,10 +48,11 @@ describe('VarispeedControl (2026-10-07; the timecode-family readout with a mini 
     expect(slider.max).toBe('300');
     expect(slider.value).toBe('50');
     expect(container.querySelector('[data-varispeed-unity]')).toBeTruthy();
-    expect(container.querySelector('[data-varispeed-readout]')?.textContent).toBe('0.500');
+    expect(Array.from(container.querySelectorAll('.varispeed__digit')).map((c) => c.textContent).join('')).toBe('0500');
     expect(container.querySelector('.timecode-unit[data-unit="times"]')?.textContent).toBe('×');
     expect(container.querySelector('[data-varispeed-active]')).toBeNull();
-    // No caret, no popover
+    // The design system's Slider, as the volume slider; no caret, no popover
+    expect(container.querySelector('.varispeed__track .slider .slider__handle')).toBeTruthy();
     expect(container.querySelector('.varispeed__caret')).toBeNull();
     expect(document.body.querySelector('[data-varispeed-panel]')).toBeNull();
     fireEvent.click(label);
@@ -61,7 +62,7 @@ describe('VarispeedControl (2026-10-07; the timecode-family readout with a mini 
   it('on (the host: the speed is not 1×), the face is lit and reads the speed', () => {
     const { container, slider } = mount({ speed: 2, enabled: true });
     expect(container.querySelector('[data-varispeed-active]')).toBeTruthy();
-    expect(container.querySelector('[data-varispeed-readout]')?.textContent).toBe('2.000');
+    expect(Array.from(container.querySelectorAll('.varispeed__digit')).map((c) => c.textContent).join('')).toBe('2000');
     expect(slider.value).toBe('200');
   });
 
@@ -82,37 +83,43 @@ describe('VarispeedControl (2026-10-07; the timecode-family readout with a mini 
     expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(0.93, 9));
   });
 
-  it('a click on the digits TYPES A VALUE (2026-10-14, "a very specific value"): Enter sets it — clamped; Escape reverts; nonsense sets nothing', () => {
-    expect(parseVarispeed('0.875')).toBeCloseTo(0.875, 9);
-    expect(parseVarispeed('0,875')).toBeCloseTo(0.875, 9);
-    expect(parseVarispeed('2 ×')).toBe(2);
-    expect(parseVarispeed('9')).toBe(3); // clamped to the range
-    expect(parseVarispeed('')).toBeNull();
-    expect(parseVarispeed('fast')).toBeNull();
+  it('the number is the timecode\'s digit cells; a click on a digit edits THAT digit: 0–9 set it and move on, ↑ ↓ wrap it, ← → move, Enter leaves — every change commits at once', () => {
+    expect(parseVarispeed('0,875')).toBeCloseTo(0.875, 9); // the helper stays for hosts
     const { container, onChange, onDial } = mount({ speed: 0.5, enabled: false });
-    fireEvent.click(container.querySelector('[data-varispeed-readout]') as HTMLElement);
-    const input = container.querySelector('[data-varispeed-input]') as HTMLInputElement;
-    expect(input).toBeTruthy();
-    expect(input.value).toBe('0.500');
-    fireEvent.change(input, { target: { value: '0.875' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-    expect(onChange).toHaveBeenCalledWith(0.875);
-    expect(container.querySelector('[data-varispeed-input]')).toBeNull();
-    fireEvent.click(container.querySelector('[data-varispeed-readout]') as HTMLElement);
-    const input2 = container.querySelector('[data-varispeed-input]') as HTMLInputElement;
-    fireEvent.change(input2, { target: { value: '1.25' } });
-    fireEvent.keyDown(input2, { key: 'Escape' });
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(container.querySelector('[data-varispeed-input]')).toBeNull();
-    fireEvent.click(container.querySelector('[data-varispeed-readout]') as HTMLElement);
-    const input3 = container.querySelector('[data-varispeed-input]') as HTMLInputElement;
-    fireEvent.change(input3, { target: { value: 'fast' } });
-    fireEvent.keyDown(input3, { key: 'Enter' });
-    expect(onChange).toHaveBeenCalledTimes(1);
+    const cells = container.querySelectorAll('.varispeed__digit');
+    expect(Array.from(cells).map((c) => c.textContent)).toEqual(['0', '5', '0', '0']);
+    expect(container.querySelector('.timecode-unit[data-unit="period"]')?.textContent).toBe('.');
+    // Click the tenths digit, type 8 → 0.800, the active cell moves to the hundredths
+    fireEvent.click(cells[1]);
+    expect(cells[1].getAttribute('data-state')).toBe('active');
+    fireEvent.keyDown(document, { key: '8' });
+    expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(0.8, 9));
+    expect(cells[2].getAttribute('data-state')).toBe('active');
+    // ↑ wraps the hundredths digit 0 → 1: 0.510 (the host had not re-rendered the 0.8)
+    fireEvent.keyDown(document, { key: 'ArrowUp' });
+    expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(0.51, 9));
+    // ← back to the tenths; ↓ wraps 5 → 4
+    fireEvent.keyDown(document, { key: 'ArrowLeft' });
+    expect(cells[1].getAttribute('data-state')).toBe('active');
+    fireEvent.keyDown(document, { key: 'ArrowDown' });
+    expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(0.4, 9));
+    // Enter leaves editing
+    fireEvent.keyDown(document, { key: 'Enter' });
+    expect(container.querySelector('.varispeed__digit[data-state="active"]')).toBeNull();
     expect(onDial).not.toHaveBeenCalled();
   });
 
-  it('↑ ↓ on the face (not the slider) step the speed a tenth (Shift a hundredth)', () => {
+  it('the units digit clamps to the range: a 9 typed there is 3× (the top), and a click outside the box leaves editing', () => {
+    const { container, onChange } = mount({ speed: 0.5, enabled: false });
+    const cells = container.querySelectorAll('.varispeed__digit');
+    fireEvent.click(cells[0]);
+    fireEvent.keyDown(document, { key: '9' });
+    expect(onChange).toHaveBeenLastCalledWith(3);
+    fireEvent.mouseDown(document.body);
+    expect(container.querySelector('.varispeed__digit[data-state="active"]')).toBeNull();
+  });
+
+  it('↑ ↓ on the box with no digit active step the speed a tenth (Shift a hundredth)', () => {
     const { display, onDial, onChange } = mount({ speed: 0.5, enabled: false });
     fireEvent.keyDown(display, { key: 'ArrowUp' });
     expect(onDial).toHaveBeenLastCalledWith(expect.closeTo(0.6, 9));
