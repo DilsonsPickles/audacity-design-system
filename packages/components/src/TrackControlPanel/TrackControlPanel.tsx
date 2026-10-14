@@ -701,11 +701,20 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     if (!onDoubleClick) return;
     // The name renames on double-click; the controls (knob, slider, M/S,
     // Effects, the kebab) keep their own double-clicks
-    const t = e.target as HTMLElement;
-    if (t.closest('.track-control-panel__track-name-text, input, button, [role="slider"], [role="button"], [contenteditable="true"]')) return;
+    if (isOnControl(e)) return;
     e.preventDefault();
     onDoubleClick();
   };
+
+  // A click on one of the header's CONTROLS stays with the control
+  // (2026-10-14, "should the selection be removed if the user interacts
+  // with the volume slider, mute, effects…?" — no: mixing moves are not
+  // selection gestures, and Audacity 3, Logic and Pro Tools keep the
+  // selection through them). Mute and Solo already stopped their clicks;
+  // the volume slider's bubbled up and selected the track (dropping the
+  // range). One guard for all of them, the double-click's.
+  const isOnControl = (e: React.MouseEvent) =>
+    !!(e.target as HTMLElement).closest('input, button, [role="slider"], [role="button"], [contenteditable="true"], .track-control-panel__track-name-text');
 
   const handleClick = (e: React.MouseEvent) => {
     // A drag-reorder that just committed synthesises a click on the
@@ -716,6 +725,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       e.preventDefault();
       return;
     }
+    if (isOnControl(e)) return;
     // Shift+Click: Range selection (select all tracks between last selected and clicked)
     if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
       onRangeSelection?.();
