@@ -517,18 +517,12 @@ export function useTrackPanelHandlers(
   };
 
   const onClick = (index: number) => {
-    if (timeSelection) {
-      // Active time range: a plain header click TRANSFERS the range to
-      // the clicked track — the reducer mirrors the new scope, making
-      // it the only selected track. The range itself survives.
-      dispatch({
-        type: 'SET_TIME_SELECTION',
-        payload: { ...timeSelection, tracks: [index] },
-      });
-      dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
-      setSelectionAnchor(index);
-      return;
-    }
+    // A plain header click DROPS the time selection (2026-10-14, "if you
+    // have a selection in a track and then you click a track header we
+    // lose the in-track selection") — until then it transferred the
+    // range to the clicked track. The click then selects the track, as
+    // a lane click would.
+    if (timeSelection) dispatch({ type: 'SET_TIME_SELECTION', payload: null });
     selectTrackExclusive(index, dispatch);
     dispatch({ type: 'SET_FOCUSED_TRACK', payload: index });
     // Anchor the just-clicked track so a subsequent

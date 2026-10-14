@@ -1723,6 +1723,22 @@ describe('Track management', () => {
     expect(trackPanels(container)[2].className).not.toContain('track-control-panel--active');
   });
 
+  it('a plain click on a track header DROPS the time selection and selects that track (2026-10-14)', async () => {
+    const rendered = renderApp();
+    const { container, getByText } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+    const selectionEnd = () => (container.querySelector('[aria-label="Selection end"]') as HTMLElement).textContent?.replace(/\s/g, '') ?? '';
+    const zero = selectionEnd();
+    fireEvent.doubleClick(trackPanels(container)[1]);
+    await waitFor(() => expect(selectionEnd()).not.toBe(zero));
+
+    fireEvent.click(trackPanels(container)[0]);
+    await waitFor(() => expect(selectionEnd()).toBe(zero));
+    expect(trackPanels(container)[0].className).toContain('track-control-panel--active');
+    expect(trackPanels(container)[1].className).not.toContain('track-control-panel--active');
+  });
+
   it('deleting a track with content routes through the confirm dialog and reindexes the remaining tracks', async () => {
     const rendered = renderApp();
     const { container, getByText } = rendered;
