@@ -36,6 +36,21 @@ describe('ClipContextMenu › the Figma "Context menu/Clip" frame (43 - Fades, 2
     expect(iconed).toEqual(['Cut', 'Copy', 'Delete']);
   });
 
+  it('"Clip properties…" leads the menu when wired, with ⌥⌘I, and is absent when not (restored 2026-10-14)', () => {
+    const onOpenProperties = vi.fn();
+    const onClose = vi.fn();
+    const { container, getByText } = render(
+      <ThemeProvider>
+        <ClipContextMenu isOpen x={0} y={0} onClose={onClose} os="macos" onOpenProperties={onOpenProperties} />
+      </ThemeProvider>,
+    );
+    expect(labelsOf(container).slice(0, 2)).toEqual(['Clip properties…', 'Rename clip']);
+    expect(container.querySelector('.context-menu-item-shortcut')?.textContent).toBe('⌥⌘I');
+    fireEvent.click(getByText('Clip properties…'));
+    expect(onOpenProperties).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalled();
+  });
+
   it('writes the chords as typed on Windows', () => {
     const { container } = render(
       <ThemeProvider>

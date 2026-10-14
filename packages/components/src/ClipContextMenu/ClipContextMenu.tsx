@@ -37,6 +37,12 @@ export interface ClipContextMenuProps {
   /** The OS whose glyphs the shortcuts are written in (⌘F2 / Ctrl+F2) */
   os?: 'macos' | 'windows';
 
+  /** "Clip properties…" — FIRST, above Rename, as the real build's
+   *  clipcontextmenumodel.cpp has it (restored 2026-10-14, "I can't see
+   *  clip properties in context menu anymore" — the Figma frame omits
+   *  it); the host opens the Clip properties panel (⌥⌘I). Shown only
+   *  when wired. */
+  onOpenProperties?: () => void;
   /** Rename clip */
   onRename?: () => void;
   /** Clip color ▸ — a `ClipColor` id from the palette, or `'track'` to
@@ -95,7 +101,7 @@ const chord = (shortcut: string, os: 'macos' | 'windows') => formatPaletteShortc
  * menu/Clip" frame (43 - Fades, node 14458:1222; 2026-10-14) and the
  * real build's clipcontextmenumodel.cpp, in their order:
  *
- *   Rename clip · Clip color ▸ | Cut · Copy · Duplicate · Delete |
+ *   Clip properties… · Rename clip · Clip color ▸ | Cut · Copy · Duplicate · Delete |
  *   Cut and… ▸ · Delete and… ▸ | Edit fades | Split · Split at silences |
  *   ✓ Stretch with tempo changes · Open pitch and speed dialog ·
  *   Reset pitch and speed · Render pitch and speed
@@ -110,6 +116,7 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
   x,
   y,
   os = 'macos',
+  onOpenProperties,
   onRename,
   onColorChange,
   onCut,
@@ -139,6 +146,9 @@ export const ClipContextMenu: React.FC<ClipContextMenuProps> = ({
 
   return (
     <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} className="clip-context-menu" autoFocus={autoFocus} style={style}>
+      {onOpenProperties && (
+        <ContextMenuItem label="Clip properties…" shortcut={chord('Ctrl+Alt+I', os)} onClick={onOpenProperties} onClose={onClose} />
+      )}
       <ContextMenuItem label="Rename clip" shortcut={chord('Ctrl+F2', os)} onClick={onRename} onClose={onClose} />
 
       <ContextMenuItem label="Clip color" hasSubmenu onClose={onClose}>

@@ -9,6 +9,7 @@ import { useLoopRegionContext } from '../contexts/LoopRegionContext';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { useTracks } from '../contexts/TracksContext';
 import type { Clip } from '../contexts/TracksContext';
+import { useClipProperties } from '../contexts/ClipPropertiesContext';
 import type { ClipboardState } from '../hooks/useKeyboardShortcuts';
 import { FadeDialog, FADE_MIXED, type FadeDialogEdits, type FadeDialogValues } from './FadeDialog';
 import { fadeTargets } from '../utils/fadeTargets';
@@ -61,6 +62,7 @@ export function AppContextMenus({
 }: AppContextMenusProps) {
   const { state, dispatch } = useTracks();
   const { tracks, masterEffects } = state;
+  const { openClipProperties } = useClipProperties();
 
   // "Fade-in length…" / "Fade-out length…" from the clip menu and the
   // handle menu, and ⌥F (useFadeDialogHotkey): the FADES dialog on the
@@ -212,6 +214,17 @@ export function AppContextMenus({
             os={os}
             autoFocus={clipContextMenu.openedViaKeyboard}
             onClose={() => setClipContextMenu(null)}
+            onOpenProperties={() => {
+              // Opening the panel ON a clip selects that clip (2026-10-02),
+              // so the panel shows it whatever has the focus — the menu
+              // itself selects nothing on open (2026-10-14); this is the
+              // action's point. The panel resolves focused → single
+              // selected, and the focus returns to the clip as the menu
+              // closes.
+              if (!targetClip?.selected) dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId } });
+              openClipProperties({ trackIndex, clipId });
+              setClipContextMenu(null);
+            }}
             onRename={() => {
               setClipContextMenu(null);
             }}
