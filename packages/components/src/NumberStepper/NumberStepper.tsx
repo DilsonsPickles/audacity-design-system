@@ -51,6 +51,13 @@ export interface NumberStepperProps {
    * Maximum value
    */
   max?: number;
+  /**
+   * A unit the field keeps after its number ("1.5 s"): the arrows write
+   * it back whatever the text had, and a bare number typed is given it
+   * when the field is left (2026-10-14, the Fades dialog's "s"). The
+   * value string carries it; the host parses it off.
+   */
+  unit?: string;
 }
 
 /**
@@ -68,6 +75,7 @@ export const NumberStepper = React.forwardRef<HTMLInputElement, NumberStepperPro
   step = 1,
   min,
   max,
+  unit: unitProp,
 }, ref) => {
   const { theme } = useTheme();
   const [internalValue, setInternalValue] = useState(defaultValue);
@@ -104,7 +112,7 @@ export const NumberStepper = React.forwardRef<HTMLInputElement, NumberStepperPro
     // Extract numeric value from string (e.g., "20 dB" -> 20)
     const match = currentValue.match(/-?\d+\.?\d*/);
     const numericValue = match ? parseFloat(match[0]) : 0;
-    const unit = currentValue.replace(match?.[0] || '', '').trim();
+    const unit = unitProp ?? currentValue.replace(match?.[0] || '', '').trim();
 
     let newValue = numericValue + step;
     if (max !== undefined && newValue > max) {
@@ -125,7 +133,7 @@ export const NumberStepper = React.forwardRef<HTMLInputElement, NumberStepperPro
     // Extract numeric value from string
     const match = currentValue.match(/-?\d+\.?\d*/);
     const numericValue = match ? parseFloat(match[0]) : 0;
-    const unit = currentValue.replace(match?.[0] || '', '').trim();
+    const unit = unitProp ?? currentValue.replace(match?.[0] || '', '').trim();
 
     let newValue = numericValue - step;
     if (min !== undefined && newValue < min) {
@@ -171,6 +179,12 @@ export const NumberStepper = React.forwardRef<HTMLInputElement, NumberStepperPro
   const handleInputBlur = () => {
     setIsFocused(false);
     setIsEditMode(false); // Exit edit mode when losing focus
+    // A bare number typed into a field with a unit gets the unit back
+    if (unitProp && currentValue.trim() !== '' && /^-?\d*\.?\d+$/.test(currentValue.trim())) {
+      const withUnit = `${currentValue.trim()} ${unitProp}`;
+      if (!isControlled) setInternalValue(withUnit);
+      onChange?.(withUnit);
+    }
   };
 
   const handleInputClick = () => {

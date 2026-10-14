@@ -40,8 +40,8 @@ const single: FadeDialogValues = { in: { seconds: 1, shape: 'default' }, out: { 
 describe('the fades dialog (2026-10-13)', () => {
   it('prefills both fades, focuses the side it was opened for, and applies only what changed', async () => {
     const { length, shape, applyButton, onApply, onClose } = setup(single, { focusSide: 'out' });
-    expect(length('in').value).toBe('1');
-    expect(length('out').value).toBe('0.5');
+    expect(length('in').value).toBe('1 s');
+    expect(length('out').value).toBe('0.5 s');
     expect(shape('in').getAttribute('data-shape')).toBe('default');
     expect(shape('out').getAttribute('data-shape')).toBe('linear');
     await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });

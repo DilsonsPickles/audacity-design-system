@@ -63,7 +63,12 @@ export interface FadeDialogProps {
  * (2026-10-07): "Fade-in" / "Fade-out", hyphenated, are the nouns.
  */
 export function FadeDialog({ isOpen, targetCount, values, maxSeconds, presets, focusSide, onApply, onPreview, onClose, os = 'macos' }: FadeDialogProps) {
-  const textOf = (seconds: number | FadeMixed) => (seconds === FADE_MIXED ? '' : String(+seconds.toFixed(3)));
+  // The field reads "1.5 s" — the unit IN the field, the label just
+  // "Length" (user decision 2026-10-14, "remove (seconds) from the label,
+  // we should see the type in the input field as s"); the stepper keeps a
+  // unit through its arrows and gives a bare number its unit back on blur
+  // (NumberStepper's `unit`), parse() ignores it
+  const textOf = (seconds: number | FadeMixed) => (seconds === FADE_MIXED ? '' : `${+seconds.toFixed(3)} s`);
   const shapeOf = (shape: string | undefined | FadeMixed) => (typeof shape === 'string' && shape !== FADE_MIXED ? shape : '');
   const [inText, setInText] = React.useState('');
   const [outText, setOutText] = React.useState('');
@@ -93,18 +98,23 @@ export function FadeDialog({ isOpen, targetCount, values, maxSeconds, presets, f
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, focusSide]);
 
-  const parse = (text: string) => Number(text.trim().replace(',', '.'));
+  const parse = (text: string) => Number(text.trim().replace(/\s*s(ec(onds?)?)?\.?$/i, '').trim().replace(',', '.'));
   // A length field is valid untouched (blank on a mixed selection is
   // "leave them"), or with a finite non-negative number
   const lengthValid = (text: string, start: string) => text === start || (text.trim() !== '' && Number.isFinite(parse(text)) && parse(text) >= 0);
   const valid = lengthValid(inText, initial.current.inText) && lengthValid(outText, initial.current.outText);
-  const changed = inText !== initial.current.inText || outText !== initial.current.outText
+  // A length is changed by VALUE: "1" typed back over "1 s" is the opening
+  // value again, not an edit (a blank start — a mixed selection — compares
+  // by text, since it has no value)
+  const lengthChanged = (text: string, start: string) =>
+    text !== start && !(start !== '' && lengthValid(text, start) && parse(text) === parse(start));
+  const changed = lengthChanged(inText, initial.current.inText) || lengthChanged(outText, initial.current.outText)
     || inShape !== initial.current.inShape || outShape !== initial.current.outShape;
 
   const buildEdits = (): FadeDialogEdits => {
     const edits: FadeDialogEdits = {};
-    if (inText !== initial.current.inText) edits.fadeIn = Math.min(parse(inText), maxSeconds);
-    if (outText !== initial.current.outText) edits.fadeOut = Math.min(parse(outText), maxSeconds);
+    if (lengthChanged(inText, initial.current.inText)) edits.fadeIn = Math.min(parse(inText), maxSeconds);
+    if (lengthChanged(outText, initial.current.outText)) edits.fadeOut = Math.min(parse(outText), maxSeconds);
     if (inShape !== initial.current.inShape && inShape) edits.fadeInShape = inShape;
     if (outShape !== initial.current.outShape && outShape) edits.fadeOutShape = outShape;
     return edits;
@@ -148,7 +158,7 @@ export function FadeDialog({ isOpen, targetCount, values, maxSeconds, presets, f
       <legend style={{ fontSize: '12px', fontWeight: 600, padding: 0, marginBottom: '2px' }}>{label}</legend>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', fontWeight: 400 }}>
-          Length (seconds)
+          Length
           {/* The design system's stepper (user request 2026-10-13, "in the
               clip fade dialog, can we use our steppers please?"), as the
               Clip properties panel's fields: a tenth per arrow, held to
@@ -164,6 +174,7 @@ export function FadeDialog({ isOpen, targetCount, values, maxSeconds, presets, f
               min={0}
               max={maxSeconds}
               step={0.1}
+              unit="s"
               width="100%"
             />
           </div>

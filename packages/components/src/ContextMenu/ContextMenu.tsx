@@ -1,4 +1,7 @@
-import React, { useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
+
+/** The menu keeps this far from every edge of the viewport */
+const EDGE_MARGIN = 10;
 import { createPortal } from 'react-dom';
 import { useTheme } from '../ThemeProvider';
 import './ContextMenu.css';
@@ -271,43 +274,32 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     return () => doc.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen, onClose]);
 
-  // Adjust position if menu would go off-screen
-  useEffect(() => {
-    if (!isOpen || !menuRef.current) return;
-
+  // KEEP THE MENU ON SCREEN (2026-10-14, "context menu is being cut
+  // off": the clip menu opened near the window's bottom ran past it).
+  // The clamp is STATE, not an imperative write to menu.style — the
+  // style prop below re-applied the raw x / y on every re-render (a
+  // hover anywhere in the host re-rendered the menu), undoing the
+  // correction a moment after it was made — and it measures
+  // offsetWidth / offsetHeight, the layout size, not a
+  // getBoundingClientRect() that the open animation's scale(0.95) shrinks
+  // for the first frame. A layout effect, so the first paint is already
+  // in place. 10px from every edge.
+  const [clamped, setClamped] = useState<{ x: number; y: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!isOpen || !menuRef.current) { setClamped(null); return; }
     const menu = menuRef.current;
-    const rect = menu.getBoundingClientRect();
     const win = menu.ownerDocument.defaultView ?? window;
-    const viewportWidth = win.innerWidth;
-    const viewportHeight = win.innerHeight;
-
-    let adjustedX = x;
-    let adjustedY = y;
-
-    // Check if menu goes off right edge
-    if (rect.right > viewportWidth) {
-      adjustedX = viewportWidth - rect.width - 10;
-    }
-
-    // Check if menu goes off bottom edge
-    if (rect.bottom > viewportHeight) {
-      adjustedY = viewportHeight - rect.height - 10;
-    }
-
-    // Check if menu goes off left edge
-    if (adjustedX < 0) {
-      adjustedX = 10;
-    }
-
-    // Check if menu goes off top edge
-    if (adjustedY < 0) {
-      adjustedY = 10;
-    }
-
-    if (adjustedX !== x || adjustedY !== y) {
-      menu.style.left = `${adjustedX}px`;
-      menu.style.top = `${adjustedY}px`;
-    }
+    const vw = win.innerWidth;
+    const vh = win.innerHeight;
+    const w = menu.offsetWidth;
+    const h = menu.offsetHeight;
+    let ax = x;
+    let ay = y;
+    if (ax + w > vw - EDGE_MARGIN) ax = vw - w - EDGE_MARGIN;
+    if (ay + h > vh - EDGE_MARGIN) ay = vh - h - EDGE_MARGIN;
+    if (ax < EDGE_MARGIN) ax = EDGE_MARGIN;
+    if (ay < EDGE_MARGIN) ay = EDGE_MARGIN;
+    setClamped(ax !== x || ay !== y ? { x: ax, y: ay } : null);
   }, [isOpen, x, y]);
 
   if (!isOpen) return null;
@@ -319,8 +311,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       role="menu"
       style={{
         position: 'fixed',
-        left: `${x}px`,
-        top: `${y}px`,
+        left: `${clamped?.x ?? x}px`,
+        top: `${clamped?.y ?? y}px`,
         zIndex: 10000,
         ...style,
       }}
