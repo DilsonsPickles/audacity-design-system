@@ -110,6 +110,9 @@ export interface UseTrackPanelHandlersReturn {
    *  playhead at its start — Audacity 3's double-click in the Track Control
    *  Panel. A track with no clips is just selected. */
   onDoubleClick: (index: number) => void;
+  /** A triple-click on a header SELECTS EVERY TRACK (2026-10-14), any
+   *  time range dropped (the plain click's rule) */
+  onTripleClick: () => void;
   onRangeSelection: (index: number) => void;
   onTabOut: (index: number) => void;
   onShiftTabOut: (index: number) => void;
@@ -501,6 +504,12 @@ export function useTrackPanelHandlers(
     });
   };
 
+  const onTripleClick = () => {
+    if (timeSelection) dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+    const all = tracks.map((_, i) => i).filter((i) => tracks[i].type !== 'folder');
+    dispatch({ type: 'SET_SELECTED_TRACKS', payload: all });
+  };
+
   const onDoubleClick = (index: number) => {
     const extent = tracks[index] ? trackAudioExtent(tracks[index]) : null;
     if (!extent) {
@@ -613,6 +622,7 @@ export function useTrackPanelHandlers(
     onMenuClick,
     onClick,
     onDoubleClick,
+    onTripleClick,
     onRangeSelection,
     onTabOut,
     onShiftTabOut,

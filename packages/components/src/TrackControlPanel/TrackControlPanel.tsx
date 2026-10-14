@@ -77,6 +77,9 @@ export interface TrackControlPanelProps {
    *  renames) nor a control: the host selects all audio in the track
    *  (2026-10-14, Audacity 3's double-click in the Track Control Panel) */
   onDoubleClick?: () => void;
+  /** A triple-click on the header's own surface: the host selects every
+   *  track (2026-10-14, "triple click on TH should select all track headers") */
+  onTripleClick?: () => void;
   onToggleSelection?: () => void; // Cmd/Ctrl+Click to toggle
   onRangeSelection?: () => void; // Shift+Click for range selection
   className?: string;
@@ -156,6 +159,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   trackIndex,
   onClick,
   onDoubleClick,
+  onTripleClick,
   onToggleSelection,
   onRangeSelection,
   className = '',
@@ -726,6 +730,12 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       return;
     }
     if (isOnControl(e)) return;
+    // The third click of a triple (the browser's detail) is the host's
+    // select-all — the second already ran the double-click's selection
+    if (e.detail >= 3 && !e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey && onTripleClick) {
+      onTripleClick();
+      return;
+    }
     // Shift+Click: Range selection (select all tracks between last selected and clicked)
     if (e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey) {
       onRangeSelection?.();
