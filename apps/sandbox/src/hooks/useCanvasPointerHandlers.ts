@@ -379,16 +379,20 @@ export function useCanvasPointerHandlers(
           }
           return;
         }
-        // Audio clip body: double-click selects the clip. Clip selection
-        // is an explicit gesture, so it replaces the time selection —
-        // same contract as clip-header click (useClipMouseDown).
+        // Audio clip body: double-click SELECTS THE AUDIO INSIDE THE CLIP
+        // (2026-10-14, "double click in clip should select all audio
+        // inside clip, not select the clip itself") — a time selection
+        // over the clip's span, scoped to its track (the reducer mirrors
+        // the scope into the track selection), the playhead at the clip's
+        // start so Space auditions it; the clip selection is left alone
+        // (it selected the clip until then).
         const audioClip = track?.clips.find((c) => String(c.id) === clipId);
         if (audioClip) {
-          dispatch({ type: 'SET_TIME_SELECTION', payload: null });
-          dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: trackIdx, clipId: audioClip.id } });
+          dispatch({
+            type: 'SET_TIME_SELECTION',
+            payload: { startTime: audioClip.start, endTime: audioClip.start + audioClip.duration, tracks: [trackIdx] },
+          });
           dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIdx });
-          // Selecting a clip this way also parks the playhead on the
-          // clip's start, so Space auditions the clip from its beginning.
           dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: audioClip.start });
         }
         return;

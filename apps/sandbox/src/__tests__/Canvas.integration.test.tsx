@@ -270,7 +270,8 @@ describe('Persistent selection vs track-background clicks', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Double-click on a clip BODY selects the clip; triple-click selects the
+// Double-click on a clip BODY selects the audio inside it (a time
+// selection over its span, 2026-10-14); triple-click selects the
 // whole track's extent (gaps included) as a track-scoped time selection.
 // Seam: useCanvasPointerHandlers onDoubleClick (audio branch) + onClick's
 // click-chain triple branch (three clicks within 400 ms / 6 px each —
@@ -291,15 +292,17 @@ describe('Double / triple click', () => {
     { id: 2, name: 'Track 2', clips: [] },
   ]);
 
-  it('double-click on an audio clip body selects that clip and parks the playhead on its start', () => {
+  it('double-click on an audio clip body selects the AUDIO INSIDE the clip — a track-scoped time selection over its span — not the clip, and parks the playhead on its start (2026-10-14)', () => {
     const { container } = renderCanvas(twoClipTrack());
     expect(isClipSelected(container, 1)).toBe(false);
 
-    // Clip 2 starts at 5 s — double-click selects it AND moves the
-    // playhead to the clip start, so Space auditions from its beginning.
+    // Clip 2 spans 5–7 s on track 0
     fireEvent.doubleClick(clipEl(container, 2));
-    expect(isClipSelected(container, 2)).toBe(true);
+    expect(isClipSelected(container, 2)).toBe(false);
     expect(isClipSelected(container, 1)).toBe(false);
+    const overlayColor = (idx: number) => (trackEl(container, idx).children[0] as HTMLElement).style.backgroundColor;
+    expect(overlayColor(0)).toContain('98, 119, 136'); // in scope
+    expect(overlayColor(1)).toContain('49, 56, 70'); // out of scope
     const probe = container.querySelector('[data-testid="tracks-state-probe"]') as HTMLElement;
     expect(probe.getAttribute('data-playhead')).toBe('5');
   });
