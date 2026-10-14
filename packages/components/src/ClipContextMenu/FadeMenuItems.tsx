@@ -1,41 +1,38 @@
 /**
- * FadeMenuItems — ONE fade's menu, for one side of a clip (2026-10-06,
- * "unify the fade options in the clip context menu and the right-click
- * handle menu"): the shape presets, the current one checked; a divider;
- * "Fade-in length…" (the duration dialog); "Remove fade-in" (dimmed
- * while there is no fade). The handle's right-click menu IS this list,
- * and the clip context menu's Fade-in ▸ / Fade-out ▸ parents hold the
- * same list — the handle menu is the shortcut to it.
+ * FadeMenuItems — ONE fade's menu, for one side of a clip: the fade
+ * handle's right-click menu (and Shift+F10 on a focused handle).
+ *
+ * TWO ITEMS (user decision 2026-10-14, "what if the fade menu just said
+ * 'edit fade' and 'remove fade'?"): "Edit fade-in…" opens the Fades
+ * dialog with that side's field focused — the dialog previews live and
+ * holds the shape presets, so the preset list this menu carried since
+ * 2026-10-06 (the current one checked, then length…, then remove) is
+ * gone from here; the presets keep their other doors (the keys 1–5 / 0
+ * on a focused handle, the properties panel's dropdown, the dialog) —
+ * and "Remove fade-in" (length 0, dimmed while there is no fade). The
+ * clip menu's "Edit fades" opens the same dialog.
  *
  * WORDS (user decision 2026-10-07): "Fade-in" and "Fade-out", hyphenated,
- * are the NOUNS — the thing on the clip's edge — and name the parents
- * and the items about it ("Fade-in length…", "Remove fade-in"); "fade
- * in" and "fade out", two words, are the VERBS, kept for an action that
- * performs one ("Fade in…" on a host with no presets).
+ * are the NOUNS — the thing on the clip's edge — and name the items
+ * about it; the side is named so a screen-reader user hears which
+ * handle's menu opened.
  */
 import React from 'react';
 import { ContextMenuItem } from '../ContextMenuItem/ContextMenuItem';
 
 export type FadeSide = 'in' | 'out';
 
-export interface FadeMenuPreset {
-  id: string;
-  label: string;
-}
-
 export interface FadeMenuSideState {
-  /** The preset the fade's shape matches, if any (a dragged handle matches none) */
-  presetId?: string;
   /** Whether the fade has any length — Remove is dimmed without one */
   hasFade: boolean;
 }
 
 export interface FadeMenuItemsProps {
   side: FadeSide;
-  presets: ReadonlyArray<FadeMenuPreset>;
   state: FadeMenuSideState;
-  onShape?: (side: FadeSide, presetId: string) => void;
-  onLength?: (side: FadeSide) => void;
+  /** "Edit fade-in…" — the host opens the Fades dialog on this side */
+  onEdit?: (side: FadeSide) => void;
+  /** "Remove fade-in" — length 0 */
   onRemove?: (side: FadeSide) => void;
   onClose?: () => void;
 }
@@ -43,22 +40,13 @@ export interface FadeMenuItemsProps {
 /** The noun: the fade on that edge */
 export const fadeSideLabel = (side: FadeSide) => (side === 'in' ? 'Fade-in' : 'Fade-out');
 
-export function FadeMenuItems({ side, presets, state, onShape, onLength, onRemove, onClose }: FadeMenuItemsProps) {
-  const label = fadeSideLabel(side);
+export function FadeMenuItems({ side, state, onEdit, onRemove, onClose }: FadeMenuItemsProps) {
+  const noun = fadeSideLabel(side).toLowerCase();
   return (
     <>
-      {presets.map((preset) => (
-        <ContextMenuItem
-          key={preset.id}
-          label={preset.label}
-          checked={state.presetId === preset.id}
-          onClick={() => { onShape?.(side, preset.id); onClose?.(); }}
-        />
-      ))}
-      <ContextMenuItem isDivider />
-      <ContextMenuItem label={`${label} length…`} onClick={() => { onLength?.(side); onClose?.(); }} />
+      <ContextMenuItem label={`Edit ${noun}…`} onClick={() => { onEdit?.(side); onClose?.(); }} />
       <ContextMenuItem
-        label={`Remove ${label.toLowerCase()}`}
+        label={`Remove ${noun}`}
         disabled={!state.hasFade}
         onClick={() => { onRemove?.(side); onClose?.(); }}
       />

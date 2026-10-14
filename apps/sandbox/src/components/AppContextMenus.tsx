@@ -71,16 +71,7 @@ export function AppContextMenus({
   const openFadeDialogFor = (trackIndex: number, clipId: number, side: 'in' | 'out') => {
     setFadeDialog({ trackIndex, clipId, focusSide: side });
   };
-  // The fade menu's two edits, shared by the clip menu's Fade ▸ submenus
-  // and the handle's right-click menu (one list, FadeMenuItems): every
-  // target by the fade rule (fadeTargets)
-  const setFadeShape = (trackIndex: number, clipId: number, side: 'in' | 'out', presetId: string) => {
-    const preset = FADE_SHAPE_PRESETS.find((p) => p.id === presetId);
-    if (!preset) return;
-    for (const t of fadeTargets(tracks, trackIndex, clipId)) {
-      dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side, shape: preset.shape } });
-    }
-  };
+  // Remove fade-in / fade-out — every target by the fade rule (fadeTargets)
   const removeFade = (trackIndex: number, clipId: number, side: 'in' | 'out') => {
     for (const t of fadeTargets(tracks, trackIndex, clipId)) {
       dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side, seconds: 0 } });
@@ -577,19 +568,14 @@ export function AppContextMenus({
         const clip = tracks[trackIndex]?.clips.find((c: Clip) => c.id === clipId);
         if (!clip) return null;
         const close = () => setFadeContextMenu(null);
-        // The same list as the clip menu's Fade ▸ Fade in/out ▸ — this is
-        // the shortcut to it
+        // Two items (2026-10-14): Edit fade-in… (the Fades dialog on this
+        // side) and Remove fade-in
         return (
           <ContextMenu isOpen={fadeContextMenu.isOpen} x={x} y={y} onClose={close}>
             <FadeMenuItems
               side={side}
-              presets={FADE_SHAPE_PRESETS}
-              state={{
-                presetId: fadeShapePresetOf(side === 'in' ? clip.fadeInShape : clip.fadeOutShape),
-                hasFade: (side === 'in' ? clip.fadeIn ?? 0 : clip.fadeOut ?? 0) > 0,
-              }}
-              onShape={(s, presetId) => setFadeShape(trackIndex, clipId, s, presetId)}
-              onLength={(s) => openFadeDialogFor(trackIndex, clipId, s)}
+              state={{ hasFade: (side === 'in' ? clip.fadeIn ?? 0 : clip.fadeOut ?? 0) > 0 }}
+              onEdit={(s) => openFadeDialogFor(trackIndex, clipId, s)}
               onRemove={(s) => removeFade(trackIndex, clipId, s)}
               onClose={close}
             />
