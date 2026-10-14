@@ -617,13 +617,13 @@ export function EditorLayout(props: EditorLayoutProps) {
     } else if (modifiers.metaKey || modifiers.ctrlKey) {
       toggleScopeOrTrackSelection(trackIndex);
     } else if (state.timeSelection) {
-      // Plain Enter with an active time range: TRANSFER the range to
-      // the focused track — the reducer mirrors the new scope, making
-      // it the only selected track. Idempotent on repeat presses.
-      dispatch({
-        type: 'SET_TIME_SELECTION',
-        payload: { ...state.timeSelection, tracks: [trackIndex] },
-      });
+      // Plain Enter with an active time range DROPS the range and selects
+      // the focused track (2026-10-14, "move the focus up to another
+      // track and press enter: select the track, lose the time selection
+      // rather than transferring it") — the header click's rule. Until
+      // then it transferred the range to the focused track.
+      dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+      dispatch({ type: 'SELECT_TRACK', payload: trackIndex });
       setSelectionAnchor(trackIndex);
     } else {
       // Plain Enter: select the track, or deselect if it's

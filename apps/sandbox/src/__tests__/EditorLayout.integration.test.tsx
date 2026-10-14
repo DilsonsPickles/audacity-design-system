@@ -1739,6 +1739,25 @@ describe('Track management', () => {
     expect(trackPanels(container)[1].className).not.toContain('track-control-panel--active');
   });
 
+  it('Enter on a focused track header with a time range DROPS the range and selects that track (2026-10-14)', async () => {
+    const rendered = renderApp();
+    const { container, getByText } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+    const selectionEnd = () => (container.querySelector('[aria-label="Selection end"]') as HTMLElement).textContent?.replace(/\s/g, '') ?? '';
+    const zero = selectionEnd();
+    fireEvent.doubleClick(trackPanels(container)[1]); // a range on track 2
+    await waitFor(() => expect(selectionEnd()).not.toBe(zero));
+
+    // Focus track 1's header by keyboard and press Enter
+    const panel0 = trackPanels(container)[0];
+    act(() => { panel0.focus(); });
+    fireEvent.keyDown(panel0, { key: 'Enter' });
+    await waitFor(() => expect(selectionEnd()).toBe(zero));
+    expect(panel0.className).toContain('track-control-panel--active');
+    expect(trackPanels(container)[1].className).not.toContain('track-control-panel--active');
+  });
+
   it('deleting a track with content routes through the confirm dialog and reindexes the remaining tracks', async () => {
     const rendered = renderApp();
     const { container, getByText } = rendered;
