@@ -19,8 +19,8 @@
  *   - the SLIDER — the design system's Slider, the track header's volume
  *     slider's track, fill and 16px handle, 72px wide, with the 100% MARK
  *     under it a third of the way along: the thumb's place is the state,
- *     off the mark is visibly on, and a mouse DRAG within DETENT_SPEED of
- *     100% lands on 100% (off);
+ *     off the mark is visibly on, a mouse DRAG within DETENT_SPEED of
+ *     100% lands on 100% (off), and a DOUBLE-CLICK resets to 100%;
  *   - the READOUT — plain text in PERCENT ("100%"), the unit the clip
  *     properties panel's speed already uses, at a FIXED WIDTH so "87%"
  *     and "300%" take the same room and the timecode after it never
@@ -155,6 +155,10 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
         onPointerDownCapture={() => { draggingRef.current = true; }}
         onPointerUpCapture={() => { draggingRef.current = false; }}
         onPointerCancelCapture={() => { draggingRef.current = false; }}
+        // A DOUBLE-CLICK ON THE SLIDER RESETS TO 100% (2026-10-15, "double
+        // click the slider to reset to default value" — REAPER's Rate
+        // slider does the same)
+        onDoubleClick={() => onChange(1)}
       >
         <Slider
           value={speedToSlider(speed)}

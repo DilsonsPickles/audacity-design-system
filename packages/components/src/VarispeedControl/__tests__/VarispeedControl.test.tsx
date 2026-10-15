@@ -84,6 +84,12 @@ describe('VarispeedControl (2026-10-07; caption · slider · fixed-width percent
     expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(0.93, 9));
   });
 
+  it('a double-click on the slider resets to 100% (2026-10-15)', () => {
+    const { container, onChange } = mount({ speed: 0.5, enabled: true });
+    fireEvent.doubleClick(container.querySelector('[data-varispeed-track]') as HTMLElement);
+    expect(onChange).toHaveBeenLastCalledWith(1);
+  });
+
   it('↑ ↓ on the readout step the speed a tenth (Shift a hundredth); Enter and a double-click open "Enter value…" in percent', () => {
     const { readout, baseElement, onDial, onChange } = mount({ speed: 0.5, enabled: false });
     fireEvent.keyDown(readout, { key: 'ArrowUp' });
