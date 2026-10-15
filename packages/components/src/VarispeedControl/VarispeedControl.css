@@ -1,9 +1,9 @@
-/* VarispeedControl — the play-at-speed readout in the timecode's family
-   (2026-10-14): the dark face the timecode, BPM and time signature share.
-   Switch · display · caret, with a 1px seam of toolbar background between
-   them, as the timecode and the BPM stepper draw their cells. Off, the
-   "Speed" switch is dim text on the face; on, it takes the primary tone,
-   the accent the timecode itself takes while play-at-speed is on. */
+/* VarispeedControl — the play-at-speed control on the toolbar before the
+   timecode (2026-10-15, the Figma "1.1 - Simple slider" third row):
+   "Speed" caption · the design system's Slider with its 100% mark · a
+   fixed-width percent readout. Nothing here is a dark face: the timecode
+   keeps the one LCD on the bar. ON (the speed is not 100%) lights the
+   caption and the readout amber — text only, never a background. */
 .varispeed {
   display: inline-flex;
   align-items: center;
@@ -12,14 +12,11 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
-/* The "Speed" caption sits OUTSIDE the dark face, on the toolbar, as the
-   "Snap" label beside its checkbox does (2026-10-14, "can we try moving
-   the speed copy out of the dark area?") — and it is a caption, not a
-   button ("I don't want the word to be pressable"). Off: the toolbar's
-   text colour; on: the primary tone, bold. */
+/* The "Speed" caption, as the "Snap" label beside its checkbox: a caption,
+   not a button. Off: the toolbar's text colour; on: amber, bold. */
 .varispeed__label {
   padding: 0 2px;
-  color: var(--varispeed-label-text);
+  color: var(--varispeed-text);
   font: 500 12px/28px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   white-space: nowrap;
   user-select: none;
@@ -27,36 +24,12 @@
 }
 
 .varispeed[data-varispeed-active] .varispeed__label {
-  color: var(--varispeed-on-bg);
+  color: var(--varispeed-on);
   font-weight: 700;
 }
 
-/* The dark face: display + caret, with the family's 1px seam and radius */
-.varispeed__face {
-  display: inline-flex;
-  align-items: stretch;
-  gap: 1px;
-  height: 28px;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-/* The display: digits + the "×" unit, mirrors `.bpm-stepper__display` */
-.varispeed__display {
-  display: inline-flex;
-  align-items: center;
-  background: var(--timecode-bg);
-  padding: 0 4px;
-  height: 28px;
-  gap: 1px;
-}
-
-/* The digit cells are TimeCodeDigit's (TimeCodeDigit.css); the box's
-   padding and the 1px seams come from the face */
-
-/* The mini slider sits on the TOOLBAR between the caption and the dark
-   number box: the design system's Slider (the volume slider's track, fill
-   and handle), 72px wide, with the 1× mark under it */
+/* The slider: the design system's Slider (the volume slider's track, fill
+   and handle), 72px wide, with the 100% mark under it */
 .varispeed__track {
   position: relative;
   display: inline-flex;
@@ -70,9 +43,9 @@
   width: 72px;
 }
 
-/* The 1× mark: a tick under the track where the thumb's centre sits at
-   1× — the native thumb (10px) keeps inside the track, so the centre is
-   f·(W−10)+5, with f the fraction along AU3's linear 0.01–3 range */
+/* The 100% mark: a tick where the handle's centre sits at 1× — the 16px
+   handle keeps inside the track, so the centre is f·(W−16)+8, with f the
+   fraction along AU3's linear 0.01–3 range */
 .varispeed__unity {
   position: absolute;
   top: 50%;
@@ -85,4 +58,27 @@
   opacity: 0.45;
   pointer-events: none;
   z-index: 1;
+}
+
+/* The readout: plain text in percent at a FIXED WIDTH — room for "300%"
+   in tabular figures, right-aligned so the "%" holds still and the digits
+   grow leftward — so the timecode after it never shuffles as the slider
+   moves ("so toolbar doesn't jump around", 2026-10-15) */
+.varispeed__readout {
+  display: inline-block;
+  width: 36px;
+  text-align: right;
+  color: var(--varispeed-text);
+  font: 500 12px/28px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  user-select: none;
+  border-radius: 3px;
+  cursor: default;
+  transition: color 0.12s ease;
+}
+
+.varispeed[data-varispeed-active] .varispeed__readout {
+  color: var(--varispeed-on);
+  font-weight: 700;
 }

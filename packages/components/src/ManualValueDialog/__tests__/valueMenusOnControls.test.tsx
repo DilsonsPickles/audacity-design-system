@@ -41,7 +41,7 @@ describe('the right-click "Enter value…" menu on the value controls (2026-10-1
     expect(onPanChange).toHaveBeenCalledWith(0);
   });
 
-  it('play-at-speed: Enter value… applies through onChange with the × unit and the range; Reset to 1×', () => {
+  it('play-at-speed: Enter value… applies through onChange in percent, clamped to the range; Reset to 100%', () => {
     const onChange = vi.fn();
     const { container, baseElement, getByText } = render(
       <Providers>
@@ -51,12 +51,12 @@ describe('the right-click "Enter value…" menu on the value controls (2026-10-1
     fireEvent.contextMenu(container.querySelector('[data-varispeed-display]') as HTMLElement, { clientX: 30, clientY: 30 });
     fireEvent.click(getByText('Enter value…'));
     const input = baseElement.querySelector('[data-manual-value-dialog] input') as HTMLInputElement;
-    expect(input.value).toBe('0.5 ×');
-    fireEvent.change(input, { target: { value: '9' } });
+    expect(input.value).toBe('50 %');
+    fireEvent.change(input, { target: { value: '900' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onChange).toHaveBeenLastCalledWith(3); // clamped to the top
     fireEvent.contextMenu(container.querySelector('.varispeed') as HTMLElement, { clientX: 30, clientY: 30 });
-    fireEvent.click(getByText('Reset to 1×'));
+    fireEvent.click(getByText('Reset to 100%'));
     expect(onChange).toHaveBeenLastCalledWith(1);
   });
 
