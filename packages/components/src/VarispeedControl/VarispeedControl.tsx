@@ -8,7 +8,10 @@
  * timecode: three parts on the toolbar, left to right —
  *   - the "Speed" CAPTION, as the Snap label is: a `span`, never
  *     pressable ("I don't want the word to be pressable", 2026-10-14) and
- *     never lit (a label is not a state, 2026-10-15) — ON IS THE VALUE NOT
+ *     never lit — NOTHING CHANGES COLOUR while a speed is on (2026-10-15,
+ *     "I don't like colour change"; an amber tint on the readout and the
+ *     timecode was tried and dropped the same day; the readout takes a
+ *     1px OUTLINE instead, "maybe outliner?") — ON IS THE VALUE NOT
  *     BEING 100% ("the slider is popular because we can say, if it's
  *     different… then it's on", 2026-10-14 — no checkbox, no switch;
  *     the host derives `enabled` from the speed);
@@ -20,7 +23,7 @@
  *   - the READOUT — plain text in PERCENT ("100%"), the unit the clip
  *     properties panel's speed already uses, at a FIXED WIDTH so "87%"
  *     and "300%" take the same room and the timecode after it never
- *     shuffles; amber while on. It takes keyboard focus: ↑ ↓ step a tenth
+ *     shuffles. It takes keyboard focus: ↑ ↓ step a tenth
  *     (Shift a hundredth), Enter or a double-click opens "Enter value…"
  *     (ManualValueDialog, %), which the right-click menu also offers
  *     beside "Reset to 100%". NO WHEEL ("let's lose the scroll on the
@@ -107,13 +110,10 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
   const valueMenu = useValueContextMenu({ onEnterValue: () => setManualOpen(true), onReset: () => onChange(1), resetLabel: '100%' });
 
   const style = {
-    // THE ON COLOUR IS AMBER (2026-10-14, "while I like the colour change,
-    // the blue is awful"): the theme's secondary accent — the master
-    // track's gold, the tape machine's varispeed lamp, Logic's orange LCD.
-    // It lights TEXT — the readout and the timecode's digits, never the
-    // caption (a label is not a state) — and never a whole background
-    // ("a full bg change is too much", 2026-10-15)
-    '--varispeed-on': theme.accent.secondary,
+    // ON = a 1px OUTLINE around the readout (2026-10-15, "maybe outliner?"
+    // after the amber was dropped): a frame in the theme's emphasis border,
+    // never a colour change
+    '--varispeed-outline': theme.border.emphasis,
     '--focus-color': theme.border.focus,
     '--varispeed-text': theme.foreground.text.primary,
     '--varispeed-mark': theme.foreground.text.primary,

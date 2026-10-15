@@ -88,12 +88,6 @@ export interface TimeCodeProps {
    * Optional className for custom styling
    */
   className?: string;
-  /**
-   * Tint the display in the toolbar's "on" colour — the transport is
-   * running at a varispeed (2026-10-07), Logic's orange LCD: a speed
-   * left on must be seen where the time is read, not only on its chip
-   */
-  accent?: boolean;
   /** Begin editing at the first digit as soon as the control mounts —
    *  for a dialog that exists to take a typed time (Go to…, 2026-10-13:
    *  "I have to click, and I'd rather not have to") */
@@ -162,7 +156,6 @@ export function TimeCode({
   disabled = false,
   variant = 'dark',
   className = '',
-  accent = false,
   autoEdit = false,
   onCommit,
 }: TimeCodeProps) {
@@ -478,10 +471,7 @@ export function TimeCode({
     // theme (unchanged) and #171F25 in dark. The light variant (label editor)
     // stays white.
     '--timecode-bg': variant === 'alt' ? theme.background.control.input.idle : isLight ? '#FFFFFF' : theme.background.control.timecode.idle,
-    // WHILE PLAY-AT-SPEED IS ON THE DIGITS LIGHT AMBER, the dark face kept
-    // (2026-10-15, "the colour change needs work, a full bg change is too
-    // much" — Logic's orange LCD text; the whole face was amber until then)
-    '--timecode-text': accent ? theme.accent.secondary : isLight ? theme.foreground.text.primary : '#f4f5f9',
+    '--timecode-text': isLight ? theme.foreground.text.primary : '#f4f5f9',
     '--timecode-hover': isLight ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
     '--timecode-border': variant === 'alt' ? theme.border.input.idle : variant === 'light' ? '#D4D5D9' : 'transparent',
     '--timecode-border-focus': theme.border.focus,
@@ -519,7 +509,6 @@ export function TimeCode({
       ref={containerRef}
       className={`timecode timecode--${variant} ${disabled ? 'timecode--disabled' : ''} ${className}`}
       style={style}
-      data-accent={accent ? 'true' : undefined}
       role="group"
       aria-label={ariaLabel}
       tabIndex={0}

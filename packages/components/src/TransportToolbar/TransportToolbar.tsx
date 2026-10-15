@@ -42,7 +42,7 @@ export interface TransportToolbarProps {
   onToggleToolVisibility?: (id: string) => void;
   /** The remembered varispeed, what the chip reads (2026-10-07) */
   varispeed?: number;
-  /** Whether varispeed is on — the chip's toggle; the timecode tints while it is */
+  /** Whether play-at-speed is on (the speed is not 1×) — marks the control; nothing changes colour */
   varispeedOn?: boolean;
   /** A speed set in the chip's popover; the host stores it and switches on */
   onVarispeedChange?: (speed: number) => void;
@@ -607,7 +607,6 @@ export function TransportToolbar({
               onChange={onTimeCodeChange}
               ariaLabel="Playhead position"
               onFormatChange={onTimeCodeFormatChange}
-              accent={varispeedOn}
             />
           </ToolbarButtonGroup>
           )}
