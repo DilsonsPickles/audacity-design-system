@@ -110,3 +110,14 @@ describe('VarispeedControl (2026-10-07; caption · slider · fixed-width percent
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+describe('the caption is not a state (2026-10-15)', () => {
+  it('has no active-state styling hook: the on marker lives on the control, the caption is the same span on or off', () => {
+    const off = render(<ThemeProvider><VarispeedControl speed={1} enabled={false} onChange={() => {}} onDial={() => {}} /></ThemeProvider>);
+    const on = render(<ThemeProvider><VarispeedControl speed={2} enabled onChange={() => {}} onDial={() => {}} /></ThemeProvider>);
+    const a = off.container.querySelector('[data-varispeed-label]') as HTMLElement;
+    const b = on.container.querySelector('[data-varispeed-label]') as HTMLElement;
+    expect(a.className).toBe(b.className);
+    expect(a.getAttributeNames().sort()).toEqual(b.getAttributeNames().sort());
+  });
+});

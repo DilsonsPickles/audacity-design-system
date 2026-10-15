@@ -7,8 +7,8 @@
  * at fixed width so toolbar doesn't jump around"), placed BEFORE the
  * timecode: three parts on the toolbar, left to right —
  *   - the "Speed" CAPTION, as the Snap label is: a `span`, never
- *     pressable ("I don't want the word to be pressable", 2026-10-14);
- *     lit amber while play-at-speed is on — and ON IS THE VALUE NOT
+ *     pressable ("I don't want the word to be pressable", 2026-10-14) and
+ *     never lit (a label is not a state, 2026-10-15) — ON IS THE VALUE NOT
  *     BEING 100% ("the slider is popular because we can say, if it's
  *     different… then it's on", 2026-10-14 — no checkbox, no switch;
  *     the host derives `enabled` from the speed);
@@ -110,8 +110,9 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
     // THE ON COLOUR IS AMBER (2026-10-14, "while I like the colour change,
     // the blue is awful"): the theme's secondary accent — the master
     // track's gold, the tape machine's varispeed lamp, Logic's orange LCD.
-    // It lights TEXT — the caption, the readout, the timecode's digits —
-    // never a whole background ("a full bg change is too much", 2026-10-15)
+    // It lights TEXT — the readout and the timecode's digits, never the
+    // caption (a label is not a state) — and never a whole background
+    // ("a full bg change is too much", 2026-10-15)
     '--varispeed-on': theme.accent.secondary,
     '--focus-color': theme.border.focus,
     '--varispeed-text': theme.foreground.text.primary,
@@ -144,8 +145,8 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
         onApply={(v) => onChange(sliderToSpeed(v))}
         onClose={() => setManualOpen(false)}
       />
-      {/* A CAPTION, NOT A BUTTON: the word names the readout and lights
-          while a speed is on; the slider and the readout are the controls */}
+      {/* A CAPTION, NOT A BUTTON, NOT A STATE: the word names the readout;
+          the slider and the readout are the controls */}
       <span className="varispeed__label" data-varispeed-label aria-hidden="true">Speed</span>
       {/* THE SLIDER WITH A DETENT: AU3's linear 0.01–3 track with the 100%
           mark a third of the way along; a mouse drag within DETENT_SPEED
