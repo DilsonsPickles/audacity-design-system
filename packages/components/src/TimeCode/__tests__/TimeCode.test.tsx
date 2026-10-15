@@ -3,7 +3,7 @@ import { render, cleanup, fireEvent } from '@testing-library/react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { lightTheme, darkTheme, type ThemeTokens } from '@audacity-ui/tokens';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
-import { TimeCode } from '../TimeCode';
+import { TimeCode, parseTimeText } from '../TimeCode';
 
 afterEach(cleanup);
 
@@ -75,5 +75,50 @@ describe('mm:ss+milliseconds (2026-10-15, the timecodes\' default)', () => {
     fireEvent.click(digits[0]);
     fireEvent.keyDown(document, { key: '7' });
     expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(71 * 60 + 5.25, 6));
+  });
+});
+
+describe('free-text entry (2026-10-15, Bitwig\'s timecode)', () => {
+  it('parses what a person types', () => {
+    expect(parseTimeText('37.909', 'mm:ss+milliseconds')).toBeCloseTo(37.909, 9);
+    expect(parseTimeText('1:02.5', 'mm:ss+milliseconds')).toBeCloseTo(62.5, 9);
+    expect(parseTimeText('1:02:03', 'hh:mm:ss')).toBe(3723);
+    expect(parseTimeText('2m3.5s', 'mm:ss+milliseconds')).toBeCloseTo(123.5, 9);
+    expect(parseTimeText('1h2m', 'hh:mm:ss')).toBe(3720);
+    expect(parseTimeText('00m37.909s', 'mm:ss+milliseconds')).toBeCloseTo(37.909, 9);
+    expect(parseTimeText('12,5', 'seconds')).toBe(12.5);
+    expect(parseTimeText('44100', 'samples', 44100)).toBe(1);
+    expect(parseTimeText('', 'hh:mm:ss')).toBeNull();
+    expect(parseTimeText('later', 'hh:mm:ss')).toBeNull();
+    expect(parseTimeText('-3', 'hh:mm:ss')).toBeNull();
+  });
+
+  it('Enter value… turns the display into one text field holding the value; Enter sets the parsed time, Escape leaves it alone', () => {
+    const onChange = vi.fn();
+    const { container, getByText } = render(
+      <ThemeProvider>
+        <TimeCode value={37.909} format="mm:ss+milliseconds" onChange={onChange} onFormatChange={() => {}} />
+      </ThemeProvider>,
+    );
+    fireEvent.contextMenu(container.querySelector('.timecode') as HTMLElement);
+    fireEvent.click(getByText('Enter value…'));
+    return new Promise<void>((resolve) => setTimeout(resolve, 10)).then(() => {
+      const input = container.querySelector('[data-timecode-text-input]') as HTMLInputElement;
+      expect(input).toBeTruthy();
+      expect(input.value).toBe('00m37.909s');
+      expect(container.querySelector('.timecode-digit')).toBeNull(); // the digits are replaced
+      fireEvent.change(input, { target: { value: '1:02.5' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+      expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(62.5, 9));
+      expect(container.querySelector('[data-timecode-text-input]')).toBeNull();
+      // A double-click on the display opens it too; Escape leaves without a change
+      fireEvent.doubleClick(container.querySelector('.timecode__display') as HTMLElement);
+      const input2 = container.querySelector('[data-timecode-text-input]') as HTMLInputElement;
+      expect(input2).toBeTruthy();
+      fireEvent.change(input2, { target: { value: '9' } });
+      fireEvent.keyDown(input2, { key: 'Escape' });
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(container.querySelector('[data-timecode-text-input]')).toBeNull();
+    });
   });
 });

@@ -103,6 +103,37 @@ export interface TimeCodeProps {
   onCommit?: () => void;
 }
 
+/** FREE-TEXT ENTRY (2026-10-15, "I'd actually prefer a free text field when
+ *  entering manual value into timecode, like in Bitwig's timecode"): what a
+ *  typed time means, in seconds — a plain number is seconds ("37.909"),
+ *  colons count from the right ("1:02.5" = 62.5 s, "1:02:03" = 3723 s),
+ *  unit letters are read ("2m3.5s", "1h2m", "37.909s"), a comma is a point;
+ *  for the samples format a plain number is samples. Null when it is not a
+ *  time. */
+export function parseTimeText(text: string, format: TimeCodeFormat, sampleRate = 44100): number | null {
+  const t = text.trim().toLowerCase().replace(/,/g, '.').replace(/\s+/g, '');
+  if (t === '') return null;
+  const num = /^[+-]?(\d+\.?\d*|\.\d+)$/;
+  if (num.test(t)) {
+    const n = Number(t);
+    if (!Number.isFinite(n) || n < 0) return null;
+    return format === 'samples' ? n / sampleRate : n;
+  }
+  // h / m / s letters, in order, any subset
+  const units = /^(?:(\d+\.?\d*)h)?(?:(\d+\.?\d*)m)?(?:(\d+\.?\d*)s)?$/.exec(t);
+  if (units && (units[1] !== undefined || units[2] !== undefined || units[3] !== undefined)) {
+    return Number(units[1] ?? 0) * 3600 + Number(units[2] ?? 0) * 60 + Number(units[3] ?? 0);
+  }
+  // colons: s, m:s, h:m:s, d:h:m:s — the last part may carry decimals
+  if (/^(\d+:)*(\d+\.?\d*|\.\d+)$/.test(t)) {
+    const parts = t.split(':').map(Number);
+    if (parts.length > 4 || parts.some((n) => !Number.isFinite(n))) return null;
+    const weights = [1, 60, 3600, 86400];
+    return parts.reverse().reduce((acc, n, i) => acc + n * weights[i], 0);
+  }
+  return null;
+}
+
 /** autoEdit's delay — after a host dialog's focus trap (10ms), see the effect */
 export const AUTO_EDIT_DELAY_MS = 50;
 
@@ -162,6 +193,36 @@ export function TimeCode({
     setIsEditing(true);
     setEditingDigitIndex(firstDigitIndex);
   }, []);
+
+  // Free-text entry: the display becomes ONE text field with the whole
+  // value selected (Bitwig's timecode); Enter parses (parseTimeText),
+  // Escape or leaving the field cancels. "Enter value…" in the menu and a
+  // double-click on the display open it.
+  const [freeText, setFreeText] = useState<string | null>(null);
+  const freeTextRef = useRef<HTMLInputElement>(null);
+  const displayText = useCallback(() => segmentsRef.current.map((seg) => seg.value).join(''), []);
+  const beginFreeText = useCallback(() => {
+    if (disabled) return;
+    setIsEditing(false);
+    setEditingDigitIndex(null);
+    setFreeText(displayText());
+  }, [disabled, displayText]);
+  useEffect(() => {
+    if (freeText === null) return;
+    const id = window.setTimeout(() => { freeTextRef.current?.focus(); freeTextRef.current?.select(); }, 0);
+    return () => window.clearTimeout(id);
+    // on open only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [freeText !== null]);
+  const commitFreeText = () => {
+    if (freeText === null) return;
+    const parsed = parseTimeText(freeText, format, sampleRate);
+    setFreeText(null);
+    if (parsed === null) return;
+    onChange?.(parsed);
+    onCommitRef.current?.();
+    containerRef.current?.focus();
+  };
   // autoEdit: a control that exists to take a typed time starts editing
   // on mount, so the first keystroke is a digit, not a click or a Space
   useEffect(() => {
@@ -470,8 +531,30 @@ export function TimeCode({
         setShowMenu(true);
       }}
     >
-      <div className="timecode__display">
-        {segments.map((segment, index) => (
+      <div
+        className="timecode__display"
+        // A double-click on the display: the free-text field (Bitwig)
+        onDoubleClick={(e) => { e.preventDefault(); e.stopPropagation(); beginFreeText(); }}
+      >
+        {freeText !== null ? (
+          <input
+            ref={freeTextRef}
+            className="timecode__text-input"
+            data-timecode-text-input
+            type="text"
+            inputMode="decimal"
+            value={freeText}
+            size={Math.max(6, freeText.length)}
+            aria-label={`${ariaLabel}, type a time`}
+            onChange={(e) => setFreeText(e.target.value)}
+            onBlur={() => setFreeText(null)}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === 'Enter') { e.preventDefault(); commitFreeText(); }
+              else if (e.key === 'Escape') { e.preventDefault(); setFreeText(null); containerRef.current?.focus(); }
+            }}
+          />
+        ) : segments.map((segment, index) => (
           <React.Fragment key={index}>
             {segment.type === 'unit' ? (
               // Render each digit character separately for proper styling
@@ -548,7 +631,7 @@ export function TimeCode({
             {/* "Enter value…" — start typing at the first digit (2026-10-15,
                 the right-click menu every value control carries); the
                 formats follow */}
-            <ContextMenuItem label="Enter value…" onClick={() => { setShowMenu(false); window.setTimeout(beginEditing, 0); }} />
+            <ContextMenuItem label="Enter value…" onClick={() => { setShowMenu(false); window.setTimeout(beginFreeText, 0); }} />
             <ContextMenuItem isDivider />
             <ContextMenuItem
               label="dd:hh:mm:ss"
@@ -716,10 +799,12 @@ function formatHHMMSSHundredths(seconds: number): TimeCodeSegment[] {
 }
 
 function formatHHMMSSMilliseconds(seconds: number): TimeCodeSegment[] {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  const milliseconds = Math.floor((seconds % 1) * 1000);
+  // Whole milliseconds first — 37.909 % 1 × 1000 floors to 908
+  const totalMs = Math.round(seconds * 1000);
+  const hours = Math.floor(totalMs / 3600000);
+  const minutes = Math.floor((totalMs % 3600000) / 60000);
+  const secs = Math.floor((totalMs % 60000) / 1000);
+  const milliseconds = totalMs % 1000;
 
   return [
     { value: pad(hours, 2), type: 'unit', maxLength: 2, max: 99, editable: true },
@@ -738,9 +823,11 @@ function formatHHMMSSMilliseconds(seconds: number): TimeCodeSegment[] {
  *  00m00.000s"): no hours cell, the minutes running past 59 (two cells,
  *  typed up to 99) */
 function formatMMSSMilliseconds(seconds: number): TimeCodeSegment[] {
-  const minutes = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  const milliseconds = Math.floor((seconds % 1) * 1000);
+  // Whole milliseconds first — 37.909 % 1 × 1000 floors to 908
+  const totalMs = Math.round(seconds * 1000);
+  const minutes = Math.floor(totalMs / 60000);
+  const secs = Math.floor((totalMs % 60000) / 1000);
+  const milliseconds = totalMs % 1000;
 
   return [
     { value: pad(minutes, 2), type: 'unit', maxLength: 2, max: 99, editable: true },

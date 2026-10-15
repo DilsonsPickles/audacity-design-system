@@ -127,3 +127,25 @@
 .timecode--alt .timecode__format-button {
   border-left: 1px solid var(--timecode-border);
 }
+
+/* The free-text field (2026-10-15, Bitwig's timecode): the whole value as
+   one editable string on the active-digit tone, the digits' type */
+.timecode__text-input {
+  height: 28px;
+  padding: 0 4px;
+  border: 0;
+  outline: 0;
+  background-color: #677ce4;
+  color: #f4f5f9;
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 28px;
+  caret-color: #f4f5f9;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+
+.timecode__text-input::selection {
+  background: rgba(255, 255, 255, 0.35);
+}
