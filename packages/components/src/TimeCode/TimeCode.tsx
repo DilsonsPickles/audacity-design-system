@@ -15,6 +15,7 @@ export type TimeCodeFormat =
   | 'hh:mm:ss'
   | 'hh:mm:ss+hundredths'
   | 'hh:mm:ss+milliseconds'
+  | 'mm:ss+milliseconds'
   | 'hh:mm:ss+samples'
   | 'hh:mm:ss+frames'
   | 'samples'
@@ -570,6 +571,11 @@ export function TimeCode({
               onClick={() => handleFormatSelect('hh:mm:ss+milliseconds')}
             />
             <ContextMenuItem
+              label="mm:ss + milliseconds"
+              checked={format === 'mm:ss+milliseconds'}
+              onClick={() => handleFormatSelect('mm:ss+milliseconds')}
+            />
+            <ContextMenuItem
               label="hh:mm:ss + samples"
               checked={format === 'hh:mm:ss+samples'}
               onClick={() => handleFormatSelect('hh:mm:ss+samples')}
@@ -631,6 +637,8 @@ function formatTimeToSegments(
       return formatHHMMSSHundredths(seconds);
     case 'hh:mm:ss+milliseconds':
       return formatHHMMSSMilliseconds(seconds);
+    case 'mm:ss+milliseconds':
+      return formatMMSSMilliseconds(seconds);
     case 'hh:mm:ss+samples':
       return formatHHMMSSSamples(seconds, sampleRate);
     case 'hh:mm:ss+frames':
@@ -717,6 +725,25 @@ function formatHHMMSSMilliseconds(seconds: number): TimeCodeSegment[] {
     { value: pad(hours, 2), type: 'unit', maxLength: 2, max: 99, editable: true },
     { value: 'h', type: 'label', unitType: 'hours' },
     { value: pad(minutes, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
+    { value: 'm', type: 'label', unitType: 'minutes' },
+    { value: pad(secs, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
+    { value: '.', type: 'separator' },
+    { value: pad(milliseconds, 3), type: 'unit', maxLength: 3, max: 999, editable: true },
+    { value: 's', type: 'label', unitType: 'seconds' },
+  ];
+}
+
+/** mm:ss + milliseconds — "00m00.000s", the timecodes' DEFAULT (2026-10-15,
+ *  "a sensible default value in the timeline ruler, something like
+ *  00m00.000s"): no hours cell, the minutes running past 59 (two cells,
+ *  typed up to 99) */
+function formatMMSSMilliseconds(seconds: number): TimeCodeSegment[] {
+  const minutes = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  const milliseconds = Math.floor((seconds % 1) * 1000);
+
+  return [
+    { value: pad(minutes, 2), type: 'unit', maxLength: 2, max: 99, editable: true },
     { value: 'm', type: 'label', unitType: 'minutes' },
     { value: pad(secs, 2), type: 'unit', maxLength: 2, max: 59, editable: true },
     { value: '.', type: 'separator' },
@@ -1011,6 +1038,10 @@ function segmentsToSeconds(
     case 'hh:mm:ss+milliseconds': {
       const [hours, minutes, seconds, milliseconds] = unitValues;
       return (hours || 0) * 3600 + (minutes || 0) * 60 + (seconds || 0) + (milliseconds || 0) / 1000;
+    }
+    case 'mm:ss+milliseconds': {
+      const [minutes, seconds, milliseconds] = unitValues;
+      return (minutes || 0) * 60 + (seconds || 0) + (milliseconds || 0) / 1000;
     }
     case 'hh:mm:ss+samples': {
       const [hours, minutes, seconds, samples] = unitValues;

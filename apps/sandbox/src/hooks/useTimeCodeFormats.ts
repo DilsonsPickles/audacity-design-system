@@ -10,14 +10,14 @@ export interface UseTimeCodeFormatsReturn {
   setDurationTimeCodeFormat: React.Dispatch<React.SetStateAction<TimeCodeFormat>>;
 }
 
-/** The transport, selection and duration timecodes open in hh:mm:ss+milliseconds
+/** The transport, selection and duration timecodes open in mm:ss+milliseconds
  *  (2026-10-15, "a sensible default value in the timeline ruler, something like
  *  00m00.000s"): whole seconds hid every sub-second edit — a fade of 0.3 s read
- *  as nothing on the bar. */
+ *  as nothing on the bar; the hours cell went too, "I want what I said". */
 export function useTimeCodeFormats(): UseTimeCodeFormatsReturn {
-  const [timeCodeFormat, setTimeCodeFormat] = useState<TimeCodeFormat>('hh:mm:ss+milliseconds');
-  const [selectionTimeCodeFormat, setSelectionTimeCodeFormat] = useState<TimeCodeFormat>('hh:mm:ss+milliseconds');
-  const [durationTimeCodeFormat, setDurationTimeCodeFormat] = useState<TimeCodeFormat>('hh:mm:ss+milliseconds');
+  const [timeCodeFormat, setTimeCodeFormat] = useState<TimeCodeFormat>('mm:ss+milliseconds');
+  const [selectionTimeCodeFormat, setSelectionTimeCodeFormat] = useState<TimeCodeFormat>('mm:ss+milliseconds');
+  const [durationTimeCodeFormat, setDurationTimeCodeFormat] = useState<TimeCodeFormat>('mm:ss+milliseconds');
 
   return {
     timeCodeFormat,

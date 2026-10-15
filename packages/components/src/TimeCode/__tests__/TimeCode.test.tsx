@@ -58,3 +58,22 @@ describe('the format menu is portaled to the body (2026-10-13)', () => {
     expect(menu!.querySelectorAll('[role="menuitem"]').length).toBeGreaterThan(5);
   });
 });
+
+describe('mm:ss+milliseconds (2026-10-15, the timecodes\' default)', () => {
+  it('reads "00m00.000s": two minute cells, no hours, minutes running past 59; the digits read back as seconds', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <ThemeProvider>
+        <TimeCode value={61 * 60 + 5.25} format="mm:ss+milliseconds" onChange={onChange} onFormatChange={() => {}} />
+      </ThemeProvider>,
+    );
+    const text = (container.querySelector('.timecode__display') as HTMLElement).textContent?.replace(/\s/g, '');
+    expect(text).toBe('61m05.250s');
+    expect(container.querySelector('.timecode-unit[data-unit="hours"]')).toBeNull();
+    // Type a 7 into the first minutes cell: 71m05.250s = 4265.25 s
+    const digits = container.querySelectorAll('.timecode-digit');
+    fireEvent.click(digits[0]);
+    fireEvent.keyDown(document, { key: '7' });
+    expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(71 * 60 + 5.25, 6));
+  });
+});

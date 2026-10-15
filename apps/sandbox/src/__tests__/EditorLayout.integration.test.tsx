@@ -1702,7 +1702,7 @@ describe('Track management', () => {
     // The selection bar's end timecode reads the range; all zeros before
     const selectionEnd = () => (container.querySelector('[aria-label="Selection end"]') as HTMLElement).textContent?.replace(/\s/g, '') ?? '';
     const before = selectionEnd(); // all zeros (plus the caret's glyph)
-    expect(before).toContain('00h00m00');
+    expect(before).toContain('00m00.000s');
 
     // Double-click track 2's header on its own surface — the name renames
     // on double-click, so aim at the panel, not the name
