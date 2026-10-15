@@ -17,10 +17,11 @@
  *     different… then it's on", 2026-10-14 — no checkbox, no switch;
  *     the host derives `enabled` from the speed);
  *   - the SLIDER — the design system's Slider, the track header's volume
- *     slider's track, fill and 16px handle, 72px wide, with the 100% MARK
- *     under it a third of the way along: the thumb's place is the state,
- *     off the mark is visibly on, a mouse DRAG within DETENT_SPEED of
- *     100% lands on 100% (off), and a DOUBLE-CLICK resets to 100%;
+ *     slider's track, fill and 16px handle, 72px wide, NO MARK on it
+ *     (2026-10-15, "I also don't like the line at the 'default' level…
+ *     we can just soft snap"): the thumb's place is the state, a mouse
+ *     DRAG within DETENT_SPEED of 100% lands on 100% (off) — the soft
+ *     snap — and a DOUBLE-CLICK resets to 100%;
  *   - the READOUT — plain text in PERCENT ("100%"), the unit the clip
  *     properties panel's speed already uses, at a FIXED WIDTH so "87%"
  *     and "300%" take the same room and the timecode after it never
@@ -66,7 +67,7 @@ const clampSpeed = (speed: number) => Math.max(VARISPEED_MIN, Math.min(VARISPEED
 /** The slider is linear in hundredths of a speed (1–300) — whole percents */
 export const speedToSlider = (speed: number) => Math.round(clampSpeed(speed) * 100);
 export const sliderToSpeed = (v: number) => clampSpeed(v / 100);
-/** Where 1× sits along the track, as a fraction — the marker's place */
+/** Where 1× sits along the track, as a fraction (the mark that stood there is gone, 2026-10-15) */
 export const VARISPEED_UNITY_FRACTION = (1 - VARISPEED_MIN) / (VARISPEED_MAX - VARISPEED_MIN);
 /** The readout: whole percents — "100%", "87%", "300%" (2026-10-15) */
 export const formatVarispeedPercent = (speed: number) => `${speedToSlider(speed)}%`;
@@ -113,10 +114,6 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
   const style = {
     '--focus-color': theme.border.focus,
     '--varispeed-text': theme.foreground.text.primary,
-    '--varispeed-mark': theme.foreground.text.primary,
-    // The 1× mark's x on the 72px Slider: its 16px handle keeps inside the
-    // track (left = f·W − f·16), so the handle's centre at 1× is f·(72−16)+8
-    '--varispeed-unity': `${Math.round((VARISPEED_UNITY_FRACTION * (72 - 16) + 8) * 10) / 10}px`,
   } as React.CSSProperties;
   const percent = formatVarispeedPercent(speed);
   return (
@@ -145,10 +142,10 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
       {/* A CAPTION, NOT A BUTTON, NOT A STATE: the word names the readout;
           the slider and the readout are the controls */}
       <span className="varispeed__label" data-varispeed-label aria-hidden="true">Speed</span>
-      {/* THE SLIDER WITH A DETENT: AU3's linear 0.01–3 track with the 100%
-          mark a third of the way along; a mouse drag within DETENT_SPEED
-          of 1× snaps to it (drag only — the keys step through), so
-          letting go near normal lands on normal, which is off. */}
+      {/* THE SLIDER WITH A DETENT: AU3's linear 0.01–3 track, unmarked; a
+          mouse drag within DETENT_SPEED of 1× snaps to it (drag only —
+          the keys step through), so letting go near normal lands on
+          normal, which is off. */}
       <span
         className="varispeed__track"
         data-varispeed-track
@@ -171,7 +168,6 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
             onChange(draggingRef.current && Math.abs(next - 1) <= DETENT_SPEED ? 1 : next);
           }}
         />
-        <span className="varispeed__unity" data-varispeed-unity aria-hidden="true" />
       </span>
       {/* THE READOUT: percent, plain text, fixed width (the Figma third row) */}
       <span

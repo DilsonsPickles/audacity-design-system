@@ -24,7 +24,7 @@ function mount(props: Partial<React.ComponentProps<typeof VarispeedControl>> = {
 }
 
 describe('VarispeedControl (2026-10-07; caption · slider · fixed-width percent readout since 2026-10-15)', () => {
-  it("the slider is Audacity 3's: linear 0.01×–3.0× in hundredths — whole percents — with 100% marked a third of the way", () => {
+  it("the slider is Audacity 3's: linear 0.01×–3.0× in hundredths — whole percents", () => {
     expect(VARISPEED_MIN).toBe(0.01);
     expect(VARISPEED_MAX).toBe(3);
     expect(sliderToSpeed(1)).toBeCloseTo(0.01, 9);
@@ -43,7 +43,7 @@ describe('VarispeedControl (2026-10-07; caption · slider · fixed-width percent
     expect(VARISPEED_UNITY_FRACTION).toBeCloseTo(0.99 / 2.99, 9);
   });
 
-  it('reads "Speed [slider] 50%": a CAPTION (not a button), the design system\'s slider with its mark, a plain-text readout — no dark face, no digit cells', () => {
+  it('reads "Speed [slider] 50%": a CAPTION (not a button), the design system\'s slider, unmarked, a plain-text readout — no dark face, no digit cells', () => {
     const { container, label, slider, readout, onChange } = mount({ speed: 0.5, enabled: false });
     expect(label.tagName).toBe('SPAN');
     expect(label.textContent).toBe('Speed');
@@ -51,7 +51,7 @@ describe('VarispeedControl (2026-10-07; caption · slider · fixed-width percent
     expect(slider.min).toBe('1');
     expect(slider.max).toBe('300');
     expect(slider.value).toBe('50');
-    expect(container.querySelector('[data-varispeed-unity]')).toBeTruthy();
+    expect(container.querySelector('[data-varispeed-unity]')).toBeNull(); // no mark (2026-10-15): the detent alone
     expect(container.querySelector('.varispeed__track .slider .slider__handle')).toBeTruthy();
     expect(readout.textContent).toBe('50%');
     expect(readout.getAttribute('aria-label')).toBe('Playback speed 50%');

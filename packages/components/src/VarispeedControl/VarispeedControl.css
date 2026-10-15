@@ -1,7 +1,7 @@
 /* VarispeedControl — the play-at-speed control on the toolbar before the
    timecode (2026-10-15, the Figma "1.1 - Simple slider" third row):
-   "Speed" caption · the design system's Slider with its 100% mark · a
-   fixed-width percent readout. Nothing here is a dark face: the timecode
+   "Speed" caption · the design system's Slider (unmarked, a soft snap at
+   100%) · a fixed-width percent readout. Nothing here is a dark face: the timecode
    keeps the one LCD on the bar. NOTHING MARKS THE ON STATE (2026-10-15:
    "I don't like colour change", then an outline on the readout, "I don't
    like"): the thumb off its mark and a number other than 100% ARE the
@@ -27,7 +27,8 @@
 }
 
 /* The slider: the design system's Slider (the volume slider's track, fill
-   and handle), 72px wide, with the 100% mark under it */
+   and handle), 72px wide, with no mark — the drag detent is the "default"
+   (2026-10-15, "I also don't like the line at the 'default' level") */
 .varispeed__track {
   position: relative;
   display: inline-flex;
@@ -41,22 +42,6 @@
   width: 72px;
 }
 
-/* The 100% mark: a tick where the handle's centre sits at 1× — the 16px
-   handle keeps inside the track, so the centre is f·(W−16)+8, with f the
-   fraction along AU3's linear 0.01–3 range */
-.varispeed__unity {
-  position: absolute;
-  top: 50%;
-  left: calc(2px + var(--varispeed-unity));
-  width: 1px;
-  height: 9px;
-  margin-left: -0.5px;
-  transform: translateY(-50%);
-  background: var(--varispeed-mark);
-  opacity: 0.45;
-  pointer-events: none;
-  z-index: 1;
-}
 
 /* The readout: plain text in percent at a FIXED WIDTH — room for "300%"
    in tabular figures, right-aligned so the "%" holds still and the digits
