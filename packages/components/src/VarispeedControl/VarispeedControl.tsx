@@ -51,6 +51,8 @@ import { useTheme } from '../ThemeProvider';
 import { Slider } from '../Slider';
 import { TimeCodeUnit } from '../TimeCode/TimeCodeUnit';
 import { TimeCodeDigit } from '../TimeCode/TimeCodeDigit';
+import { useValueContextMenu } from '../hooks/useValueContextMenu';
+import { ManualValueDialog } from '../ManualValueDialog/ManualValueDialog';
 import './VarispeedControl.css';
 
 /** AU3's range: SPEED_SLIDER 0.01..3.0 */
@@ -113,6 +115,10 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
   // every change commits at once through onChange (the timecode's rule),
   // clamped to the range. The digits are "d.ddd": indices 0..3.
   const [editingDigit, setEditingDigit] = React.useState<number | null>(null);
+  // Right-click anywhere on the control: "Enter value…" (ManualValueDialog,
+  // ×, the range) / "Reset to 1×" (2026-10-15)
+  const [manualOpen, setManualOpen] = React.useState(false);
+  const valueMenu = useValueContextMenu({ onEnterValue: () => setManualOpen(true), onReset: () => onChange(1), resetLabel: '1×' });
   const [hoverDigit, setHoverDigit] = React.useState<number | null>(null);
   const digitRefs = React.useRef<Array<HTMLSpanElement | null>>([]);
   const speedRef = React.useRef(speed);
@@ -194,7 +200,23 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
       style={style}
       data-varispeed
       data-varispeed-active={enabled ? 'true' : undefined}
+      onContextMenu={valueMenu.onContextMenu}
     >
+      {valueMenu.menu}
+      <ManualValueDialog
+        isOpen={manualOpen}
+        title="Playback speed"
+        label="Speed"
+        value={speed}
+        unit="×"
+        min={VARISPEED_MIN}
+        max={VARISPEED_MAX}
+        step={0.01}
+        decimals={3}
+        hint={`${VARISPEED_MIN}× to ${VARISPEED_MAX}×; 1× is normal`}
+        onApply={(v) => onChange(v)}
+        onClose={() => setManualOpen(false)}
+      />
       {/* A CAPTION, NOT A BUTTON (2026-10-14, "I don't want the word to be
           pressable"): the word names the readout and lights while a
           speed is on; the value is the only control */}

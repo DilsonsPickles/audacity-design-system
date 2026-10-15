@@ -10,6 +10,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { TimeCodeUnit } from '../TimeCode/TimeCodeUnit';
+import { useValueContextMenu } from '../hooks/useValueContextMenu';
 import './BpmStepper.css';
 
 export interface BpmStepperProps {
@@ -92,6 +93,9 @@ export function BpmStepper({
   }, [editing]);
 
   const stepBy = (direction: 1 | -1) => onChange(clamp(value + direction * step));
+  // Right-click: "Enter value…" (the display's own typed field) / "Reset to
+  // 120 bpm" (2026-10-15)
+  const valueMenu = useValueContextMenu({ onEnterValue: beginEdit, onReset: () => onChange(clamp(120)), resetLabel: '120 bpm', disabled });
 
   const stopHold = () => {
     if (holdTimerRef.current !== null) {
@@ -140,7 +144,9 @@ export function BpmStepper({
       aria-disabled={disabled || undefined}
       tabIndex={disabled ? -1 : tabIndex}
       onKeyDown={handleKeyDown}
+      onContextMenu={valueMenu.onContextMenu}
     >
+      {valueMenu.menu}
       <div className="bpm-stepper__display">
         {editing ? (
           <input

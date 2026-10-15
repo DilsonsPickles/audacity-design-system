@@ -189,3 +189,5 @@ export * from './utils/announce';
 // Note: envelope utilities are available via direct import from '@audacity-ui/components/utils/envelope'
 // Not re-exported here to avoid naming conflicts with EnvelopePoint component
 export { useCollapseTransition, type CollapseTransition } from './hooks/useCollapseTransition';
+export { useValueContextMenu, type ValueContextMenuOptions } from './hooks/useValueContextMenu';
+export { ManualValueDialog, parseManualValue, type ManualValueDialogProps } from './ManualValueDialog/ManualValueDialog';

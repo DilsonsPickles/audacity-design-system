@@ -2,6 +2,8 @@ import { getInputMode } from '../utils/inputMode';
 import React, { useState } from 'react';
 import { groupLabelIndent } from '@audacity-ui/core';
 import { useTheme } from '../ThemeProvider';
+import { useValueContextMenu } from '../hooks/useValueContextMenu';
+import { ManualValueDialog } from '../ManualValueDialog/ManualValueDialog';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 import { Button } from '../Button';
 import { GhostButton } from '../GhostButton';
@@ -701,6 +703,22 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     '--tcp-focus-color': theme.border.focus,
   } as React.CSSProperties;
 
+  // RIGHT-CLICK ON PAN OR VOLUME: "Enter value…" / "Reset to …" (2026-10-15,
+  // "add right click menu to input controls … so the user can right click
+  // and say 'enter manual value'"): the menu is useValueContextMenu's, the
+  // entry ManualValueDialog's, the number applied through the control's
+  // own onChange.
+  const [manualValue, setManualValue] = React.useState<'pan' | 'volume' | null>(null);
+  const panMenu = useValueContextMenu({
+    onEnterValue: () => setManualValue('pan'),
+    onReset: () => onPanChange?.(0),
+    resetLabel: 'centre',
+  });
+  const volumeMenu = useValueContextMenu({
+    onEnterValue: () => setManualValue('volume'),
+    onReset: () => onVolumeChange?.(75),
+  });
+
   const handleDoubleClick = (e: React.MouseEvent) => {
     if (!onDoubleClick) return;
     // The name renames on double-click; the controls (knob, slider, M/S,
@@ -1182,6 +1200,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
               tabIndex={-1}
               role="group"
               aria-label="Pan"
+              onContextMenu={panMenu.onContextMenu}
             >
               <PanKnob
                 value={pan}
@@ -1198,6 +1217,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
               tabIndex={-1}
               role="group"
               aria-label="Volume"
+              onContextMenu={volumeMenu.onContextMenu}
             >
               <Slider
                 value={volume}
@@ -1311,6 +1331,20 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
           )
         )}
       </div>
+      {panMenu.menu}
+      {volumeMenu.menu}
+      <ManualValueDialog
+        isOpen={manualValue !== null}
+        title={manualValue === 'pan' ? 'Pan' : 'Volume'}
+        label={manualValue === 'pan' ? 'Pan (−100 left … 100 right)' : 'Volume'}
+        value={manualValue === 'pan' ? pan : volume}
+        unit={manualValue === 'pan' ? undefined : '%'}
+        min={manualValue === 'pan' ? -100 : 0}
+        max={100}
+        step={1}
+        onApply={(v) => (manualValue === 'pan' ? onPanChange?.(v) : onVolumeChange?.(v))}
+        onClose={() => setManualValue(null)}
+      />
     </div>
   );
 };

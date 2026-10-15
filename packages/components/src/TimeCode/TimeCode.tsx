@@ -459,6 +459,15 @@ export function TimeCode({
       aria-label={ariaLabel}
       tabIndex={0}
       onKeyDown={handleContainerKeyDown}
+      onContextMenu={(e) => {
+        // Right-click: the same menu the caret opens, at the pointer (2026-10-15)
+        if (disabled || !showFormatSelector) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuPosition({ x: e.clientX, y: e.clientY });
+        setMenuOpenedViaKeyboard(false);
+        setShowMenu(true);
+      }}
     >
       <div className="timecode__display">
         {segments.map((segment, index) => (
@@ -535,6 +544,11 @@ export function TimeCode({
             y={menuPosition.y}
             autoFocus={menuOpenedViaKeyboard}
           >
+            {/* "Enter value…" — start typing at the first digit (2026-10-15,
+                the right-click menu every value control carries); the
+                formats follow */}
+            <ContextMenuItem label="Enter value…" onClick={() => { setShowMenu(false); window.setTimeout(beginEditing, 0); }} />
+            <ContextMenuItem isDivider />
             <ContextMenuItem
               label="dd:hh:mm:ss"
               checked={format === 'dd:hh:mm:ss'}
