@@ -8,10 +8,11 @@
  * timecode: three parts on the toolbar, left to right —
  *   - the "Speed" CAPTION, as the Snap label is: a `span`, never
  *     pressable ("I don't want the word to be pressable", 2026-10-14) and
- *     never lit — NOTHING CHANGES COLOUR while a speed is on (2026-10-15,
- *     "I don't like colour change"; an amber tint on the readout and the
- *     timecode was tried and dropped the same day; the readout takes a
- *     1px OUTLINE instead, "maybe outliner?") — ON IS THE VALUE NOT
+ *     never lit — NOTHING MARKS THE ON STATE (2026-10-15: an amber tint
+ *     on the readout and the timecode, "I don't like colour change", then
+ *     a 1px outline on the readout, "I don't like" — both dropped the
+ *     same day; the thumb off its mark and the number are the state, as
+ *     the Figma row draws it) — ON IS THE VALUE NOT
  *     BEING 100% ("the slider is popular because we can say, if it's
  *     different… then it's on", 2026-10-14 — no checkbox, no switch;
  *     the host derives `enabled` from the speed);
@@ -110,10 +111,6 @@ export function VarispeedControl({ speed, enabled, onChange, onDial }: Varispeed
   const valueMenu = useValueContextMenu({ onEnterValue: () => setManualOpen(true), onReset: () => onChange(1), resetLabel: '100%' });
 
   const style = {
-    // ON = a 1px OUTLINE around the readout (2026-10-15, "maybe outliner?"
-    // after the amber was dropped): a frame in the theme's emphasis border,
-    // never a colour change
-    '--varispeed-outline': theme.border.emphasis,
     '--focus-color': theme.border.focus,
     '--varispeed-text': theme.foreground.text.primary,
     '--varispeed-mark': theme.foreground.text.primary,
