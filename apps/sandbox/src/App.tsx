@@ -463,22 +463,15 @@ function CanvasDemoContent() {
     rollInTime: parseFloat(preferences.rollInTime) || 3,
   });
 
-  // Timer Record (2026-10-19): the armed recorder — the dialog hands it a
-  // schedule, it starts and stops the recording through Record and Stop
-  // and shows the state on the bar (the armed Record button, the status
-  // bar's countdown). Stop cancels it.
+  // Timer Record (2026-10-19): the setup dialog hands the hook a schedule,
+  // the WAIT dialog blocks the app until the start, the hook starts and
+  // stops the recording through Record and Stop, and the status bar counts
+  // down to the end while recording. Stop cancels it.
   const timerRecord = useTimerRecord({
     isRecording: state.isRecording,
     onStartRecording: handleRecord,
     onStopRecording: handleStopRecording,
   });
-  // A press on the ARMED Record button starts the recording now (the
-  // clock glyph, 2026-10-19); otherwise it is the ordinary Record
-  const handleRecordOrStartNow = React.useCallback(() => {
-    if (timerRecord.isArmed) { timerRecord.startNow(); return Promise.resolve(); }
-    return handleRecord();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timerRecord.isArmed, timerRecord.startNow, handleRecord]);
   const handleStopAll = React.useCallback(() => {
     timerRecord.cancel();
     return handleStop();
@@ -920,10 +913,9 @@ function CanvasDemoContent() {
       onVarispeedToggle: playback.setVarispeedOn,
       isPlaying,
       isRecording: state.isRecording,
-      recordArmed: timerRecord.isArmed,
       onPlay: handlePlay,
       onStop: handleStopAll,
-      onRecord: handleRecordOrStartNow,
+      onRecord: handleRecord,
       onSkipToStart: () => {
         dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: 0 });
         scrollPlayheadIntoView();

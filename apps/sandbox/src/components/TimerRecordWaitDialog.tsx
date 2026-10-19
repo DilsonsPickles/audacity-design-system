@@ -32,9 +32,13 @@ export function TimerRecordWaitDialog({ schedule, now, onStartNow, onCancel, os 
   return (
     <Dialog
       isOpen={open}
-      title="Waiting to start recording"
+      // "Timed recording" names the thing; the state is a label in the body (2026-10-19)
+      title="Timed recording"
       onClose={onCancel}
       closeOnClickOutside={false}
+      // No × (2026-10-19, "should we remove the OS close button?"): a × on a
+      // state is an accidental cancel; Cancel is the deliberate exit
+      hideCloseButton
       os={os}
       className="timer-record-wait-dialog"
       width={400}
@@ -49,7 +53,8 @@ export function TimerRecordWaitDialog({ schedule, now, onStartNow, onCancel, os 
       }
     >
       {schedule && (
-        <div data-timer-record-wait role="status" aria-live="polite" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '8px 0 4px', fontSize: '12px' }}>
+        <div data-timer-record-wait role="status" aria-live="polite" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '4px 0 4px', fontSize: '12px' }}>
+          <span data-timer-record-label style={{ fontWeight: 600 }}>Waiting to start</span>
           <span data-timer-record-countdown style={{ fontSize: '32px', fontWeight: 600, fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
             {formatCountdown(schedule.startAt - now)}
           </span>

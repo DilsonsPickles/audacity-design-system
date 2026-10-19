@@ -16,7 +16,9 @@ describe('TimerRecordWaitDialog (2026-10-19): the block while a timed recording 
     const { baseElement, getByText, rerender } = render(
       <ThemeProvider><TimerRecordWaitDialog schedule={s} now={t0 - 134_000} onStartNow={onStartNow} onCancel={onCancel} /></ThemeProvider>,
     );
-    expect(getByText('Waiting to start recording')).toBeTruthy();
+    expect(getByText('Timed recording')).toBeTruthy();
+    expect(getByText('Waiting to start')).toBeTruthy();
+    expect(baseElement.querySelector('.dialog-header__close, [aria-label="Close"]')).toBeNull(); // no ×
     expect(baseElement.querySelector('[data-timer-record-countdown]')?.textContent).toBe('2:14');
     expect(getByText('Starts at 14:00:00 · ends at 15:00:00')).toBeTruthy();
     fireEvent.click(getByText('Start now'));

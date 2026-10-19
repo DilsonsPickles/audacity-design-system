@@ -9,9 +9,9 @@
  * prototype). THE WAIT IS BLOCKED by TimerRecordWaitDialog (2026-10-19,
  * "can we try a blocking dialog?" — the armed-bar model, with its target
  * track to defend, "is getting complex for little extra benefit"), which
- * reads this hook's `clock` and `schedule`; the bar's armed state
- * (`isArmed`, `statusText`) stays behind it and carries the recording
- * phase. Stop cancels either phase; a recording the user stops by any
+ * reads this hook's `clock` and `schedule`; `statusText` is the status
+ * bar's line while RECORDING (nothing while armed — the bar's armed look
+ * went with the block: "do we remove the record arming?"). Stop cancels either phase; a recording the user stops by any
  * other means ends the timer too.
  *
  * The last schedule is remembered for the dialog's next open (the
@@ -40,9 +40,9 @@ export interface UseTimerRecordReturn {
   schedule: TimerRecordSchedule | null;
   /** The schedule last armed — the dialog's prefill */
   lastSchedule: TimerRecordSchedule | null;
-  /** The Record button's armed look: waiting for the start */
+  /** Waiting for the start — the wait dialog is up */
   isArmed: boolean;
-  /** The status bar's line, null when idle */
+  /** The status bar's line while recording, null otherwise */
   statusText: string | null;
   /** The hook's clock, ticking once a second while live — the wait dialog's countdown */
   clock: number;

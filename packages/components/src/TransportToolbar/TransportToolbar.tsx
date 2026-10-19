@@ -54,8 +54,6 @@ export interface TransportToolbarProps {
   // Playback
   isPlaying: boolean;
   isRecording: boolean;
-  /** A timed recording is ARMED — waiting for its start (2026-10-19): the Record button wears the armed look */
-  recordArmed?: boolean;
   onPlay: () => void;
   onStop: () => void;
   onRecord: () => void;
@@ -140,14 +138,12 @@ export interface TransportToolbarProps {
 
 function SplitRecordButton({
   isRecording,
-  armed = false,
   disabled,
   onRecord,
   onCaretClick,
   caretRef,
 }: {
   isRecording: boolean;
-  armed?: boolean;
   disabled: boolean;
   onRecord: () => void;
   onCaretClick: () => void;
@@ -179,7 +175,7 @@ function SplitRecordButton({
     <>
       <button
         type="button"
-        aria-label={armed && !isRecording ? 'Record now (a recording is scheduled)' : 'Record'}
+        aria-label="Record"
         disabled={disabled}
         onClick={() => { if (!disabled) onRecord(); }}
         onMouseEnter={() => { if (!disabled) setMainState('hover'); }}
@@ -192,11 +188,9 @@ function SplitRecordButton({
           borderRadius: 0,
           backgroundColor: isRecording ? theme.audio.transport.record : bg(mainState),
           color: isRecording ? '#FFFFFF' : '#F08080',
-          boxShadow: armed && !isRecording ? `inset 0 0 0 1.5px ${theme.audio.transport.record}` : undefined,
         }}
-        data-armed={armed && !isRecording ? 'true' : undefined}
       >
-        <Icon name={armed && !isRecording ? 'clock' : 'record'} size={14} />
+        <Icon name="record" size={14} />
       </button>
       <button
         ref={caretRef}
@@ -227,7 +221,7 @@ export function TransportToolbar({
   activeMenuItem, workspace,
   hiddenTools = [], onToggleToolVisibility,
   varispeed = 1, varispeedOn = false, onVarispeedChange, onVarispeedDial, onVarispeedToggle,
-  isPlaying, isRecording, recordArmed = false, onPlay, onStop, onRecord, onSkipToStart, onSkipToEnd, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime, snapEnabled = false, onToggleSnap, snapSubdivision = 1, onSnapSubdivisionChange, snapTriplet = false, onToggleSnapTriplet, snapMode = 'musical', onSnapModeChange,
+  isPlaying, isRecording, onPlay, onStop, onRecord, onSkipToStart, onSkipToEnd, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime, snapEnabled = false, onToggleSnap, snapSubdivision = 1, onSnapSubdivisionChange, snapTriplet = false, onToggleSnapTriplet, snapMode = 'musical', onSnapModeChange,
   loopRegionEnabled, loopRegionStart, loopRegionEnd,
   setLoopRegionEnabled, setLoopRegionStart, setLoopRegionEnd,
   timeSelection, bpm, onBpmChange, beatsPerMeasure, noteValue = 4, onTimeSignatureChange,
@@ -401,7 +395,6 @@ export function TransportToolbar({
               <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 3, overflow: 'hidden' }}>
                 <SplitRecordButton
                   isRecording={isRecording}
-                  armed={recordArmed}
                   disabled={isPlaying}
                   onRecord={onRecord}
                   onCaretClick={handleRecordCaretClick}
@@ -425,15 +418,11 @@ export function TransportToolbar({
               </div>
             ) : (
               <TransportButton
-                // ARMED: the glyph is a CLOCK in the ring ("perhaps we want to
-                // change the record circle to a timer?", 2026-10-19) — a
-                // timer owns this button; a press starts the recording NOW
-                icon={recordArmed && !isRecording ? 'clock' : 'record'}
+                icon="record"
                 iconColor="#F08080"
-                ariaLabel={recordArmed && !isRecording ? 'Record now (a recording is scheduled)' : 'Record'}
+                ariaLabel="Record"
                 active={isRecording}
                 recording={isRecording}
-                armed={recordArmed}
                 disabled={isPlaying}
                 onClick={onRecord}
               />

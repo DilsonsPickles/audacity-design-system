@@ -8,7 +8,7 @@ beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { vi.useRealTimers(); });
 
 describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar told at each step', () => {
-  it('arms, counts down on the bar, starts the recording at the start and stops it at the end', () => {
+  it('arms, starts the recording at the start and stops it at the end', () => {
     let t = 1_000_000;
     const now = () => t;
     const onStart = vi.fn();
@@ -20,7 +20,7 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
     const s = { ...defaultTimerSchedule(t + 134_000), endAt: t + 134_000 + 60_000 };
     act(() => { result.current.arm(s); });
     expect(result.current.isArmed).toBe(true);
-    expect(result.current.statusText).toMatch(/^Recording starts in 2:14 \(at \d\d:\d\d:\d\d\)$/);
+    expect(result.current.statusText).toBeNull(); // the wait is the dialog's
     expect(onStart).not.toHaveBeenCalled();
 
     t += 134_000;

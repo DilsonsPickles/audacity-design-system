@@ -126,10 +126,12 @@ const whenLine = (verb: string, at: number, now: number): string => {
     : `Recording ${verb} at ${time} (in ${countdown})`;
 };
 
-/** The status bar's line while a timed recording is live; null when idle */
+/** The status bar's line while a timed recording RUNS; null when idle —
+ *  and null while armed, since the wait is behind the blocking dialog
+ *  (2026-10-19, "do we remove the record arming?" — yes: a state nobody
+ *  can see is not a state) */
 export function timerRecordStatusText(phase: TimerRecordPhase, schedule: TimerRecordSchedule | null, now: number): string | null {
-  if (!schedule || phase === 'idle') return null;
-  if (phase === 'armed') return whenLine('starts', schedule.startAt, now);
+  if (!schedule || phase !== 'recording') return null;
   return whenLine('ends', schedule.endAt, now);
 }
 

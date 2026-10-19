@@ -38,6 +38,10 @@ export interface DialogProps {
    * Callback when dialog should close
    */
   onClose?: () => void;
+  /** No × in the title bar — for a dialog that is a STATE the app is in
+   *  rather than a window the user opened (the timed recording's wait,
+   *  2026-10-19); Escape and the footer's buttons still call onClose */
+  hideCloseButton?: boolean;
   /**
    * Callback when clicking outside the dialog
    * @default calls onClose
@@ -128,6 +132,7 @@ export function Dialog({
   headerContent,
   logo,
   onClose,
+  hideCloseButton = false,
   onClickOutside,
   closeOnClickOutside = true,
   closeOnEscape = true,
@@ -547,7 +552,7 @@ export function Dialog({
         <DialogHeader
           title={title}
           logo={logo}
-          onClose={onClose}
+          onClose={hideCloseButton ? undefined : onClose}
           maximizable={maximizable}
           isMaximized={isMaximized}
           onMaximize={() => setIsMaximized(!isMaximized)}
