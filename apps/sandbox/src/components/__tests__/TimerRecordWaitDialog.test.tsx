@@ -14,7 +14,7 @@ describe('TimerRecordWaitDialog (2026-10-19): the block while a timed recording 
     const onCancel = vi.fn();
     const s = { ...defaultTimerSchedule(t0), endAt: t0 + 3_600_000 };
     const { baseElement, getByText, rerender } = render(
-      <ThemeProvider><TimerRecordWaitDialog schedule={s} now={t0 - 134_000} onStartNow={onStartNow} onCancel={onCancel} /></ThemeProvider>,
+      <ThemeProvider><TimerRecordWaitDialog phase="armed" schedule={s} now={t0 - 134_000} onStartNow={onStartNow} onCancel={onCancel} onStop={() => {}} /></ThemeProvider>,
     );
     expect(getByText('Timed recording')).toBeTruthy();
     expect(getByText('Waiting to start')).toBeTruthy();
@@ -25,7 +25,22 @@ describe('TimerRecordWaitDialog (2026-10-19): the block while a timed recording 
     expect(onStartNow).toHaveBeenCalledTimes(1);
     fireEvent.click(getByText('Cancel'));
     expect(onCancel).toHaveBeenCalledTimes(1);
-    rerender(<ThemeProvider><TimerRecordWaitDialog schedule={null} now={t0} onStartNow={onStartNow} onCancel={onCancel} /></ThemeProvider>);
+    rerender(<ThemeProvider><TimerRecordWaitDialog phase="idle" schedule={null} now={t0} onStartNow={onStartNow} onCancel={onCancel} onStop={() => {}} /></ThemeProvider>);
     expect(baseElement.querySelector('[data-timer-record-wait]')).toBeNull();
+  });
+
+  it('while recording: the label reads Recording, the countdown runs to the end, and the one button is Stop', () => {
+    const onStop = vi.fn();
+    const s = { ...defaultTimerSchedule(t0), endAt: t0 + 3_600_000 };
+    const { baseElement, getByText, queryByText } = render(
+      <ThemeProvider><TimerRecordWaitDialog phase="recording" schedule={s} now={t0 + 3_600_000 - 2530_000} onStartNow={() => {}} onCancel={() => {}} onStop={onStop} /></ThemeProvider>,
+    );
+    expect(getByText('Recording')).toBeTruthy();
+    expect(baseElement.querySelector('[data-timer-record-countdown]')?.textContent).toBe('42:10');
+    expect(getByText('Started at 14:00:00 · ends at 15:00:00')).toBeTruthy();
+    expect(queryByText('Cancel')).toBeNull();
+    expect(queryByText('Start now')).toBeNull();
+    fireEvent.click(getByText('Stop'));
+    expect(onStop).toHaveBeenCalledTimes(1);
   });
 });

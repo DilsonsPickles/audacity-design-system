@@ -16,12 +16,10 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
     const onStop = vi.fn();
     const { result, rerender } = renderHook(({ isRecording }) => useTimerRecord({ isRecording, onStartRecording: onStart, onStopRecording: onStop, now }), { initialProps: { isRecording: false } });
     expect(result.current.isArmed).toBe(false);
-    expect(result.current.statusText).toBeNull();
 
     const s = { ...defaultTimerSchedule(t + 134_000), endAt: t + 134_000 + 60_000 };
     act(() => { result.current.arm(s); });
     expect(result.current.isArmed).toBe(true);
-    expect(result.current.statusText).toBeNull(); // the wait is the dialog's
     expect(onStart).not.toHaveBeenCalled();
 
     t += 134_000;
@@ -29,14 +27,12 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
     expect(onStart).toHaveBeenCalledTimes(1);
     expect(result.current.phase).toBe('recording');
     expect(result.current.isArmed).toBe(false);
-    expect(result.current.statusText).toMatch(/^Recording ends in 1:00 \(at /);
     rerender({ isRecording: true });
 
     t += 60_000;
     await act(async () => { vi.advanceTimersByTime(1000); });
     expect(onStop).toHaveBeenCalledTimes(1);
     expect(result.current.phase).toBe('idle');
-    expect(result.current.statusText).toBeNull();
     expect(result.current.lastSchedule).toEqual(s);
   });
 
@@ -70,7 +66,6 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
     act(() => { result.current.startNow(); });
     expect(onStart).toHaveBeenCalledTimes(1);
     expect(result.current.phase).toBe('recording');
-    expect(result.current.statusText).toMatch(/^Recording ends in 11:00 \(at /);
     rerender({ isRecording: true });
     t = 660_000;
     await act(async () => { vi.advanceTimersByTime(1000); });
@@ -116,6 +111,30 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
       expect(error.mock.calls[0][1]).toBe('Recorded 0h 01m 00s\nNo audio clips to mix down');
     } finally {
       error.mockRestore();
+    }
+  });
+
+  it('stopNow while recording ends it early and runs the completion; it does nothing while armed', async () => {
+    const success = vi.spyOn(toast, 'success');
+    try {
+      let t = 0;
+      const onStop = vi.fn();
+      const { result, rerender } = renderHook(({ isRecording }) => useTimerRecord({ isRecording, onStartRecording: () => {}, onStopRecording: onStop, now: () => t }), { initialProps: { isRecording: false } });
+      act(() => { result.current.arm({ ...defaultTimerSchedule(t + 60_000), endAt: t + 3_660_000 }); });
+      act(() => { result.current.stopNow(); });
+      expect(result.current.phase).toBe('armed');
+      t = 60_000;
+      act(() => { vi.advanceTimersByTime(1000); });
+      rerender({ isRecording: true });
+      t = 60_000 + 600_000;
+      act(() => { vi.advanceTimersByTime(1000); });
+      await act(async () => { result.current.stopNow(); });
+      await act(async () => { vi.advanceTimersByTime(10); });
+      expect(onStop).toHaveBeenCalledTimes(1);
+      expect(result.current.phase).toBe('idle');
+      expect(success.mock.calls[0][1]).toBe('Recorded 0h 10m 00s');
+    } finally {
+      success.mockRestore();
     }
   });
 });

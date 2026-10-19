@@ -9,9 +9,9 @@
  * prototype). THE WAIT IS BLOCKED by TimerRecordWaitDialog (2026-10-19,
  * "can we try a blocking dialog?" — the armed-bar model, with its target
  * track to defend, "is getting complex for little extra benefit"), which
- * reads this hook's `clock` and `schedule`; `statusText` is the status
- * bar's line while RECORDING (nothing while armed — the bar's armed look
- * went with the block: "do we remove the record arming?"). Stop cancels either phase; a recording the user stops by any
+ * reads this hook's `clock`, `phase` and `schedule` for BOTH phases (the
+ * recording is blocked too, same day: "same dialog countdown style"); no
+ * bar state remains — nothing could see it under the modal. Stop cancels either phase; a recording the user stops by any
  * other means ends the timer too.
  *
  * The last schedule is remembered for the dialog's next open (the
@@ -21,7 +21,7 @@
 import React from 'react';
 import { toast } from '@audacity-ui/components';
 import {
-  type TimerRecordSchedule, type TimerRecordPhase, timerRecordStatusText, formatDurationText,
+  type TimerRecordSchedule, type TimerRecordPhase, formatDurationText,
 } from '../utils/timerRecord';
 
 export interface UseTimerRecordOptions {
@@ -46,15 +46,15 @@ export interface UseTimerRecordReturn {
   schedule: TimerRecordSchedule | null;
   /** The schedule last armed — the dialog's prefill */
   lastSchedule: TimerRecordSchedule | null;
-  /** Waiting for the start — the wait dialog is up */
+  /** Waiting for the start */
   isArmed: boolean;
-  /** The status bar's line while recording, null otherwise */
-  statusText: string | null;
   /** The hook's clock, ticking once a second while live — the wait dialog's countdown */
   clock: number;
   arm: (schedule: TimerRecordSchedule) => void;
-  /** A press on the armed Record button: skip the wait, record now — the end stays as scheduled */
+  /** The dialog's Start now: skip the wait, record now — the end stays as scheduled */
   startNow: () => void;
+  /** The dialog's Stop while recording: end it now; the completion actions run */
+  stopNow: () => void;
   cancel: () => void;
 }
 
@@ -128,6 +128,13 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
     setSchedule(null);
   }, []);
 
+  // STOP NOW (2026-10-19, the dialog blocking the recording too): end the
+  // recording early — the host's stop, then the completion actions
+  const stopNow = React.useCallback(() => {
+    if (phase !== 'recording' || !schedule) return;
+    complete(schedule, () => stopRef.current());
+  }, [phase, schedule, complete]);
+
   // No arm toast: THE WAIT IS A BLOCKING DIALOG (2026-10-19, after an
   // hour of the armed bar — "can we try a blocking dialog?"), which is
   // its own confirmation; the completion toast stays.
@@ -153,10 +160,10 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
     schedule,
     lastSchedule,
     isArmed: phase === 'armed',
-    statusText: timerRecordStatusText(phase, schedule, clock),
     clock,
     arm,
     startNow,
+    stopNow,
     cancel,
   };
 }

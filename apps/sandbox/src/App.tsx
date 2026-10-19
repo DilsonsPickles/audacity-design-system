@@ -465,9 +465,9 @@ function CanvasDemoContent() {
   });
 
   // Timer Record (2026-10-19): the setup dialog hands the hook a schedule,
-  // the WAIT dialog blocks the app until the start, the hook starts and
-  // stops the recording through Record and Stop, and the status bar counts
-  // down to the end while recording. Stop cancels it.
+  // the blocking dialog holds the app through the wait AND the recording,
+  // the hook starts and stops the recording through Record and Stop and
+  // then runs the completion actions.
   const timerRecord = useTimerRecord({
     isRecording: state.isRecording,
     onStartRecording: handleRecord,
@@ -494,11 +494,13 @@ function CanvasDemoContent() {
       return done;
     },
   });
+  // Stop cancels a WAITING timer; a RECORDING one it ends, and the hook
+  // sees the recording stop and runs the completion
   const handleStopAll = React.useCallback(() => {
-    timerRecord.cancel();
+    if (timerRecord.isArmed) timerRecord.cancel();
     return handleStop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timerRecord.cancel, handleStop]);
+  }, [timerRecord.isArmed, timerRecord.cancel, handleStop]);
 
   // Master meter: compute combined level from all track meters
   const {
@@ -1243,7 +1245,7 @@ function CanvasDemoContent() {
           // The handle under the pointer names its gestures here (user
           // decision 2026-10-01); otherwise the focus debugger, if on,
           // or the component's own "Click and drag to select audio"
-          instructionText={timerRecord.statusText ?? (handleHint ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled }) : (showFocusDebug ? focusedElement : undefined))}
+          instructionText={handleHint ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled }) : (showFocusDebug ? focusedElement : undefined)}
           onFormatChange={setSelectionTimeCodeFormat}
           onDurationFormatChange={setDurationTimeCodeFormat}
           onSelectionStartChange={(newStart) => {
@@ -1318,10 +1320,12 @@ function CanvasDemoContent() {
       />
       {/* The BLOCK while a timed recording waits (2026-10-19): the countdown, Cancel, Start now */}
       <TimerRecordWaitDialog
-        schedule={timerRecord.isArmed ? timerRecord.schedule : null}
+        phase={timerRecord.phase}
+        schedule={timerRecord.schedule}
         now={timerRecord.clock}
         onStartNow={timerRecord.startNow}
         onCancel={timerRecord.cancel}
+        onStop={timerRecord.stopNow}
         os={preferences.operatingSystem}
       />
       <ToastContainer />
