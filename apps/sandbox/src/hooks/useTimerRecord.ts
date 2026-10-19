@@ -21,7 +21,7 @@
 import React from 'react';
 import { toast } from '@audacity-ui/components';
 import {
-  type TimerRecordSchedule, type TimerRecordPhase, timerRecordStatusText,
+  type TimerRecordSchedule, type TimerRecordPhase, timerRecordStatusText, formatDurationText,
 } from '../utils/timerRecord';
 
 export interface UseTimerRecordOptions {
@@ -77,11 +77,14 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
   const complete = React.useCallback((s: TimerRecordSchedule) => {
     setPhase('idle');
     setSchedule(null);
-    const done: string[] = [];
-    if (s.saveProject) done.push(`Project saved to ${s.savePath}`);
-    if (s.exportAudio) done.push(`Audio exported to ${s.exportPath}`);
-    if (s.quitWhenComplete) done.push('Audacity would quit now');
-    toast.info('Timed recording complete', done.length ? done.join(' · ') : undefined);
+    // THE SUCCESS TOAST DETAILS WHAT WAS DONE (2026-10-19, "if we're saving
+    // or exporting, that could be detailed in the success toast"): one
+    // line per action, the recorded length first
+    const done = [`Recorded ${formatDurationText(s.endAt - s.startAt)}`];
+    if (s.saveProject) done.push(`Saved to ${s.savePath}`);
+    if (s.exportAudio) done.push(`Exported to ${s.exportPath}`);
+    if (s.quitWhenComplete) done.push('Quitting Audacity');
+    toast.success('Timed recording complete', done.join('\n'));
   }, []);
 
   // The phase machine, driven by the clock

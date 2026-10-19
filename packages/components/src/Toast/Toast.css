@@ -91,6 +91,9 @@
   font-weight: 400;
   line-height: 16px;
   color: var(--toast-description-color);
+  /* Lines, for a toast that reports several things (the timed recording's
+     completion: saved to…, exported to…) — 2026-10-19 */
+  white-space: pre-line;
 }
 
 /* Actions Container */

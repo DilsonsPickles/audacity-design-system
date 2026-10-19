@@ -1,5 +1,6 @@
 import { renderHook, act, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { toast } from '@audacity-ui/components';
 import { useTimerRecord } from '../useTimerRecord';
 import { defaultTimerSchedule } from '../../utils/timerRecord';
 
@@ -75,5 +76,23 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
     act(() => { vi.advanceTimersByTime(1000); });
     expect(onStop).toHaveBeenCalledTimes(1);
     expect(result.current.phase).toBe('idle');
+  });
+
+  it('completion raises a SUCCESS toast detailing what was done: the length recorded, then saved to / exported to / quitting', () => {
+    const success = vi.spyOn(toast, 'success');
+    try {
+      let t = 0;
+      const { result, rerender } = renderHook(({ isRecording }) => useTimerRecord({ isRecording, onStartRecording: () => {}, onStopRecording: () => {}, now: () => t }), { initialProps: { isRecording: false } });
+      act(() => { result.current.arm({ ...defaultTimerSchedule(t), endAt: t + 1_800_000, saveProject: true, savePath: '/tmp/show.aup4', exportAudio: true, exportPath: '/tmp/show.wav', quitWhenComplete: true }); });
+      act(() => { vi.advanceTimersByTime(1000); });
+      rerender({ isRecording: true });
+      t = 1_800_000;
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(success).toHaveBeenCalledTimes(1);
+      expect(success.mock.calls[0][0]).toBe('Timed recording complete');
+      expect(success.mock.calls[0][1]).toBe('Recorded 0h 30m 00s\nSaved to /tmp/show.aup4\nExported to /tmp/show.wav\nQuitting Audacity');
+    } finally {
+      success.mockRestore();
+    }
   });
 });
