@@ -28,7 +28,7 @@ import {
 } from '@audacity-ui/components';
 import {
   type TimerRecordSchedule, type TimerChoices, type TimerStartMode, type TimerEndMode,
-  resolveTimerTimes, timerRecordValidation, formatDurationText, defaultTimerSchedule, DEFAULT_TIMER_DURATION_MS,
+  resolveTimerTimes, timerRecordValidation, formatDurationText, clockTime, defaultTimerSchedule, DEFAULT_TIMER_DURATION_MS,
   localDateString, localSecondsOfDay, parseLocalDate, combineLocal, localMidnight,
 } from '../utils/timerRecord';
 
@@ -46,11 +46,6 @@ export interface TimerRecordDialogProps {
 const labelStyle: React.CSSProperties = { fontSize: '12px', fontWeight: 400 };
 const headingStyle: React.CSSProperties = { fontSize: '12px', fontWeight: 600, margin: 0 };
 const readoutStyle: React.CSSProperties = { fontSize: '12px', color: 'rgba(0, 0, 0, 0.6)', minHeight: '16px', fontVariantNumeric: 'tabular-nums' };
-
-const timeOfDay = (ms: number) => {
-  const d = new Date(ms);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
-};
 
 export function TimerRecordDialog({ isOpen, initial, now, onSchedule, onClose, os = 'macos' }: TimerRecordDialogProps) {
   const clockFn = React.useRef(now ?? (() => Date.now()));
@@ -169,7 +164,7 @@ export function TimerRecordDialog({ isOpen, initial, now, onSchedule, onClose, o
   const endReadout = problem && choices.endMode === 'until' && problem !== 'The end is before the start'
     ? ''
     : choices.endMode === 'for'
-      ? (problem ? '' : `Ends ${localMidnight(resolved.endAt) === localMidnight(clock) ? 'today' : localDateString(resolved.endAt)} at ${timeOfDay(resolved.endAt)}`)
+      ? (problem ? '' : `Ends ${localMidnight(resolved.endAt) === localMidnight(clock) ? 'today' : localDateString(resolved.endAt)} at ${clockTime(resolved.endAt)}`)
       : (resolved.endAt > resolved.startAt ? `Records for ${formatDurationText(resolved.endAt - resolved.startAt)}${choices.startMode === 'now' ? ' from now' : ''}` : '');
 
   return (
@@ -201,7 +196,7 @@ export function TimerRecordDialog({ isOpen, initial, now, onSchedule, onClose, o
             </div>
             {choices.startMode === 'at' && dateTimeFields('start', choices.startAt, startDateDraft)}
             <span data-timer-record-readout="start" style={readoutStyle}>
-              {choices.startMode === 'now' ? `Starts when you press Schedule. It is ${timeOfDay(clock)}.` : ''}
+              {choices.startMode === 'now' ? `Starts when you press Schedule. It is ${clockTime(clock)}.` : ''}
             </span>
           </div>
           <div data-timer-record-side="end" data-mode={choices.endMode} style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>

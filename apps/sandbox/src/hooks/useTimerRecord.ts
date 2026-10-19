@@ -20,7 +20,7 @@
 import React from 'react';
 import { toast } from '@audacity-ui/components';
 import {
-  type TimerRecordSchedule, type TimerRecordPhase, timerRecordStatusText,
+  type TimerRecordSchedule, type TimerRecordPhase, timerRecordStatusText, clockTime,
 } from '../utils/timerRecord';
 
 export interface UseTimerRecordOptions {
@@ -101,17 +101,28 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
     if (sawRecordingRef.current) complete(schedule);
   }, [isRecording, phase, schedule, complete]);
 
+  const cancel = React.useCallback(() => {
+    setPhase('idle');
+    setSchedule(null);
+  }, []);
+
+  // THE ARM TOAST (2026-10-19, "so we don't get a toast when it's
+  // scheduled?"): the EVENT — the dialog closed and something must say it
+  // worked — with Cancel to hand; the countdown itself is STATE and stays
+  // on the bar, never in a toast (a toast is dismissed and then there is
+  // nothing). The completion toast brackets the other end.
   const arm = React.useCallback((s: TimerRecordSchedule) => {
     setSchedule(s);
     setLastSchedule(s);
     sawRecordingRef.current = false;
     setPhase('armed');
-  }, []);
-
-  const cancel = React.useCallback(() => {
-    setPhase('idle');
-    setSchedule(null);
-  }, []);
+    const t = nowRef.current();
+    const id = toast.info(
+      'Recording scheduled',
+      s.startAt <= t ? `Starts now, ends at ${clockTime(s.endAt)}` : `Starts at ${clockTime(s.startAt)}, ends at ${clockTime(s.endAt)}`,
+      [{ label: 'Cancel', onClick: () => { cancel(); toast.dismiss(id); } }],
+    );
+  }, [cancel]);
 
   // START NOW (2026-10-19, with the clock glyph): the armed button's press
   // collapses the wait — the schedule's start becomes now, the end holds,

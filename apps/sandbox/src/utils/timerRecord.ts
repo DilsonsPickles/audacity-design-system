@@ -106,11 +106,31 @@ export function formatCountdown(ms: number): string {
   return `${h > 0 ? `${h}:` : ''}${mm}:${String(s).padStart(2, '0')}`;
 }
 
+/** "14:00:00" — the clock time, local */
+export const clockTime = (ms: number): string => {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+};
+
+/** Under an hour the countdown leads; over it the clock time does
+ *  (2026-10-19, "it would be great if I could see when the timer will
+ *  start": "9:41:05" is a number nobody reads, "14:00" is what you check) */
+const LEAD_WITH_COUNTDOWN_MS = 60 * 60 * 1000;
+
+const whenLine = (verb: string, at: number, now: number): string => {
+  const remaining = at - now;
+  const countdown = formatCountdown(remaining);
+  const time = clockTime(at);
+  return remaining < LEAD_WITH_COUNTDOWN_MS
+    ? `Recording ${verb} in ${countdown} (at ${time})`
+    : `Recording ${verb} at ${time} (in ${countdown})`;
+};
+
 /** The status bar's line while a timed recording is live; null when idle */
 export function timerRecordStatusText(phase: TimerRecordPhase, schedule: TimerRecordSchedule | null, now: number): string | null {
   if (!schedule || phase === 'idle') return null;
-  if (phase === 'armed') return `Recording starts in ${formatCountdown(schedule.startAt - now)}`;
-  return `Recording ends in ${formatCountdown(schedule.endAt - now)}`;
+  if (phase === 'armed') return whenLine('starts', schedule.startAt, now);
+  return whenLine('ends', schedule.endAt, now);
 }
 
 // ---- Local date / time splitting for the dialog's fields ----

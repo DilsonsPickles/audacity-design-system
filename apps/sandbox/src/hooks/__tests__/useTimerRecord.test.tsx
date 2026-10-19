@@ -1,5 +1,6 @@
 import { renderHook, act, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { toast } from '@audacity-ui/components';
 import { useTimerRecord } from '../useTimerRecord';
 import { defaultTimerSchedule } from '../../utils/timerRecord';
 
@@ -20,7 +21,7 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
     const s = { ...defaultTimerSchedule(t + 134_000), endAt: t + 134_000 + 60_000 };
     act(() => { result.current.arm(s); });
     expect(result.current.isArmed).toBe(true);
-    expect(result.current.statusText).toBe('Recording starts in 2:14');
+    expect(result.current.statusText).toMatch(/^Recording starts in 2:14 \(at \d\d:\d\d:\d\d\)$/);
     expect(onStart).not.toHaveBeenCalled();
 
     t += 134_000;
@@ -28,7 +29,7 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
     expect(onStart).toHaveBeenCalledTimes(1);
     expect(result.current.phase).toBe('recording');
     expect(result.current.isArmed).toBe(false);
-    expect(result.current.statusText).toBe('Recording ends in 1:00');
+    expect(result.current.statusText).toMatch(/^Recording ends in 1:00 \(at /);
     rerender({ isRecording: true });
 
     t += 60_000;
@@ -69,11 +70,29 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
     act(() => { result.current.startNow(); });
     expect(onStart).toHaveBeenCalledTimes(1);
     expect(result.current.phase).toBe('recording');
-    expect(result.current.statusText).toBe('Recording ends in 11:00');
+    expect(result.current.statusText).toMatch(/^Recording ends in 11:00 \(at /);
     rerender({ isRecording: true });
     t = 660_000;
     act(() => { vi.advanceTimersByTime(1000); });
     expect(onStop).toHaveBeenCalledTimes(1);
     expect(result.current.phase).toBe('idle');
+  });
+
+  it('arming raises a toast naming the start and end, with Cancel on it', () => {
+    const info = vi.spyOn(toast, 'info');
+    try {
+      let t = new Date(2026, 9, 19, 13, 0, 0).getTime();
+      const { result } = renderHook(() => useTimerRecord({ isRecording: false, onStartRecording: () => {}, onStopRecording: () => {}, now: () => t }));
+      act(() => { result.current.arm({ ...defaultTimerSchedule(t + 3_600_000), endAt: t + 2 * 3_600_000 }); });
+      expect(info).toHaveBeenCalledTimes(1);
+      const [title, body, actions] = info.mock.calls[0];
+      expect(title).toBe('Recording scheduled');
+      expect(body).toBe('Starts at 14:00:00, ends at 15:00:00');
+      expect(actions?.[0].label).toBe('Cancel');
+      act(() => { actions?.[0].onClick(); });
+      expect(result.current.phase).toBe('idle');
+    } finally {
+      info.mockRestore();
+    }
   });
 });

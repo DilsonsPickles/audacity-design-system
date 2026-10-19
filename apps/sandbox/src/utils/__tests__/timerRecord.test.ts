@@ -39,12 +39,14 @@ describe('Timer Record rules (2026-10-19)', () => {
     expect(formatCountdown(-5000)).toBe('0:00');
   });
 
-  it('says what the bar shows: starts in… while armed, ends in… while recording, nothing idle', () => {
-    const s = defaultTimerSchedule(t0);
+  it('says what the bar shows: the countdown leads under an hour, the clock time over it; nothing idle', () => {
+    const s = defaultTimerSchedule(t0); // starts 11:14:34, ends 12:14:34
     expect(timerRecordStatusText('idle', s, t0)).toBeNull();
     expect(timerRecordStatusText('armed', null, t0)).toBeNull();
-    expect(timerRecordStatusText('armed', s, t0 - 134_000)).toBe('Recording starts in 2:14');
-    expect(timerRecordStatusText('recording', s, t0 + hour - 2530_000)).toBe('Recording ends in 42:10');
+    expect(timerRecordStatusText('armed', s, t0 - 134_000)).toBe('Recording starts in 2:14 (at 11:14:34)');
+    expect(timerRecordStatusText('armed', s, t0 - 9 * hour - 2530_000)).toBe('Recording starts at 11:14:34 (in 9:42:10)');
+    expect(timerRecordStatusText('recording', s, t0 + hour - 2530_000)).toBe('Recording ends in 42:10 (at 12:14:34)');
+    expect(timerRecordStatusText('recording', s, t0)).toBe('Recording ends at 12:14:34 (in 1:00:00)');
   });
 
   it('splits and rejoins a local date and time of day', () => {
