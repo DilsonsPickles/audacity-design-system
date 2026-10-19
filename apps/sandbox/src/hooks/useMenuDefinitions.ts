@@ -15,6 +15,7 @@ export interface UseMenuDefinitionsOptions {
   setIsLabelEditorOpen: (open: boolean) => void;
   setIsPreferencesModalOpen: (open: boolean) => void;
   setIsGoToOpen: (open: boolean) => void;
+  setIsTimerRecordOpen: (open: boolean) => void;
   setIsKeyboardMapOpen: (open: boolean) => void;
   setMixerPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
   effectsPanel: EffectsPanelState | null;
@@ -63,6 +64,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     setIsLabelEditorOpen,
     setIsPreferencesModalOpen,
     setIsGoToOpen,
+    setIsTimerRecordOpen,
     setIsKeyboardMapOpen,
     setMixerPanelOpen,
     effectsPanel,
@@ -182,6 +184,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onTogglePianoRoll: handleTogglePianoRoll,
     rollInTimeEnabled,
     onToggleRollInTime: () => setRollInTimeEnabled(!rollInTimeEnabled),
+    onOpenTimerRecord: () => setIsTimerRecordOpen(true),
     onOpenPluginManager: () => setIsPluginManagerOpen(true),
     onGenerateTone: handleGenerateTone,
     onOpenMacroManager: () => setIsMacrosPanelOpen(true),

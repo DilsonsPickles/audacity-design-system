@@ -28,6 +28,8 @@ export interface TransportButtonProps {
    * Whether the button is in recording state (red background, white icon)
    */
   recording?: boolean;
+  /** ARMED: a timed recording is waiting for its start (2026-10-19) — a red ring, the fill unchanged */
+  armed?: boolean;
   /**
    * Icon tint, e.g. the green play and red record accents.
    * Defaults to the theme's primary icon color; the recording state's
@@ -58,6 +60,7 @@ export function TransportButton({
   disabled = false,
   active = false,
   recording = false,
+  armed = false,
   iconColor,
   ariaLabel,
   className = '',
@@ -72,6 +75,7 @@ export function TransportButton({
     '--transport-btn-hover': recording ? theme.audio.transport.record : theme.background.control.button.secondary.hover,
     '--transport-btn-pressed': recording ? theme.audio.transport.record : theme.background.control.button.secondary.active,
     '--transport-icon-color': recording ? '#FFFFFF' : (iconColor ?? theme.foreground.icon.primary),
+    '--transport-btn-armed': theme.audio.transport.record,
   } as React.CSSProperties;
 
   const handleMouseEnter = () => {
@@ -106,7 +110,8 @@ export function TransportButton({
 
   return (
     <button
-      className={`transport-button transport-button--${currentState} ${active ? 'transport-button--active' : ''} ${className}`}
+      className={`transport-button transport-button--${currentState} ${active ? 'transport-button--active' : ''} ${armed && !recording ? 'transport-button--armed' : ''} ${className}`}
+      data-armed={armed && !recording ? 'true' : undefined}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

@@ -21,6 +21,7 @@ const DIALOG_IDS = [
   'pluginBrowser',
   'missingPluginsModal',
   'goTo',
+  'timerRecord',
   'commandPalette',
   'keyboardMap',
 ] as const;
@@ -80,6 +81,8 @@ export interface UseDialogStateReturn {
   /** Go to… — the playhead to a typed position (Edit › Go to…, or the palette; 2026-10-13) */
   isGoToOpen: boolean;
   setIsGoToOpen: (open: boolean) => void;
+  isTimerRecordOpen: boolean;
+  setIsTimerRecordOpen: (open: boolean) => void;
 
   /** The command palette (⌘P, 2026-10-13) */
   isCommandPaletteOpen: boolean;
@@ -187,6 +190,7 @@ export function useDialogState(): UseDialogStateReturn {
       setIsDebugPanelOpen: makeSetter('debugPanel'),
       setIsSpectrogramSettingsOpen: makeSetter('spectrogramSettings'),
       setIsGoToOpen: makeSetter('goTo'),
+      setIsTimerRecordOpen: makeSetter('timerRecord'),
       setIsCommandPaletteOpen: makeSetter('commandPalette'),
       setIsKeyboardMapOpen: makeSetter('keyboardMap'),
       setIsPluginBrowserOpen: makeSetter('pluginBrowser'),
@@ -224,6 +228,7 @@ export function useDialogState(): UseDialogStateReturn {
     isDebugPanelOpen: openDialogs.has('debugPanel'),
     isSpectrogramSettingsOpen: openDialogs.has('spectrogramSettings'),
     isGoToOpen: openDialogs.has('goTo'),
+    isTimerRecordOpen: openDialogs.has('timerRecord'),
     isCommandPaletteOpen: openDialogs.has('commandPalette'),
     isKeyboardMapOpen: openDialogs.has('keyboardMap'),
     isPluginBrowserOpen: openDialogs.has('pluginBrowser'),

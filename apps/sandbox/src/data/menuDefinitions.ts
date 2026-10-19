@@ -57,6 +57,8 @@ export interface MenuDefinitionDeps {
   // Record menu deps
   rollInTimeEnabled: boolean;
   onToggleRollInTime: () => void;
+  /** Record › Timer record… (2026-10-19): the scheduled-recording dialog */
+  onOpenTimerRecord: () => void;
 
   // Tools menu deps
   onOpenMacroManager: () => void;
@@ -215,6 +217,11 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Enable lead in time',
       checked: deps.rollInTimeEnabled,
       onClick: deps.onToggleRollInTime,
+    },
+    { label: '', divider: true },
+    {
+      label: 'Timer record...',
+      onClick: deps.onOpenTimerRecord,
     },
   ];
 

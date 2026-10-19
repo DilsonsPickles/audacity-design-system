@@ -19,6 +19,8 @@ import { InstallerWizardDialog } from './components/InstallerWizardDialog';
 import { setTrackDeleteConfirmHandler } from './utils/confirmTrackDelete';
 import { EditorLayout } from './components/EditorLayout';
 import { GoToDialog } from './components/GoToDialog';
+import { TimerRecordDialog } from './components/TimerRecordDialog';
+import { useTimerRecord } from './hooks/useTimerRecord';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
 import { KeyboardMap, SHORTCUT_ROWS } from '@audacity-ui/components';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
@@ -118,6 +120,7 @@ function CanvasDemoContent() {
     setIsShareDialogOpen,
     setIsSaveProjectModalOpen, setIsPreferencesModalOpen,
     isGoToOpen, setIsGoToOpen,
+    isTimerRecordOpen, setIsTimerRecordOpen,
     setIsCommandPaletteOpen,
     isKeyboardMapOpen, setIsKeyboardMapOpen,
     setIsExportModalOpen, setIsLabelEditorOpen,
@@ -458,6 +461,21 @@ function CanvasDemoContent() {
     rollInTimeEnabled,
     rollInTime: parseFloat(preferences.rollInTime) || 3,
   });
+
+  // Timer Record (2026-10-19): the armed recorder — the dialog hands it a
+  // schedule, it starts and stops the recording through Record and Stop
+  // and shows the state on the bar (the armed Record button, the status
+  // bar's countdown). Stop cancels it.
+  const timerRecord = useTimerRecord({
+    isRecording: state.isRecording,
+    onStartRecording: handleRecord,
+    onStopRecording: handleStopRecording,
+  });
+  const handleStopAll = React.useCallback(() => {
+    timerRecord.cancel();
+    return handleStop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timerRecord.cancel, handleStop]);
 
   // Master meter: compute combined level from all track meters
   const {
@@ -847,6 +865,7 @@ function CanvasDemoContent() {
     setIsLabelEditorOpen,
     setIsPreferencesModalOpen,
     setIsGoToOpen,
+    setIsTimerRecordOpen,
     setIsKeyboardMapOpen,
     setMixerPanelOpen,
     effectsPanel,
@@ -893,8 +912,9 @@ function CanvasDemoContent() {
       onVarispeedToggle: playback.setVarispeedOn,
       isPlaying,
       isRecording: state.isRecording,
+      recordArmed: timerRecord.isArmed,
       onPlay: handlePlay,
-      onStop: handleStop,
+      onStop: handleStopAll,
       onRecord: handleRecord,
       onSkipToStart: () => {
         dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: 0 });
@@ -1201,7 +1221,7 @@ function CanvasDemoContent() {
           // The handle under the pointer names its gestures here (user
           // decision 2026-10-01); otherwise the focus debugger, if on,
           // or the component's own "Click and drag to select audio"
-          instructionText={handleHint ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled }) : (showFocusDebug ? focusedElement : undefined)}
+          instructionText={timerRecord.statusText ?? (handleHint ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled }) : (showFocusDebug ? focusedElement : undefined))}
           onFormatChange={setSelectionTimeCodeFormat}
           onDurationFormatChange={setDurationTimeCodeFormat}
           onSelectionStartChange={(newStart) => {
@@ -1264,6 +1284,14 @@ function CanvasDemoContent() {
         onFormatChange={setTimeCodeFormat}
         onGo={(seconds) => dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: seconds })}
         onClose={() => setIsGoToOpen(false)}
+        os={preferences.operatingSystem}
+      />
+      {/* Timer record (Record › Timer record…, or the palette): arm a scheduled recording (2026-10-19) */}
+      <TimerRecordDialog
+        isOpen={isTimerRecordOpen}
+        initial={timerRecord.lastSchedule}
+        onSchedule={timerRecord.arm}
+        onClose={() => setIsTimerRecordOpen(false)}
         os={preferences.operatingSystem}
       />
       <ToastContainer />
