@@ -58,4 +58,22 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
     expect(result.current.phase).toBe('idle');
     expect(onStop).not.toHaveBeenCalled();
   });
+
+  it('startNow collapses the wait: the recording begins at once and the end stays as scheduled', () => {
+    let t = 0;
+    const onStart = vi.fn();
+    const onStop = vi.fn();
+    const { result, rerender } = renderHook(({ isRecording }) => useTimerRecord({ isRecording, onStartRecording: onStart, onStopRecording: onStop, now: () => t }), { initialProps: { isRecording: false } });
+    act(() => { result.current.arm({ ...defaultTimerSchedule(t + 600_000), endAt: t + 660_000 }); });
+    expect(result.current.isArmed).toBe(true);
+    act(() => { result.current.startNow(); });
+    expect(onStart).toHaveBeenCalledTimes(1);
+    expect(result.current.phase).toBe('recording');
+    expect(result.current.statusText).toBe('Recording ends in 11:00');
+    rerender({ isRecording: true });
+    t = 660_000;
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(onStop).toHaveBeenCalledTimes(1);
+    expect(result.current.phase).toBe('idle');
+  });
 });

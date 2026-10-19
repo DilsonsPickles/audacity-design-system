@@ -63,6 +63,7 @@ export type IconName =
   | 'list-view'
   | 'lock'
   | 'folder'
+  | 'clock'
   | 'refresh'
   | 'check'
   | 'search';
@@ -135,6 +136,8 @@ const ICON_MAP: Record<IconName, string> = {
   // would have drawn a folder. Renamed rather than aliased so one
   // codepoint keeps one honest name.
   folder: '\uEF23',
+  // The shared font's CLOCK (the real build's iconcodes.h 0xF475): the armed Record button (2026-10-19)
+  clock: '\uF475',
   refresh: '\uF358',
   check: '\uEF31',
   /* Plain magnifier (the zoom-in/out glyphs carry +/- marks) \u2014 the

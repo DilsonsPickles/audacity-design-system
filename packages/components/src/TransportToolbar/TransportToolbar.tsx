@@ -179,7 +179,7 @@ function SplitRecordButton({
     <>
       <button
         type="button"
-        aria-label="Record"
+        aria-label={armed && !isRecording ? 'Record now (a recording is scheduled)' : 'Record'}
         disabled={disabled}
         onClick={() => { if (!disabled) onRecord(); }}
         onMouseEnter={() => { if (!disabled) setMainState('hover'); }}
@@ -196,7 +196,7 @@ function SplitRecordButton({
         }}
         data-armed={armed && !isRecording ? 'true' : undefined}
       >
-        <Icon name="record" size={14} />
+        <Icon name={armed && !isRecording ? 'clock' : 'record'} size={14} />
       </button>
       <button
         ref={caretRef}
@@ -425,9 +425,12 @@ export function TransportToolbar({
               </div>
             ) : (
               <TransportButton
-                icon="record"
+                // ARMED: the glyph is a CLOCK in the ring ("perhaps we want to
+                // change the record circle to a timer?", 2026-10-19) — a
+                // timer owns this button; a press starts the recording NOW
+                icon={recordArmed && !isRecording ? 'clock' : 'record'}
                 iconColor="#F08080"
-                ariaLabel="Record"
+                ariaLabel={recordArmed && !isRecording ? 'Record now (a recording is scheduled)' : 'Record'}
                 active={isRecording}
                 recording={isRecording}
                 armed={recordArmed}

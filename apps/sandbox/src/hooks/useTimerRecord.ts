@@ -44,6 +44,8 @@ export interface UseTimerRecordReturn {
   /** The status bar's line, null when idle */
   statusText: string | null;
   arm: (schedule: TimerRecordSchedule) => void;
+  /** A press on the armed Record button: skip the wait, record now — the end stays as scheduled */
+  startNow: () => void;
   cancel: () => void;
 }
 
@@ -111,6 +113,15 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
     setSchedule(null);
   }, []);
 
+  // START NOW (2026-10-19, with the clock glyph): the armed button's press
+  // collapses the wait — the schedule's start becomes now, the end holds,
+  // and the clock effect above starts the recording on its next tick
+  const startNow = React.useCallback(() => {
+    const t = nowRef.current();
+    setSchedule((s) => (s ? { ...s, startAt: Math.min(s.startAt, t) } : s));
+    setClock(t);
+  }, []);
+
   return {
     phase,
     schedule,
@@ -118,6 +129,7 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
     isArmed: phase === 'armed',
     statusText: timerRecordStatusText(phase, schedule, clock),
     arm,
+    startNow,
     cancel,
   };
 }

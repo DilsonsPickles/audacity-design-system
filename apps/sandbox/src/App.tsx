@@ -471,6 +471,13 @@ function CanvasDemoContent() {
     onStartRecording: handleRecord,
     onStopRecording: handleStopRecording,
   });
+  // A press on the ARMED Record button starts the recording now (the
+  // clock glyph, 2026-10-19); otherwise it is the ordinary Record
+  const handleRecordOrStartNow = React.useCallback(() => {
+    if (timerRecord.isArmed) { timerRecord.startNow(); return Promise.resolve(); }
+    return handleRecord();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timerRecord.isArmed, timerRecord.startNow, handleRecord]);
   const handleStopAll = React.useCallback(() => {
     timerRecord.cancel();
     return handleStop();
@@ -915,7 +922,7 @@ function CanvasDemoContent() {
       recordArmed: timerRecord.isArmed,
       onPlay: handlePlay,
       onStop: handleStopAll,
-      onRecord: handleRecord,
+      onRecord: handleRecordOrStartNow,
       onSkipToStart: () => {
         dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: 0 });
         scrollPlayheadIntoView();
