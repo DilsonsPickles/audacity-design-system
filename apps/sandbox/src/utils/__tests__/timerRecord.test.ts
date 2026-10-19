@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  applyTimerEdit, timerRecordValidation, formatCountdown, timerRecordStatusText,
+  resolveTimerTimes, timerRecordValidation, formatDurationText, formatCountdown, timerRecordStatusText,
   localDateString, localSecondsOfDay, parseLocalDate, combineLocal, localMidnight, defaultTimerSchedule,
 } from '../timerRecord';
 
@@ -8,20 +8,27 @@ describe('Timer Record rules (2026-10-19)', () => {
   const t0 = new Date(2026, 9, 19, 11, 14, 34).getTime(); // 19/10/2026 11:14:34 local
   const hour = 3600_000;
 
-  it("couples the three fields by Audacity 3's rule: start carries end, end sets duration, duration sets end", () => {
-    const times = { startAt: t0, endAt: t0 + hour };
-    expect(applyTimerEdit(times, 'start', t0 + 10 * 60_000)).toEqual({ startAt: t0 + 10 * 60_000, endAt: t0 + 10 * 60_000 + hour });
-    expect(applyTimerEdit(times, 'end', t0 + 2 * hour)).toEqual({ startAt: t0, endAt: t0 + 2 * hour });
-    expect(applyTimerEdit(times, 'duration', 30 * 60_000)).toEqual({ startAt: t0, endAt: t0 + 30 * 60_000 });
-    // End never precedes start
-    expect(applyTimerEdit(times, 'end', t0 - hour).endAt).toBe(t0);
-    expect(applyTimerEdit(times, 'duration', -5).endAt).toBe(t0);
+  it('resolves the two choices into a start and an end: Now follows the clock, For adds to the start, Until is typed', () => {
+    const base = { startMode: 'now' as const, startAt: t0 - hour, endMode: 'for' as const, durationMs: hour, endAt: t0 + 3 * hour };
+    expect(resolveTimerTimes(base, t0)).toEqual({ startAt: t0, endAt: t0 + hour });
+    expect(resolveTimerTimes({ ...base, startMode: 'at' }, t0)).toEqual({ startAt: t0 - hour, endAt: t0 });
+    expect(resolveTimerTimes({ ...base, endMode: 'until' }, t0)).toEqual({ startAt: t0, endAt: t0 + 3 * hour });
+    // Under Now an Until end gets shorter as the clock runs
+    expect(resolveTimerTimes({ ...base, endMode: 'until' }, t0 + hour).endAt - (t0 + hour)).toBe(2 * hour);
   });
 
-  it('refuses an end at or before the start', () => {
-    expect(timerRecordValidation({ startAt: t0, endAt: t0 + 1 })).toBeNull();
-    expect(timerRecordValidation({ startAt: t0, endAt: t0 })).toBe('The end must be after the start');
-    expect(timerRecordValidation({ startAt: t0, endAt: NaN })).toBe('Enter a valid date and time');
+  it('refuses an empty duration, an end before the start, and unreadable dates', () => {
+    const base = { startMode: 'now' as const, startAt: t0, endMode: 'for' as const, durationMs: hour, endAt: t0 + hour };
+    expect(timerRecordValidation(base, t0)).toBeNull();
+    expect(timerRecordValidation({ ...base, durationMs: 0 }, t0)).toBe('Set a duration');
+    expect(timerRecordValidation({ ...base, endMode: 'until', endAt: t0 - 1 }, t0)).toBe('The end is before the start');
+    expect(timerRecordValidation({ ...base, startMode: 'at', startAt: NaN }, t0)).toBe('Enter a valid start date and time');
+    expect(timerRecordValidation({ ...base, endMode: 'until', endAt: NaN }, t0)).toBe('Enter a valid end date and time');
+  });
+
+  it('formats the duration readout', () => {
+    expect(formatDurationText(hour)).toBe('1h 00m 00s');
+    expect(formatDurationText(2530_000)).toBe('0h 42m 10s');
   });
 
   it('formats the countdown as m:ss, h:mm:ss above an hour, rounding up so the last second is 0:01', () => {

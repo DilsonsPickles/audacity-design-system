@@ -1,24 +1,37 @@
 /**
  * Timer Record — the pure rules (2026-10-19, after the Timer record design
- * review: "build it and we can address the issues").
+ * review: "build it and we can address the issues"; the START and END
+ * CHOICES the same day, "how do we set a precise end time?" → "let me see
+ * the mock" → "build it into the prototype").
  *
  * A timed recording is a ONE-SHOT FLOW, not a mode: the dialog arms the
  * recorder with a start, an end and what to do when it completes; the
  * app waits, records, and is back to idle. Nothing here is a preference.
  *
- * The three time fields are COUPLED by Audacity 3's rule (applyTimerEdit):
- * editing START carries END with it (the duration holds), editing END sets
- * the duration, editing DURATION sets END. End never precedes start.
+ * THE START IS A CHOICE — NOW, or AT A TIME — and so is THE END — FOR A
+ * DURATION, or UNTIL A TIME. Whichever is picked is the field that is
+ * typed; the other is a READOUT. That replaces Audacity 3's three coupled
+ * fields (where the last keystroke decided what moved) with a stated
+ * driver: `resolveTimerTimes` turns the choices into a start and an end,
+ * and under NOW the derived side moves with the clock (an "until" end
+ * gets shorter the longer you wait to press Schedule).
  *
  * Times are epoch milliseconds; the dialog splits them into a LOCAL date
  * ("dd/mm/yyyy") and seconds since local midnight for its fields.
  */
+
+export type TimerStartMode = 'now' | 'at';
+export type TimerEndMode = 'for' | 'until';
 
 export interface TimerRecordSchedule {
   /** Epoch ms */
   startAt: number;
   /** Epoch ms, after startAt */
   endAt: number;
+  /** How the start was chosen (the dialog reopens on the same choice); 'now' when unsaid */
+  startMode?: TimerStartMode;
+  /** How the end was chosen; 'for' when unsaid */
+  endMode?: TimerEndMode;
   saveProject: boolean;
   savePath: string;
   exportAudio: boolean;
@@ -28,8 +41,6 @@ export interface TimerRecordSchedule {
 
 export type TimerRecordPhase = 'idle' | 'armed' | 'recording';
 
-export type TimerField = 'start' | 'end' | 'duration';
-
 export const DEFAULT_TIMER_DURATION_MS = 60 * 60 * 1000;
 export const DEFAULT_SAVE_PATH = 'User/Documents/AudacityProjects/CurrentSavedProject.aup4';
 export const DEFAULT_EXPORT_PATH = 'User/Documents/AudacityExports/CurrentSavedProject.wav';
@@ -37,6 +48,8 @@ export const DEFAULT_EXPORT_PATH = 'User/Documents/AudacityExports/CurrentSavedP
 export const defaultTimerSchedule = (now: number): TimerRecordSchedule => ({
   startAt: now,
   endAt: now + DEFAULT_TIMER_DURATION_MS,
+  startMode: 'now',
+  endMode: 'for',
   saveProject: false,
   savePath: DEFAULT_SAVE_PATH,
   exportAudio: false,
@@ -44,29 +57,42 @@ export const defaultTimerSchedule = (now: number): TimerRecordSchedule => ({
   quitWhenComplete: false,
 });
 
-/** The coupling rule: which field was edited decides what else moves */
-export function applyTimerEdit(
-  times: { startAt: number; endAt: number },
-  field: TimerField,
-  value: number,
-): { startAt: number; endAt: number } {
-  switch (field) {
-    case 'start': {
-      const duration = Math.max(0, times.endAt - times.startAt);
-      return { startAt: value, endAt: value + duration };
-    }
-    case 'end':
-      return { startAt: times.startAt, endAt: Math.max(value, times.startAt) };
-    case 'duration':
-      return { startAt: times.startAt, endAt: times.startAt + Math.max(0, value) };
-  }
+/** What the dialog holds: the two choices and the three values behind them */
+export interface TimerChoices {
+  startMode: TimerStartMode;
+  /** The typed start (epoch ms), read when startMode is 'at' */
+  startAt: number;
+  endMode: TimerEndMode;
+  /** The typed duration (ms), read when endMode is 'for' */
+  durationMs: number;
+  /** The typed end (epoch ms), read when endMode is 'until' */
+  endAt: number;
 }
 
-/** Why the schedule cannot be armed, or null when it can */
-export function timerRecordValidation(times: { startAt: number; endAt: number }): string | null {
-  if (!Number.isFinite(times.startAt) || !Number.isFinite(times.endAt)) return 'Enter a valid date and time';
-  if (times.endAt <= times.startAt) return 'The end must be after the start';
+/** The choices → the start and end they mean at `now` */
+export function resolveTimerTimes(c: TimerChoices, now: number): { startAt: number; endAt: number } {
+  const startAt = c.startMode === 'now' ? now : c.startAt;
+  const endAt = c.endMode === 'for' ? startAt + Math.max(0, c.durationMs) : c.endAt;
+  return { startAt, endAt };
+}
+
+/** Why the choices cannot be armed, or null when they can */
+export function timerRecordValidation(c: TimerChoices, now: number): string | null {
+  if (c.startMode === 'at' && !Number.isFinite(c.startAt)) return 'Enter a valid start date and time';
+  if (c.endMode === 'until' && !Number.isFinite(c.endAt)) return 'Enter a valid end date and time';
+  if (c.endMode === 'for' && c.durationMs <= 0) return 'Set a duration';
+  const { startAt, endAt } = resolveTimerTimes(c, now);
+  if (endAt <= startAt) return 'The end is before the start';
   return null;
+}
+
+/** "1h 00m 00s" — the duration readout */
+export function formatDurationText(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
 }
 
 /** "2:14", "42:10", "1:02:14" — whole seconds, rounded up so the last
