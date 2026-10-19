@@ -27,3 +27,15 @@
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
+
+/* DISABLED DIMS THE WHOLE CONTROL (2026-10-19, "the checkbox is greyed
+   out but the label isn't — we need to grey out the whole control"): the
+   box carries its own .checkbox--disabled; the label follows it at the
+   same opacity so the pair reads as one disabled thing. */
+.labeled-checkbox--disabled {
+  cursor: default;
+}
+
+.labeled-checkbox--disabled .labeled-checkbox__label {
+  opacity: 0.5;
+}

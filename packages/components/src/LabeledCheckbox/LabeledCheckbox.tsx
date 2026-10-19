@@ -62,7 +62,8 @@ export function LabeledCheckbox({
 
   return (
     <div
-      className={`labeled-checkbox ${className}`}
+      className={`labeled-checkbox ${disabled ? 'labeled-checkbox--disabled' : ''} ${className}`}
+      data-disabled={disabled || undefined}
       onClick={handleClick}
       style={style}
     >

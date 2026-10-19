@@ -66,7 +66,7 @@ export const LabeledRadio: React.FC<LabeledRadioProps> = ({
   } as React.CSSProperties;
 
   return (
-    <div className={`labeled-radio ${hasDescription ? 'labeled-radio--with-description' : ''} ${className}`} style={style}>
+    <div className={`labeled-radio ${hasDescription ? 'labeled-radio--with-description' : ''} ${disabled ? 'labeled-radio--disabled' : ''} ${className}`} style={style} data-disabled={disabled || undefined}>
       <Radio
         checked={checked}
         onChange={onChange}

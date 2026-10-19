@@ -41,3 +41,10 @@
   color: var(--labeled-radio-text);
   opacity: 0.8;
 }
+
+/* The same rule as the labelled checkbox (2026-10-19): disabled dims
+   the label with the control, so the pair reads as one disabled thing */
+.labeled-radio--disabled .labeled-radio__label,
+.labeled-radio--disabled .labeled-radio__description {
+  opacity: 0.5;
+}
