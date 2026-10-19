@@ -6,12 +6,13 @@
  * is live, starts the recording at `startAt` through the host's own
  * Record, stops it at `endAt` through the host's own Stop, and then runs
  * the completion actions (save / export / quit — toasts in the
- * prototype). THE STATE SHOWS ON THE BAR, not in a panel ("The Record
- * button in an armed look, and a line in the status bar reading
- * 'Recording starts in 2:14' — this is exactly what I wanted to do"):
- * `isArmed` for the Record button and `statusText` for the status bar.
- * Stop cancels either phase; a recording the user stops by any other
- * means ends the timer too.
+ * prototype). THE WAIT IS BLOCKED by TimerRecordWaitDialog (2026-10-19,
+ * "can we try a blocking dialog?" — the armed-bar model, with its target
+ * track to defend, "is getting complex for little extra benefit"), which
+ * reads this hook's `clock` and `schedule`; the bar's armed state
+ * (`isArmed`, `statusText`) stays behind it and carries the recording
+ * phase. Stop cancels either phase; a recording the user stops by any
+ * other means ends the timer too.
  *
  * The last schedule is remembered for the dialog's next open (the
  * duration and the completion options, with a fresh start), as
@@ -20,7 +21,7 @@
 import React from 'react';
 import { toast } from '@audacity-ui/components';
 import {
-  type TimerRecordSchedule, type TimerRecordPhase, timerRecordStatusText, clockTime,
+  type TimerRecordSchedule, type TimerRecordPhase, timerRecordStatusText,
 } from '../utils/timerRecord';
 
 export interface UseTimerRecordOptions {
@@ -43,6 +44,8 @@ export interface UseTimerRecordReturn {
   isArmed: boolean;
   /** The status bar's line, null when idle */
   statusText: string | null;
+  /** The hook's clock, ticking once a second while live — the wait dialog's countdown */
+  clock: number;
   arm: (schedule: TimerRecordSchedule) => void;
   /** A press on the armed Record button: skip the wait, record now — the end stays as scheduled */
   startNow: () => void;
@@ -106,23 +109,16 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
     setSchedule(null);
   }, []);
 
-  // THE ARM TOAST (2026-10-19, "so we don't get a toast when it's
-  // scheduled?"): the EVENT — the dialog closed and something must say it
-  // worked — with Cancel to hand; the countdown itself is STATE and stays
-  // on the bar, never in a toast (a toast is dismissed and then there is
-  // nothing). The completion toast brackets the other end.
+  // No arm toast: THE WAIT IS A BLOCKING DIALOG (2026-10-19, after an
+  // hour of the armed bar — "can we try a blocking dialog?"), which is
+  // its own confirmation; the completion toast stays.
   const arm = React.useCallback((s: TimerRecordSchedule) => {
     setSchedule(s);
     setLastSchedule(s);
     sawRecordingRef.current = false;
     setPhase('armed');
-    const t = nowRef.current();
-    const id = toast.info(
-      'Recording scheduled',
-      s.startAt <= t ? `Starts now, ends at ${clockTime(s.endAt)}` : `Starts at ${clockTime(s.startAt)}, ends at ${clockTime(s.endAt)}`,
-      [{ label: 'Cancel', onClick: () => { cancel(); toast.dismiss(id); } }],
-    );
-  }, [cancel]);
+    setClock(nowRef.current());
+  }, []);
 
   // START NOW (2026-10-19, with the clock glyph): the armed button's press
   // collapses the wait — the schedule's start becomes now, the end holds,
@@ -139,6 +135,7 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
     lastSchedule,
     isArmed: phase === 'armed',
     statusText: timerRecordStatusText(phase, schedule, clock),
+    clock,
     arm,
     startNow,
     cancel,

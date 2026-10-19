@@ -20,6 +20,7 @@ import { setTrackDeleteConfirmHandler } from './utils/confirmTrackDelete';
 import { EditorLayout } from './components/EditorLayout';
 import { GoToDialog } from './components/GoToDialog';
 import { TimerRecordDialog } from './components/TimerRecordDialog';
+import { TimerRecordWaitDialog } from './components/TimerRecordWaitDialog';
 import { useTimerRecord } from './hooks/useTimerRecord';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
 import { KeyboardMap, SHORTCUT_ROWS } from '@audacity-ui/components';
@@ -1299,6 +1300,14 @@ function CanvasDemoContent() {
         initial={timerRecord.lastSchedule}
         onSchedule={timerRecord.arm}
         onClose={() => setIsTimerRecordOpen(false)}
+        os={preferences.operatingSystem}
+      />
+      {/* The BLOCK while a timed recording waits (2026-10-19): the countdown, Cancel, Start now */}
+      <TimerRecordWaitDialog
+        schedule={timerRecord.isArmed ? timerRecord.schedule : null}
+        now={timerRecord.clock}
+        onStartNow={timerRecord.startNow}
+        onCancel={timerRecord.cancel}
         os={preferences.operatingSystem}
       />
       <ToastContainer />
