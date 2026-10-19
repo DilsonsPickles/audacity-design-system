@@ -29,6 +29,12 @@ export interface UseTimerRecordOptions {
   isRecording: boolean;
   onStartRecording: () => void | Promise<void>;
   onStopRecording: () => void | Promise<void>;
+  /** THE COMPLETION ACTIONS (2026-10-19, "can we actually save and
+   *  export?"): the host does what the schedule asked — save the project,
+   *  export the mixdown — and returns one line per thing done for the
+   *  success toast; a throw becomes an error toast. Runs after the
+   *  recording has stopped and the host's state has caught up. */
+  onComplete?: (schedule: TimerRecordSchedule) => Promise<string[]>;
   /** The clock (tests) */
   now?: () => number;
   /** The tick in ms (tests) */
@@ -52,7 +58,7 @@ export interface UseTimerRecordReturn {
   cancel: () => void;
 }
 
-export function useTimerRecord({ isRecording, onStartRecording, onStopRecording, now = () => Date.now(), tickMs = 1000 }: UseTimerRecordOptions): UseTimerRecordReturn {
+export function useTimerRecord({ isRecording, onStartRecording, onStopRecording, onComplete, now = () => Date.now(), tickMs = 1000 }: UseTimerRecordOptions): UseTimerRecordReturn {
   const [phase, setPhase] = React.useState<TimerRecordPhase>('idle');
   const [schedule, setSchedule] = React.useState<TimerRecordSchedule | null>(null);
   const [lastSchedule, setLastSchedule] = React.useState<TimerRecordSchedule | null>(null);
@@ -61,6 +67,8 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
   const stopRef = React.useRef(onStopRecording);
   React.useEffect(() => { startRef.current = onStartRecording; }, [onStartRecording]);
   React.useEffect(() => { stopRef.current = onStopRecording; }, [onStopRecording]);
+  const completeRef = React.useRef(onComplete);
+  React.useEffect(() => { completeRef.current = onComplete; }, [onComplete]);
   const nowRef = React.useRef(now);
   React.useEffect(() => { nowRef.current = now; }, [now]);
   /** Whether the host's recording was seen running during the recording phase */
@@ -74,17 +82,26 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
     return () => window.clearInterval(id);
   }, [phase, tickMs]);
 
-  const complete = React.useCallback((s: TimerRecordSchedule) => {
+  // Completion: the phase ends at once; the actions run after the host's
+  // stop has settled (a macrotask, so the dispatched recording clip is in
+  // the host's state before the mixdown reads it). THE SUCCESS TOAST
+  // DETAILS WHAT WAS DONE ("if we're saving or exporting, that could be
+  // detailed in the success toast"): the recorded length, then the host's
+  // own lines — what it REALLY did, not what was asked.
+  const complete = React.useCallback((s: TimerRecordSchedule, stop: () => void | Promise<void>) => {
     setPhase('idle');
     setSchedule(null);
-    // THE SUCCESS TOAST DETAILS WHAT WAS DONE (2026-10-19, "if we're saving
-    // or exporting, that could be detailed in the success toast"): one
-    // line per action, the recorded length first
-    const done = [`Recorded ${formatDurationText(s.endAt - s.startAt)}`];
-    if (s.saveProject) done.push(`Saved to ${s.savePath}`);
-    if (s.exportAudio) done.push(`Exported to ${s.exportPath}`);
-    if (s.quitWhenComplete) done.push('Quitting Audacity');
-    toast.success('Timed recording complete', done.join('\n'));
+    void (async () => {
+      const recorded = `Recorded ${formatDurationText(Math.min(s.endAt, nowRef.current()) - s.startAt)}`;
+      try {
+        await stop();
+        await new Promise((r) => setTimeout(r, 0));
+        const done = completeRef.current ? await completeRef.current(s) : [];
+        toast.success('Timed recording complete', [recorded, ...done].join('\n'));
+      } catch (err) {
+        toast.error('Timed recording complete, but not everything was done', `${recorded}\n${err instanceof Error ? err.message : String(err)}`);
+      }
+    })();
   }, []);
 
   // The phase machine, driven by the clock
@@ -95,8 +112,7 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
       sawRecordingRef.current = false;
       void startRef.current();
     } else if (phase === 'recording' && clock >= schedule.endAt) {
-      void stopRef.current();
-      complete(schedule);
+      complete(schedule, () => stopRef.current());
     }
   }, [phase, schedule, clock, complete]);
 
@@ -104,7 +120,7 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
   React.useEffect(() => {
     if (phase !== 'recording' || !schedule) return;
     if (isRecording) { sawRecordingRef.current = true; return; }
-    if (sawRecordingRef.current) complete(schedule);
+    if (sawRecordingRef.current) complete(schedule, () => undefined); // already stopped by hand
   }, [isRecording, phase, schedule, complete]);
 
   const cancel = React.useCallback(() => {

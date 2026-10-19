@@ -22,6 +22,7 @@ import { GoToDialog } from './components/GoToDialog';
 import { TimerRecordDialog } from './components/TimerRecordDialog';
 import { TimerRecordWaitDialog } from './components/TimerRecordWaitDialog';
 import { useTimerRecord } from './hooks/useTimerRecord';
+import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
 import { KeyboardMap, SHORTCUT_ROWS } from '@audacity-ui/components';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
@@ -471,6 +472,27 @@ function CanvasDemoContent() {
     isRecording: state.isRecording,
     onStartRecording: handleRecord,
     onStopRecording: handleStopRecording,
+    // The completion actions, for real (2026-10-19, "can we actually save
+    // and export?"): a browser cannot write to a path, so SAVE is the
+    // project's own save-to-computer (the .audacityweb download) and
+    // EXPORT is the project mixdown handed to the browser as a WAV named
+    // from the path's last segment; both land in the downloads folder,
+    // and the toast says so. Quit stays a line in the toast.
+    onComplete: async (s) => {
+      const done: string[] = [];
+      if (s.saveProject) {
+        await handleSaveToComputer();
+        done.push('Project saved to your downloads');
+      }
+      if (s.exportAudio) {
+        const { blob } = await audioManagerRef.current.mixdown(state.tracks);
+        const name = safeFileName((s.exportPath.split('/').pop() || 'timed-recording.wav').replace(/\.[^.]+$/, '')) + '.wav';
+        downloadBlob(blob, name);
+        done.push(`Exported ${name} to your downloads`);
+      }
+      if (s.quitWhenComplete) done.push('Quit Audacity is not wired in the prototype');
+      return done;
+    },
   });
   const handleStopAll = React.useCallback(() => {
     timerRecord.cancel();
