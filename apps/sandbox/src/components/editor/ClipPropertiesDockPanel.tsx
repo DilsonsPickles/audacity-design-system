@@ -28,6 +28,7 @@
  * are rendered as WAV and say so.
  */
 import React from 'react';
+import * as Tone from 'tone';
 import { ClipPropertiesPanel, PITCH_LIMIT_SEMITONES, toast, type ClipPropertiesClip, type ClipPropertiesOption, type ClipPropertiesShapeOption, type ClipPropertiesExportSettings, CLIP_COLOR_ITEMS } from '@audacity-ui/components';
 import { useTracks, type Clip, type TracksAction } from '../../contexts/TracksContext';
 import { usePlayback } from '../../contexts/PlaybackContext';
@@ -77,6 +78,12 @@ export interface ClipPropertiesDockPanelProps {
   layout?: 'stack' | 'columns';
 }
 
+/** "44.1 kHz", "48 kHz", "96 kHz" — the way audio apps print a rate */
+export function formatSampleRate(hz: number): string {
+  const k = hz / 1000;
+  return `${Number.isInteger(k) ? k : k.toFixed(1)} kHz`;
+}
+
 export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' }: ClipPropertiesDockPanelProps = {}) {
   const { state, dispatch } = useTracks();
   const { clipPropertiesTarget, setClipPropertiesTarget } = useClipProperties();
@@ -111,6 +118,12 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
   const track = resolved ? state.tracks[resolved.trackIndex] : null;
   const clip = resolved?.clip ?? null;
   const trackIndex = resolved?.trackIndex ?? -1;
+
+  // The track's sample rate (2026-10-20, "on all clips no matter what —
+  // I just want to see how it feels"): the track's own, else the project's
+  // — the engine's context rate
+  const engineRate = React.useMemo(() => Tone.getContext().sampleRate, []);
+  const trackDetail = track ? formatSampleRate(track.sampleRate ?? engineRate) : undefined;
 
   // The tracks a clip can live on: the audio tracks, by id
   const trackOptions: ClipPropertiesOption[] = state.tracks
@@ -187,6 +200,7 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
       selection={selection}
       colors={CLIP_COLORS}
       tracks={trackOptions}
+      trackDetail={trackDetail}
       onTrackChange={(trackId) => {
         const toTrackIndex = state.tracks.findIndex((t) => String(t.id) === trackId);
         if (toTrackIndex < 0) return;

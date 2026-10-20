@@ -138,6 +138,10 @@ export interface ClipPropertiesPanelProps {
   colors: ReadonlyArray<ClipPropertiesOption>;
   /** The tracks a clip can be moved to (none = no Track field) */
   tracks?: ReadonlyArray<ClipPropertiesOption>;
+  /** A read-only detail shown after the Track dropdown — the track's
+   *  sample rate, "44.1 kHz" (2026-10-20, "on all clips no matter what,
+   *  I just want to see how it feels") */
+  trackDetail?: string;
   /** Move the clip (or every selected clip) to this track, start held */
   onTrackChange?: (trackId: string) => void;
   /** The fade shape presets, with their curves */
@@ -569,6 +573,7 @@ export function ClipPropertiesPanel({
   selection = null,
   colors,
   tracks = [],
+  trackDetail,
   onTrackChange,
   fadeShapes,
   onRename,
@@ -714,6 +719,7 @@ export function ClipPropertiesPanel({
                   disabled={!onTrackChange}
                   width="100%"
                 />
+                {trackDetail && <span className="clip-properties__detail" data-clip-properties-detail="track">{trackDetail}</span>}
                 <span className="clip-properties__sr">Track</span>
               </div>
             </Row>

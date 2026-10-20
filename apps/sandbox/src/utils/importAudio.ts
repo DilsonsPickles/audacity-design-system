@@ -85,6 +85,13 @@ export function importAudio({ state, dispatch, audioManagerRef }: ImportAudioDep
 
       toast.updateProgress(toastId, 100, 'Done');
 
+      // An EMPTY track takes the file's sample rate, as Audacity 3's new
+      // track does (2026-10-20): the clip properties panel shows it
+      const target = state.tracks[trackIndex];
+      if (target && target.clips.length === 0 && target.sampleRate === undefined) {
+        dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { sampleRate: audioBuffer.sampleRate } } });
+      }
+
       dispatch({
         type: 'ADD_CLIP',
         payload: { trackIndex, clip: newClip },

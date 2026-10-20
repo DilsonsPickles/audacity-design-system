@@ -115,6 +115,11 @@ export interface Track {
   /** Folder rows only: children hidden (zero effective height). */
   collapsed?: boolean;
   height?: number;
+  /** The track's sample rate in Hz, as the real build's per-track rate
+   *  (its track context menu's "Rate:" submenu); absent = the project's,
+   *  the audio engine's context rate. An empty track takes an imported
+   *  file's rate, as Audacity 3's new track does (2026-10-20). */
+  sampleRate?: number;
   viewMode?: 'waveform' | 'spectrogram' | 'split';
   channelSplitRatio?: number; // For stereo tracks: ratio of top channel height (0-1, default 0.5)
   clips: Clip[];

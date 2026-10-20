@@ -390,3 +390,14 @@
 .clip-properties__field--shape .clip-properties__glyph-cell {
   flex-basis: 30px;
 }
+
+/* A read-only detail after a field's control — the Track field's sample
+   rate (2026-10-20): the secondary text, never a value you can edit */
+.clip-properties__detail {
+  flex: none;
+  padding: 0 8px 0 4px;
+  font-size: 12px;
+  color: var(--field-text-secondary, rgba(0, 0, 0, 0.55));
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

@@ -414,4 +414,13 @@ describe('ClipPropertiesPanel › several clips selected (2026-10-02)', () => {
     expect(onFadeChange).toHaveBeenCalledWith('out', 0.25);
     expect(container.querySelector('[data-clip-properties-clip]')).toBeNull();
   });
+
+  it('shows the track detail (the sample rate) after the Track dropdown when the host gives one (2026-10-20)', () => {
+    const tracks = [{ id: 't2', label: 'Track 2' }];
+    const { container } = renderPanel({ tracks, trackDetail: '48 kHz' });
+    expect(container.querySelector('[data-clip-properties-detail="track"]')?.textContent).toBe('48 kHz');
+    cleanup();
+    const without = renderPanel({ tracks });
+    expect(without.container.querySelector('[data-clip-properties-detail="track"]')).toBeNull();
+  });
 });
