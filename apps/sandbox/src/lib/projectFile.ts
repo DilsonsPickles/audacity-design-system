@@ -88,13 +88,16 @@ export async function buildProjectFile(bundle: ProjectBundle): Promise<Blob> {
   return zip.generateAsync({ type: 'blob' });
 }
 
+/** The file name a project downloads as — "My show.audacityweb" */
+export const projectFileName = (title: string): string => `${sanitizeFilename(title)}.${FILE_EXTENSION}`;
+
 /** Trigger a browser download of the project as a `.audacityweb` file. */
 export async function downloadProjectFile(bundle: ProjectBundle): Promise<void> {
   const blob = await buildProjectFile(bundle);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${sanitizeFilename(bundle.title)}.${FILE_EXTENSION}`;
+  a.download = projectFileName(bundle.title);
   document.body.appendChild(a);
   a.click();
   a.remove();

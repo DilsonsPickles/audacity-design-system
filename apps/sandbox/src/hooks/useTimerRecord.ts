@@ -21,7 +21,7 @@
 import React from 'react';
 import { toast } from '@audacity-ui/components';
 import {
-  type TimerRecordSchedule, type TimerRecordPhase, formatDurationText,
+  type TimerRecordSchedule, type TimerRecordPhase, formatDurationText, clockTime,
 } from '../utils/timerRecord';
 
 export interface UseTimerRecordOptions {
@@ -31,10 +31,12 @@ export interface UseTimerRecordOptions {
   onStopRecording: () => void | Promise<void>;
   /** THE COMPLETION ACTIONS (2026-10-19, "can we actually save and
    *  export?"): the host does what the schedule asked — save the project,
-   *  export the mixdown — and returns one line per thing done for the
-   *  success toast; a throw becomes an error toast. Runs after the
-   *  recording has stopped and the host's state has caught up. */
-  onComplete?: (schedule: TimerRecordSchedule) => Promise<string[]>;
+   *  export the mixdown — and raises ITS OWN toasts for each (2026-10-20,
+   *  "split them into the three toasts": "Project downloaded" and "Audio
+   *  exported", each with its file as the second line; a failure "Export
+   *  failed" with the reason). Runs after the recording has stopped and
+   *  the host's state has caught up. */
+  onComplete?: (schedule: TimerRecordSchedule) => Promise<void>;
   /** The clock (tests) */
   now?: () => number;
   /** The tick in ms (tests) */
@@ -84,22 +86,25 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
 
   // Completion: the phase ends at once; the actions run after the host's
   // stop has settled (a macrotask, so the dispatched recording clip is in
-  // the host's state before the mixdown reads it). THE SUCCESS TOAST
-  // DETAILS WHAT WAS DONE ("if we're saving or exporting, that could be
-  // detailed in the success toast"): the recorded length, then the host's
-  // own lines — what it REALLY did, not what was asked.
+  // the host's state before the mixdown reads it). THREE TOASTS, IN THE
+  // ORDER THINGS HAPPEN (2026-10-20, "split them into the three toasts" —
+  // the house style: a short past-tense title, the specifics in the
+  // second line, no verb repeated): this hook's own "Timed recording
+  // complete" with the length and the times it honoured, then the host's
+  // "Project downloaded" and "Audio exported", each raised by the action
+  // that did it, each with its file as the second line.
   const complete = React.useCallback((s: TimerRecordSchedule, stop: () => void | Promise<void>) => {
     setPhase('idle');
     setSchedule(null);
     void (async () => {
-      const recorded = `Recorded ${formatDurationText(Math.min(s.endAt, nowRef.current()) - s.startAt)}`;
+      const endedAt = Math.min(s.endAt, nowRef.current());
       try {
         await stop();
         await new Promise((r) => setTimeout(r, 0));
-        const done = completeRef.current ? await completeRef.current(s) : [];
-        toast.success('Timed recording complete', [recorded, ...done].join('\n'));
+        toast.success('Timed recording complete', `Recorded ${formatDurationText(endedAt - s.startAt)}, ${clockTime(s.startAt)} to ${clockTime(endedAt)}`);
+        if (completeRef.current) await completeRef.current(s);
       } catch (err) {
-        toast.error('Timed recording complete, but not everything was done', `${recorded}\n${err instanceof Error ? err.message : String(err)}`);
+        toast.error('Timed recording', err instanceof Error ? err.message : String(err));
       }
     })();
   }, []);

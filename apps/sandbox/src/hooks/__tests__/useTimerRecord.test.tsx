@@ -73,30 +73,32 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
     expect(result.current.phase).toBe('idle');
   });
 
-  it('completion stops, waits for the host to settle, runs the host\'s actions and toasts the recorded length plus what the host did', async () => {
+  it('completion stops, waits for the host to settle, toasts the recording with its times, then runs the host\'s actions (which toast for themselves)', async () => {
     const success = vi.spyOn(toast, 'success');
     try {
-      let t = 0;
+      const t0 = new Date(2026, 9, 20, 14, 0, 0).getTime();
+      let t = t0;
       const order: string[] = [];
       const onStop = vi.fn(async () => { order.push('stop'); });
-      const onComplete = vi.fn(async () => { order.push('complete'); return ['Project saved to your downloads', 'Exported show.wav to your downloads']; });
+      const onComplete = vi.fn(async () => { order.push('complete'); });
       const { result, rerender } = renderHook(({ isRecording }) => useTimerRecord({ isRecording, onStartRecording: () => {}, onStopRecording: onStop, onComplete, now: () => t }), { initialProps: { isRecording: false } });
       act(() => { result.current.arm({ ...defaultTimerSchedule(t), endAt: t + 1_800_000, saveProject: true, exportAudio: true }); });
       act(() => { vi.advanceTimersByTime(1000); });
       rerender({ isRecording: true });
-      t = 1_800_000;
+      t = t0 + 1_800_000;
       await act(async () => { vi.advanceTimersByTime(1000); });
       await act(async () => { vi.advanceTimersByTime(10); });
       expect(order).toEqual(['stop', 'complete']);
       expect(success).toHaveBeenCalledTimes(1);
       expect(success.mock.calls[0][0]).toBe('Timed recording complete');
-      expect(success.mock.calls[0][1]).toBe('Recorded 0h 30m 00s\nProject saved to your downloads\nExported show.wav to your downloads');
+      expect(success.mock.calls[0][1]).toBe('Recorded 0h 30m 00s, 14:00:00 to 14:30:00');
     } finally {
       success.mockRestore();
     }
   });
 
-  it('a failing action becomes an error toast that still says what was recorded', async () => {
+  it('a throw from the host\'s actions becomes an error toast; the recording toast has already been raised', async () => {
+    const success = vi.spyOn(toast, 'success');
     const error = vi.spyOn(toast, 'error');
     try {
       let t = 0;
@@ -107,9 +109,11 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
       t = 60_000;
       await act(async () => { vi.advanceTimersByTime(1000); });
       await act(async () => { vi.advanceTimersByTime(10); });
+      expect(success).toHaveBeenCalledTimes(1);
       expect(error).toHaveBeenCalledTimes(1);
-      expect(error.mock.calls[0][1]).toBe('Recorded 0h 01m 00s\nNo audio clips to mix down');
+      expect(error.mock.calls[0]).toEqual(['Timed recording', 'No audio clips to mix down']);
     } finally {
+      success.mockRestore();
       error.mockRestore();
     }
   });
@@ -132,7 +136,7 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
       await act(async () => { vi.advanceTimersByTime(10); });
       expect(onStop).toHaveBeenCalledTimes(1);
       expect(result.current.phase).toBe('idle');
-      expect(success.mock.calls[0][1]).toBe('Recorded 0h 10m 00s');
+      expect(success.mock.calls[0][1]).toMatch(/^Recorded 0h 10m 00s, \d\d:\d\d:\d\d to \d\d:\d\d:\d\d$/);
     } finally {
       success.mockRestore();
     }

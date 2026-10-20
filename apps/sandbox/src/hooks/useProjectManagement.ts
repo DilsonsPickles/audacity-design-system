@@ -3,7 +3,7 @@ import { TracksState, TracksAction } from '../contexts/TracksContext';
 import { saveProject, getProject } from '../utils/projectDatabase';
 import { toast } from '@audacity-ui/components';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
-import { downloadProjectFile, readProjectFile } from '../lib/projectFile';
+import { downloadProjectFile, readProjectFile, projectFileName } from '../lib/projectFile';
 
 export interface UseProjectManagementOptions {
   dispatch: React.Dispatch<TracksAction>;
@@ -141,7 +141,9 @@ export function useProjectManagement(options: UseProjectManagementOptions): UseP
         thumbnailUrl: thumbnailDataUrl ?? project.thumbnailUrl,
       });
 
-      toast.success('Project downloaded');
+      // The second line is the destination, nothing more (2026-10-20: the
+      // title carries the verb) — the browser's downloads folder
+      toast.success('Project downloaded', `Downloads/${projectFileName(title)}`);
     } catch (error) {
       console.error('Error saving project:', error);
       toast.error('Failed to save project');

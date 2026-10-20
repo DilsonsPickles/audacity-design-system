@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksContext';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ToastContainer, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@audacity-ui/components';
+import { ApplicationHeader, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@audacity-ui/components';
 import { ADIEU_BASE } from './lib/adieu-client';
 import { type EnvelopePointStyleKey, yToTrackIndex } from '@audacity-ui/core';
 import { createWheelTargetLock } from './utils/canvasWheelTarget';
@@ -474,24 +474,26 @@ function CanvasDemoContent() {
     onStopRecording: handleStopRecording,
     // The completion actions, for real (2026-10-19, "can we actually save
     // and export?"): a browser cannot write to a path, so SAVE is the
-    // project's own save-to-computer (the .audacityweb download) and
-    // EXPORT is the project mixdown handed to the browser as a WAV named
-    // from the path's last segment; both land in the downloads folder,
-    // and the toast says so. Quit stays a line in the toast.
+    // project's own save-to-computer (the .audacityweb download, which
+    // raises its own "Project downloaded" toast with the file) and EXPORT
+    // is the project mixdown handed to the browser as a WAV named from the
+    // path's last segment, with its own "Audio exported" toast — the
+    // second line is the destination, no verb repeated (2026-10-20). A
+    // failed export is "Export failed" with the reason, as the export
+    // modal says it. Quit toasts nothing: an app that is quitting has no
+    // reader (and is not wired in the prototype).
     onComplete: async (s) => {
-      const done: string[] = [];
-      if (s.saveProject) {
-        await handleSaveToComputer();
-        done.push('Project saved to your downloads');
-      }
+      if (s.saveProject) await handleSaveToComputer();
       if (s.exportAudio) {
-        const { blob } = await audioManagerRef.current.mixdown(state.tracks);
-        const name = safeFileName((s.exportPath.split('/').pop() || 'timed-recording.wav').replace(/\.[^.]+$/, '')) + '.wav';
-        downloadBlob(blob, name);
-        done.push(`Exported ${name} to your downloads`);
+        try {
+          const { blob } = await audioManagerRef.current.mixdown(state.tracks);
+          const name = safeFileName((s.exportPath.split('/').pop() || 'timed-recording.wav').replace(/\.[^.]+$/, '')) + '.wav';
+          downloadBlob(blob, name);
+          toast.success('Audio exported', `Downloads/${name}`);
+        } catch (err) {
+          toast.error('Export failed', err instanceof Error ? err.message : String(err));
+        }
       }
-      if (s.quitWhenComplete) done.push('Quit Audacity is not wired in the prototype');
-      return done;
     },
   });
   // Stop cancels a WAITING timer; a RECORDING one it ends, and the hook
