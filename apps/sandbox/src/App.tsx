@@ -973,8 +973,9 @@ function CanvasDemoContent() {
       onZoomToSelection: zoomToSelection,
       onZoomToFitProject: zoomToFitProject,
       onZoomToggle: zoomToggle,
-      onCollapseTracks: handleCollapseSelectedTracks,
-      onExpandTracks: handleExpandSelectedTracks,
+      // The toolbar pair is EVERY track (2026-10-20, "it should be ALL tracks") — ⌘⇧C / ⌘⇧X as buttons
+      onCollapseTracks: handleCollapseAllTracks,
+      onExpandTracks: handleExpandAllTracks,
       onShareClick: () => setIsShareDialogOpen(true),
       onExportAudioClick: () => {
         setInitialExportType('full-project');

@@ -103,7 +103,7 @@ export interface TransportToolbarProps {
   onZoomToSelection: () => void;
   onZoomToFitProject: () => void;
   onZoomToggle: () => void;
-  /** TRACK HEIGHT BUTTONS (2026-10-20, "new toolbar buttons for expand/collapse track height"): the keyboard's ⌥⌘C / ⌥⌘X as buttons — the tracks you are on (focus, else the selection, else all) to 44 / 114 */
+  /** TRACK HEIGHT BUTTONS (2026-10-20, "new toolbar buttons for expand/collapse track height" — "it should be ALL tracks"): the keyboard's ⌘⇧C / ⌘⇧X as buttons — EVERY track to 44 / 114 */
   onCollapseTracks?: () => void;
   onExpandTracks?: () => void;
 
