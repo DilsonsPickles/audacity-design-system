@@ -103,6 +103,9 @@ export interface TransportToolbarProps {
   onZoomToSelection: () => void;
   onZoomToFitProject: () => void;
   onZoomToggle: () => void;
+  /** TRACK HEIGHT BUTTONS (2026-10-20, "new toolbar buttons for expand/collapse track height"): the keyboard's ⌥⌘C / ⌥⌘X as buttons — the tracks you are on (focus, else the selection, else all) to 44 / 114 */
+  onCollapseTracks?: () => void;
+  onExpandTracks?: () => void;
 
   // TimeCode
   currentTime: number;
@@ -228,6 +231,7 @@ export function TransportToolbar({
   onGripperMouseDown,
   envelopeMode, spectrogramMode, splitMode = false, onToggleEnvelope, onToggleSpectrogram, onToggleSplit,
   onZoomIn, onZoomOut, onZoomToSelection, onZoomToFitProject, onZoomToggle,
+  onCollapseTracks, onExpandTracks,
   currentTime, timeCodeFormat, onTimeCodeChange, onTimeCodeFormatChange,
   onShareClick, onExportAudioClick, onExportLoopRegionClick,
   masterLevelLeft = -60, masterLevelRight = -60, masterClippedLeft = false, masterClippedRight = false,
@@ -477,6 +481,13 @@ export function TransportToolbar({
                 {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
 
+              {(show('collapse-tracks') || show('expand-tracks')) && (
+              <ToolbarButtonGroup gap={2}>
+                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
+                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand tracks" onClick={onExpandTracks} />}
+              </ToolbarButtonGroup>
+              )}
+
               <ToolbarButtonGroup gap={2}>
                 {show('cut') && (
                 <ToolButton
@@ -515,6 +526,13 @@ export function TransportToolbar({
                 {show('zoom-out') && <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />}
                 {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
+
+              {(show('collapse-tracks') || show('expand-tracks')) && (
+              <ToolbarButtonGroup gap={2}>
+                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
+                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand tracks" onClick={onExpandTracks} />}
+              </ToolbarButtonGroup>
+              )}
 
               <ToolbarButtonGroup gap={2}>
                 <ToggleToolButton
@@ -555,6 +573,13 @@ export function TransportToolbar({
                 {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
 
+              {(show('collapse-tracks') || show('expand-tracks')) && (
+              <ToolbarButtonGroup gap={2}>
+                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
+                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand tracks" onClick={onExpandTracks} />}
+              </ToolbarButtonGroup>
+              )}
+
               <ToolbarButtonGroup gap={2}>
                 {show('trim') && <ToolButton icon="trim" ariaLabel="Trim" />}
                 {show('silence') && <ToolButton icon="silence" ariaLabel="Silence" />}
@@ -581,6 +606,13 @@ export function TransportToolbar({
                 {show('zoom-out') && <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />}
                 {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
+
+              {(show('collapse-tracks') || show('expand-tracks')) && (
+              <ToolbarButtonGroup gap={2}>
+                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
+                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand tracks" onClick={onExpandTracks} />}
+              </ToolbarButtonGroup>
+              )}
 
               <ToolbarButtonGroup gap={2}>
                 {show('trim') && <ToolButton icon="trim" ariaLabel="Trim" />}

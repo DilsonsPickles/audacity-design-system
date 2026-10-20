@@ -60,4 +60,12 @@ describe('CustomiseToolbarMenu — the cog\'s popover (2026-10-07)', () => {
     );
     expect(document.body.querySelector('[data-customise-toolbar]')).toBeNull();
   });
+
+  it('offers the track-height pair after the zoom tools (2026-10-20)', () => {
+    const ids = [...CUSTOMISE_TOOLBAR_TOOL_IDS];
+    expect(ids.indexOf('collapse-tracks')).toBe(ids.indexOf('fit-project') + 1);
+    expect(ids.indexOf('expand-tracks')).toBe(ids.indexOf('collapse-tracks') + 1);
+    const entries = CUSTOMISE_TOOLBAR_ENTRIES.filter((e) => e.kind === 'tool' && (e.id === 'collapse-tracks' || e.id === 'expand-tracks'));
+    expect(entries.map((e) => (e.kind === 'tool' ? e.label : ''))).toEqual(['Collapse tracks', 'Expand tracks']);
+  });
 });

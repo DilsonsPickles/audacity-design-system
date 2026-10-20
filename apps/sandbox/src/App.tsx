@@ -973,6 +973,8 @@ function CanvasDemoContent() {
       onZoomToSelection: zoomToSelection,
       onZoomToFitProject: zoomToFitProject,
       onZoomToggle: zoomToggle,
+      onCollapseTracks: handleCollapseSelectedTracks,
+      onExpandTracks: handleExpandSelectedTracks,
       onShareClick: () => setIsShareDialogOpen(true),
       onExportAudioClick: () => {
         setInitialExportType('full-project');

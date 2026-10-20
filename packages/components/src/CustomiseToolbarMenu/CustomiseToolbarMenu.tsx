@@ -47,6 +47,8 @@ export const CUSTOMISE_TOOLBAR_ENTRIES: ReadonlyArray<CustomiseToolbarEntry> = [
   tool('zoom-out', 'Zoom out', ''),
   tool('fit-selection', 'Fit selection to width', ''),
   tool('fit-project', 'Fit project to width', ''),
+  tool('collapse-tracks', 'Collapse tracks', '\uEF37'),
+  tool('expand-tracks', 'Expand tracks', '\uEF36'),
   tool('zoom-toggle', 'Zoom toggle', ''),
   DIVIDER,
   tool('spectral-editing', 'Spectral editing', ''),

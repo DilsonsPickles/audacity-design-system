@@ -64,6 +64,8 @@ export type IconName =
   | 'lock'
   | 'folder'
   | 'clock'
+  | 'track-expand'
+  | 'track-collapse'
   | 'refresh'
   | 'check'
   | 'search';
@@ -138,6 +140,10 @@ const ICON_MAP: Record<IconName, string> = {
   folder: '\uEF23',
   // The shared font's CLOCK (the real build's iconcodes.h 0xF475): the armed Record button (2026-10-19)
   clock: '\uF475',
+  // The toolbar's track-height pair (2026-10-20): the shared font's ARROW_DOWN
+  // 0xEF36 = expand (taller, as ⌥⌘↓ is) and ARROW_UP 0xEF37 = collapse
+  'track-expand': '\uEF36',
+  'track-collapse': '\uEF37',
   refresh: '\uF358',
   check: '\uEF31',
   /* Plain magnifier (the zoom-in/out glyphs carry +/- marks) \u2014 the
