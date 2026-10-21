@@ -300,6 +300,14 @@ export function Dialog({
       // Non-modal window: Escape belongs to the app (clear selection
       // etc.) unless this window is the one in use.
       if (nonModal && !isWindowInUse()) return;
+      // A composite that goes INTO its own controls (a grid cell holding
+      // buttons, entered with Enter) marks itself `data-owns-escape`:
+      // Escape on a control inside it is that composite's — it steps
+      // back out to the cell — and only Escape on the composite itself,
+      // or anywhere else, closes the window (2026-10-21).
+      const target = e.target instanceof Element ? e.target : null;
+      const owner = target?.closest('[data-owns-escape]');
+      if (owner && owner !== target) return;
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();

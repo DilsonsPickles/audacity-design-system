@@ -256,7 +256,7 @@ was its own stop):
 | 2 | Command list | A listbox — arrows, below |
 | 3 | Splitter | Arrows resize, below |
 | 4 | Macro menu button | Enter opens the menu |
-| 5 | Step list | Arrows, below |
+| 5 | Step table | Starts on the head's first cell; arrows, below |
 | 6 | Footer | Run / Run on files… / Done (`useContainerTabGroup`) |
 
 The window floats outside the app's numbered Tab order: its stops are
@@ -331,29 +331,39 @@ picked before the search began.
 The list stays ONE stop driven by the arrows under the flat profile too:
 a listbox is a single control, and 280 Tab stops serve nobody.
 
-**Step list** — the same two moves as the Macro manager's list, and the
-same ARIA grid (2026-10-21): the table's wrapper is `role="grid"` named
-"Macro steps" (`aria-rowcount` counts the head, `aria-colcount="4"`), the
-visible head is its first `role="row"` of `columnheader`s (Reorder,
-Step, Command, Actions), the scrolling list is a `rowgroup`, every step
-a focusable `role="row"` (`aria-rowindex` from 2) of three `gridcell`s
-with explicit `aria-colindex` 2–4 — the grip column is the mouse's drag
-handle, headed but with no cell in the rows. The hint shown with no
-steps is one row of one cell spanning the table. The ghost step stays
+**Step table** — a DATA GRID (2026-10-21, "I was expecting tab focus to
+start on top left cell (table header) and then arrow keys move through.
+Enter/Space to enter cell (if it's editable)"; until then the row and
+its two buttons took focus in turn, as the Macro manager's cells do).
+The table's wrapper is `role="grid"` named "Macro steps" (`aria-rowcount`
+counts the head, `aria-colcount="3"`), the visible head is its first
+`role="row"` of `columnheader`s (Step, Command, Actions), the scrolling
+list a `rowgroup`, every step a `role="row"` (`aria-rowindex` from 2)
+of three `gridcell`s. The grip is the mouse's drag handle, not a column:
+`aria-hidden`, no header, no cell — the keyboard reorders with
+Cmd/Ctrl+arrows. THE CELLS TAKE THE FOCUS (`data-grid-row` /
+`data-grid-col`; the row itself never does), the head's included, and
+the table's one Tab stop STARTS ON THE HEAD'S FIRST CELL — the top
+left — then remembers the cell you were on. The hint shown with no
+steps is one row of one cell spanning the table; the ghost step stays
 `aria-hidden`, so it is no row.
 
 | Key | Action |
 |-----|--------|
-| ArrowDown / ArrowUp | Next / previous step, same control. Cycles |
-| ArrowLeft / ArrowRight | Along the row: the step → its edit button → its menu. Cycles |
-| Home / End, PageUp / PageDown | By steps, same control. Stop at the ends |
-| Enter | On the step: open its editor. On a button: that button |
-| Cmd/Ctrl+ArrowDown / Up | Carry the step down / up (as Cmd+Arrow reorders a track). Focus goes with it |
-| Delete / Backspace | Delete the step, from any control of its row |
-| Shift+F10 / Menu key | Open the step's menu, from any control of its row |
+| ArrowDown / ArrowUp | Next / previous row, same column — the head row included. Cycles |
+| ArrowLeft / ArrowRight | Next / previous cell along the row: Step → Command → Actions. Cycles |
+| Home / End | The row's first / last cell |
+| Cmd/Ctrl+Home / End | The table's corners: the head's first cell / the last step's Actions |
+| PageUp / PageDown | A screenful of rows. Stops at the ends |
+| Enter / Space | INTO the cell. Command: open the step's editor. Actions: focus its first control (the pencil). Step number and the head cells: nothing — but Space is the table's, never play/pause |
+| Inside the Actions cell | ArrowLeft / ArrowRight go between the pencil and the menu (cycling); ArrowUp / ArrowDown keep the control, in the row above / below; Escape comes back out to the cell — the window's Escape yields to it because the cell is marked `data-owns-escape` (`Dialog` skips an Escape from a control INSIDE such an element; on the cell itself Escape closes the window as anywhere else); Enter / Space are the button's own |
+| Cmd/Ctrl+ArrowDown / Up | Carry the step down / up (as Cmd+Arrow reorders a track). Focus goes with it, in the same cell |
+| Delete / Backspace | Delete the step, from any cell of its row |
+| Shift+F10 / Menu key | Open the step's menu, from any cell of its row |
 
-Flat profile: every control of every step is a Tab stop and the arrows
-do nothing; Enter, Cmd/Ctrl+arrow, Delete and Shift+F10 still work.
+Flat profile: every cell AND every control is a Tab stop and the arrows
+do nothing; Enter / Space, Escape, Cmd/Ctrl+arrow, Delete and Shift+F10
+still work.
 
 **Splitter** — a focusable `role="separator"` with `aria-valuenow` /
 `min` / `max` in pixels.
@@ -369,8 +379,8 @@ do nothing; Enter, Cmd/Ctrl+arrow, Delete and Shift+F10 still work.
 | After | Focus goes to |
 |-------|---------------|
 | Moving a step (key or menu) | The step, in its new place, on the control it was moved from |
-| Deleting a step | The step that takes its place, else the one before, else the search field |
-| Closing a step's editor | The step |
+| Deleting a step | The step that takes its place, else the one before, in the same cell; the head's first cell when it was the last — the table is still there |
+| Closing a step's editor | The step's Command cell — the cell Enter opened it from |
 | Removing all steps | The search field |
 | Closing Rename | The macro menu button |
 | Deleting the macro (the window closes) | The macro that takes its place in the Macro manager (`AppDialogs`) |

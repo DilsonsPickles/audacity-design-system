@@ -92,16 +92,36 @@ interface CommandDrag {
   insertAt: number | null;
 }
 
-/** The three things in a step's row that take focus, left to right. */
-type StepCell = 'step' | 'edit' | 'menu';
-const STEP_CELLS: readonly StepCell[] = ['step', 'edit', 'menu'];
+/** The step table's columns, left to right. The grip is the mouse's
+ *  drag handle, not a column: the keyboard reorders with Cmd/Ctrl+arrows. */
+type GridCol = 'number' | 'command' | 'actions';
+const GRID_COLS: readonly GridCol[] = ['number', 'command', 'actions'];
+/** The controls inside the Actions cell, left to right. */
+type ActionControl = 'edit' | 'menu';
+const ACTION_CONTROLS: readonly ActionControl[] = ['edit', 'menu'];
 const STEP_EDIT_CLASS = 'macro-builder__step-edit';
 const STEP_MENU_CLASS = 'macro-builder__step-menu';
 
-function stepCellOf(el: Element): StepCell {
-  if (el.closest(`.${STEP_EDIT_CLASS}`)) return 'edit';
-  if (el.closest(`.${STEP_MENU_CLASS}`)) return 'menu';
-  return 'step';
+/** A place in the step table: row 0 is the head, step i is row i + 1;
+ *  `inner` names a control inside the Actions cell once it has been
+ *  entered (Enter / Space on the cell). */
+interface GridPos {
+  row: number;
+  col: GridCol;
+  inner?: ActionControl;
+}
+/** Where Tab lands before the table has been used: the head's first cell. */
+const HEAD_CELL: GridPos = { row: 0, col: 'number' };
+const samePos = (a: GridPos, b: GridPos) => a.row === b.row && a.col === b.col && a.inner === b.inner;
+
+function gridPosOf(el: Element): GridPos | null {
+  const cell = el.closest<HTMLElement>('[data-grid-row]');
+  if (!cell) return null;
+  const row = Number(cell.dataset.gridRow);
+  const col = cell.dataset.gridCol as GridCol;
+  if (el.closest(`.${STEP_EDIT_CLASS}`)) return { row, col, inner: 'edit' };
+  if (el.closest(`.${STEP_MENU_CLASS}`)) return { row, col, inner: 'menu' };
+  return { row, col };
 }
 
 /** Rows that fit in a scrolling list, less one so a page keeps a row
@@ -221,12 +241,13 @@ export function MacroBuilderDialog({
   const isFlat = activeProfile.config.tabNavigation === 'sequential';
   const wrapOf = (groupId: string) => activeProfile.config.tabGroups[groupId]?.wrap ?? true;
 
-  // Roving focus: which command, and which cell of which step, is its
-  // list's ONE tab stop. Remembered while focus is elsewhere.
+  // Roving focus: which command, and which cell of the step table, is
+  // its list's ONE tab stop. Remembered while focus is elsewhere; the
+  // table's starts on the head's first cell.
   const [activeCommandId, setActiveCommandId] = React.useState<string | null>(null);
-  const [activeStep, setActiveStep] = React.useState<{ index: number; cell: StepCell }>({ index: 0, cell: 'step' });
+  const [activePos, setActivePos] = React.useState<GridPos>(HEAD_CELL);
   // Focus to place once the steps have re-rendered (a move, a delete)
-  const pendingStepFocusRef = React.useRef<{ index: number; cell: StepCell } | 'search' | null>(null);
+  const pendingStepFocusRef = React.useRef<GridPos | 'search' | null>(null);
 
   const footerRef = React.useRef<HTMLDivElement>(null);
   const footerGroup = useContainerTabGroup({
@@ -272,7 +293,7 @@ export function MacroBuilderDialog({
     // After a menu has finished handing focus back to its trigger
     const timer = window.setTimeout(() => {
       if (pending === 'search') searchInputRef.current?.focus();
-      else focusStepCell(pending.index, pending.cell);
+      else focusGridCell(pending);
     }, 0);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -295,18 +316,23 @@ export function MacroBuilderDialog({
     [availableCommands, query],
   );
 
-  const stepCellElement = (index: number, cell: StepCell): HTMLElement | null => {
-    const row = stepListRef.current?.querySelector<HTMLElement>(`[data-step-index="${index}"]`) ?? null;
-    if (!row || cell === 'step') return row;
-    return row.querySelector<HTMLElement>(`.${cell === 'edit' ? STEP_EDIT_CLASS : STEP_MENU_CLASS}`);
+  const stepTableRef = React.useRef<HTMLDivElement>(null);
+  const gridCellElement = (pos: GridPos): HTMLElement | null => {
+    const cell = stepTableRef.current?.querySelector<HTMLElement>(
+      `[data-grid-row="${pos.row}"][data-grid-col="${pos.col}"]`,
+    ) ?? null;
+    if (!cell || !pos.inner) return cell;
+    return cell.querySelector<HTMLElement>(`.${pos.inner === 'edit' ? STEP_EDIT_CLASS : STEP_MENU_CLASS}`);
   };
-  function focusStepCell(index: number, cell: StepCell) {
-    const el = stepCellElement(index, cell);
+  function focusGridCell(pos: GridPos) {
+    const el = gridCellElement(pos);
     if (!el) return;
-    setActiveStep({ index, cell });
+    setActivePos(pos);
     el.focus();
     el.scrollIntoView?.({ block: 'nearest' }); // jsdom has none
   }
+  /** The step's menu button, for the menu key and the menu's own focus return. */
+  const stepMenuButton = (index: number) => gridCellElement({ row: index + 1, col: 'actions', inner: 'menu' });
   const stepsHeaderRef = React.useRef<HTMLDivElement>(null);
   const focusMacroMenuButton = () => {
     stepsHeaderRef.current?.querySelector<HTMLElement>('button')?.focus();
@@ -329,10 +355,11 @@ export function MacroBuilderDialog({
   const commandStopId = visible.some((cmd) => cmd.id === activeCommandId)
     ? activeCommandId
     : (visible.find((cmd) => cmd.id === selectedCommandId) ?? visible[0])?.id ?? null;
-  const stepStop = {
-    index: Math.max(0, Math.min(stepCount - 1, activeStep.index)),
-    cell: activeStep.cell,
-  };
+  // The remembered cell, kept inside the table as it is now (a step
+  // that was deleted from under it falls to the last row)
+  const gridStop: GridPos = activePos.row > stepCount
+    ? { row: stepCount, col: activePos.col, inner: stepCount > 0 ? activePos.inner : undefined }
+    : activePos;
   // Where a dragged command would land. It is drawn IN the list, as a
   // ghost of the step it would become, with the steps after it
   // renumbered — the list shows the result, not a mark to be read
@@ -372,9 +399,9 @@ export function MacroBuilderDialog({
   /** A step's number as the list would read after the drop. */
   const shownNumber = (index: number): number =>
     index + 1 + (ghostAt !== null && index >= ghostAt ? 1 : 0);
-  const stepTabIndex = (index: number, cell: StepCell): number => {
+  const gridTabIndex = (pos: GridPos): number => {
     if (isFlat) return 0;
-    return index === stepStop.index && cell === stepStop.cell ? 0 : -1;
+    return samePos(pos, gridStop) ? 0 : -1;
   };
 
   // Click selects — one command at a time, whatever modifier is held
@@ -639,99 +666,145 @@ export function MacroBuilderDialog({
   // Where focus goes is said BEFORE the change, and placed once the
   // steps have re-rendered: the row that had focus is about to be a
   // different step, or gone.
-  const moveStepAt = (index: number, direction: -1 | 1, cell: StepCell = 'menu') => {
+  // `from` is the cell the edit was made from, so focus can stay in that
+  // column; the menu's items come from its button.
+  const fromMenu = (index: number): GridPos => ({ row: index + 1, col: 'actions', inner: 'menu' });
+  const moveStepAt = (index: number, direction: -1 | 1, from: GridPos = fromMenu(index)) => {
     const target = index + direction;
     if (target < 0 || target >= stepCount) return;
-    pendingStepFocusRef.current = { index: target, cell };
+    pendingStepFocusRef.current = { ...from, row: target + 1 };
     onMoveStep?.(macro.id, index, direction);
     announce(`${macro.steps[index].command} moved to step ${target + 1} of ${stepCount}`);
   };
 
-  const deleteStepAt = (index: number, cell: StepCell = 'menu') => {
-    // The step that takes its place, else the one before, else search
+  const deleteStepAt = (index: number, from: GridPos = fromMenu(index)) => {
+    // The step that takes its place, else the one before, else the head
+    // — the table is still there to hold focus
     pendingStepFocusRef.current = stepCount > 1
-      ? { index: Math.min(index, stepCount - 2), cell }
-      : 'search';
+      ? { ...from, row: Math.min(index, stepCount - 2) + 1 }
+      : HEAD_CELL;
     onDeleteStep?.(macro.id, index);
     announce(`Step ${index + 1}, ${macro.steps[index].command}, deleted`);
   };
 
-  // The step list: ONE tab stop. Down/Up go down and up the steps,
-  // Left/Right along a step's row (the step, its edit button, its
-  // menu) — the same two moves as the Macro manager's list.
-  const handleStepListKeyDown = (e: React.KeyboardEvent) => {
+  // The step table: ONE tab stop, on the head's first cell until the
+  // table has been used. The arrows move between CELLS — Down/Up by row,
+  // the head row included, Left/Right by column, Home/End the row's
+  // ends, Cmd/Ctrl+Home/End the table's corners — and Enter or Space
+  // goes INTO a cell: the Command cell opens the step's editor, the
+  // Actions cell hands focus to its first control (then Left/Right go
+  // between its controls and Escape comes back out). The data grid's
+  // model (2026-10-21, "tab focus to start on top left cell (table
+  // header) and then arrow keys move through. Enter/Space to enter
+  // cell"); before, the row and its two buttons took focus in turn.
+  const handleGridKeyDown = (e: React.KeyboardEvent) => {
     if (e.defaultPrevented) return;
     const target = e.target as HTMLElement;
-    const row = target.closest<HTMLElement>('[data-step-index]');
-    if (!row || !stepListRef.current?.contains(row)) return;
-    const index = Number(row.dataset.stepIndex);
-    const cell = stepCellOf(target);
+    const pos = gridPosOf(target);
+    if (!pos || !stepTableRef.current?.contains(target)) return;
     const consume = () => {
       e.preventDefault();
       e.stopPropagation();
     };
     const command = e.metaKey || e.ctrlKey;
+    const plain = !command && !e.altKey && !e.shiftKey;
+    const index = pos.row - 1; // -1 on the head row
+    const onStep = index >= 0 && index < stepCount;
+    const rowCount = stepCount + 1;
 
-    // Actions — every profile, from any cell of the row
-    if (e.key === 'Enter' && cell === 'step' && !command && !e.altKey && !e.shiftKey) {
-      // On the row only: Enter on a button is that button's own
+    // Going into a cell — every profile. Space is the table's here (it
+    // is play/pause elsewhere in the app): a key that enters a cell
+    // must never also start playback.
+    if ((e.key === 'Enter' || e.key === ' ') && plain && !pos.inner) {
       consume();
-      setEditingStepIndex(index);
+      if (!onStep) return; // the head, or the hint: nothing to go into
+      if (pos.col === 'command') setEditingStepIndex(index);
+      else if (pos.col === 'actions') focusGridCell({ ...pos, inner: ACTION_CONTROLS[0] });
       return;
     }
-    if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
-      consume();
-      stepCellElement(index, 'menu')?.click();
-      return;
+    if (pos.inner) {
+      // Inside the Actions cell: Enter and Space are the button's own;
+      // Escape comes back out to the cell
+      if (e.key === 'Enter' || e.key === ' ') return;
+      if (e.key === 'Escape') {
+        consume();
+        focusGridCell({ row: pos.row, col: pos.col });
+        return;
+      }
     }
-    if ((e.key === 'Delete' || e.key === 'Backspace') && !command && !e.altKey) {
-      consume();
-      deleteStepAt(index, cell);
-      return;
-    }
-    if (command && !e.altKey && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-      // Cmd/Ctrl+arrow carries the step with it, as it does a track.
-      // Consumed at the ends too.
-      consume();
-      moveStepAt(index, e.key === 'ArrowUp' ? -1 : 1, cell);
-      return;
+
+    // Row shortcuts — every profile, from any cell of a step's row
+    if (onStep) {
+      if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+        consume();
+        stepMenuButton(index)?.click();
+        return;
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !command && !e.altKey) {
+        consume();
+        deleteStepAt(index, pos);
+        return;
+      }
+      if (command && !e.altKey && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+        // Cmd/Ctrl+arrow carries the step with it, as it does a track.
+        // Consumed at the ends too.
+        consume();
+        moveStepAt(index, e.key === 'ArrowUp' ? -1 : 1, pos);
+        return;
+      }
     }
 
     if (isFlat) return; // arrows are the tab-groups profile's
+    if (command && !e.altKey && !e.shiftKey && (e.key === 'Home' || e.key === 'End')) {
+      // The table's corners
+      consume();
+      focusGridCell(e.key === 'Home' ? HEAD_CELL : { row: rowCount - 1, col: GRID_COLS[GRID_COLS.length - 1] });
+      return;
+    }
     if (command || e.altKey || e.shiftKey) return;
     const cycle = wrapOf('macro-builder-steps');
-    const goToStep = (next: number) => {
+    const goToRow = (next: number) => {
       consume();
-      const to = Math.max(0, Math.min(stepCount - 1, next));
-      if (to !== index) focusStepCell(to, cell);
+      const to = Math.max(0, Math.min(rowCount - 1, next));
+      // A control inside the Actions cell is kept down the column; the
+      // head has no controls
+      if (to !== pos.row) focusGridCell({ row: to, col: pos.col, inner: to > 0 ? pos.inner : undefined });
     };
     const along = (by: number) => {
       consume();
-      const at = STEP_CELLS.indexOf(cell);
+      if (pos.inner) {
+        // Between the cell's own controls, cycling
+        const at = ACTION_CONTROLS.indexOf(pos.inner);
+        focusGridCell({ ...pos, inner: ACTION_CONTROLS[(at + by + ACTION_CONTROLS.length) % ACTION_CONTROLS.length] });
+        return;
+      }
+      const at = GRID_COLS.indexOf(pos.col);
       const to = cycle
-        ? (at + by + STEP_CELLS.length) % STEP_CELLS.length
-        : Math.max(0, Math.min(STEP_CELLS.length - 1, at + by));
-      if (to !== at) focusStepCell(index, STEP_CELLS[to]);
+        ? (at + by + GRID_COLS.length) % GRID_COLS.length
+        : Math.max(0, Math.min(GRID_COLS.length - 1, at + by));
+      if (to !== at) focusGridCell({ row: pos.row, col: GRID_COLS[to] });
     };
+    const toCol = (col: GridCol) => {
+      consume();
+      if (col !== pos.col || pos.inner) focusGridCell({ row: pos.row, col });
+    };
+    const rowEl = target.closest<HTMLElement>('[data-step-index]');
     switch (e.key) {
-      case 'ArrowDown': goToStep(cycle ? (index + 1) % stepCount : index + 1); break;
-      case 'ArrowUp': goToStep(cycle ? (index - 1 + stepCount) % stepCount : index - 1); break;
-      case 'Home': goToStep(0); break;
-      case 'End': goToStep(stepCount - 1); break;
-      case 'PageDown': goToStep(index + screenful(stepListRef.current, row)); break;
-      case 'PageUp': goToStep(index - screenful(stepListRef.current, row)); break;
+      case 'ArrowDown': goToRow(cycle ? (pos.row + 1) % rowCount : pos.row + 1); break;
+      case 'ArrowUp': goToRow(cycle ? (pos.row - 1 + rowCount) % rowCount : pos.row - 1); break;
+      case 'Home': toCol(GRID_COLS[0]); break;
+      case 'End': toCol(GRID_COLS[GRID_COLS.length - 1]); break;
+      case 'PageDown': goToRow(pos.row + screenful(stepListRef.current, rowEl)); break;
+      case 'PageUp': goToRow(pos.row - screenful(stepListRef.current, rowEl)); break;
       case 'ArrowRight': along(1); break;
       case 'ArrowLeft': along(-1); break;
       default: break;
     }
   };
 
-  const handleStepListFocus = (e: React.FocusEvent) => {
-    const row = (e.target as HTMLElement).closest<HTMLElement>('[data-step-index]');
-    if (!row) return;
-    const index = Number(row.dataset.stepIndex);
-    const cell = stepCellOf(e.target as HTMLElement);
-    if (index !== activeStep.index || cell !== activeStep.cell) setActiveStep({ index, cell });
+  const handleGridFocus = (e: React.FocusEvent) => {
+    const pos = gridPosOf(e.target as HTMLElement);
+    if (pos && !samePos(pos, activePos)) setActivePos(pos);
   };
 
   // Whole-row drag-to-reorder (the row IS the handle, with a 3px
@@ -982,22 +1055,54 @@ export function MacroBuilderDialog({
             {/* The table is an ARIA grid (2026-10-21): the head is its
                 first row of column headers, the scrolling list its
                 rowgroup, every step a row of cells — so a screen reader
-                announces "table, N rows, 4 columns", reads the column's
+                announces "table, N rows, 3 columns", reads the column's
                 name over each cell, and its own table navigation works.
-                The grip column is the mouse's drag handle: a header for
-                it, no cell in the rows (hence the explicit colindex). */}
+                The CELLS take the focus (data-grid-row / data-grid-col
+                place them; the one tab stop is `gridStop`), the head's
+                included. The grip is the mouse's drag handle, not a
+                column: it is hidden from the tree. */}
             <div
+              ref={stepTableRef}
               className="macro-builder__step-table"
               role="grid"
               aria-label="Macro steps"
               aria-rowcount={Math.max(stepCount, 1) + 1}
-              aria-colcount={4}
+              aria-colcount={GRID_COLS.length}
+              onKeyDown={handleGridKeyDown}
+              onFocus={handleGridFocus}
             >
             <div className="macro-builder__step-table-head" role="row" aria-rowindex={1}>
-              <span className="macro-builder__step-grip macro-builder__step-head-cell" role="columnheader" aria-colindex={1} aria-label="Reorder" />
-              <span className="macro-builder__step-number macro-builder__step-head-cell" role="columnheader" aria-colindex={2}>Step</span>
-              <span className="macro-builder__step-text macro-builder__step-head-cell" role="columnheader" aria-colindex={3}>Command</span>
-              <span className="macro-builder__step-actions macro-builder__step-head-cell" role="columnheader" aria-colindex={4}>Actions</span>
+              <span className="macro-builder__step-grip macro-builder__step-head-cell" aria-hidden="true" />
+              <span
+                className="macro-builder__step-number macro-builder__step-head-cell"
+                role="columnheader"
+                aria-colindex={1}
+                data-grid-row={0}
+                data-grid-col="number"
+                tabIndex={gridTabIndex({ row: 0, col: 'number' })}
+              >
+                Step
+              </span>
+              <span
+                className="macro-builder__step-text macro-builder__step-head-cell"
+                role="columnheader"
+                aria-colindex={2}
+                data-grid-row={0}
+                data-grid-col="command"
+                tabIndex={gridTabIndex({ row: 0, col: 'command' })}
+              >
+                Command
+              </span>
+              <span
+                className="macro-builder__step-actions macro-builder__step-head-cell"
+                role="columnheader"
+                aria-colindex={3}
+                data-grid-row={0}
+                data-grid-col="actions"
+                tabIndex={gridTabIndex({ row: 0, col: 'actions' })}
+              >
+                Actions
+              </span>
               {/* Offsets the head by the body's 16px scrollbar gutter so
                   the Actions column lines up with the rows — only while
                   the table actually scrolls (the gutter exists only
@@ -1010,14 +1115,12 @@ export function MacroBuilderDialog({
               ref={stepListRef}
               className={`macro-builder__step-list${draggedIndex !== null ? ' macro-builder__step-list--dragging' : ''}`}
               role="rowgroup"
-              onKeyDown={handleStepListKeyDown}
-              onFocus={handleStepListFocus}
             >
               {stepCount === 0 && ghostStep === null && (
                 // A rowgroup's only children are rows: the hint is one
                 // row of one cell spanning the table
                 <div className="macro-builder__steps-hint" role="row" aria-rowindex={2}>
-                  <div role="gridcell" aria-colindex={1} aria-colspan={4}>
+                  <div role="gridcell" aria-colindex={1} aria-colspan={GRID_COLS.length}>
                     Drag a command here, or double-click it, to add it to your macro
                   </div>
                 </div>
@@ -1029,7 +1132,6 @@ export function MacroBuilderDialog({
                   <div
                     role="row"
                     aria-rowindex={index + 2}
-                    tabIndex={stepTabIndex(index, 'step')}
                     data-step-index={index}
                     aria-label={`Step ${index + 1} of ${stepCount}: ${step.command}${step.parameters ? `, ${prettyParameters(step.parameters)}` : ''}`}
                     className={`macro-builder__step${index === draggedIndex ? ' macro-builder__step--dragging' : ''}`}
@@ -1039,8 +1141,24 @@ export function MacroBuilderDialog({
                     <span className="macro-builder__step-grip" aria-hidden="true">
                       <Icon name="gripper" size={16} />
                     </span>
-                    <span className="macro-builder__step-number" role="gridcell" aria-colindex={2}>{shownNumber(index)}</span>
-                    <div className="macro-builder__step-text" role="gridcell" aria-colindex={3}>
+                    <span
+                      className="macro-builder__step-number"
+                      role="gridcell"
+                      aria-colindex={1}
+                      data-grid-row={index + 1}
+                      data-grid-col="number"
+                      tabIndex={gridTabIndex({ row: index + 1, col: 'number' })}
+                    >
+                      {shownNumber(index)}
+                    </span>
+                    <div
+                      className="macro-builder__step-text"
+                      role="gridcell"
+                      aria-colindex={2}
+                      data-grid-row={index + 1}
+                      data-grid-col="command"
+                      tabIndex={gridTabIndex({ row: index + 1, col: 'command' })}
+                    >
                       <span className="macro-builder__step-command">{step.command}</span>
                       {step.parameters && (
                         <span
@@ -1051,12 +1169,22 @@ export function MacroBuilderDialog({
                         </span>
                       )}
                     </div>
-                    <div className="macro-builder__step-actions" role="gridcell" aria-colindex={4}>
+                    <div
+                      className="macro-builder__step-actions"
+                      role="gridcell"
+                      aria-colindex={3}
+                      data-grid-row={index + 1}
+                      data-grid-col="actions"
+                      tabIndex={gridTabIndex({ row: index + 1, col: 'actions' })}
+                      // Escape on a control inside steps back out to the
+                      // cell; the window's Escape (Dialog) yields to it
+                      data-owns-escape=""
+                    >
                       <GhostButton
                         icon="edit"
                         size="medium"
                         className={STEP_EDIT_CLASS}
-                        tabIndex={stepTabIndex(index, 'edit')}
+                        tabIndex={gridTabIndex({ row: index + 1, col: 'actions', inner: 'edit' })}
                         ariaLabel={`Edit step ${index + 1}`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1067,7 +1195,7 @@ export function MacroBuilderDialog({
                         icon="menu"
                         size="medium"
                         className={STEP_MENU_CLASS}
-                        tabIndex={stepTabIndex(index, 'menu')}
+                        tabIndex={gridTabIndex({ row: index + 1, col: 'actions', inner: 'menu' })}
                         ariaLabel={`Step ${index + 1} options`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1231,11 +1359,12 @@ export function MacroBuilderDialog({
             onEditStep?.(macro.id, editingStepIndex, parameters);
           }
         };
-        // Back to the step that was being edited, on the row itself
+        // Back to the step that was being edited, on its Command cell —
+        // the cell Enter opened it from
         const closeEditor = () => {
           const index = editingStepIndex;
           setEditingStepIndex(null);
-          if (index !== null) returnFocus(() => focusStepCell(index, 'step'));
+          if (index !== null) returnFocus(() => focusGridCell({ row: index + 1, col: 'command' }));
         };
         if (editingStep && schema) {
           return (
