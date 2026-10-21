@@ -305,9 +305,12 @@ export function Dialog({
       // Escape on a control inside it is that composite's — it steps
       // back out to the cell — and only Escape on the composite itself,
       // or anywhere else, closes the window (2026-10-21).
+      // `data-owns-escape="self"` is the composite keeping Escape for
+      // ITSELF while it is in a mode of its own (a grip cell carrying a
+      // step: Escape lets go).
       const target = e.target instanceof Element ? e.target : null;
       const owner = target?.closest('[data-owns-escape]');
-      if (owner && owner !== target) return;
+      if (owner && (owner !== target || owner.getAttribute('data-owns-escape') === 'self')) return;
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();

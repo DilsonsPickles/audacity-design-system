@@ -92,10 +92,11 @@ interface CommandDrag {
   insertAt: number | null;
 }
 
-/** The step table's columns, left to right. The grip is the mouse's
- *  drag handle, not a column: the keyboard reorders with Cmd/Ctrl+arrows. */
-type GridCol = 'number' | 'command' | 'actions';
-const GRID_COLS: readonly GridCol[] = ['number', 'command', 'actions'];
+/** The step table's columns, left to right. The grip is the first: the
+ *  mouse drags it, and the keyboard steps INTO it (Enter / Space) to
+ *  carry the step with Up / Down. */
+type GridCol = 'grip' | 'number' | 'command' | 'actions';
+const GRID_COLS: readonly GridCol[] = ['grip', 'number', 'command', 'actions'];
 /** The controls inside the Actions cell, left to right. */
 type ActionControl = 'edit' | 'menu';
 const ACTION_CONTROLS: readonly ActionControl[] = ['edit', 'menu'];
@@ -111,7 +112,7 @@ interface GridPos {
   inner?: ActionControl;
 }
 /** Where Tab lands before the table has been used: the head's first cell. */
-const HEAD_CELL: GridPos = { row: 0, col: 'number' };
+const HEAD_CELL: GridPos = { row: 0, col: 'grip' };
 const samePos = (a: GridPos, b: GridPos) => a.row === b.row && a.col === b.col && a.inner === b.inner;
 
 function gridPosOf(el: Element): GridPos | null {
@@ -246,6 +247,10 @@ export function MacroBuilderDialog({
   // table's starts on the head's first cell.
   const [activeCommandId, setActiveCommandId] = React.useState<string | null>(null);
   const [activePos, setActivePos] = React.useState<GridPos>(HEAD_CELL);
+  // The step being REORDERED from the keyboard — its grip cell was
+  // entered with Enter / Space; Up / Down carry it until Enter, Space
+  // or Escape lets go (or focus leaves the cell)
+  const [reorderingIndex, setReorderingIndex] = React.useState<number | null>(null);
   // Focus to place once the steps have re-rendered (a move, a delete)
   const pendingStepFocusRef = React.useRef<GridPos | 'search' | null>(null);
 
@@ -673,6 +678,7 @@ export function MacroBuilderDialog({
     const target = index + direction;
     if (target < 0 || target >= stepCount) return;
     pendingStepFocusRef.current = { ...from, row: target + 1 };
+    if (reorderingIndex === index) setReorderingIndex(target);
     onMoveStep?.(macro.id, index, direction);
     announce(`${macro.steps[index].command} moved to step ${target + 1} of ${stepCount}`);
   };
@@ -712,13 +718,39 @@ export function MacroBuilderDialog({
     const onStep = index >= 0 && index < stepCount;
     const rowCount = stepCount + 1;
 
+    // Carrying a step from its grip cell: Up / Down move it, Enter,
+    // Space or Escape let go. Consumed whatever they do. The carried
+    // step is read from STATE, not from the focused cell: focus follows
+    // a move a tick after the re-render, and a key repeat (Down held)
+    // arrives before it has — read from the cell, the second press saw
+    // the row the step had just left and let go of it.
+    if (reorderingIndex !== null && pos.col === 'grip' && pos.row > 0 && plain) {
+      const carried = reorderingIndex;
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        consume();
+        moveStepAt(carried, e.key === 'ArrowUp' ? -1 : 1, { row: carried + 1, col: 'grip' });
+        return;
+      }
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') {
+        consume();
+        setReorderingIndex(null);
+        announce(`${macro.steps[carried].command} is step ${carried + 1} of ${stepCount}`);
+        return;
+      }
+      // Any other key lets go and does what it does
+      setReorderingIndex(null);
+    }
+
     // Going into a cell — every profile. Space is the table's here (it
     // is play/pause elsewhere in the app): a key that enters a cell
     // must never also start playback.
     if ((e.key === 'Enter' || e.key === ' ') && plain && !pos.inner) {
       consume();
       if (!onStep) return; // the head, or the hint: nothing to go into
-      if (pos.col === 'command') setEditingStepIndex(index);
+      if (pos.col === 'grip') {
+        setReorderingIndex(index);
+        announce(`Reordering step ${index + 1}, ${macro.steps[index].command}. Up and Down move it, Enter when done`);
+      } else if (pos.col === 'command') setEditingStepIndex(index);
       else if (pos.col === 'actions') focusGridCell({ ...pos, inner: ACTION_CONTROLS[0] });
       return;
     }
@@ -805,6 +837,15 @@ export function MacroBuilderDialog({
   const handleGridFocus = (e: React.FocusEvent) => {
     const pos = gridPosOf(e.target as HTMLElement);
     if (pos && !samePos(pos, activePos)) setActivePos(pos);
+    // A step is carried only while its grip cell has the focus
+    if (reorderingIndex !== null && !(pos && pos.col === 'grip' && pos.row === reorderingIndex + 1)) {
+      setReorderingIndex(null);
+    }
+  };
+  const handleGridBlur = (e: React.FocusEvent) => {
+    if (reorderingIndex === null) return;
+    const next = e.relatedTarget instanceof Element ? gridPosOf(e.relatedTarget) : null;
+    if (!(next && next.col === 'grip' && next.row === reorderingIndex + 1)) setReorderingIndex(null);
   };
 
   // Whole-row drag-to-reorder (the row IS the handle, with a 3px
@@ -1070,13 +1111,22 @@ export function MacroBuilderDialog({
               aria-colcount={GRID_COLS.length}
               onKeyDown={handleGridKeyDown}
               onFocus={handleGridFocus}
+              onBlur={handleGridBlur}
             >
             <div className="macro-builder__step-table-head" role="row" aria-rowindex={1}>
-              <span className="macro-builder__step-grip macro-builder__step-head-cell" aria-hidden="true" />
+              <span
+                className="macro-builder__step-grip macro-builder__step-head-cell"
+                role="columnheader"
+                aria-colindex={1}
+                aria-label="Reorder"
+                data-grid-row={0}
+                data-grid-col="grip"
+                tabIndex={gridTabIndex({ row: 0, col: 'grip' })}
+              />
               <span
                 className="macro-builder__step-number macro-builder__step-head-cell"
                 role="columnheader"
-                aria-colindex={1}
+                aria-colindex={2}
                 data-grid-row={0}
                 data-grid-col="number"
                 tabIndex={gridTabIndex({ row: 0, col: 'number' })}
@@ -1086,7 +1136,7 @@ export function MacroBuilderDialog({
               <span
                 className="macro-builder__step-text macro-builder__step-head-cell"
                 role="columnheader"
-                aria-colindex={2}
+                aria-colindex={3}
                 data-grid-row={0}
                 data-grid-col="command"
                 tabIndex={gridTabIndex({ row: 0, col: 'command' })}
@@ -1096,7 +1146,7 @@ export function MacroBuilderDialog({
               <span
                 className="macro-builder__step-actions macro-builder__step-head-cell"
                 role="columnheader"
-                aria-colindex={3}
+                aria-colindex={4}
                 data-grid-row={0}
                 data-grid-col="actions"
                 tabIndex={gridTabIndex({ row: 0, col: 'actions' })}
@@ -1134,17 +1184,30 @@ export function MacroBuilderDialog({
                     aria-rowindex={index + 2}
                     data-step-index={index}
                     aria-label={`Step ${index + 1} of ${stepCount}: ${step.command}${step.parameters ? `, ${prettyParameters(step.parameters)}` : ''}`}
-                    className={`macro-builder__step${index === draggedIndex ? ' macro-builder__step--dragging' : ''}`}
+                    // A step carried from the keyboard wears the drag's look: a step in flight
+                    className={`macro-builder__step${index === draggedIndex || index === reorderingIndex ? ' macro-builder__step--dragging' : ''}`}
                     onMouseDown={handleStepMouseDown(index)}
                     onDoubleClick={() => setEditingStepIndex(index)}
                   >
-                    <span className="macro-builder__step-grip" aria-hidden="true">
+                    <span
+                      className="macro-builder__step-grip"
+                      role="gridcell"
+                      aria-colindex={1}
+                      aria-label={`Reorder step ${index + 1}`}
+                      data-grid-row={index + 1}
+                      data-grid-col="grip"
+                      data-reordering={index === reorderingIndex ? '' : undefined}
+                      // While the step is carried, Escape lets go of it
+                      // rather than closing the window (Dialog's rule)
+                      data-owns-escape={index === reorderingIndex ? 'self' : undefined}
+                      tabIndex={gridTabIndex({ row: index + 1, col: 'grip' })}
+                    >
                       <Icon name="gripper" size={16} />
                     </span>
                     <span
                       className="macro-builder__step-number"
                       role="gridcell"
-                      aria-colindex={1}
+                      aria-colindex={2}
                       data-grid-row={index + 1}
                       data-grid-col="number"
                       tabIndex={gridTabIndex({ row: index + 1, col: 'number' })}
@@ -1154,7 +1217,7 @@ export function MacroBuilderDialog({
                     <div
                       className="macro-builder__step-text"
                       role="gridcell"
-                      aria-colindex={2}
+                      aria-colindex={3}
                       data-grid-row={index + 1}
                       data-grid-col="command"
                       tabIndex={gridTabIndex({ row: index + 1, col: 'command' })}
@@ -1172,7 +1235,7 @@ export function MacroBuilderDialog({
                     <div
                       className="macro-builder__step-actions"
                       role="gridcell"
-                      aria-colindex={3}
+                      aria-colindex={4}
                       data-grid-row={index + 1}
                       data-grid-col="actions"
                       tabIndex={gridTabIndex({ row: index + 1, col: 'actions' })}

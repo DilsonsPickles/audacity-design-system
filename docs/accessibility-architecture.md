@@ -336,28 +336,36 @@ start on top left cell (table header) and then arrow keys move through.
 Enter/Space to enter cell (if it's editable)"; until then the row and
 its two buttons took focus in turn, as the Macro manager's cells do).
 The table's wrapper is `role="grid"` named "Macro steps" (`aria-rowcount`
-counts the head, `aria-colcount="3"`), the visible head is its first
-`role="row"` of `columnheader`s (Step, Command, Actions), the scrolling
-list a `rowgroup`, every step a `role="row"` (`aria-rowindex` from 2)
-of three `gridcell`s. The grip is the mouse's drag handle, not a column:
-`aria-hidden`, no header, no cell — the keyboard reorders with
-Cmd/Ctrl+arrows. THE CELLS TAKE THE FOCUS (`data-grid-row` /
-`data-grid-col`; the row itself never does), the head's included, and
-the table's one Tab stop STARTS ON THE HEAD'S FIRST CELL — the top
-left — then remembers the cell you were on. The hint shown with no
+counts the head, `aria-colcount="4"`), the visible head is its first
+`role="row"` of `columnheader`s (Reorder — the grip column's, unlabelled
+on screen — Step, Command, Actions), the scrolling list a `rowgroup`,
+every step a `role="row"` (`aria-rowindex` from 2) of four `gridcell`s.
+THE GRIP IS THE FIRST COLUMN (the same day, "first column should be
+tabbable, we need to be able to reorder and you do that by stepping
+into first column"): the mouse drags it, and the keyboard steps INTO
+it — Enter / Space on a step's Reorder cell PICKS THE STEP UP (the
+row takes the drag's half-opacity look, "a step in flight";
+`reorderingIndex`, `data-reordering` on the cell), Up / Down carry it,
+focus and the look going with it, and Enter, Space or Escape LET GO —
+so does focus leaving the cell, or any other key, which then does what
+it does. THE CELLS TAKE THE FOCUS (`data-grid-row` / `data-grid-col`;
+the row itself never does), the head's included, and the table's one
+Tab stop STARTS ON THE HEAD'S FIRST CELL — the top left, the Reorder
+header — then remembers the cell you were on. The hint shown with no
 steps is one row of one cell spanning the table; the ghost step stays
 `aria-hidden`, so it is no row.
 
 | Key | Action |
 |-----|--------|
 | ArrowDown / ArrowUp | Next / previous row, same column — the head row included. Cycles |
-| ArrowLeft / ArrowRight | Next / previous cell along the row: Step → Command → Actions. Cycles |
+| ArrowLeft / ArrowRight | Next / previous cell along the row: Reorder → Step → Command → Actions. Cycles |
 | Home / End | The row's first / last cell |
-| Cmd/Ctrl+Home / End | The table's corners: the head's first cell / the last step's Actions |
+| Cmd/Ctrl+Home / End | The table's corners: the head's Reorder cell / the last step's Actions |
 | PageUp / PageDown | A screenful of rows. Stops at the ends |
-| Enter / Space | INTO the cell. Command: open the step's editor. Actions: focus its first control (the pencil). Step number and the head cells: nothing — but Space is the table's, never play/pause |
-| Inside the Actions cell | ArrowLeft / ArrowRight go between the pencil and the menu (cycling); ArrowUp / ArrowDown keep the control, in the row above / below; Escape comes back out to the cell — the window's Escape yields to it because the cell is marked `data-owns-escape` (`Dialog` skips an Escape from a control INSIDE such an element; on the cell itself Escape closes the window as anywhere else); Enter / Space are the button's own |
-| Cmd/Ctrl+ArrowDown / Up | Carry the step down / up (as Cmd+Arrow reorders a track). Focus goes with it, in the same cell |
+| Enter / Space | INTO the cell. Reorder: pick the step up (below). Command: open the step's editor. Actions: focus its first control (the pencil). Step number and the head cells: nothing — but Space is the table's, never play/pause |
+| Carrying a step (its Reorder cell entered) | ArrowUp / ArrowDown move it, focus with it; Enter / Space / Escape let go — Escape stays the cell's (`data-owns-escape="self"` while carrying, so the window does not close); leaving the cell lets go |
+| Inside the Actions cell | ArrowLeft / ArrowRight go between the pencil and the menu (cycling); ArrowUp / ArrowDown keep the control, in the row above / below; Escape comes back out to the cell — the window's Escape yields to it because the cell is marked `data-owns-escape` (`Dialog` skips an Escape from a control INSIDE such an element, and from the element ITSELF when the value is `self`; on the cell itself otherwise Escape closes the window as anywhere else); Enter / Space are the button's own |
+| Cmd/Ctrl+ArrowDown / Up | Carry the step down / up from ANY cell, without picking it up (as Cmd+Arrow reorders a track). Focus goes with it, in the same cell |
 | Delete / Backspace | Delete the step, from any cell of its row |
 | Shift+F10 / Menu key | Open the step's menu, from any cell of its row |
 

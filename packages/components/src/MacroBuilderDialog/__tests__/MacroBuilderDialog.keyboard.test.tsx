@@ -53,7 +53,7 @@ function renderBuilder(props: Props = {}, profile: Profile = 'au4-tab-groups') {
   const stepEdit = (n: number) => step(n).querySelector<HTMLElement>('.macro-builder__step-edit')!;
   const stepMenu = (n: number) => step(n).querySelector<HTMLElement>('.macro-builder__step-menu')!;
   /** A cell of the step table: row 0 is the head, step n is row n. */
-  const cell = (row: number, col: 'number' | 'command' | 'actions') => q(`[data-grid-row="${row}"][data-grid-col="${col}"]`);
+  const cell = (row: number, col: 'grip' | 'number' | 'command' | 'actions') => q(`[data-grid-row="${row}"][data-grid-col="${col}"]`);
   const focused = () => document.activeElement as HTMLElement;
   const focus = (el: HTMLElement) => act(() => { el.focus(); });
   const press = (key: string, init: KeyboardEventInit = {}) => fireEvent.keyDown(focused(), { key, ...init });
@@ -88,23 +88,23 @@ describe('Edit macro — the step table is an ARIA grid (2026-10-21)', () => {
     expect(grid.getAttribute('role')).toBe('grid');
     expect(grid.getAttribute('aria-label')).toBe('Macro steps');
     expect(grid.getAttribute('aria-rowcount')).toBe(String(MACRO.steps.length + 1));
-    expect(grid.getAttribute('aria-colcount')).toBe('3');
+    expect(grid.getAttribute('aria-colcount')).toBe('4');
     const head = q('.macro-builder__step-table-head');
     expect(head.getAttribute('role')).toBe('row');
     expect(head.getAttribute('aria-rowindex')).toBe('1');
-    expect([...head.querySelectorAll('[role="columnheader"]')].map((h) => h.textContent)).toEqual(['Step', 'Command', 'Actions']);
-    // The grip is the mouse's drag handle, not a column
-    expect(head.querySelector('.macro-builder__step-grip')!.getAttribute('aria-hidden')).toBe('true');
+    expect([...head.querySelectorAll('[role="columnheader"]')].map((h) => h.getAttribute('aria-label') ?? h.textContent))
+      .toEqual(['Reorder', 'Step', 'Command', 'Actions']);
     expect(q('.macro-builder__step-list').getAttribute('role')).toBe('rowgroup');
     // Every step is a row at its place after the head; its cells name their columns
     expect(all('[data-step-index]').map((r) => [r.getAttribute('role'), r.getAttribute('aria-rowindex')]))
       .toEqual([['row', '2'], ['row', '3'], ['row', '4']]);
     expect(step(2).hasAttribute('tabindex')).toBe(false); // the cells take focus, never the row
     const cells = [...step(2).querySelectorAll('[role="gridcell"]')];
-    expect(cells.map((c) => c.getAttribute('aria-colindex'))).toEqual(['1', '2', '3']);
-    expect(cells[1].textContent).toContain('Fade In');
-    expect(cells[2].contains(stepEdit(2))).toBe(true);
-    expect(cells[2].contains(stepMenu(2))).toBe(true);
+    expect(cells.map((c) => c.getAttribute('aria-colindex'))).toEqual(['1', '2', '3', '4']);
+    expect(cells[0].getAttribute('aria-label')).toBe('Reorder step 2');
+    expect(cells[2].textContent).toContain('Fade In');
+    expect(cells[3].contains(stepEdit(2))).toBe(true);
+    expect(cells[3].contains(stepMenu(2))).toBe(true);
   });
 
   it('with no steps the rowgroup holds the hint as one row of one cell spanning the table', () => {
@@ -112,7 +112,7 @@ describe('Edit macro — the step table is an ARIA grid (2026-10-21)', () => {
     const list = q('.macro-builder__step-list');
     expect([...list.children].map((c) => c.getAttribute('role'))).toEqual(['row']);
     const cell = list.querySelector('[role="gridcell"]')!;
-    expect(cell.getAttribute('aria-colspan')).toBe('3');
+    expect(cell.getAttribute('aria-colspan')).toBe('4');
     expect(cell.textContent).toMatch(/Drag a command here/);
     expect(q('.macro-builder__step-table').getAttribute('aria-rowcount')).toBe('2');
   });
@@ -122,8 +122,8 @@ describe('Edit macro keyboard — Tab stops', () => {
   it('each list is ONE tab stop, however much it holds', () => {
     const { stops, command, cell } = renderBuilder();
     expect(stops('.macro-builder__command-list')).toEqual([command('select-all')]);
-    // The table's stop starts on the head's first cell — the top left
-    expect(stops('.macro-builder__step-table')).toEqual([cell(0, 'number')]);
+    // The table's stop starts on the head's first cell — the top left, the Reorder column
+    expect(stops('.macro-builder__step-table')).toEqual([cell(0, 'grip')]);
   });
 
   it('the window has six stops, in reading order — with or without a selection', () => {
@@ -316,18 +316,20 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
 
   it('Left and Right go along a row, cell to cell, and cycle', () => {
     const { cell, focus, press, focused } = renderBuilder();
-    focus(cell(2, 'number'));
+    focus(cell(2, 'grip'));
+    press('ArrowRight');
+    expect(focused()).toBe(cell(2, 'number'));
     press('ArrowRight');
     expect(focused()).toBe(cell(2, 'command'));
     press('ArrowRight');
     expect(focused()).toBe(cell(2, 'actions'));
     press('ArrowRight');
-    expect(focused()).toBe(cell(2, 'number'));
+    expect(focused()).toBe(cell(2, 'grip'));
     press('ArrowLeft');
     expect(focused()).toBe(cell(2, 'actions'));
-    focus(cell(0, 'number'));
+    focus(cell(0, 'grip'));
     press('ArrowRight');
-    expect(focused()).toBe(cell(0, 'command'));
+    expect(focused()).toBe(cell(0, 'number'));
   });
 
   it('Home and End go to the ends of the row; Cmd/Ctrl+Home and End to the table\'s corners', () => {
@@ -336,11 +338,11 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
     press('End');
     expect(focused()).toBe(cell(2, 'actions'));
     press('Home');
-    expect(focused()).toBe(cell(2, 'number'));
+    expect(focused()).toBe(cell(2, 'grip'));
     press('End', { metaKey: true });
     expect(focused()).toBe(cell(3, 'actions'));
     press('Home', { ctrlKey: true });
-    expect(focused()).toBe(cell(0, 'number'));
+    expect(focused()).toBe(cell(0, 'grip'));
   });
 
   it('Enter or Space on the Command cell opens the step\'s editor', () => {
@@ -371,6 +373,74 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
     expect(focused()).toBe(stepEdit(3));
   });
 
+  it('Enter or Space on the Reorder cell picks the step up: Up and Down carry it, Enter lets go', () => {
+    vi.useFakeTimers();
+    const onMoveStep = vi.fn();
+    const api = renderBuilder({ onMoveStep });
+    api.focus(api.cell(2, 'grip'));
+    api.press(' ');
+    expect(api.step(2).className).toContain('macro-builder__step--dragging');
+    api.press('ArrowDown');
+    expect(onMoveStep).toHaveBeenCalledWith('m1', 1, 1);
+    const [a, b, c] = MACRO.steps;
+    api.rerenderWith({ macro: { ...MACRO, steps: [a, c, b] }, onMoveStep });
+    act(() => { vi.runAllTimers(); });
+    // Focus and the carried look went with it
+    expect(api.focused()).toBe(api.cell(3, 'grip'));
+    expect(api.step(3).className).toContain('macro-builder__step--dragging');
+    expect(api.step(2).className).not.toContain('macro-builder__step--dragging');
+    api.press('ArrowUp');
+    expect(onMoveStep).toHaveBeenLastCalledWith('m1', 2, -1);
+    api.rerenderWith({ macro: { ...MACRO }, onMoveStep });
+    act(() => { vi.runAllTimers(); });
+    expect(api.focused()).toBe(api.cell(2, 'grip'));
+    expect(api.step(2).className).toContain('macro-builder__step--dragging');
+    api.press('Enter');
+    expect(api.step(2).className).not.toContain('macro-builder__step--dragging');
+    expect(api.focused()).toBe(api.cell(2, 'grip'));
+    // Let go: Down is the arrow again, and the step stays
+    api.press('ArrowDown');
+    expect(api.focused()).toBe(api.cell(3, 'grip'));
+    expect(onMoveStep).toHaveBeenCalledTimes(2);
+  });
+
+  it('a held Down keeps carrying — presses that land before focus has caught up still move the step', () => {
+    vi.useFakeTimers();
+    const onMoveStep = vi.fn();
+    const api = renderBuilder({ onMoveStep });
+    api.focus(api.cell(1, 'grip'));
+    api.press('Enter');
+    api.press('ArrowDown');
+    const [a, b, c] = MACRO.steps;
+    // Re-rendered, but the deferred refocus has not run: focus is still on row 1
+    api.rerenderWith({ macro: { ...MACRO, steps: [b, a, c] }, onMoveStep });
+    expect(api.focused()).toBe(api.cell(1, 'grip'));
+    api.press('ArrowDown');
+    expect(onMoveStep.mock.calls).toEqual([['m1', 0, 1], ['m1', 1, 1]]);
+    api.rerenderWith({ macro: { ...MACRO, steps: [b, c, a] }, onMoveStep });
+    act(() => { vi.runAllTimers(); });
+    expect(api.focused()).toBe(api.cell(3, 'grip'));
+    expect(api.step(3).className).toContain('macro-builder__step--dragging');
+  });
+
+  it('Escape lets go of a carried step without closing the window; leaving the cell lets go too', () => {
+    const onClose = vi.fn();
+    const { cell, focus, press, focused, step } = renderBuilder({ onClose });
+    focus(cell(2, 'grip'));
+    press('Enter');
+    expect(step(2).className).toContain('macro-builder__step--dragging');
+    press('Escape');
+    expect(step(2).className).not.toContain('macro-builder__step--dragging');
+    expect(onClose).not.toHaveBeenCalled();
+    expect(focused()).toBe(cell(2, 'grip'));
+    press('Escape');
+    expect(onClose).toHaveBeenCalledTimes(1);
+    press('Enter');
+    expect(step(2).className).toContain('macro-builder__step--dragging');
+    focus(cell(2, 'command'));
+    expect(step(2).className).not.toContain('macro-builder__step--dragging');
+  });
+
   it('Escape inside the Actions cell comes back out to the cell; Escape on a cell closes the window', () => {
     const onClose = vi.fn();
     const { cell, stepMenu, focus, press, focused } = renderBuilder({ onClose });
@@ -387,7 +457,7 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
 
   it('Enter or Space on a head cell, or the Step number, goes nowhere — and never reaches the app', () => {
     const { cell, focus, focused } = renderBuilder();
-    for (const target of [cell(0, 'number'), cell(0, 'command'), cell(1, 'number')]) {
+    for (const target of [cell(0, 'grip'), cell(0, 'command'), cell(1, 'number')]) {
       focus(target);
       const keys = leaked(() => {
         fireEvent.keyDown(focused(), { key: 'Enter' });
@@ -495,10 +565,10 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
     api.press('Delete');
     api.rerenderWith({ macro: { ...MACRO, steps: [] } });
     act(() => { vi.runAllTimers(); });
-    expect(api.focused()).toBe(api.cell(0, 'number'));
+    expect(api.focused()).toBe(api.cell(0, 'grip'));
     // And with no steps Down from the head goes nowhere, but is still kept from the app
     expect(leaked(() => api.press('ArrowDown'))).toEqual([]);
-    expect(api.focused()).toBe(api.cell(0, 'number'));
+    expect(api.focused()).toBe(api.cell(0, 'grip'));
   });
 
   it('the menu\'s Move down takes focus with the step, on its menu button', () => {
@@ -529,8 +599,8 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
     const onDeleteStep = vi.fn();
     const onMoveStep = vi.fn();
     const { stops, cell, stepEdit, focus, focused, press } = renderBuilder({ onDeleteStep, onMoveStep }, 'wcag-flat');
-    expect(stops('.macro-builder__step-table-head')).toHaveLength(3);
-    expect(stops('.macro-builder__step-list')).toHaveLength(MACRO.steps.length * 5); // 3 cells + 2 controls
+    expect(stops('.macro-builder__step-table-head')).toHaveLength(4);
+    expect(stops('.macro-builder__step-list')).toHaveLength(MACRO.steps.length * 6); // 4 cells + 2 controls
     focus(cell(2, 'command'));
     expect(fireEvent.keyDown(focused(), { key: 'ArrowDown' })).toBe(true);
     expect(focused()).toBe(cell(2, 'command'));
