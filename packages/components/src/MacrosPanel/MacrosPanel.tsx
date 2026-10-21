@@ -129,51 +129,61 @@ function MacroRow({
 
   return (
     <>
-      {/* The row is a GROUP of three real buttons, not a button itself:
-          a button that contains buttons is invalid, and a screen reader
-          could not reach Run or the menu through it. The whole row
+      {/* The row is a grid ROW of three cells, each holding one real
+          button — never a button itself: a button that contains buttons
+          is invalid, and a screen reader could not reach Run or the
+          menu through it. With the list a `grid`, a screen reader
+          announces the table ("3 rows, 3 columns") and the position of
+          every cell, and its own table navigation works. The whole row
           still takes the mouse (click edits, double-click runs); the
           keyboard and assistive tech use the name button. */}
       <div
         className="macros-panel__row"
         data-macro-id={macro.id}
-        role="group"
+        role="row"
         aria-label={macro.name}
         onClick={handleRowClick}
         onDoubleClick={handleRowDoubleClick}
       >
-        <button
-          type="button"
-          className={CELL_CLASS.name}
-          title={macro.name}
-          aria-label={`Edit ${macro.name}`}
-          tabIndex={tabIndexOf('name')}
-        >
-          {macro.name}
-        </button>
+        <div role="gridcell" className="macros-panel__cell macros-panel__cell--name">
+          <button
+            type="button"
+            className={CELL_CLASS.name}
+            title={macro.name}
+            aria-label={`Edit ${macro.name}`}
+            tabIndex={tabIndexOf('name')}
+          >
+            {macro.name}
+          </button>
+        </div>
         <div
           className="macros-panel__row-actions"
+          role="presentation"
           onClick={(e) => e.stopPropagation()}
         >
-          <Button
-            variant="secondary"
-            className={CELL_CLASS.run}
-            icon={<Icon name="play" />}
-            ariaLabel={`Run ${macro.name} on current project`}
-            tabIndex={tabIndexOf('run')}
-            onClick={onRunOnProject}
-          >
-            Run
-          </Button>
-          <GhostButton
-            icon="menu"
-            size="medium"
-            className={CELL_CLASS.menu}
-            ariaLabel={`${macro.name} options`}
-            active={menuOpen}
-            tabIndex={tabIndexOf('menu')}
-            onClick={handleMenuClick}
-          />
+          <div role="gridcell" className="macros-panel__cell">
+            <Button
+              variant="secondary"
+              className={CELL_CLASS.run}
+              icon={<Icon name="play" />}
+              ariaLabel={`Run ${macro.name} on current project`}
+              tabIndex={tabIndexOf('run')}
+              onClick={onRunOnProject}
+            >
+              Run
+            </Button>
+          </div>
+          <div role="gridcell" className="macros-panel__cell">
+            <GhostButton
+              icon="menu"
+              size="medium"
+              className={CELL_CLASS.menu}
+              ariaLabel={`${macro.name} options`}
+              active={menuOpen}
+              tabIndex={tabIndexOf('menu')}
+              onClick={handleMenuClick}
+            />
+          </div>
         </div>
       </div>
 
@@ -206,7 +216,9 @@ function MacroRow({
  *
  * KEYBOARD (docs/accessibility-architecture.md → Macro manager). Two Tab
  * stops under the tab-groups profile: the header actions, then the list.
- * The list is a grid — Up/Down move between macros, Left/Right between
+ * The list is a grid — in the ARIA sense too (`grid` / `row` /
+ * `gridcell`, 2026-10-21), so a screen reader hears a table and where in
+ * it each button is — Up/Down move between macros, Left/Right between
  * a macro's name, Run and menu, all cycling — and remembers where you
  * were. Enter
  * presses what has focus; F2 renames, Shift+F10 opens the row's menu,
@@ -480,14 +492,20 @@ export function MacrosPanel({
       <div
         ref={listRef}
         className="macros-panel__list"
-        role="group"
+        role="grid"
         aria-labelledby="macros-panel-title"
+        aria-rowcount={Math.max(macros.length, 1)}
+        aria-colcount={CELLS.length}
         onKeyDown={handleListKeyDown}
         onFocus={handleListFocus}
       >
         {macros.length === 0 && (
-          <div className="macros-panel__empty">
-            No macros yet. A macro runs a set of commands on a project or a batch of files.
+          // A grid's only children are rows, so the empty state is one
+          // row of one cell spanning the table
+          <div className="macros-panel__empty" role="row">
+            <div role="gridcell" aria-colspan={CELLS.length}>
+              No macros yet. A macro runs a set of commands on a project or a batch of files.
+            </div>
           </div>
         )}
         {macros.map((macro) => (

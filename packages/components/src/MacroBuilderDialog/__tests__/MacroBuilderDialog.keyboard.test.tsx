@@ -79,6 +79,41 @@ function leaked(run: () => void): string[] {
   return seen;
 }
 
+describe('Edit macro — the step table is an ARIA grid (2026-10-21)', () => {
+  it('head row of column headers, a rowgroup of step rows, cells in their columns', () => {
+    const { q, all, step, stepEdit, stepMenu } = renderBuilder();
+    const grid = q('.macro-builder__step-table');
+    expect(grid.getAttribute('role')).toBe('grid');
+    expect(grid.getAttribute('aria-label')).toBe('Macro steps');
+    expect(grid.getAttribute('aria-rowcount')).toBe(String(MACRO.steps.length + 1));
+    expect(grid.getAttribute('aria-colcount')).toBe('4');
+    const head = q('.macro-builder__step-table-head');
+    expect(head.getAttribute('role')).toBe('row');
+    expect(head.getAttribute('aria-rowindex')).toBe('1');
+    expect([...head.querySelectorAll('[role="columnheader"]')].map((h) => h.getAttribute('aria-label') ?? h.textContent))
+      .toEqual(['Reorder', 'Step', 'Command', 'Actions']);
+    expect(q('.macro-builder__step-list').getAttribute('role')).toBe('rowgroup');
+    // Every step is a row at its place after the head; its cells name their columns
+    expect(all('[data-step-index]').map((r) => [r.getAttribute('role'), r.getAttribute('aria-rowindex')]))
+      .toEqual([['row', '2'], ['row', '3'], ['row', '4']]);
+    const cells = [...step(2).querySelectorAll('[role="gridcell"]')];
+    expect(cells.map((c) => c.getAttribute('aria-colindex'))).toEqual(['2', '3', '4']);
+    expect(cells[1].textContent).toContain('Fade In');
+    expect(cells[2].contains(stepEdit(2))).toBe(true);
+    expect(cells[2].contains(stepMenu(2))).toBe(true);
+  });
+
+  it('with no steps the rowgroup holds the hint as one row of one cell spanning the table', () => {
+    const { q } = renderBuilder({ macro: { ...MACRO, steps: [] } });
+    const list = q('.macro-builder__step-list');
+    expect([...list.children].map((c) => c.getAttribute('role'))).toEqual(['row']);
+    const cell = list.querySelector('[role="gridcell"]')!;
+    expect(cell.getAttribute('aria-colspan')).toBe('4');
+    expect(cell.textContent).toMatch(/Drag a command here/);
+    expect(q('.macro-builder__step-table').getAttribute('aria-rowcount')).toBe('2');
+  });
+});
+
 describe('Edit macro keyboard — Tab stops', () => {
   it('each list is ONE tab stop, however much it holds', () => {
     const { stops, command, step } = renderBuilder();

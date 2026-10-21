@@ -153,6 +153,20 @@
   outline: none;
 }
 
+/* Each button sits in its own grid cell (role="gridcell"); the cells
+   are layout-transparent — the name's cell takes the row's slack and
+   the button fills it, so the ring and the ellipsis are unchanged. */
+.macros-panel__cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.macros-panel__cell--name {
+  flex: 1;
+  align-self: stretch;
+}
+
 .macros-panel__row-actions {
   display: flex;
   align-items: center;

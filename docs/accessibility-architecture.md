@@ -182,10 +182,17 @@ does not. Settled 2026-09-28 after trying a single toolbar-style
 sequence in which Down did what Right does: it was consistent, and
 wrong for a list. Do not "fix" Down to match Right.
 
-Each row is a `role="group"` named after its macro,
-holding three real buttons — the name (which opens the macro), Run, and
-the menu. The row is never itself a button: a button that contains
-buttons is invalid, and hides Run and the menu from a screen reader.
+**It is an ARIA grid too** (2026-10-21, "proper cell navigation
+accessibility"): the list is `role="grid"` (`aria-rowcount`,
+`aria-colcount="3"`), each row a `role="row"` named after its macro,
+each of its three buttons — the name (which opens the macro), Run, and
+the menu — inside its own `role="gridcell"`. So a screen reader hears a
+table ("3 rows, 3 columns"), the position of every cell, and can use
+its own table navigation on it; the keyboard below is the grid pattern
+(one Tab stop, arrows between cells). The row is never itself a button:
+a button that contains buttons is invalid, and hides Run and the menu
+from a screen reader. With no macros the grid holds one row of one cell
+spanning it, carrying the hint — a grid's only children are rows.
 
 | Key | Action |
 |-----|--------|
@@ -324,7 +331,16 @@ picked before the search began.
 The list stays ONE stop driven by the arrows under the flat profile too:
 a listbox is a single control, and 280 Tab stops serve nobody.
 
-**Step list** — the same two moves as the Macro manager's list.
+**Step list** — the same two moves as the Macro manager's list, and the
+same ARIA grid (2026-10-21): the table's wrapper is `role="grid"` named
+"Macro steps" (`aria-rowcount` counts the head, `aria-colcount="4"`), the
+visible head is its first `role="row"` of `columnheader`s (Reorder,
+Step, Command, Actions), the scrolling list is a `rowgroup`, every step
+a focusable `role="row"` (`aria-rowindex` from 2) of three `gridcell`s
+with explicit `aria-colindex` 2–4 — the grip column is the mouse's drag
+handle, headed but with no cell in the rows. The hint shown with no
+steps is one row of one cell spanning the table. The ghost step stays
+`aria-hidden`, so it is no row.
 
 | Key | Action |
 |-----|--------|

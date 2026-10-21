@@ -979,11 +979,25 @@ export function MacroBuilderDialog({
                 }}
               />
             </div>
-            <div className="macro-builder__step-table-head">
-              <span className="macro-builder__step-grip macro-builder__step-head-cell" />
-              <span className="macro-builder__step-number macro-builder__step-head-cell">Step</span>
-              <span className="macro-builder__step-text macro-builder__step-head-cell">Command</span>
-              <span className="macro-builder__step-actions macro-builder__step-head-cell">Actions</span>
+            {/* The table is an ARIA grid (2026-10-21): the head is its
+                first row of column headers, the scrolling list its
+                rowgroup, every step a row of cells — so a screen reader
+                announces "table, N rows, 4 columns", reads the column's
+                name over each cell, and its own table navigation works.
+                The grip column is the mouse's drag handle: a header for
+                it, no cell in the rows (hence the explicit colindex). */}
+            <div
+              className="macro-builder__step-table"
+              role="grid"
+              aria-label="Macro steps"
+              aria-rowcount={Math.max(stepCount, 1) + 1}
+              aria-colcount={4}
+            >
+            <div className="macro-builder__step-table-head" role="row" aria-rowindex={1}>
+              <span className="macro-builder__step-grip macro-builder__step-head-cell" role="columnheader" aria-colindex={1} aria-label="Reorder" />
+              <span className="macro-builder__step-number macro-builder__step-head-cell" role="columnheader" aria-colindex={2}>Step</span>
+              <span className="macro-builder__step-text macro-builder__step-head-cell" role="columnheader" aria-colindex={3}>Command</span>
+              <span className="macro-builder__step-actions macro-builder__step-head-cell" role="columnheader" aria-colindex={4}>Actions</span>
               {/* Offsets the head by the body's 16px scrollbar gutter so
                   the Actions column lines up with the rows — only while
                   the table actually scrolls (the gutter exists only
@@ -995,14 +1009,17 @@ export function MacroBuilderDialog({
             <div
               ref={stepListRef}
               className={`macro-builder__step-list${draggedIndex !== null ? ' macro-builder__step-list--dragging' : ''}`}
-              role="list"
-              aria-label="Macro steps"
+              role="rowgroup"
               onKeyDown={handleStepListKeyDown}
               onFocus={handleStepListFocus}
             >
               {stepCount === 0 && ghostStep === null && (
-                <div className="macro-builder__steps-hint">
-                  Drag a command here, or double-click it, to add it to your macro
+                // A rowgroup's only children are rows: the hint is one
+                // row of one cell spanning the table
+                <div className="macro-builder__steps-hint" role="row" aria-rowindex={2}>
+                  <div role="gridcell" aria-colindex={1} aria-colspan={4}>
+                    Drag a command here, or double-click it, to add it to your macro
+                  </div>
                 </div>
               )}
               {macro.steps.map((step, index) => {
@@ -1010,7 +1027,8 @@ export function MacroBuilderDialog({
                   <React.Fragment key={index}>
                   {ghostAt === index && ghostStep}
                   <div
-                    role="listitem"
+                    role="row"
+                    aria-rowindex={index + 2}
                     tabIndex={stepTabIndex(index, 'step')}
                     data-step-index={index}
                     aria-label={`Step ${index + 1} of ${stepCount}: ${step.command}${step.parameters ? `, ${prettyParameters(step.parameters)}` : ''}`}
@@ -1021,8 +1039,8 @@ export function MacroBuilderDialog({
                     <span className="macro-builder__step-grip" aria-hidden="true">
                       <Icon name="gripper" size={16} />
                     </span>
-                    <span className="macro-builder__step-number">{shownNumber(index)}</span>
-                    <div className="macro-builder__step-text">
+                    <span className="macro-builder__step-number" role="gridcell" aria-colindex={2}>{shownNumber(index)}</span>
+                    <div className="macro-builder__step-text" role="gridcell" aria-colindex={3}>
                       <span className="macro-builder__step-command">{step.command}</span>
                       {step.parameters && (
                         <span
@@ -1033,7 +1051,7 @@ export function MacroBuilderDialog({
                         </span>
                       )}
                     </div>
-                    <div className="macro-builder__step-actions">
+                    <div className="macro-builder__step-actions" role="gridcell" aria-colindex={4}>
                       <GhostButton
                         icon="edit"
                         size="medium"
@@ -1064,6 +1082,7 @@ export function MacroBuilderDialog({
                 );
               })}
               {ghostAt !== null && ghostAt >= stepCount && ghostStep}
+            </div>
             </div>
           </div>
 

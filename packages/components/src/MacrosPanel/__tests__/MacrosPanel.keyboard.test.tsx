@@ -52,24 +52,40 @@ function renderPanel(props: PanelProps = {}, profile: 'au4-tab-groups' | 'wcag-f
 }
 
 describe('MacrosPanel keyboard — structure', () => {
-  it('a row is a labelled group of three real buttons, never a button holding buttons', () => {
+  it('a row is a labelled grid row of three cells, one real button each — never a button holding buttons', () => {
     const { row, cell, container } = renderPanel();
-    expect(row('m1').getAttribute('role')).toBe('group');
+    expect(row('m1').getAttribute('role')).toBe('row');
     expect(row('m1').getAttribute('aria-label')).toBe('Fade ends');
     expect(row('m1').hasAttribute('tabindex')).toBe(false);
     expect(container.querySelector('[role="button"] button')).toBeNull();
+    // Three cells, in column order, each holding its one button (2026-10-21)
+    const cells = [...row('m1').querySelectorAll('[role="gridcell"]')];
+    expect(cells.map((c) => c.querySelector('button'))).toEqual([cell('m1', 'name'), cell('m1', 'run'), cell('m1', 'menu')]);
+    expect(row('m1').querySelector('[role="gridcell"] [role="gridcell"]')).toBeNull();
     expect(cell('m1', 'name').tagName).toBe('BUTTON');
     expect(cell('m1', 'name').getAttribute('aria-label')).toBe('Edit Fade ends');
     expect(cell('m1', 'run').getAttribute('aria-label')).toBe('Run Fade ends on current project');
     expect(cell('m1', 'menu').getAttribute('aria-label')).toBe('Fade ends options');
   });
 
-  it('the list is a group named by the panel\'s own heading', () => {
+  it('the list is a grid named by the panel\'s own heading, its size declared', () => {
     const { container } = renderPanel();
     const list = container.querySelector('.macros-panel__list')!;
-    expect(list.getAttribute('role')).toBe('group');
+    expect(list.getAttribute('role')).toBe('grid');
+    expect(list.getAttribute('aria-rowcount')).toBe(String(MACROS.length));
+    expect(list.getAttribute('aria-colcount')).toBe('3');
     const title = container.querySelector(`#${list.getAttribute('aria-labelledby')}`);
     expect(title?.textContent).toBe('Macros');
+  });
+
+  it('with no macros the grid holds one row of one cell spanning it — never a bare text child', () => {
+    const { container } = renderPanel({ macros: [] });
+    const list = container.querySelector('.macros-panel__list')!;
+    const children = [...list.children];
+    expect(children.map((c) => c.getAttribute('role'))).toEqual(['row']);
+    const cell = children[0].querySelector('[role="gridcell"]')!;
+    expect(cell.getAttribute('aria-colspan')).toBe('3');
+    expect(cell.textContent).toMatch(/No macros yet/);
   });
 });
 
