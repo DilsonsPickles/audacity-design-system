@@ -7,15 +7,16 @@ afterEach(cleanup);
 
 describe('drawn icons — the track-height pair (2026-10-22)', () => {
   it('collapse and expand are drawn SVGs in currentColor: a bar with chevrons toward it / away from it', () => {
-    for (const name of ['track-collapse', 'track-expand'] as const) {
+    for (const name of ['track-collapse', 'track-expand', 'track-fit-height'] as const) {
       expect(isDrawnIcon(name)).toBe(true);
       const { container } = render(<Icon name={name} size={16} />);
       const span = container.querySelector('.icon')!;
       expect(span.getAttribute('data-drawn-icon')).toBe(name);
       const svg = span.querySelector('svg')!;
       expect(svg.getAttribute('stroke')).toBe('currentColor');
+      expect(svg.getAttribute('stroke-width')).toBe('1'); // the font's weight at 16px
       expect(svg.querySelector('rect')).not.toBeNull();
-      expect(svg.querySelectorAll('path')).toHaveLength(2);
+      expect(svg.querySelectorAll('path').length).toBeGreaterThanOrEqual(2);
       cleanup();
     }
   });

@@ -52,7 +52,7 @@ export const CUSTOMISE_TOOLBAR_ENTRIES: ReadonlyArray<CustomiseToolbarEntry> = [
   tool('fit-project', 'Fit project to width', ''),
   tool('collapse-tracks', 'Collapse tracks', '\uEF37', undefined, 'track-collapse'),
   tool('expand-tracks', 'Expand tracks', '\uEF36', undefined, 'track-expand'),
-  tool('fit-tracks-height', 'Fit tracks to height', ''),
+  tool('fit-tracks-height', 'Fit tracks to height', '\uF439', undefined, 'track-fit-height'),
   tool('zoom-toggle', 'Zoom toggle', ''),
   DIVIDER,
   tool('spectral-editing', 'Spectral editing', ''),

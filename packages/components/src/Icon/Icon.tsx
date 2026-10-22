@@ -66,6 +66,7 @@ export type IconName =
   | 'clock'
   | 'track-expand'
   | 'track-collapse'
+  | 'track-fit-height'
   | 'refresh'
   | 'check'
   | 'search';
@@ -144,6 +145,8 @@ const ICON_MAP: Record<IconName, string> = {
   // 0xEF36 = expand (taller, as ⌥⌘↓ is) and ARROW_UP 0xEF37 = collapse
   'track-expand': '\uEF36',
   'track-collapse': '\uEF37',
+  // Fit tracks to height: drawn (below); the font's fit glyph is its stand-in code
+  'track-fit-height': '\uF439',
   refresh: '\uF358',
   check: '\uEF31',
   /* Plain magnifier (the zoom-in/out glyphs carry +/- marks) \u2014 the
@@ -195,25 +198,45 @@ const chevron = (y: number, dir: 'up' | 'down') =>
 
 /**
  * Icons DRAWN here rather than taken from the shared font (2026-10-22,
- * "some ideas for icon" — a sketch): the toolbar's track-height pair.
+ * "some ideas for icon" — a sketch): the toolbar's track-height trio.
  * The bar is the track; the chevrons say which way its edges go —
- * toward it to collapse, away from it to expand. Keyed by the same
- * names as the font map, so a host asks for the name and gets the
- * drawing; `ICON_CODES` keeps the font's code for the Inspector.
+ * toward it to collapse, away from it to expand, out to the view's
+ * edges to fit ("use the same bar iconography for the fit", the same
+ * day). At the FONT'S WEIGHT: 1px strokes at 16px, round caps, inside
+ * the 14-grid — the font's glyphs are 64 units on a 1024 em, which is
+ * 1px, and a first cut at 1.3 read heavier than its neighbours. Keyed
+ * by the same names as the font map, so a host asks for the name and
+ * gets the drawing; `ICON_CODES` keeps a font code for the Inspector.
+ * These belong in the font eventually (see the glyph how-to in the
+ * 2026-10-22 conversation): drop them when the font has them.
  */
+const svgProps = {
+  viewBox: '0 0 16 16', width: '1em', height: '1em', fill: 'none', stroke: 'currentColor',
+  strokeWidth: 1, strokeLinecap: 'round', strokeLinejoin: 'round',
+} as const;
+const bar = <rect x="2.5" y="6.5" width="11" height="3" rx="0.5" />;
 const DRAWN_ICONS: Partial<Record<IconName, React.ReactNode>> = {
   'track-collapse': (
-    <svg viewBox="0 0 16 16" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2.65" y="6.5" width="10.7" height="3" rx="0.6" />
+    <svg {...svgProps}>
+      {bar}
       <path d={chevron(3.5, 'down')} />
       <path d={chevron(12.5, 'up')} />
     </svg>
   ),
   'track-expand': (
-    <svg viewBox="0 0 16 16" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2.65" y="6.5" width="10.7" height="3" rx="0.6" />
+    <svg {...svgProps}>
+      {bar}
       <path d={chevron(1.5, 'up')} />
       <path d={chevron(14.5, 'down')} />
+    </svg>
+  ),
+  'track-fit-height': (
+    <svg {...svgProps}>
+      <path d="M2.5 1.5H13.5" />
+      {bar}
+      <path d={chevron(3.5, 'up')} />
+      <path d={chevron(12.5, 'down')} />
+      <path d="M2.5 14.5H13.5" />
     </svg>
   ),
 };
