@@ -5,6 +5,8 @@ import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { Effect } from '@audacity-ui/components';
 import { useDialogs } from '../contexts/DialogContext';
 import { useContextMenus } from '../contexts/ContextMenuContext';
+import { buildNewTrack } from '../utils/trackManagement';
+import type { TrackType } from '@audacity-ui/components';
 import { useLoopRegionContext } from '../contexts/LoopRegionContext';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { useTracks } from '../contexts/TracksContext';
@@ -413,6 +415,29 @@ export function AppContextMenus({
           onClose={() => setTrackPanelContextMenu(null)}
         >
           <div data-track-panel-menu="">
+            {/* Add a track from here too (the same day, "we need to be able
+                to add new tracks from that right click menu"): the Add new
+                button's flyout as a parent, the same types in the same
+                order, through the same ADD_TRACK */}
+            <ContextMenuItem label="Add track" onClose={() => setTrackPanelContextMenu(null)}>
+              {([
+                ['mono', 'Mono'],
+                ['stereo', 'Stereo'],
+                ['label', 'Label'],
+                ['midi', 'MIDI'],
+              ] as const).map(([type, label]) => (
+                <ContextMenuItem
+                  key={type}
+                  label={label}
+                  onClick={() => {
+                    setTrackPanelContextMenu(null);
+                    dispatch({ type: 'ADD_TRACK', payload: buildNewTrack(type as TrackType, tracks) });
+                  }}
+                  onClose={() => setTrackPanelContextMenu(null)}
+                />
+              ))}
+            </ContextMenuItem>
+            <ContextMenuItem isDivider label="" />
             <ContextMenuItem label="Collapse all tracks" onClick={() => { setTrackPanelContextMenu(null); onCollapseAllTracks?.(); }} />
             <ContextMenuItem label="Expand all tracks" onClick={() => { setTrackPanelContextMenu(null); onExpandAllTracks?.(); }} />
             <ContextMenuItem label="Fit tracks to height" onClick={() => { setTrackPanelContextMenu(null); onFitTracksToHeight?.(); }} />
