@@ -52,6 +52,10 @@ export interface AppContextMenusProps {
   onCollapseAllTracks?: () => void;
   onExpandAllTracks?: () => void;
   onFitTracksToHeight?: () => void;
+  // The track's own menu: ONE track's height (the brief's local control)
+  onCollapseTrack?: (trackIndex: number) => void;
+  onExpandTrack?: (trackIndex: number) => void;
+  onFitTrackToHeight?: (trackIndex: number) => void;
 }
 
 export function AppContextMenus({
@@ -66,6 +70,7 @@ export function AppContextMenus({
   os,
   trackMenuTriggerRef,
   onCollapseAllTracks, onExpandAllTracks, onFitTracksToHeight,
+  onCollapseTrack, onExpandTrack, onFitTrackToHeight,
 }: AppContextMenusProps) {
   const { state, dispatch } = useTracks();
   const { tracks, masterEffects } = state;
@@ -335,6 +340,9 @@ export function AppContextMenus({
             setTrackContextMenu(null);
             restoreTrackMenuFocus();
           }}
+          onCollapseTrack={onCollapseTrack && (() => onCollapseTrack(trackContextMenu.trackIndex))}
+          onExpandTrack={onExpandTrack && (() => onExpandTrack(trackContextMenu.trackIndex))}
+          onFitTrackToHeight={onFitTrackToHeight && (() => onFitTrackToHeight(trackContextMenu.trackIndex))}
           onDelete={() => {
             if (trackContextMenu) {
               const deletedIdx = trackContextMenu.trackIndex;

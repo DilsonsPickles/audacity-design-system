@@ -1356,6 +1356,34 @@ describe('Selection playback', () => {
     await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('114px'));
   });
 
+  it('the track\'s own menu collapses, expands and fits THAT track alone (2026-10-22, the design brief\'s local control)', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 2'));
+    const panels = () => container.querySelectorAll('.track-control-side-panel__track');
+    const scrollEl = container.querySelector('.canvas-scroll-container') as HTMLElement;
+    Object.defineProperty(scrollEl, 'clientHeight', { value: 500, configurable: true });
+
+    fireEvent.click(trackMenuButton(container, 1));
+    fireEvent.click(menuItem(container, 'Collapse track'));
+    await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('44px'));
+    expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+
+    fireEvent.click(trackMenuButton(container, 1));
+    fireEvent.click(menuItem(container, 'Expand track'));
+    await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('114px'));
+
+    // Fit this track into what the other row leaves: 500 - 2 - 116 - 2 = 380
+    fireEvent.click(trackMenuButton(container, 1));
+    fireEvent.click(menuItem(container, 'Fit track to height'));
+    await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('380px'));
+    expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+  });
+
   it('Option+Cmd+C collapses the SELECTED tracks and Option+Cmd+X expands them, the others untouched (2026-10-08)', async () => {
     const rendered = renderApp();
     const { container } = rendered;

@@ -187,6 +187,16 @@ export interface TrackControlSidePanelProps {
    * 2026-10-22, the design brief's required placement).
    */
   onPanelContextMenu?: (x: number, y: number) => void;
+  /**
+   * THIS track's height, in the row's own menu (2026-10-22, the "Track
+   * expand/collapse" design brief: "single-track height control belongs
+   * in this menu"): collapse it to the floor, expand it back to its open
+   * height, fit it to what the other rows leave of the view. Named for
+   * ONE track, against the blank-area menu, which names ALL tracks.
+   */
+  onCollapseTrack?: (trackIndex: number) => void;
+  onExpandTrack?: (trackIndex: number) => void;
+  onFitTrackToHeight?: (trackIndex: number) => void;
 
   /**
    * Buffer space below the last track (px)
@@ -242,6 +252,9 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   scrollRef,
   onScroll,
   onPanelContextMenu,
+  onCollapseTrack,
+  onExpandTrack,
+  onFitTrackToHeight,
   bufferSpace = 0,
 }) => {
   const { theme } = useTheme();
@@ -871,6 +884,26 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
             </>
           );
         })()}
+        {/* This track's height — one track, as the labels say */}
+        {(onCollapseTrack || onExpandTrack || onFitTrackToHeight) && (
+          <div data-track-height-items="">
+            {([
+              ['Collapse track', onCollapseTrack],
+              ['Expand track', onExpandTrack],
+              ['Fit track to height', onFitTrackToHeight],
+            ] as const).map(([label, handler]) => handler && (
+              <ContextMenuItem
+                key={label}
+                label={label}
+                onClick={() => {
+                  handler(menuState.trackIndex);
+                  handleMenuClose();
+                }}
+              />
+            ))}
+            <ContextMenuItem isDivider label="" />
+          </div>
+        )}
         <ContextMenuItem
           label="Move track up"
           onClick={() => {

@@ -66,6 +66,10 @@ export interface EditorLayoutProps {
   scrollY: number;
   onScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   onTrackHeaderScroll: (e: React.UIEvent<HTMLDivElement>) => void;
+  // The row menu's single-track height items (App's memory + fit rules, by index)
+  onCollapseTrack?: (trackIndex: number) => void;
+  onExpandTrack?: (trackIndex: number) => void;
+  onFitTrackToHeight?: (trackIndex: number) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   trackHeaderScrollRef: React.RefObject<HTMLDivElement | null>;
 
@@ -176,6 +180,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     activeMenuItem,
     trackMenuTriggerRef,
     scrollX, scrollY, onScroll, onTrackHeaderScroll,
+    onCollapseTrack, onExpandTrack, onFitTrackToHeight,
     scrollContainerRef, trackHeaderScrollRef,
     pixelsPerSecond, timelineWidth, timelineDuration, timelineFormat, bpm, beatsPerMeasure,
     showRmsInWaveform, showQuickFadeHandles, controlPointStyle, spectrogramScale, showVerticalRulers,
@@ -806,6 +811,9 @@ export function EditorLayout(props: EditorLayoutProps) {
           scrollRef={trackHeaderScrollRef}
           onScroll={onTrackHeaderScroll}
           onPanelContextMenu={(x, y) => setTrackPanelContextMenu({ isOpen: true, x, y })}
+          onCollapseTrack={onCollapseTrack}
+          onExpandTrack={onExpandTrack}
+          onFitTrackToHeight={onFitTrackToHeight}
           bufferSpace={scrollBuffer}
           onTrackResize={(trackIndex, height, source) => {
             // SHIFT IS "EVERY TRACK" IN EVERY FAMILY (user decision

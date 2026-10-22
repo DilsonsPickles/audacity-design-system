@@ -16,6 +16,16 @@ export interface TrackContextMenuProps {
   onDelete?: () => void;
   onColorChange?: (color: ClipColor) => void;
   onSpectrogramSettings?: () => void;
+  /**
+   * THIS track's height (2026-10-22, the "Track expand/collapse" design
+   * brief: "single-track height control belongs in this menu"): collapse
+   * it to the floor, expand it back to its open height, fit it to what
+   * the other rows leave of the view. Named for ONE track, against the
+   * side panel's blank-area menu, which names ALL tracks.
+   */
+  onCollapseTrack?: () => void;
+  onExpandTrack?: () => void;
+  onFitTrackToHeight?: () => void;
 }
 
 export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
@@ -27,7 +37,16 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
   onDelete,
   onColorChange,
   onSpectrogramSettings,
+  onCollapseTrack,
+  onExpandTrack,
+  onFitTrackToHeight,
 }) => {
+  const heightItems = [
+    ['Collapse track', onCollapseTrack],
+    ['Expand track', onExpandTrack],
+    ['Fit track to height', onFitTrackToHeight],
+  ] as const;
+  const hasHeightItems = heightItems.some(([, handler]) => handler);
   return (
     <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} autoFocus={autoFocus} className="track-context-menu">
       {/* Colour picker row */}
@@ -46,6 +65,20 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
           ))}
         </div>
       </div>
+      {/* This track's height — one track, as the labels say */}
+      {hasHeightItems && (
+        <div data-track-height-items="">
+          {heightItems.map(([label, handler]) => handler && (
+            <ContextMenuItem
+              key={label}
+              label={label}
+              onClick={handler}
+              onClose={onClose}
+            />
+          ))}
+          <ContextMenuItem isDivider label="" />
+        </div>
+      )}
       {/* Spectrogram settings */}
       {onSpectrogramSettings && (
         <ContextMenuItem

@@ -608,8 +608,7 @@ function CanvasDemoContent() {
   // other means (drag, wheel, collapse, expand, fit all) is no longer at
   // its fitted height and drops out on its own.
   const fittedHeightsRef = React.useRef<Map<number, number>>(new Map());
-  const handleFitSelectedTracksToHeight = React.useCallback(() => {
-    const pressed = resolveTracksImOn();
+  const fitTracksToHeightFor = React.useCallback((pressed: number[]) => {
     const targetSet = new Set(pressed);
     state.tracks.forEach((t, i) => {
       if (fittedHeightsRef.current.get(t.id) === (t.height || DEFAULT_TRACK_HEIGHT)) targetSet.add(i);
@@ -627,7 +626,23 @@ function CanvasDemoContent() {
     targets.forEach((index) => {
       if ((state.tracks[index]?.height || DEFAULT_TRACK_HEIGHT) !== per) dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: per } });
     });
-  }, [state.tracks, resolveTracksImOn, dispatch]);
+  }, [state.tracks, dispatch]);
+  const handleFitSelectedTracksToHeight = React.useCallback(() => {
+    fitTracksToHeightFor(resolveTracksImOn());
+  }, [fitTracksToHeightFor, resolveTracksImOn]);
+  // THE TRACK'S OWN MENU (2026-10-22, the design brief: "single-track
+  // height control belongs in this menu"): the same three edits for ONE
+  // named track — the menu knows which row it was opened from, so there
+  // is no "track I'm on" to resolve.
+  const handleCollapseTrack = React.useCallback((index: number) => {
+    applyHeightUpdates(collapseTracks(state.tracks, [index], heightMemoryRef.current));
+  }, [state.tracks, applyHeightUpdates]);
+  const handleExpandTrack = React.useCallback((index: number) => {
+    applyHeightUpdates(expandTracks(state.tracks, [index], heightMemoryRef.current));
+  }, [state.tracks, applyHeightUpdates]);
+  const handleFitTrackToHeight = React.useCallback((index: number) => {
+    fitTracksToHeightFor([index]);
+  }, [fitTracksToHeightFor]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -1189,6 +1204,9 @@ function CanvasDemoContent() {
           scrollY={scrollY}
           onScroll={handleScroll}
           onTrackHeaderScroll={handleTrackHeaderScroll}
+          onCollapseTrack={handleCollapseTrack}
+          onExpandTrack={handleExpandTrack}
+          onFitTrackToHeight={handleFitTrackToHeight}
           scrollContainerRef={scrollContainerRef}
           trackHeaderScrollRef={trackHeaderScrollRef}
           pixelsPerSecond={pixelsPerSecond}
@@ -1463,6 +1481,9 @@ function CanvasDemoContent() {
         onCollapseAllTracks={handleCollapseAllTracks}
         onExpandAllTracks={handleExpandAllTracks}
         onFitTracksToHeight={handleFitTracksToHeight}
+        onCollapseTrack={handleCollapseTrack}
+        onExpandTrack={handleExpandTrack}
+        onFitTrackToHeight={handleFitTrackToHeight}
       />
 
       {/* Time Selection Context Menu */}
