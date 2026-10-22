@@ -7,7 +7,7 @@ import { TrackContextMenu } from '../TrackContextMenu';
 afterEach(cleanup);
 
 describe('track menu — this track\'s height (2026-10-22, the design brief\'s local control)', () => {
-  it('offers Collapse / Expand / Fit for ONE track, each closing the menu; without handlers the items are absent', () => {
+  it('offers a Track height parent holding Collapse / Expand / Fit to height, each closing the menu; without handlers it is absent', () => {
     const onCollapseTrack = vi.fn();
     const onExpandTrack = vi.fn();
     const onFitTrackToHeight = vi.fn();
@@ -18,11 +18,15 @@ describe('track menu — this track\'s height (2026-10-22, the design brief\'s l
       </ThemeProvider>,
     );
     const items = () => [...container.querySelectorAll('[data-track-height-items] [role="menuitem"]')];
-    expect(items().map((i) => i.textContent?.trim())).toEqual(['Collapse track', 'Expand track', 'Fit track to height']);
-    fireEvent.click(items()[0]);
+    const byLabel = (label: string) => items().find((i) => i.textContent?.trim().startsWith(label))!;
+    expect(items().map((i) => i.textContent?.trim().replace(/▸$/, ''))).toEqual(['Track height']);
+    fireEvent.click(byLabel('Track height')); // a click on the parent opens it
+    expect(items().slice(1).map((i) => i.textContent?.trim())).toEqual(['Collapse', 'Expand', 'Fit to height']);
+    fireEvent.click(byLabel('Collapse'));
     expect(onCollapseTrack).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
-    fireEvent.click(items()[2]);
+    fireEvent.click(byLabel('Track height'));
+    fireEvent.click(byLabel('Fit to height'));
     expect(onFitTrackToHeight).toHaveBeenCalledTimes(1);
     cleanup();
 

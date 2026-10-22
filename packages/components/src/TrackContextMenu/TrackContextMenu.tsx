@@ -42,9 +42,9 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
   onFitTrackToHeight,
 }) => {
   const heightItems = [
-    ['Collapse track', onCollapseTrack],
-    ['Expand track', onExpandTrack],
-    ['Fit track to height', onFitTrackToHeight],
+    ['Collapse', onCollapseTrack],
+    ['Expand', onExpandTrack],
+    ['Fit to height', onFitTrackToHeight],
   ] as const;
   const hasHeightItems = heightItems.some(([, handler]) => handler);
   return (
@@ -65,17 +65,19 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
           ))}
         </div>
       </div>
-      {/* This track's height — one track, as the labels say */}
+      {/* This track's height — a PARENT item, "Track height", with the three under it */}
       {hasHeightItems && (
         <div data-track-height-items="">
-          {heightItems.map(([label, handler]) => handler && (
-            <ContextMenuItem
-              key={label}
-              label={label}
-              onClick={handler}
-              onClose={onClose}
-            />
-          ))}
+          <ContextMenuItem label="Track height" onClose={onClose}>
+            {heightItems.map(([label, handler]) => handler && (
+              <ContextMenuItem
+                key={label}
+                label={label}
+                onClick={handler}
+                onClose={onClose}
+              />
+            ))}
+          </ContextMenuItem>
           <ContextMenuItem isDivider label="" />
         </div>
       )}

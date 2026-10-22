@@ -884,23 +884,28 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
             </>
           );
         })()}
-        {/* This track's height — one track, as the labels say */}
+        {/* This track's height — a PARENT item, as Track color and Track
+            view are (the same day: "those need to go into a parent menu
+            item"); one track, as the parent says */}
         {(onCollapseTrack || onExpandTrack || onFitTrackToHeight) && (
           <div data-track-height-items="">
-            {([
-              ['Collapse track', onCollapseTrack],
-              ['Expand track', onExpandTrack],
-              ['Fit track to height', onFitTrackToHeight],
-            ] as const).map(([label, handler]) => handler && (
-              <ContextMenuItem
-                key={label}
-                label={label}
-                onClick={() => {
-                  handler(menuState.trackIndex);
-                  handleMenuClose();
-                }}
-              />
-            ))}
+            <ContextMenuItem label="Track height" onClose={handleMenuClose}>
+              {([
+                ['Collapse', onCollapseTrack],
+                ['Expand', onExpandTrack],
+                ['Fit to height', onFitTrackToHeight],
+              ] as const).map(([label, handler]) => handler && (
+                <ContextMenuItem
+                  key={label}
+                  label={label}
+                  onClick={() => {
+                    handler(menuState.trackIndex);
+                    handleMenuClose();
+                  }}
+                  onClose={handleMenuClose}
+                />
+              ))}
+            </ContextMenuItem>
             <ContextMenuItem isDivider label="" />
           </div>
         )}

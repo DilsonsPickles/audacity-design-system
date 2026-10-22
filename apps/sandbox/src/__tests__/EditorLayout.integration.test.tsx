@@ -1368,18 +1368,22 @@ describe('Selection playback', () => {
     const scrollEl = container.querySelector('.canvas-scroll-container') as HTMLElement;
     Object.defineProperty(scrollEl, 'clientHeight', { value: 500, configurable: true });
 
-    fireEvent.click(trackMenuButton(container, 1));
-    fireEvent.click(menuItem(container, 'Collapse track'));
+    // "Track height ▸" is a parent, as Track color is; a click opens it
+    const heightItem = (label: string) => {
+      fireEvent.click(trackMenuButton(container, 1));
+      const parent = Array.from(container.querySelectorAll('[role="menuitem"]')).find((el) => el.textContent?.trim().startsWith('Track height'))!;
+      fireEvent.click(parent);
+      fireEvent.click(menuItem(container, label));
+    };
+    heightItem('Collapse');
     await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('44px'));
     expect((panels()[0] as HTMLElement).style.height).toBe('114px');
 
-    fireEvent.click(trackMenuButton(container, 1));
-    fireEvent.click(menuItem(container, 'Expand track'));
+    heightItem('Expand');
     await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('114px'));
 
     // Fit this track into what the other row leaves: 500 - 2 - 116 - 2 = 380
-    fireEvent.click(trackMenuButton(container, 1));
-    fireEvent.click(menuItem(container, 'Fit track to height'));
+    heightItem('Fit to height');
     await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('380px'));
     expect((panels()[0] as HTMLElement).style.height).toBe('114px');
   });
