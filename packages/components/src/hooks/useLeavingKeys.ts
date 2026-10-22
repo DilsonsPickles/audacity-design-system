@@ -20,7 +20,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 
-export const HANDLE_LEAVE_MS = 150;
+export const HANDLE_LEAVE_MS = 60;
 
 export function handleLeaveMs(): number {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 0;
