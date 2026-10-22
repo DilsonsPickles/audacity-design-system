@@ -138,7 +138,7 @@
    (An inline span takes no transform: hence inline-block.) */
 .clip-display__handle .musescore-icon {
   display: inline-block;
-  transition: transform 0.12s ease-out, opacity 0.06s ease-out;
+  transition: transform 0.06s ease-out, opacity 0.06s ease-out;
 }
 
 /* Trim handles — "black fill with white stroke" via text-stroke. The

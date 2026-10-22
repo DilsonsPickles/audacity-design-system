@@ -62,7 +62,7 @@
    that shrinks away as the pointer leaves (the debug overlay showed it
    breathing). */
 .track-fade-handle__glyph {
-  transition: transform 0.12s ease-out, opacity 0.06s ease-out;
+  transition: transform 0.06s ease-out, opacity 0.06s ease-out;
 }
 
 .track-fade-handle:hover .track-fade-handle__glyph,
@@ -90,7 +90,7 @@
    trails the handle at its limits. The handle is centred in its box, so
    it grows about its own middle and stays on the curve. */
 .track-fade-shape-handle {
-  transition: transform 0.12s ease-out, opacity 0.06s ease-out;
+  transition: transform 0.06s ease-out, opacity 0.06s ease-out;
 }
 
 .track-fade-shape-handle[data-hovered] {
