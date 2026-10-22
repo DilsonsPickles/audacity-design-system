@@ -187,12 +187,47 @@ export interface IconProps {
   className?: string;
 }
 
+/* A chevron on the 16-grid: `y` its point, `dir` which way it points. */
+const chevron = (y: number, dir: 'up' | 'down') =>
+  dir === 'down'
+    ? `M5.5 ${y - 2}L8 ${y}L10.5 ${y - 2}`
+    : `M5.5 ${y + 2}L8 ${y}L10.5 ${y + 2}`;
+
+/**
+ * Icons DRAWN here rather than taken from the shared font (2026-10-22,
+ * "some ideas for icon" — a sketch): the toolbar's track-height pair.
+ * The bar is the track; the chevrons say which way its edges go —
+ * toward it to collapse, away from it to expand. Keyed by the same
+ * names as the font map, so a host asks for the name and gets the
+ * drawing; `ICON_CODES` keeps the font's code for the Inspector.
+ */
+const DRAWN_ICONS: Partial<Record<IconName, React.ReactNode>> = {
+  'track-collapse': (
+    <svg viewBox="0 0 16 16" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2.65" y="6.5" width="10.7" height="3" rx="0.6" />
+      <path d={chevron(3.5, 'down')} />
+      <path d={chevron(12.5, 'up')} />
+    </svg>
+  ),
+  'track-expand': (
+    <svg viewBox="0 0 16 16" width="1em" height="1em" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2.65" y="6.5" width="10.7" height="3" rx="0.6" />
+      <path d={chevron(1.5, 'up')} />
+      <path d={chevron(14.5, 'down')} />
+    </svg>
+  ),
+};
+
+/** Whether an icon is drawn (an SVG) rather than a font glyph. */
+export const isDrawnIcon = (name: IconName): boolean => name in DRAWN_ICONS;
+
 export const Icon: React.FC<IconProps> = ({
   name,
   size = 16,
   color,
   className = '',
 }) => {
+  const drawn = DRAWN_ICONS[name];
   const iconChar = ICON_MAP[name] || '';
 
   return (
@@ -203,8 +238,9 @@ export const Icon: React.FC<IconProps> = ({
         ...(color && { color }),
       }}
       aria-hidden="true"
+      data-drawn-icon={drawn ? name : undefined}
     >
-      {iconChar}
+      {drawn ?? iconChar}
     </span>
   );
 };

@@ -10,6 +10,7 @@
  * portal, outside-click and Escape; the look is its own.
  */
 import React from 'react';
+import { Icon, type IconName } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
 import triangleSvg from '../assets/customise-toolbar/triangle.svg';
 import dividerSvg from '../assets/customise-toolbar/divider.svg';
@@ -22,13 +23,15 @@ export interface CustomiseToolbarTool {
   label: string;
   /** The tool's MusescoreIcon glyph, as the design draws it */
   glyph: string;
+  /** An icon DRAWN by the Icon component instead of the font glyph (the track-height pair, 2026-10-22) */
+  icon?: IconName;
   /** The glyph's colour where the design gives it one (play, record) */
   color?: string;
 }
 export interface CustomiseToolbarDivider { kind: 'divider' }
 export type CustomiseToolbarEntry = CustomiseToolbarTool | CustomiseToolbarDivider;
 
-const tool = (id: string, label: string, glyph: string, color?: string): CustomiseToolbarTool => ({ kind: 'tool', id, label, glyph, color });
+const tool = (id: string, label: string, glyph: string, color?: string, icon?: IconName): CustomiseToolbarTool => ({ kind: 'tool', id, label, glyph, color, icon });
 const DIVIDER: CustomiseToolbarDivider = { kind: 'divider' };
 
 /** The design's list, in its order and groups, with its glyphs */
@@ -47,8 +50,8 @@ export const CUSTOMISE_TOOLBAR_ENTRIES: ReadonlyArray<CustomiseToolbarEntry> = [
   tool('zoom-out', 'Zoom out', ''),
   tool('fit-selection', 'Fit selection to width', ''),
   tool('fit-project', 'Fit project to width', ''),
-  tool('collapse-tracks', 'Collapse tracks', '\uEF37'),
-  tool('expand-tracks', 'Expand tracks', '\uEF36'),
+  tool('collapse-tracks', 'Collapse tracks', '\uEF37', undefined, 'track-collapse'),
+  tool('expand-tracks', 'Expand tracks', '\uEF36', undefined, 'track-expand'),
   tool('fit-tracks-height', 'Fit tracks to height', ''),
   tool('zoom-toggle', 'Zoom toggle', ''),
   DIVIDER,
@@ -133,7 +136,11 @@ export function CustomiseToolbarMenu({ isOpen, onClose, anchor, hiddenTools, onT
               onClick={() => onToggleTool(entry.id)}
             >
               <span className="customise-toolbar__eye musescore-icon" aria-hidden="true">{hidden.has(entry.id) ? '' : ''}</span>
-              <span className="customise-toolbar__icon musescore-icon" aria-hidden="true" style={entry.color ? { color: entry.color } : undefined}>{entry.glyph}</span>
+              {entry.icon ? (
+                <Icon name={entry.icon} className="customise-toolbar__icon" />
+              ) : (
+                <span className="customise-toolbar__icon musescore-icon" aria-hidden="true" style={entry.color ? { color: entry.color } : undefined}>{entry.glyph}</span>
+              )}
               <span className="customise-toolbar__label">{entry.label}</span>
             </button>
           ))}
