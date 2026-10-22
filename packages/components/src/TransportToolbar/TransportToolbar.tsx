@@ -106,7 +106,7 @@ export interface TransportToolbarProps {
   /** TRACK HEIGHT BUTTONS (2026-10-20, "new toolbar buttons for expand/collapse track height" — "it should be ALL tracks"): the keyboard's ⌘⇧C / ⌘⇧X as buttons — EVERY track to 44 / 114 */
   onCollapseTracks?: () => void;
   onExpandTracks?: () => void;
-  /** Fit tracks to height — the vertical twin of Fit project, beside it in the zoom group (2026-10-22) */
+  /** Fit tracks to height — with Collapse / Expand in the track-height group, not the zoom tools (2026-10-22) */
   onFitTracksToHeight?: () => void;
 
   // TimeCode
@@ -480,14 +480,14 @@ export function TransportToolbar({
                 {show('zoom-out') && <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />}
                 {show('fit-selection') && <ToolButton icon="zoom-to-selection" ariaLabel="Fit selection" onClick={onZoomToSelection} />}
                 {show('fit-project') && <ToolButton icon="zoom-to-fit" ariaLabel="Fit project" onClick={onZoomToFitProject} />}
-                {show('fit-tracks-height') && <ToolButton icon="zoom-to-fit" className="tool-button--vertical" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
                 {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
 
-              {(show('collapse-tracks') || show('expand-tracks')) && (
+              {(show('collapse-tracks') || show('expand-tracks') || show('fit-tracks-height')) && (
               <ToolbarButtonGroup gap={2}>
                 {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
                 {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand tracks" onClick={onExpandTracks} />}
+                {show('fit-tracks-height') && <ToolButton icon="zoom-to-fit" className="tool-button--vertical" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
               </ToolbarButtonGroup>
               )}
 
@@ -530,10 +530,11 @@ export function TransportToolbar({
                 {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
 
-              {(show('collapse-tracks') || show('expand-tracks')) && (
+              {(show('collapse-tracks') || show('expand-tracks') || show('fit-tracks-height')) && (
               <ToolbarButtonGroup gap={2}>
                 {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
                 {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand tracks" onClick={onExpandTracks} />}
+                {show('fit-tracks-height') && <ToolButton icon="zoom-to-fit" className="tool-button--vertical" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
               </ToolbarButtonGroup>
               )}
 
@@ -576,10 +577,11 @@ export function TransportToolbar({
                 {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
 
-              {(show('collapse-tracks') || show('expand-tracks')) && (
+              {(show('collapse-tracks') || show('expand-tracks') || show('fit-tracks-height')) && (
               <ToolbarButtonGroup gap={2}>
                 {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
                 {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand tracks" onClick={onExpandTracks} />}
+                {show('fit-tracks-height') && <ToolButton icon="zoom-to-fit" className="tool-button--vertical" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
               </ToolbarButtonGroup>
               )}
 
@@ -610,10 +612,11 @@ export function TransportToolbar({
                 {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
 
-              {(show('collapse-tracks') || show('expand-tracks')) && (
+              {(show('collapse-tracks') || show('expand-tracks') || show('fit-tracks-height')) && (
               <ToolbarButtonGroup gap={2}>
                 {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
                 {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand tracks" onClick={onExpandTracks} />}
+                {show('fit-tracks-height') && <ToolButton icon="zoom-to-fit" className="tool-button--vertical" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
               </ToolbarButtonGroup>
               )}
 
