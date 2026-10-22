@@ -71,6 +71,12 @@ export interface CanvasProps {
    */
   onTimeSelectionMenuClick?: (x: number, y: number, trackIndex?: number) => void;
   /**
+   * A right-click on the canvas with NO time selection: the canvas menu
+   * (paste here, add a track…) at that point — the track under it, if
+   * any, and the timeline time (2026-10-22).
+   */
+  onCanvasMenuClick?: (x: number, y: number, trackIndex: number | undefined, time: number) => void;
+  /**
    * Callback when track keyboard focus changes
    */
   onTrackFocusChange?: (trackIndex: number, hasFocus: boolean) => void;
@@ -201,6 +207,7 @@ export function Canvas({
   onFadeContextMenu,
   onCrossfadeContextMenu,
   onTimeSelectionMenuClick,
+  onCanvasMenuClick,
   onTrackFocusChange,
   onTrackContainerFocusChange,
   containerFocusedTrack = null,
@@ -789,6 +796,7 @@ export function Canvas({
     handleClipMouseDown,
     handleContainerClick,
     onTimeSelectionMenuClick,
+    onCanvasMenuClick,
     onMidiClipDoubleClick,
     tracks,
     pixelsPerSecond,

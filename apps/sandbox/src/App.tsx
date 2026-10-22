@@ -43,7 +43,9 @@ const OAuthCallback = React.lazy(() =>
   import('./components/OAuthCallback').then(m => ({ default: m.OAuthCallback }))
 );
 import { RecordingManager } from './utils/RecordingManager';
-import { computeFitTrackHeight } from './utils/trackManagement';
+import { computeFitTrackHeight, buildNewTrack } from './utils/trackManagement';
+import { handlePaste } from './hooks/handlers/clipboardHandlers';
+import type { TrackType } from '@audacity-ui/components';
 import { collapseTracks, expandTracks, type HeightMemory, type HeightUpdate } from './utils/trackHeightMemory';
 import { effectiveTrackStride } from './utils/trackFolders';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from './constants/canvas';
@@ -337,6 +339,7 @@ function CanvasDemoContent() {
     effectsPanel, setEffectsPanel,
     effectDialog,
     timeSelectionContextMenu, setTimeSelectionContextMenu,
+    canvasContextMenu, setCanvasContextMenu,
     contextMenuClosedTimeRef,
     timeSelectionMenuRef,
   } = useContextMenus();
@@ -1528,6 +1531,64 @@ function CanvasDemoContent() {
             )}
           </ContextMenu>
         </div>
+      )}
+      {/* The CANVAS menu — a right-click on empty canvas with no time
+          selection (2026-10-22, "for things like pasting clips"): PASTE
+          HERE — the clipboard at the point clicked, that track, that time
+          (the playhead parks there and the track takes the focus, so the
+          paste reads as "the cursor went there, then paste") — and ADD
+          TRACK ▸, the side panel menu's. With a time selection the
+          selection's own menu opens instead. */}
+      {canvasContextMenu && canvasContextMenu.isOpen && (
+        <ContextMenu
+          isOpen
+          x={canvasContextMenu.x}
+          y={canvasContextMenu.y}
+          onClose={() => {
+            contextMenuClosedTimeRef.current = Date.now();
+            setCanvasContextMenu(null);
+          }}
+        >
+          <div data-canvas-menu="">
+            <ContextMenuItem
+              label="Paste"
+              disabled={
+                canvasContextMenu.trackIndex === undefined
+                || !clipboard
+                || (clipboard.clips.length === 0 && !(clipboard.labels && clipboard.labels.length > 0))
+              }
+              onClick={() => {
+                const { trackIndex, time } = canvasContextMenu;
+                contextMenuClosedTimeRef.current = Date.now();
+                setCanvasContextMenu(null);
+                if (trackIndex === undefined) return;
+                dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: time });
+                dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
+                handlePaste({ state, dispatch, clipboard, setClipboard, audioManagerRef }, { time, trackIndex });
+              }}
+            />
+            <ContextMenuItem isDivider label="" />
+            <ContextMenuItem label="Add track" onClose={() => { contextMenuClosedTimeRef.current = Date.now(); setCanvasContextMenu(null); }}>
+              {([
+                ['mono', 'Mono'],
+                ['stereo', 'Stereo'],
+                ['label', 'Label'],
+                ['midi', 'MIDI'],
+              ] as const).map(([type, label]) => (
+                <ContextMenuItem
+                  key={type}
+                  label={label}
+                  onClick={() => {
+                    contextMenuClosedTimeRef.current = Date.now();
+                    setCanvasContextMenu(null);
+                    dispatch({ type: 'ADD_TRACK', payload: buildNewTrack(type as TrackType, state.tracks) });
+                  }}
+                  onClose={() => { contextMenuClosedTimeRef.current = Date.now(); setCanvasContextMenu(null); }}
+                />
+              ))}
+            </ContextMenuItem>
+          </div>
+        </ContextMenu>
       )}
       <InstallerWizardDialog />
       {trackDeleteConfirm && (

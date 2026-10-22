@@ -29,6 +29,7 @@ export interface UseCanvasPointerHandlersOptions {
   handleClipMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
   handleContainerClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   onTimeSelectionMenuClick: CanvasProps['onTimeSelectionMenuClick'];
+  onCanvasMenuClick: CanvasProps['onCanvasMenuClick'];
   onMidiClipDoubleClick: CanvasProps['onMidiClipDoubleClick'];
   tracks: Track[];
   pixelsPerSecond: number;
@@ -74,6 +75,7 @@ export function useCanvasPointerHandlers(
     handleClipMouseDown,
     handleContainerClick,
     onTimeSelectionMenuClick,
+    onCanvasMenuClick,
     onMidiClipDoubleClick,
     tracks,
     pixelsPerSecond,
@@ -360,9 +362,12 @@ export function useCanvasPointerHandlers(
 
     // Only show OUR context menu if:
     // 1. The last mouse button pressed was right-click (button 2)
-    // 2. There's an existing time selection
-    // 3. We're not currently dragging or creating a selection
-    if (lastMouseButtonRef.current === 2 && timeSelection && !selection.isDragging && !selection.isCreating) {
+    // 2. We're not currently dragging or creating a selection
+    // With a time selection it is the selection's menu; without one it is
+    // the CANVAS menu (2026-10-22, "a right click menu when we right click
+    // in empty canvas space. For things like pasting clips") — at the
+    // point clicked: that track, that time.
+    if (lastMouseButtonRef.current === 2 && !selection.isDragging && !selection.isCreating) {
       // Determine which track was right-clicked
       const containerRect = e.currentTarget.getBoundingClientRect();
       const relativeY = e.clientY - containerRect.top;
@@ -375,7 +380,12 @@ export function useCanvasPointerHandlers(
           break;
         }
       }
-      onTimeSelectionMenuClick?.(e.clientX, e.clientY, clickedTrackIndex);
+      if (timeSelection) {
+        onTimeSelectionMenuClick?.(e.clientX, e.clientY, clickedTrackIndex);
+      } else {
+        const time = Math.max(0, (e.clientX - containerRect.left - leftPadding) / pixelsPerSecond);
+        onCanvasMenuClick?.(e.clientX, e.clientY, clickedTrackIndex, time);
+      }
     }
 
     // Reset the button ref after handling

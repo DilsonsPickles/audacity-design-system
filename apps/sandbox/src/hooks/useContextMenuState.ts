@@ -67,6 +67,18 @@ export interface TimeSelectionContextMenuState {
   trackType?: string;
 }
 
+/** The canvas's own menu — a right-click on empty canvas with no time
+ *  selection: paste here, add a track (2026-10-22). */
+export interface CanvasContextMenuState {
+  isOpen: boolean;
+  x: number;
+  y: number;
+  /** The track under the click, if any */
+  trackIndex?: number;
+  /** The timeline time under the click */
+  time: number;
+}
+
 /** A quick fade's menu, from a right-click on its length or shape
  *  handle (user decision 2026-10-01) */
 export interface FadeContextMenuState {
@@ -152,6 +164,8 @@ export interface UseContextMenuStateReturn {
   // Time selection context menu
   timeSelectionContextMenu: TimeSelectionContextMenuState | null;
   setTimeSelectionContextMenu: React.Dispatch<React.SetStateAction<TimeSelectionContextMenuState | null>>;
+  canvasContextMenu: CanvasContextMenuState | null;
+  setCanvasContextMenu: React.Dispatch<React.SetStateAction<CanvasContextMenuState | null>>;
 
   // Refs
   contextMenuClosedTimeRef: React.MutableRefObject<number>;
@@ -213,6 +227,7 @@ export function useContextMenuState(): UseContextMenuStateReturn {
 
   // Time selection context menu state
   const [timeSelectionContextMenu, setTimeSelectionContextMenu] = useState<TimeSelectionContextMenuState | null>(null);
+  const [canvasContextMenu, setCanvasContextMenu] = useState<CanvasContextMenuState | null>(null);
 
   // Ref to prevent menu from re-opening immediately after closing
   const contextMenuClosedTimeRef = useRef<number>(0);
@@ -268,6 +283,8 @@ export function useContextMenuState(): UseContextMenuStateReturn {
     setEffectSelectorMenu,
     timeSelectionContextMenu,
     setTimeSelectionContextMenu,
+    canvasContextMenu,
+    setCanvasContextMenu,
     contextMenuClosedTimeRef,
     timeSelectionMenuRef,
     handleGlobalMouseDown,

@@ -1329,6 +1329,35 @@ describe('Selection playback', () => {
     expect((panels()[1] as HTMLElement).style.height).toBe('114px');
   });
 
+  it('a right-click on empty canvas with no time selection opens the canvas menu: Paste (dimmed with nothing to paste) and Add track (2026-10-22)', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+
+    const pointerContainer = Array.from(container.querySelectorAll('div')).find(
+      (d) => (d as HTMLElement).style.cursor === 'text' && (d as HTMLElement).style.userSelect === 'none',
+    ) as HTMLElement | undefined;
+    if (!pointerContainer) throw new Error('Canvas pointer-handler container not found');
+    pointerContainer.getBoundingClientRect = () => ({
+      top: 0, left: 0, right: 2000, bottom: 2000, width: 2000, height: 2000, x: 0, y: 0,
+      toJSON() { return {}; },
+    });
+    fireEvent.mouseDown(pointerContainer, { clientX: 200, clientY: 50, button: 2 });
+    fireEvent.contextMenu(pointerContainer, { clientX: 200, clientY: 50 });
+    const items = () => [...document.querySelectorAll('[data-canvas-menu] [role="menuitem"]')];
+    await waitFor(() => expect(items().map((i) => i.textContent?.trim().replace(/▸$/, ''))).toEqual(['Paste', 'Add track']));
+    const paste = items()[0];
+    expect(paste.getAttribute('aria-disabled') === 'true' || /disabled/.test(paste.className)).toBe(true);
+
+    fireEvent.click(items()[1]);
+    await waitFor(() => expect(items().map((i) => i.textContent?.trim())).toContain('Stereo'));
+    fireEvent.click(items().find((i) => i.textContent?.trim() === 'Stereo')!);
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Stereo 1'));
+    expect(document.querySelector('[data-canvas-menu]')).toBeNull();
+  });
+
   it('a right-click on the side panel\'s blank area offers the all-tracks height actions (2026-10-22, the design brief)', async () => {
     const rendered = renderApp();
     const { container } = rendered;

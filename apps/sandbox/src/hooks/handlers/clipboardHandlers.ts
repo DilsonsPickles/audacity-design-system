@@ -216,7 +216,14 @@ export function handleCut(deps: ClipboardHandlerDeps): void {
   }
 }
 
-export function handlePaste(deps: ClipboardHandlerDeps): void {
+/** Where a paste lands when it is not the playhead on the focused track:
+ *  the canvas menu's "Paste" at the point that was right-clicked (2026-10-22). */
+export interface PasteAt {
+  time: number;
+  trackIndex: number;
+}
+
+export function handlePaste(deps: ClipboardHandlerDeps, at?: PasteAt): void {
   const { state, dispatch, clipboard, audioManagerRef } = deps;
 
   if (!clipboard) return;
@@ -225,7 +232,7 @@ export function handlePaste(deps: ClipboardHandlerDeps): void {
   // label track), aligned so the earliest label lands at the playhead,
   // relative spacing preserved. One UPDATE_TRACK = one undo step.
   if (clipboard.labels && clipboard.labels.length > 0) {
-    const focused = state.focusedTrackIndex;
+    const focused = at?.trackIndex ?? state.focusedTrackIndex;
     const targetTrackIndex =
       focused !== null && focused !== undefined && state.tracks[focused]?.type === 'label'
         ? focused
@@ -237,7 +244,7 @@ export function handlePaste(deps: ClipboardHandlerDeps): void {
     const targetTrack = state.tracks[targetTrackIndex];
 
     const earliest = Math.min(...clipboard.labels.map((l) => l.startTime));
-    const timeOffset = state.playheadPosition - earliest;
+    const timeOffset = (at?.time ?? state.playheadPosition) - earliest;
     let maxLabelId = 0;
     state.tracks.forEach((t) => t.labels?.forEach((l) => { maxLabelId = Math.max(maxLabelId, l.id); }));
 
@@ -267,13 +274,13 @@ export function handlePaste(deps: ClipboardHandlerDeps): void {
     return;
   }
 
-  // Paste at playhead position on the focused track
-  const targetTrackIndex = state.focusedTrackIndex ?? 0;
+  // Paste at the playhead on the focused track — or at the point asked for
+  const targetTrackIndex = at?.trackIndex ?? state.focusedTrackIndex ?? 0;
   if (targetTrackIndex < 0 || targetTrackIndex >= state.tracks.length) {
     return;
   }
 
-  const pasteTime = state.playheadPosition;
+  const pasteTime = at?.time ?? state.playheadPosition;
 
   // Calculate time offset based on time selection or clip start times
   let timeOffset: number;

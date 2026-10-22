@@ -208,7 +208,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   const {
     effectsPanel, setEffectsPanel, setEffectDialog, setEffectSelectorMenu,
     setClipContextMenu, setFadeContextMenu, setCrossfadeContextMenu, setTimeSelectionContextMenu, setTrackContextMenu, setTimelineRulerContextMenu,
-    setTrackPanelContextMenu,
+    setTrackPanelContextMenu, setCanvasContextMenu,
     contextMenuClosedTimeRef,
   } = useContextMenus();
 
@@ -1234,6 +1234,11 @@ export function EditorLayout(props: EditorLayoutProps) {
                       if (timeSinceClosed > 300) {
                         const track = trackIndex !== undefined ? state.tracks[trackIndex] : undefined;
                         setTimeSelectionContextMenu({ isOpen: true, x, y, trackIndex, trackType: track?.type });
+                      }
+                    }}
+                    onCanvasMenuClick={(x, y, trackIndex, time) => {
+                      if (Date.now() - contextMenuClosedTimeRef.current > 300) {
+                        setCanvasContextMenu({ isOpen: true, x, y, trackIndex, time });
                       }
                     }}
                     onTrackFocusChange={handleTrackFocusChange}

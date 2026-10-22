@@ -158,6 +158,32 @@ describe('handlePaste — time-selection trim offsets the source window', () => 
   });
 });
 
+describe('handlePaste — at a point (2026-10-22, the canvas menu\'s Paste)', () => {
+  it('`at` overrides the playhead and the focused track: the clip lands at that time on that track', () => {
+    const state = stateWith(
+      [
+        { id: 1, name: 'a', clips: [clip({ id: 10, start: 0, duration: 4 })] },
+        { id: 2, name: 'b', clips: [] },
+      ],
+      { focusedTrackIndex: 0, playheadPosition: 20 },
+    );
+    const { deps } = makeDeps(state);
+    const clipboard: ClipboardState = {
+      clips: [{ ...clip({ id: 10, start: 0, duration: 4 }), trackIndex: 0 }],
+      operation: 'copy',
+      timeSelection: null,
+      wholeGroupIds: [],
+    };
+    handlePaste({ ...deps, clipboard }, { time: 7.5, trackIndex: 1 });
+    const replace = (deps.dispatch as ReturnType<typeof vi.fn>).mock.calls
+      .find(c => c[0].type === 'REPLACE_TRACKS_EDIT')![0];
+    const pasted = replace.payload[1].clips.find((c: Clip) => c.id !== 10);
+    expect(pasted).toBeDefined();
+    expect(pasted.start).toBe(7.5);
+    expect(replace.payload[0].clips).toHaveLength(1); // the focused track got nothing
+  });
+});
+
 describe('handlePaste — regrouping', () => {
   const groupedClipboardState = () => stateWith(
     [
