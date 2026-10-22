@@ -1460,6 +1460,9 @@ function CanvasDemoContent() {
         beatsPerMeasure={beatsPerMeasure}
         onClipboardSet={setClipboard}
         os={preferences.operatingSystem}
+        onCollapseAllTracks={handleCollapseAllTracks}
+        onExpandAllTracks={handleExpandAllTracks}
+        onFitTracksToHeight={handleFitTracksToHeight}
       />
 
       {/* Time Selection Context Menu */}

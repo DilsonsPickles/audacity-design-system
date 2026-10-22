@@ -203,6 +203,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   const {
     effectsPanel, setEffectsPanel, setEffectDialog, setEffectSelectorMenu,
     setClipContextMenu, setFadeContextMenu, setCrossfadeContextMenu, setTimeSelectionContextMenu, setTrackContextMenu, setTimelineRulerContextMenu,
+    setTrackPanelContextMenu,
     contextMenuClosedTimeRef,
   } = useContextMenus();
 
@@ -804,6 +805,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           focusedTrackIndex={state.focusedTrackIndex}
           scrollRef={trackHeaderScrollRef}
           onScroll={onTrackHeaderScroll}
+          onPanelContextMenu={(x, y) => setTrackPanelContextMenu({ isOpen: true, x, y })}
           bufferSpace={scrollBuffer}
           onTrackResize={(trackIndex, height, source) => {
             // SHIFT IS "EVERY TRACK" IN EVERY FAMILY (user decision

@@ -1329,6 +1329,33 @@ describe('Selection playback', () => {
     expect((panels()[1] as HTMLElement).style.height).toBe('114px');
   });
 
+  it('a right-click on the side panel\'s blank area offers the all-tracks height actions (2026-10-22, the design brief)', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 1'));
+    await addTrackType(container, 'Mono');
+    await waitFor(() => expect(trackPanelNames(container)).toContain('Mono 2'));
+    const panels = () => container.querySelectorAll('.track-control-side-panel__track');
+
+    const list = container.querySelector('.track-control-side-panel__list')!;
+    fireEvent.contextMenu(list, { clientX: 40, clientY: 400 });
+    const labels = () => [...document.querySelectorAll('[data-track-panel-menu] [role="menuitem"]')].map((i) => i.textContent?.trim());
+    await waitFor(() => expect(labels()).toEqual(['Collapse all tracks', 'Expand all tracks', 'Fit tracks to height']));
+    fireEvent.click([...document.querySelectorAll('[data-track-panel-menu] [role="menuitem"]')][0]);
+    await waitFor(() => {
+      expect((panels()[0] as HTMLElement).style.height).toBe('44px');
+      expect((panels()[1] as HTMLElement).style.height).toBe('44px');
+    });
+    expect(document.querySelector('[data-track-panel-menu]')).toBeNull(); // the menu closed
+
+    fireEvent.contextMenu(list, { clientX: 40, clientY: 400 });
+    await waitFor(() => expect(labels()).toHaveLength(3));
+    fireEvent.click([...document.querySelectorAll('[data-track-panel-menu] [role="menuitem"]')][1]);
+    await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('114px'));
+  });
+
   it('Option+Cmd+C collapses the SELECTED tracks and Option+Cmd+X expands them, the others untouched (2026-10-08)', async () => {
     const rendered = renderApp();
     const { container } = rendered;

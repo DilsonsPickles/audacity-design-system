@@ -143,7 +143,12 @@ const defaultPreferences: PreferencesState = {
   // ("one selection: every gesture works inside it or replaces it").
   // The other options stay available in Developer Tools.
   laneClickBehavior: 'select-and-collapse',
-  toolbarHiddenTools: [],
+  // The track-height trio is OPT-IN, off by default (2026-10-22, the
+  // "Track expand/collapse" design brief: Martin's "I'd definitely not
+  // have track height zoom buttons in the top bar… keep them closer to
+  // the tracks"); Customise toolbar turns them on. A stored preference
+  // keeps whatever it has — this is the default for a fresh profile.
+  toolbarHiddenTools: ['collapse-tracks', 'expand-tracks', 'fit-tracks-height'],
 
   // Spectral Display
   enableSpectralSelection: true,

@@ -129,6 +129,10 @@ export interface UseContextMenuStateReturn {
   timelineRulerContextMenu: TimelineRulerContextMenuState | null;
   setTimelineRulerContextMenu: React.Dispatch<React.SetStateAction<TimelineRulerContextMenuState | null>>;
 
+  // The track header side panel's blank-area menu (all-tracks height actions)
+  trackPanelContextMenu: TimelineRulerContextMenuState | null;
+  setTrackPanelContextMenu: React.Dispatch<React.SetStateAction<TimelineRulerContextMenuState | null>>;
+
   // Effects panel
   effectsPanel: EffectsPanelState | null;
   setEffectsPanel: React.Dispatch<React.SetStateAction<EffectsPanelState | null>>;
@@ -189,6 +193,7 @@ export function useContextMenuState(): UseContextMenuStateReturn {
 
   // Timeline ruler context menu state
   const [timelineRulerContextMenu, setTimelineRulerContextMenu] = useState<TimelineRulerContextMenuState | null>(null);
+  const [trackPanelContextMenu, setTrackPanelContextMenu] = useState<TimelineRulerContextMenuState | null>(null);
 
   // Effects panel state
   const [effectsPanel, setEffectsPanel] = useState<EffectsPanelState | null>(null);
@@ -251,6 +256,8 @@ export function useContextMenuState(): UseContextMenuStateReturn {
     setTrackContextMenu,
     timelineRulerContextMenu,
     setTimelineRulerContextMenu,
+    trackPanelContextMenu,
+    setTrackPanelContextMenu,
     effectsPanel,
     setEffectsPanel,
     effectDialog,

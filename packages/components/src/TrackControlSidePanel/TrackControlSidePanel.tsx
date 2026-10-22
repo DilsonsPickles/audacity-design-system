@@ -180,6 +180,13 @@ export interface TrackControlSidePanelProps {
    * Called when the track list is scrolled
    */
   onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
+  /**
+   * Right-click on the panel's BLANK area — the list below or between
+   * the rows, not a row (rows have their own menu). The host opens the
+   * all-tracks menu there (Collapse / Expand / Fit tracks to height,
+   * 2026-10-22, the design brief's required placement).
+   */
+  onPanelContextMenu?: (x: number, y: number) => void;
 
   /**
    * Buffer space below the last track (px)
@@ -234,6 +241,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   className = '',
   scrollRef,
   onScroll,
+  onPanelContextMenu,
   bufferSpace = 0,
 }) => {
   const { theme } = useTheme();
@@ -664,6 +672,13 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         className="track-control-side-panel__list"
         ref={setListRef}
         onScroll={onScroll}
+        // A row's own right-click never reaches here (handleRowContextMenu
+        // stops it), so anything that does is the blank area's
+        onContextMenu={(e) => {
+          if (!onPanelContextMenu) return;
+          e.preventDefault();
+          onPanelContextMenu(e.clientX, e.clientY);
+        }}
         style={{
           paddingBottom: `${bufferSpace}px`,
           // Read by the list's own padding rule (TrackControlSidePanel.css)

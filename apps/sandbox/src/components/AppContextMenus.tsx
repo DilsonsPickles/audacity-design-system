@@ -46,6 +46,12 @@ export interface AppContextMenusProps {
   // Where the track-menu button that opened the track context menu
   // lives — used to send focus back when the menu closes.
   trackMenuTriggerRef?: React.MutableRefObject<HTMLElement | null>;
+
+  // The side panel's blank-area menu: the all-tracks height actions
+  // (2026-10-22, the design brief's required placement)
+  onCollapseAllTracks?: () => void;
+  onExpandAllTracks?: () => void;
+  onFitTracksToHeight?: () => void;
 }
 
 export function AppContextMenus({
@@ -59,6 +65,7 @@ export function AppContextMenus({
   onClipboardSet,
   os,
   trackMenuTriggerRef,
+  onCollapseAllTracks, onExpandAllTracks, onFitTracksToHeight,
 }: AppContextMenusProps) {
   const { state, dispatch } = useTracks();
   const { tracks, masterEffects } = state;
@@ -92,6 +99,7 @@ export function AppContextMenus({
     fadeDialog, setFadeDialog,
     trackContextMenu, setTrackContextMenu,
     timelineRulerContextMenu, setTimelineRulerContextMenu,
+    trackPanelContextMenu, setTrackPanelContextMenu,
     effectSelectorMenu, setEffectSelectorMenu,
     setEffectDialog,
   } = useContextMenus();
@@ -386,6 +394,24 @@ export function AppContextMenus({
       )}
 
       {/* Timeline Ruler Context Menu */}
+      {/* The track header side panel's blank area: the ALL-TRACKS height
+          actions, where the tracks are (the brief's required placement;
+          the toolbar's trio is opt-in). Each is the View menu's command. */}
+      {trackPanelContextMenu && (
+        <ContextMenu
+          isOpen={trackPanelContextMenu.isOpen}
+          x={trackPanelContextMenu.x}
+          y={trackPanelContextMenu.y}
+          onClose={() => setTrackPanelContextMenu(null)}
+        >
+          <div data-track-panel-menu="">
+            <ContextMenuItem label="Collapse all tracks" onClick={() => { setTrackPanelContextMenu(null); onCollapseAllTracks?.(); }} />
+            <ContextMenuItem label="Expand all tracks" onClick={() => { setTrackPanelContextMenu(null); onExpandAllTracks?.(); }} />
+            <ContextMenuItem label="Fit tracks to height" onClick={() => { setTrackPanelContextMenu(null); onFitTracksToHeight?.(); }} />
+          </div>
+        </ContextMenu>
+      )}
+
       {timelineRulerContextMenu && (
         <TimelineRulerContextMenu
           isOpen={timelineRulerContextMenu.isOpen}
