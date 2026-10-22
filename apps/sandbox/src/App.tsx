@@ -44,6 +44,7 @@ const OAuthCallback = React.lazy(() =>
 );
 import { RecordingManager } from './utils/RecordingManager';
 import { computeFitTrackHeight } from './utils/trackManagement';
+import { collapseTracks, expandTracks, type HeightMemory, type HeightUpdate } from './utils/trackHeightMemory';
 import { effectiveTrackStride } from './utils/trackFolders';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from './constants/canvas';
 import { MuseHubProvider, useMuseHub, useInstalledEffects } from './contexts/MuseHubContext';
@@ -525,8 +526,14 @@ function CanvasDemoContent() {
 
   // View > track-size commands (AU3 heritage): Fit tracks to height
   // (Ctrl/Cmd+Shift+F) sizes every track to fill the canvas viewport;
-  // Expand all (Ctrl/Cmd+Shift+X) restores the 114px default; Collapse
-  // all (Ctrl/Cmd+Shift+C) shrinks to the 44px minimum.
+  // Collapse all (Ctrl/Cmd+Shift+C) shrinks to the 44px floor, REMEMBERING
+  // each height, and Expand all (Ctrl/Cmd+Shift+X) RESTORES the collapsed
+  // tracks to them (2026-10-22, "collapse remembers, expand restores" —
+  // utils/trackHeightMemory.ts; Expand set every track to 114 until then).
+  const heightMemoryRef = React.useRef<HeightMemory>(new Map());
+  const applyHeightUpdates = React.useCallback((updates: HeightUpdate[]) => {
+    updates.forEach(({ index, height }) => dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height } }));
+  }, [dispatch]);
   const setAllTrackHeights = React.useCallback((height: number) => {
     state.tracks.forEach((t, index) => {
       if ((t.height || 114) !== height) {
@@ -541,8 +548,12 @@ function CanvasDemoContent() {
     if (per !== null) setAllTrackHeights(per);
   }, [state.tracks.length, setAllTrackHeights]);
 
-  const handleExpandAllTracks = React.useCallback(() => setAllTrackHeights(114), [setAllTrackHeights]);
-  const handleCollapseAllTracks = React.useCallback(() => setAllTrackHeights(44), [setAllTrackHeights]);
+  const handleExpandAllTracks = React.useCallback(() => {
+    applyHeightUpdates(expandTracks(state.tracks, state.tracks.map((_, i) => i), heightMemoryRef.current));
+  }, [state.tracks, applyHeightUpdates]);
+  const handleCollapseAllTracks = React.useCallback(() => {
+    applyHeightUpdates(collapseTracks(state.tracks, state.tracks.map((_, i) => i), heightMemoryRef.current));
+  }, [state.tracks, applyHeightUpdates]);
   // Option+Cmd+Up/Down (+Shift: every track): the wheel's steps from the
   // keyboard (2026-10-08). "The track I'm on" is resolved in order: the
   // track of the clip or header with DOM FOCUS (clip focus and track
@@ -577,14 +588,12 @@ function CanvasDemoContent() {
   // header with DOM focus, then the focused track — and the selection only
   // when nothing is focused (`resolveTracksImOn`'s order). One rule for
   // collapse, expand and fit.
-  const setSelectedTrackHeights = React.useCallback((height: number) => {
-    const targets = resolveTracksImOn();
-    targets.forEach((index) => {
-      if ((state.tracks[index]?.height || 114) !== height) dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height } });
-    });
-  }, [state.tracks, resolveTracksImOn, dispatch]);
-  const handleCollapseSelectedTracks = React.useCallback(() => setSelectedTrackHeights(44), [setSelectedTrackHeights]);
-  const handleExpandSelectedTracks = React.useCallback(() => setSelectedTrackHeights(114), [setSelectedTrackHeights]);
+  const handleCollapseSelectedTracks = React.useCallback(() => {
+    applyHeightUpdates(collapseTracks(state.tracks, resolveTracksImOn(), heightMemoryRef.current));
+  }, [state.tracks, resolveTracksImOn, applyHeightUpdates]);
+  const handleExpandSelectedTracks = React.useCallback(() => {
+    applyHeightUpdates(expandTracks(state.tracks, resolveTracksImOn(), heightMemoryRef.current));
+  }, [state.tracks, resolveTracksImOn, applyHeightUpdates]);
   // Option+Cmd+F (2026-10-08, "cmd + opt + F on a single track to get it
   // to fill all available VH space"): the track I'm on (focus first, as
   // above) takes what the other rows leave of the viewport; the others
@@ -976,6 +985,7 @@ function CanvasDemoContent() {
       // The toolbar pair is EVERY track (2026-10-20, "it should be ALL tracks") — ⌘⇧C / ⌘⇧X as buttons
       onCollapseTracks: handleCollapseAllTracks,
       onExpandTracks: handleExpandAllTracks,
+      onFitTracksToHeight: handleFitTracksToHeight,
       onShareClick: () => setIsShareDialogOpen(true),
       onExportAudioClick: () => {
         setInitialExportType('full-project');

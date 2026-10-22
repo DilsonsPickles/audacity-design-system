@@ -106,6 +106,8 @@ export interface TransportToolbarProps {
   /** TRACK HEIGHT BUTTONS (2026-10-20, "new toolbar buttons for expand/collapse track height" — "it should be ALL tracks"): the keyboard's ⌘⇧C / ⌘⇧X as buttons — EVERY track to 44 / 114 */
   onCollapseTracks?: () => void;
   onExpandTracks?: () => void;
+  /** Fit tracks to height — the vertical twin of Fit project, beside it in the zoom group (2026-10-22) */
+  onFitTracksToHeight?: () => void;
 
   // TimeCode
   currentTime: number;
@@ -231,7 +233,7 @@ export function TransportToolbar({
   onGripperMouseDown,
   envelopeMode, spectrogramMode, splitMode = false, onToggleEnvelope, onToggleSpectrogram, onToggleSplit,
   onZoomIn, onZoomOut, onZoomToSelection, onZoomToFitProject, onZoomToggle,
-  onCollapseTracks, onExpandTracks,
+  onCollapseTracks, onExpandTracks, onFitTracksToHeight,
   currentTime, timeCodeFormat, onTimeCodeChange, onTimeCodeFormatChange,
   onShareClick, onExportAudioClick, onExportLoopRegionClick,
   masterLevelLeft = -60, masterLevelRight = -60, masterClippedLeft = false, masterClippedRight = false,
@@ -478,6 +480,7 @@ export function TransportToolbar({
                 {show('zoom-out') && <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />}
                 {show('fit-selection') && <ToolButton icon="zoom-to-selection" ariaLabel="Fit selection" onClick={onZoomToSelection} />}
                 {show('fit-project') && <ToolButton icon="zoom-to-fit" ariaLabel="Fit project" onClick={onZoomToFitProject} />}
+                {show('fit-tracks-height') && <ToolButton icon="zoom-to-fit" className="tool-button--vertical" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
                 {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
               </ToolbarButtonGroup>
 

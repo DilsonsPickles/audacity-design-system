@@ -1,6 +1,11 @@
 /* ToolButton - Figma Design System Spec */
 
 /* Button base styles */
+/* The fit glyph turned for the vertical fit (Fit tracks to height) */
+.tool-button--vertical .tool-button__icon {
+  transform: rotate(90deg);
+}
+
 .tool-button {
   border: none;
   border-radius: 2px;

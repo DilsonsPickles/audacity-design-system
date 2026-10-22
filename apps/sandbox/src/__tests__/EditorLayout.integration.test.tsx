@@ -1235,11 +1235,13 @@ describe('Selection playback', () => {
       expect((panels()[1] as HTMLElement).style.height).toBe('44px');
     });
 
-    // Expand all → back to the 114px default.
+    // Expand all → each track back to the height collapse took away
+    // (2026-10-22, "collapse remembers, expand restores"): track 1 to its
+    // 138, track 0 to the default.
     fireEvent.keyDown(document.body, { key: 'X', metaKey: true, shiftKey: true });
     await waitFor(() => {
       expect((panels()[0] as HTMLElement).style.height).toBe('114px');
-      expect((panels()[1] as HTMLElement).style.height).toBe('114px');
+      expect((panels()[1] as HTMLElement).style.height).toBe('138px');
     });
   });
 
@@ -1305,14 +1307,28 @@ describe('Selection playback', () => {
     });
     expect((panels()[0] as HTMLElement).style.height).toBe('114px');
 
-    // Expand all puts every track back to 114 — the fitted set is gone
-    // with their heights, so a fresh fit of track 0 is the two-others rule
+    // Expand all leaves tracks that are not collapsed alone (2026-10-22,
+    // "collapse remembers, expand restores"); a collapse-all / expand-all
+    // round trip gives the fitted layout back
     fireEvent.keyDown(document.body, { key: 'X', code: 'KeyX', metaKey: true, shiftKey: true });
-    await waitFor(() => expect((panels()[2] as HTMLElement).style.height).toBe('114px'));
+    await act(async () => { await Promise.resolve(); });
+    expect((panels()[1] as HTMLElement).style.height).toBe('189px');
+    expect((panels()[2] as HTMLElement).style.height).toBe('189px');
+    fireEvent.keyDown(document.body, { key: 'C', code: 'KeyC', metaKey: true, shiftKey: true });
+    await waitFor(() => expect((panels()[2] as HTMLElement).style.height).toBe('44px'));
+    fireEvent.keyDown(document.body, { key: 'X', code: 'KeyX', metaKey: true, shiftKey: true });
+    await waitFor(() => {
+      expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+      expect((panels()[1] as HTMLElement).style.height).toBe('189px');
+      expect((panels()[2] as HTMLElement).style.height).toBe('189px');
+    });
+    // The fitted pair is still at its fitted height, so a fit of track 0
+    // SHARES with both: (500 - 2 - 3×2) / 3 = 164 each
     act(() => { (headers()[0] as HTMLElement).focus(); });
     fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
-    await waitFor(() => expect((panels()[0] as HTMLElement).style.height).toBe('264px'));
-    expect((panels()[1] as HTMLElement).style.height).toBe('114px');
+    await waitFor(() => expect((panels()[0] as HTMLElement).style.height).toBe('164px'));
+    expect((panels()[1] as HTMLElement).style.height).toBe('164px');
+    expect((panels()[2] as HTMLElement).style.height).toBe('164px');
   });
 
   it('Option+Cmd+C collapses the SELECTED tracks and Option+Cmd+X expands them, the others untouched (2026-10-08)', async () => {

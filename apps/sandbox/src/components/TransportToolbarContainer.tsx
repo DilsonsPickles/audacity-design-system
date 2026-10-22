@@ -14,7 +14,7 @@ export type TransportToolbarContainerTransport = Pick<TransportToolbarProps,
   | 'useSplitRecordButton' | 'rollInTimeEnabled' | 'onToggleRollInTime'
   | 'timeSelection' | 'bpm' | 'onBpmChange' | 'beatsPerMeasure' | 'noteValue' | 'onTimeSignatureChange'
   | 'envelopeMode' | 'spectrogramMode' | 'splitMode' | 'onToggleEnvelope' | 'onToggleSpectrogram' | 'onToggleSplit'
-  | 'onZoomIn' | 'onZoomOut' | 'onZoomToSelection' | 'onZoomToFitProject' | 'onZoomToggle' | 'onCollapseTracks' | 'onExpandTracks'
+  | 'onZoomIn' | 'onZoomOut' | 'onZoomToSelection' | 'onZoomToFitProject' | 'onZoomToggle' | 'onCollapseTracks' | 'onExpandTracks' | 'onFitTracksToHeight'
   | 'onShareClick' | 'onExportAudioClick' | 'onExportLoopRegionClick'
   | 'varispeed' | 'varispeedOn' | 'onVarispeedChange' | 'onVarispeedDial' | 'onVarispeedToggle'
 >;
