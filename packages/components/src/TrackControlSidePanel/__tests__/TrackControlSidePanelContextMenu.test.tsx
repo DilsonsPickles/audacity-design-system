@@ -30,5 +30,13 @@ describe('side panel blank-area right-click (2026-10-22, the design brief\'s all
     const row = container.querySelector('.track-control-side-panel__track')!;
     fireEvent.contextMenu(row, { clientX: 40, clientY: 30 });
     expect(onPanelContextMenu).toHaveBeenCalledTimes(1);
+
+    // The header strip ("Tracks" + Add new) is the panel's too — the part a fit leaves
+    const header = container.querySelector('.track-control-side-panel__header')!;
+    expect(fireEvent.contextMenu(header, { clientX: 20, clientY: 10 })).toBe(false);
+    expect(onPanelContextMenu).toHaveBeenLastCalledWith(20, 10);
+    const addButton = header.querySelector('button')!;
+    fireEvent.contextMenu(addButton, { clientX: 150, clientY: 10 });
+    expect(onPanelContextMenu).toHaveBeenLastCalledWith(150, 10);
   });
 });

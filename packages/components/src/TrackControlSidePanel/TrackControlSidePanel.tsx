@@ -181,10 +181,14 @@ export interface TrackControlSidePanelProps {
    */
   onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
   /**
-   * Right-click on the panel's BLANK area — the list below or between
-   * the rows, not a row (rows have their own menu). The host opens the
-   * all-tracks menu there (Collapse / Expand / Fit tracks to height,
-   * 2026-10-22, the design brief's required placement).
+   * Right-click on the panel itself — the list's BLANK area below or
+   * between the rows (not a row: rows have their own menu), and the
+   * HEADER strip ("Tracks" + Add new; the same day, "should the area
+   * that contains the add new track button also be right clickable?" —
+   * yes: it is the part of the panel a fit leaves, and the panel's own
+   * noun). The host opens the all-tracks menu there (Add track ▸,
+   * Collapse / Expand / Fit tracks to height, 2026-10-22, the design
+   * brief's required placement).
    */
   onPanelContextMenu?: (x: number, y: number) => void;
   /**
@@ -633,8 +637,15 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       className={`track-control-side-panel ${className}`}
       style={style}
     >
-      {/* Header */}
-      <div className="track-control-side-panel__header">
+      {/* Header — right-click here is the panel's menu too */}
+      <div
+        className="track-control-side-panel__header"
+        onContextMenu={(e) => {
+          if (!onPanelContextMenu) return;
+          e.preventDefault();
+          onPanelContextMenu(e.clientX, e.clientY);
+        }}
+      >
         <h2 className="track-control-side-panel__title">Tracks</h2>
         {/* role="group" marks this as an island tab stop so the global
             ArrowUp/Down track-focus handler doesn't steal arrow keys
