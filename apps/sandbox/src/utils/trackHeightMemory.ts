@@ -1,15 +1,16 @@
 /**
  * Collapse / expand with MEMORY (2026-10-22, "collapse remembers, expand
  * restores"): Collapse takes every target to the 44px floor and remembers
- * the height it left, by track id; Expand puts every COLLAPSED target
- * back to that height — the default when it has none — and leaves a
- * track that is not collapsed alone. Audacity 3's minimise model: a
- * collapsed track is a flag over a stored height, not a new height, so
- * someone who dragged a track tall, collapsed all to find something and
- * expanded again gets their layout back (Expand set every track to 114
- * until then, and a track dragged to a height since the collapse is not
- * collapsed, so Expand does not touch it). One rule for the all-tracks
- * and the selected-tracks forms.
+ * the height it left, by track id; EXPAND TAKES EVERY TARGET TO ITS OPEN
+ * HEIGHT — a collapsed track back to what it was before the collapse,
+ * every other track to the default. (A first cut the same day left a
+ * track that was not collapsed alone, Audacity 3's "expand collapsed":
+ * "I did fit and then expand, but they didn't expand" — after Fit nothing
+ * is collapsed, so the button did nothing and read as broken; Expand
+ * means "back to normal size", and only a collapsed track has a normal
+ * size to remember.) The memory counts only while the track is STILL
+ * collapsed: collapse, fit, expand gives the default, since Fit already
+ * moved it. One rule for the all-tracks and the selected-tracks forms.
  */
 import { DEFAULT_TRACK_HEIGHT } from '../constants/canvas';
 
@@ -47,16 +48,19 @@ export function collapseTracks(tracks: readonly HeightTrack[], targets: readonly
   return updates;
 }
 
-/** The updates that expand the COLLAPSED tracks among `targets`. */
+/** The updates that take every target to its open height: a collapsed
+ *  track to its remembered height (the default when it has none), every
+ *  other track to the default. A track already there gets no update. */
 export function expandTracks(tracks: readonly HeightTrack[], targets: readonly number[], memory: HeightMemory): HeightUpdate[] {
   const updates: HeightUpdate[] = [];
   for (const index of targets) {
     const t = tracks[index];
-    if (!t || !isCollapsedHeight(heightOf(t))) continue; // not collapsed: not ours
-    const remembered = memory.get(t.id);
-    memory.delete(t.id);
+    if (!t) continue;
+    const current = heightOf(t);
+    const remembered = isCollapsedHeight(current) ? memory.get(t.id) : undefined;
+    memory.delete(t.id); // used, or stale — a track that is open again has no collapse to undo
     const height = remembered !== undefined && !isCollapsedHeight(remembered) ? remembered : DEFAULT_TRACK_HEIGHT;
-    updates.push({ index, height });
+    if (height !== current) updates.push({ index, height });
   }
   return updates;
 }

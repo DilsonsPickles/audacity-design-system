@@ -28,11 +28,24 @@ describe('collapse remembers, expand restores (2026-10-22)', () => {
     expect(memory.size).toBe(0); // used up
   });
 
-  it('expand leaves a track that is not collapsed alone — dragged to a height since, it is not ours', () => {
+  it('expand takes an open track to the default too — "I did fit and then expand, but they didn\'t expand"', () => {
+    const memory: HeightMemory = new Map();
+    const fitted = [{ id: 'a', height: 125 }, { id: 'b', height: 125 }, { id: 'c', height: 114 }];
+    expect(expandTracks(fitted, [0, 1, 2], memory)).toEqual([
+      { index: 0, height: 114 },
+      { index: 1, height: 114 },
+    ]);
+  });
+
+  it('a remembered height counts only while the track is still collapsed: collapse, fit, expand gives the default', () => {
     const memory: HeightMemory = new Map([['a', 200], ['b', 114]]);
     const mixed = [{ id: 'a', height: 80 }, { id: 'b', height: 44 }, { id: 'c', height: 160 }];
-    expect(expandTracks(mixed, [0, 1, 2], memory)).toEqual([{ index: 1, height: 114 }]);
-    expect(memory.get('a')).toBe(200); // kept for a later collapse/expand
+    expect(expandTracks(mixed, [0, 1, 2], memory)).toEqual([
+      { index: 0, height: 114 },
+      { index: 1, height: 114 },
+      { index: 2, height: 114 },
+    ]);
+    expect(memory.size).toBe(0); // the stale memory for a is gone with it
   });
 
   it('a round trip gives the layout back', () => {

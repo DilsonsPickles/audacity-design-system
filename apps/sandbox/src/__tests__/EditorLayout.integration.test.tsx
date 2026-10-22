@@ -1307,13 +1307,8 @@ describe('Selection playback', () => {
     });
     expect((panels()[0] as HTMLElement).style.height).toBe('114px');
 
-    // Expand all leaves tracks that are not collapsed alone (2026-10-22,
-    // "collapse remembers, expand restores"); a collapse-all / expand-all
-    // round trip gives the fitted layout back
-    fireEvent.keyDown(document.body, { key: 'X', code: 'KeyX', metaKey: true, shiftKey: true });
-    await act(async () => { await Promise.resolve(); });
-    expect((panels()[1] as HTMLElement).style.height).toBe('189px');
-    expect((panels()[2] as HTMLElement).style.height).toBe('189px');
+    // A collapse-all / expand-all round trip gives the fitted layout back
+    // (2026-10-22, "collapse remembers, expand restores")
     fireEvent.keyDown(document.body, { key: 'C', code: 'KeyC', metaKey: true, shiftKey: true });
     await waitFor(() => expect((panels()[2] as HTMLElement).style.height).toBe('44px'));
     fireEvent.keyDown(document.body, { key: 'X', code: 'KeyX', metaKey: true, shiftKey: true });
@@ -1322,13 +1317,16 @@ describe('Selection playback', () => {
       expect((panels()[1] as HTMLElement).style.height).toBe('189px');
       expect((panels()[2] as HTMLElement).style.height).toBe('189px');
     });
-    // The fitted pair is still at its fitted height, so a fit of track 0
-    // SHARES with both: (500 - 2 - 3×2) / 3 = 164 each
+    // Expand all with nothing collapsed takes every track to the default
+    // ("I did fit and then expand, but they didn't expand") — the fitted
+    // set is gone with their heights, so a fresh fit of track 0 is the
+    // two-others rule
+    fireEvent.keyDown(document.body, { key: 'X', code: 'KeyX', metaKey: true, shiftKey: true });
+    await waitFor(() => expect((panels()[2] as HTMLElement).style.height).toBe('114px'));
     act(() => { (headers()[0] as HTMLElement).focus(); });
     fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
-    await waitFor(() => expect((panels()[0] as HTMLElement).style.height).toBe('164px'));
-    expect((panels()[1] as HTMLElement).style.height).toBe('164px');
-    expect((panels()[2] as HTMLElement).style.height).toBe('164px');
+    await waitFor(() => expect((panels()[0] as HTMLElement).style.height).toBe('264px'));
+    expect((panels()[1] as HTMLElement).style.height).toBe('114px');
   });
 
   it('Option+Cmd+C collapses the SELECTED tracks and Option+Cmd+X expands them, the others untouched (2026-10-08)', async () => {
