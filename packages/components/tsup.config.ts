@@ -33,6 +33,10 @@ export default defineConfig({
   // @audacity-ui/tokens) get bundled into dist so external consumers don't
   // need to install them separately.
   external: ['react', 'react-dom'],
+  // Start every build from an empty dist: tsup's hashed chunks otherwise
+  // pile up across rebuilds — 2,914 stale chunk files and a 148 MB
+  // tarball by 2026-10-23, against ~1,100 / 8.7 MB published as 0.10.3.
+  clean: true,
   loader: {
     '.png': 'dataurl',
     '.jpg': 'dataurl',
