@@ -227,8 +227,10 @@ describe('clip fades', () => {
     // alone has its handles (2026-10-01), the same glyphs
     const zone = cornerZone(container, 2, 'in')!;
     fireEvent.pointerDown(zone, { button: 0, clientX: 0, clientY: 0, pointerId: 71 });
-    check(2);
-    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="2"]')).toHaveLength(2);
+    // A zone drag on the UNSELECTED clip mounts none of its own (2026-10-23);
+    // the selected clip's are hidden while another's fade is in hand
+    check(0);
+    expect(container.querySelectorAll('[data-fade-handle][data-fade-clip="2"]')).toHaveLength(0);
     fireEvent.pointerUp(zone, { clientX: 0, clientY: 0, pointerId: 71 });
   });
 
@@ -566,9 +568,11 @@ describe('clip fades', () => {
       value: () => ({ left: 500, top: 0, right: 900, bottom: 100, width: 400, height: 100, x: 500, y: 0, toJSON: () => ({}) }),
     });
     fireEvent.pointerDown(inZone, { button: 0, clientX: 600, clientY: 30, pointerId: 31 });
-    // In hand: the clip wears its handles for the drag, above its zones,
+    // In hand: NO handles — the clip is unselected (2026-10-23) — the zone
+    // stays mounted (it holds the capture) and the dashed line shows,
     // which stay mounted (the zone holds the pointer capture)
-    expect(handles()).toHaveLength(2);
+    expect(handles()).toHaveLength(0);
+    expect(container.querySelectorAll('[data-fade-guideline="in"][data-fade-clip="2"]')).toHaveLength(1);
     expect(zones()).toHaveLength(2);
     expect(zones()[0]).toBe(inZone);
     fireEvent.pointerMove(inZone, { clientX: 650, clientY: 30, pointerId: 31 });
@@ -1558,6 +1562,37 @@ describe('the guideline while a fade is edited (2026-10-23)', () => {
     expect(line('out')?.hasAttribute('data-editing')).toBe(false);
     fireEvent.pointerUp(dot, { button: 0, clientX: 50, clientY: 60, pointerId: 2 });
     expect(line('in')?.hasAttribute('data-editing')).toBe(false);
+  });
+});
+
+describe('the cursor during a fade length drag (2026-10-23)', () => {
+  it('the document carries the left/right-arrows flag for the whole drag, from the handle or the corner zone, and drops it with the drag', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'Clip 1', start: 0, duration: 4, fadeIn: 1, selected: true },
+            { id: 2, name: 'Clip 2', start: 5, duration: 4 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const flag = () => document.body.hasAttribute('data-fade-length-drag');
+    expect(flag()).toBe(false);
+    const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]') as HTMLElement;
+    fireEvent.pointerDown(handle, { button: 0, clientX: 100, clientY: 30, pointerId: 1 });
+    expect(flag()).toBe(true);
+    fireEvent.pointerUp(handle, { button: 0, clientX: 140, clientY: 30, pointerId: 1 });
+    expect(flag()).toBe(false);
+    const zone = container.querySelector('[data-fade-zone="in"][data-clip-ref="2"]') as HTMLElement;
+    fireEvent.pointerDown(zone, { button: 0, clientX: 500, clientY: 30, pointerId: 2 });
+    expect(flag()).toBe(true);
+    fireEvent.pointerCancel(zone, { pointerId: 2 });
+    expect(flag()).toBe(false);
   });
 });
 

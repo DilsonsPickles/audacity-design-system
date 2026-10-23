@@ -112,6 +112,14 @@
   background-size: 1px 8px;
 }
 
+/* A fade LENGTH drag in hand, from the handle or the corner zone: the
+   cursor is left/right arrows everywhere until the pointer is let go
+   (2026-10-23) — the pointer is captured, so it may be anywhere. */
+body[data-fade-length-drag],
+body[data-fade-length-drag] * {
+  cursor: ew-resize !important;
+}
+
 /* While its fade is being EDITED — length or shape handle in hand —
    the line is black and white alternating dashes (2026-10-23): the
    focus frame's contrast rule, so it reads on any waveform. */

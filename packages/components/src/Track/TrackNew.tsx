@@ -2413,8 +2413,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // does; an UNSELECTED clip shows none and fades by its CORNER ZONES
   // instead (renderFadeCornerZones — the edge zone's model). A drag in
   // hand and a keyboard-held handle still mount them.
+  // A drag from an UNSELECTED clip's corner zone mounts NO handles (the
+  // same day, "when we drag the fade handles, they shouldn't appear
+  // unless the clip is selected"): the zone and the dashed line are the
+  // drag's whole furniture; a selected clip's handles are up already.
   const fadeHandleActive = clips
-    .filter((c) => (!!c.selected || fadeDragClipId === c.id || fadeKeyFocus?.clipId === c.id || handleKeyFocus?.clipId === c.id) && !hidesHandlesOf(c.id))
+    .filter((c) => (!!c.selected || fadeKeyFocus?.clipId === c.id || handleKeyFocus?.clipId === c.id) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
   // A fade handle mounted ONLY because T / S holds one of the clip's
   // other handles: drawn dimmed, taking no pointer (user decision
@@ -2428,7 +2432,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // the dashed line"): the lining-up aid without the handles. Their own
   // soft exit, since the handles' set no longer follows the pointer.
   const hoverGuideActive = clips
-    .filter((c) => !fadeHandleActive.includes(String(c.id)) && fadeHoverClipId === c.id && !hidesHandlesOf(c.id))
+    .filter((c) => !fadeHandleActive.includes(String(c.id)) && (fadeHoverClipId === c.id || fadeDragClipId === c.id) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
   const leavingHoverGuides = useLeavingKeys(hoverGuideActive);
   const buriedActive = clips
@@ -2719,6 +2723,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     const { windowLen, fadeIn: fadeInSec, fadeOut: fadeOutSec } = clipQuickFadeGeometry(clip);
     const handleEl = e.currentTarget as HTMLElement;
     try { handleEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
+    // THE CURSOR IS LEFT/RIGHT ARROWS FOR THE WHOLE DRAG (2026-10-23,
+    // "once I start dragging out the handle, my cursor changes to left
+    // right arrows"): a document-wide flag Track.css reads (`body[data-
+    // fade-length-drag] *`), since the pointer is captured and may leave
+    // the handle, the zone and the clip; cleared with the drag.
+    handleEl.ownerDocument.body.setAttribute('data-fade-length-drag', '');
     setFadeHoverClipId(clip.id); // a press on it proves the pointer is here
     setFadeDragClipId(clip.id);
     setFadeDragSide(side);
@@ -2779,6 +2789,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       if (snapTime || alignFadeBoundary) onFadeSnapGuideline?.(snappedTo, snappedKind);
     };
     bindCapturedDrag(handleEl, onMove, (ev) => {
+      handleEl.ownerDocument.body.removeAttribute('data-fade-length-drag');
       setFadeDragClipId(null);
       setFadeDragSide(null);
       onFadeDragChange?.(null);
