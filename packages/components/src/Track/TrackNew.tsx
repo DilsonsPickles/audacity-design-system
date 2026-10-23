@@ -1061,6 +1061,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // report the hover themselves — leaving the clip FOR one of its own
   // controls must not hide it.
   const [fadeHoverClipId, setFadeHoverClipId] = React.useState<string | number | null>(null);
+  // THE PEEK (2026-10-23, "when the user hovers in the corner of an
+  // unselected clip, the fade curve peeks out to say hello"): the corner
+  // zone of a BARE edge under the pointer — no fade there yet — shows a
+  // sliver of the fade it would make, PEEK_PX wide, drawn as the curve
+  // overlay draws a fade (the dim above the default S-curve and its
+  // line), so the gesture is announced before it is made. It goes with
+  // the pointer, or the moment a drag makes a real fade (which the
+  // curve overlay then draws).
+  const [fadePeek, setFadePeek] = React.useState<{ clipId: string | number; side: 'in' | 'out' } | null>(null);
   // HANDLES FOLLOW THE POINTER, NOT THE SELECTION (user decision
   // 2026-10-01: six selected clips put forty icons on screen, most of
   // them 24px outside the clips in empty track). The trim and stretch
@@ -1599,6 +1608,50 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       }
     }
     return nodes.length > 0 ? nodes : null;
+  };
+
+  const PEEK_PX = 16;
+  const renderFadePeek = () => {
+    if (isMidiTrack || !onClipFadeChange) return null;
+    const keys = new Set<string>([...peekActive, ...leavingPeeks]);
+    if (keys.size === 0) return null;
+    const nodes: React.ReactNode[] = [];
+    for (const key of keys) {
+      const sep = key.lastIndexOf(':');
+      const clipId = key.slice(0, sep);
+      const side = key.slice(sep + 1) as 'in' | 'out';
+      const clip = clips.find((c) => String(c.id) === clipId);
+      if (!clip) continue;
+      const leaving = !peekActive.includes(key);
+      const clipWidth = clip.duration * pixelsPerSecond;
+      const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
+      const { bodyTop, bodyHeight } = clipBodyGeometry(height, headerShownFor(clip.id));
+      nodes.push(
+        <div
+          key={`fade-peek-${key}`}
+          className="track-fade-peek"
+          data-fade-peek={side}
+          data-clip-ref={clip.id}
+          data-leaving={leaving ? 'true' : undefined}
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: `${Math.round(side === 'in' ? xBase : xBase + clipWidth - PEEK_PX)}px`,
+            top: `${bodyTop}px`,
+            width: `${PEEK_PX}px`,
+            height: `${bodyHeight}px`,
+            pointerEvents: 'none',
+            zIndex: 450,
+          }}
+        >
+          <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}>
+            <path d={fadeAreaAbovePath(side, 64, DEFAULT_QUICK_FADE_SHAPE)} fill="rgba(0, 0, 0, 0.2)" stroke="none" />
+            <path d={fadeCurvePath(side, 64, DEFAULT_QUICK_FADE_SHAPE)} fill="none" stroke="rgba(0, 0, 0, 0.45)" strokeWidth={1.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+          </svg>
+        </div>,
+      );
+    }
+    return nodes;
   };
 
   const renderFadeCurveOverlays = () => {
@@ -2435,6 +2488,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     .filter((c) => !fadeHandleActive.includes(String(c.id)) && (fadeHoverClipId === c.id || fadeDragClipId === c.id) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
   const leavingHoverGuides = useLeavingKeys(hoverGuideActive);
+  // The peek is live while its zone is hovered, the clip unselected and
+  // that edge still bare (a drag making a fade retires it at once — the
+  // curve overlay takes over); it leaves with the handles' tail
+  const peekClip = fadePeek ? clips.find((c) => c.id === fadePeek.clipId) : undefined;
+  const peekLive = !!fadePeek && !!peekClip && !peekClip.selected && fadeDragClipId !== peekClip.id
+    && !hidesHandlesOf(peekClip.id)
+    && ((fadePeek.side === 'in' ? peekClip.fadeIn : peekClip.fadeOut) ?? 0) === 0; // the stored fade: bare means none authored
+  const peekActive = peekLive && fadePeek ? [`${fadePeek.clipId}:${fadePeek.side}`] : [];
+  const leavingPeeks = useLeavingKeys(peekActive);
   const buriedActive = clips
     .filter((c) => handlesFollow(c) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
@@ -2677,6 +2739,20 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const { fadeIn: fadeInSec, fadeOut: fadeOutSec } = clipQuickFadeGeometry(clip);
       const boundaryX = { in: fadeInSec * pixelsPerSecond, out: clipWidth - fadeOutSec * pixelsPerSecond } as const;
       for (const side of ['in', 'out'] as const) {
+        const hasFade = (side === 'in' ? fadeInSec : fadeOutSec) > 0;
+        const hint = withHint(fadeHoverProps(clip.id), 'fade-length');
+        // A bare edge's zone also raises the PEEK while the pointer is on it
+        const zoneHover = {
+          ...hint,
+          onMouseEnter: (e: React.MouseEvent) => {
+            hint.onMouseEnter(e);
+            if (!hasFade && e.buttons === 0) setFadePeek({ clipId: clip.id, side });
+          },
+          onMouseLeave: () => {
+            hint.onMouseLeave();
+            setFadePeek((prev) => (prev?.clipId === clip.id && prev.side === side ? null : prev));
+          },
+        };
         nodes.push(
           <div
             key={`fade-zone-${clip.id}-${side}`}
@@ -2688,9 +2764,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // handle glyph only says "a fade can start here" on a bare
             // edge (the same day, "once the dashed line is visible, I
             // think just showing the left right arrows as the cursor is OK")
-            data-has-fade={(side === 'in' ? fadeInSec : fadeOutSec) > 0 ? 'true' : undefined}
+            data-has-fade={hasFade ? 'true' : undefined}
             aria-hidden="true"
-            {...withHint(fadeHoverProps(clip.id), 'fade-length')}
+            {...zoneHover}
             onContextMenu={(e) => {
               if (!onFadeContextMenu) return;
               e.preventDefault();
@@ -3548,6 +3624,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         {renderCrossfadeNodes()}
         {renderQuickFadeNodes()}
         {renderFadeCornerZones()}
+        {renderFadePeek()}
         {renderFadeHandles()}
         {renderBuriedEdgeHandles()}
         {renderEnvelopeInteractionLayers()}

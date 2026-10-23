@@ -1596,6 +1596,49 @@ describe('the cursor during a fade length drag (2026-10-23)', () => {
   });
 });
 
+describe('the peek — a bare edge\'s curve says hello under the corner zone (2026-10-23)', () => {
+  it('hovering a bare edge\'s zone shows a 16px sliver of the default curve at that edge; an edge with a fade shows none; leaving takes it away', () => {
+    const onClipFadeChange = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[
+            { id: 1, name: 'Clip 1', start: 0, duration: 4 },
+            { id: 2, name: 'Clip 2', start: 5, duration: 4, fadeIn: 1 },
+          ]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+        />
+      </Providers>,
+    );
+    const zone = (id: number, side: string) => container.querySelector(`[data-fade-zone="${side}"][data-clip-ref="${id}"]`) as HTMLElement;
+    const peek = () => container.querySelector('[data-fade-peek]') as HTMLElement | null;
+    expect(peek()).toBeNull();
+    fireEvent.mouseEnter(zone(1, 'in'), { buttons: 0 });
+    expect(peek()?.getAttribute('data-fade-peek')).toBe('in');
+    expect(peek()?.getAttribute('data-clip-ref')).toBe('1');
+    expect(peek()?.style.left).toBe(`${CLIP_CONTENT_OFFSET}px`);
+    expect(peek()?.style.width).toBe('16px');
+    expect(peek()?.querySelector('path[d]')).not.toBeNull();
+    fireEvent.mouseLeave(zone(1, 'in'));
+    expect(peek()).toBeNull(); // jsdom: no tail
+    // The out edge: the sliver sits at the clip's right edge
+    fireEvent.mouseEnter(zone(1, 'out'), { buttons: 0 });
+    expect(peek()?.getAttribute('data-fade-peek')).toBe('out');
+    expect(peek()?.style.left).toBe(`${CLIP_CONTENT_OFFSET + 400 - 16}px`);
+    fireEvent.mouseLeave(zone(1, 'out'));
+    // An edge that already has a fade shows the real curve, no peek
+    fireEvent.mouseEnter(zone(2, 'in'), { buttons: 0 });
+    expect(peek()).toBeNull();
+    fireEvent.mouseLeave(zone(2, 'in'));
+    // A press is not a hover: no peek mid-gesture
+    fireEvent.mouseEnter(zone(1, 'in'), { buttons: 1 });
+    expect(peek()).toBeNull();
+  });
+});
+
 describe('fade handle grid snap (2026-09-30)', () => {
   // A 0.5s grid; the clip runs 1s..5s at 100px/s, so its left edge is
   // at x=100 and its right edge at x=500 in the mocked rect below

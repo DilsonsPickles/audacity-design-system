@@ -146,6 +146,19 @@ body[data-fade-length-drag] * {
   cursor: image-set(url('../assets/cursors/FadeOut.png') 1x, url('../assets/cursors/FadeOut@2x.png') 2x) 16 16, pointer;
 }
 
+/* The PEEK — a bare edge's fade curve showing a sliver of itself while
+   its corner zone is under the pointer (2026-10-23): in and out at the
+   handles' tempo, out via [data-leaving] below. */
+.track-fade-peek {
+  transition: opacity 0.06s ease-out;
+}
+
+@starting-style {
+  .track-fade-peek {
+    opacity: 0;
+  }
+}
+
 /* With a fade already there — its dashed line up under the pointer —
    the zone's cursor is the drag's left/right arrows (2026-10-23); the
    handle glyph is for a bare edge, where it says a fade can start. */
