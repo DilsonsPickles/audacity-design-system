@@ -2683,6 +2683,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             className={`track-fade-zone track-fade-zone--${side}`}
             data-fade-zone={side}
             data-clip-ref={clip.id}
+            // With a fade — its dashed line is up under the pointer — the
+            // cursor is the left/right arrows, as during the drag; the
+            // handle glyph only says "a fade can start here" on a bare
+            // edge (the same day, "once the dashed line is visible, I
+            // think just showing the left right arrows as the cursor is OK")
+            data-has-fade={(side === 'in' ? fadeInSec : fadeOutSec) > 0 ? 'true' : undefined}
             aria-hidden="true"
             {...withHint(fadeHoverProps(clip.id), 'fade-length')}
             onContextMenu={(e) => {

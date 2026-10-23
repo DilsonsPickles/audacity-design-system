@@ -234,6 +234,14 @@ describe('trimming an unselected clip by its edge', () => {
     const clipLeft = CLIP_CONTENT_OFFSET + 100;
     expect(left('in')).toBe(clipLeft + 100 - 16); // the fade-in's boundary, 1 s in
     expect(left('out')).toBe(clipLeft + 400 - 50 - 16); // the fade-out's, 0.5 s before the end
+    // With a fade the zone wears the drag's arrows (data-has-fade → ew-resize in Track.css); a bare edge the handle glyph
+    expect(container.querySelector('[data-fade-zone="in"][data-clip-ref="7"]')!.getAttribute('data-has-fade')).toBe('true');
+    const bare = render(
+      <Providers>
+        <TrackNew clips={[{ id: 8, name: 'Bare', start: 0, duration: 4 }]} width={1200} trackIndex={0} pixelsPerSecond={100} onClipFadeChange={vi.fn()} />
+      </Providers>,
+    );
+    expect(bare.container.querySelector('[data-fade-zone="in"][data-clip-ref="8"]')!.hasAttribute('data-has-fade')).toBe(false);
   });
 
   it('corner zones are the UNSELECTED clip\'s: none on a selected clip, at the 44px floor, on a clip narrower than 64px, without fade editing, or on a clip being recorded (2026-10-23)', () => {

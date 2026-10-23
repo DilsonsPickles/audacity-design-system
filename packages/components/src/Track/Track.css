@@ -146,6 +146,13 @@ body[data-fade-length-drag] * {
   cursor: image-set(url('../assets/cursors/FadeOut.png') 1x, url('../assets/cursors/FadeOut@2x.png') 2x) 16 16, pointer;
 }
 
+/* With a fade already there — its dashed line up under the pointer —
+   the zone's cursor is the drag's left/right arrows (2026-10-23); the
+   handle glyph is for a bare edge, where it says a fade can start. */
+.track-fade-zone[data-has-fade] {
+  cursor: ew-resize;
+}
+
 .track-edge-trim--left {
   cursor: url('../assets/cursors/ClipTrimLeft.png') 15 16, ew-resize;
 }
