@@ -2,7 +2,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup, fireEvent, act } from '@testing-library/react';
 import React, { useRef } from 'react';
-import { TracksProvider, useTracksState } from '../../contexts/TracksContext';
+import { useTracksState } from '../../contexts/useTracks';
+import { TracksProvider } from '../../contexts/TracksProvider';
 import type { Track } from '../../contexts/TracksContext';
 import { useClipTrimming } from '../useClipTrimming';
 import { buildTrimParticipants } from '../../utils/trimParticipants';

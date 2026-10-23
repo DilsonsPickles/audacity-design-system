@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
 import { nearestFocusableTrack } from '../utils/trackFocus';
 import { nearestClipOnNeighbourTrack } from '../utils/clipVerticalNav';
-import { useTracksDispatch, type Track, type TimeSelection } from '../contexts/TracksContext';
+import { type Track, type TimeSelection } from '../contexts/TracksContext';
+import { useTracksDispatch } from '../contexts/useTracks';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 import { provisionalKeyboardTrackIds } from '../utils/provisionalKeyboardTrackIds';
 import { resolveTimeSelectionScope } from '../utils/timeSelectionScope';

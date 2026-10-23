@@ -30,7 +30,8 @@
 import React from 'react';
 import * as Tone from 'tone';
 import { ClipPropertiesPanel, PITCH_LIMIT_SEMITONES, toast, type ClipPropertiesClip, type ClipPropertiesOption, type ClipPropertiesShapeOption, type ClipPropertiesExportSettings, CLIP_COLOR_ITEMS } from '@audacity-ui/components';
-import { useTracks, type Clip, type TracksAction } from '../../contexts/TracksContext';
+import { type Clip, type TracksAction } from '../../contexts/TracksContext';
+import { useTracks } from '../../contexts/useTracks';
 import { usePlayback } from '../../contexts/PlaybackContext';
 import { downloadBlob, safeFileName } from '../../utils/downloadBlob';
 import { useClipProperties } from '../../contexts/ClipPropertiesContext';

@@ -1,7 +1,9 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup, fireEvent, act } from '@testing-library/react';
 import React from 'react';
-import { TracksProvider, useTracks, type Track } from '../../contexts/TracksContext';
+import { type Track } from '../../contexts/TracksContext';
+import { useTracks } from '../../contexts/useTracks';
+import { TracksProvider } from '../../contexts/TracksProvider';
 import { usePlayheadClipHotkeys, playheadClipChordOf } from '../usePlayheadClipHotkeys';
 
 afterEach(cleanup);

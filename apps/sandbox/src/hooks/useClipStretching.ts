@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
-import { useTracksDispatch, Track } from '../contexts/TracksContext';
+import { Track } from '../contexts/TracksContext';
+import { useTracksDispatch } from '../contexts/useTracks';
 import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 
 /**

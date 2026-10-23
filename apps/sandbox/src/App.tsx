@@ -1,5 +1,5 @@
 import React from 'react';
-import { TracksProvider } from './contexts/TracksContext';
+import { TracksProvider } from './contexts/TracksProvider';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
 import { ApplicationHeader, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@audacity-ui/components';
 import { ADIEU_BASE } from './lib/adieu-client';
@@ -9,7 +9,7 @@ import { countSelectedClips } from './utils/clipSelectionCount';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { saveProject, getProject, getProjects } from './utils/projectDatabase';
 // import { TimeSelectionContextMenu } from './components/TimeSelectionContextMenu';
-import { useTracks } from './contexts/TracksContext';
+import { useTracks } from './contexts/useTracks';
 import { useSpectralSelection } from './contexts/SpectralSelectionContext';
 import { AudioEngineProvider, useAudioEngine } from './contexts/AudioEngineContext';
 import { AppContextMenus } from './components/AppContextMenus';

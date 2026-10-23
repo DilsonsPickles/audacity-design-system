@@ -1,7 +1,7 @@
 import React from 'react';
 import { EffectsPanel } from '@audacity-ui/components';
 import { getAllEffects } from '@audacity-ui/core';
-import { useTracksDispatch } from '../../contexts/TracksContext';
+import { useTracksDispatch } from '../../contexts/useTracks';
 import type { Track, Effect } from '../../contexts/TracksContext';
 import type { PurchasedEffect } from '../../contexts/MuseHubContext';
 import type { EffectsPanelState, EffectDialogState } from '../../hooks/useContextMenuState';

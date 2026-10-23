@@ -1,4 +1,3 @@
-import { createContext, useContext, useReducer, ReactNode } from 'react';
 import type { MoveMembership } from '../utils/trackFolders';
 import type { CutMode } from '../utils/cutOperations';
 import type { Label as CoreLabel } from '@audacity-ui/core';
@@ -723,51 +722,5 @@ function innerReducer(state: TracksState, action: TracksAction): TracksState {
 }
 
 // Context
-const TracksStateContext = createContext<TracksState | undefined>(undefined);
-const TracksDispatchContext = createContext<React.Dispatch<TracksAction> | undefined>(undefined);
 
 // Provider
-interface TracksProviderProps {
-  children: ReactNode;
-  initialTracks?: Track[];
-}
-
-export function TracksProvider({ children, initialTracks = [] }: TracksProviderProps) {
-  const [state, dispatch] = useReducer(tracksReducer, {
-    ...initialState,
-    tracks: initialTracks,
-  });
-
-  return (
-    <TracksStateContext.Provider value={state}>
-      <TracksDispatchContext.Provider value={dispatch}>
-        {children}
-      </TracksDispatchContext.Provider>
-    </TracksStateContext.Provider>
-  );
-}
-
-// Custom hooks
-export function useTracksState() {
-  const context = useContext(TracksStateContext);
-  if (context === undefined) {
-    throw new Error('useTracksState must be used within a TracksProvider');
-  }
-  return context;
-}
-
-export function useTracksDispatch() {
-  const context = useContext(TracksDispatchContext);
-  if (context === undefined) {
-    throw new Error('useTracksDispatch must be used within a TracksProvider');
-  }
-  return context;
-}
-
-// Convenience hook for using both state and dispatch
-export function useTracks() {
-  return {
-    state: useTracksState(),
-    dispatch: useTracksDispatch(),
-  };
-}

@@ -2,7 +2,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup, fireEvent, act } from '@testing-library/react';
 import React from 'react';
-import { TracksProvider, useTracksState } from '../../contexts/TracksContext';
+import { useTracksState } from '../../contexts/useTracks';
+import { TracksProvider } from '../../contexts/TracksProvider';
 import { useCmdArrowMove } from '../useCmdArrowMove';
 import { pendingClipMoveResolution } from '../../utils/pendingClipMoveResolution';
 

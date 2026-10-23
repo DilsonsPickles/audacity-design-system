@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
-import { useTracksDispatch, Track, Clip } from '../contexts/TracksContext';
+import { Track, Clip } from '../contexts/TracksContext';
+import { useTracksDispatch } from '../contexts/useTracks';
 import type { MidiClip } from '@audacity-ui/core';
 import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 

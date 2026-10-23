@@ -25,7 +25,8 @@ import {
 } from '@audacity-ui/components';
 import App from '../App';
 import { Canvas, type CanvasProps } from '../components/Canvas';
-import { TracksProvider, useTracksState } from '../contexts/TracksContext';
+import { useTracksState } from '../contexts/useTracks';
+import { TracksProvider } from '../contexts/TracksProvider';
 import type { Track } from '../contexts/TracksContext';
 import { SpectralSelectionProvider } from '../contexts/SpectralSelectionContext';
 import { getLastAudioManager, type AudioSpies } from './audioMock';

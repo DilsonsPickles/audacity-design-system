@@ -2,7 +2,7 @@ import React from 'react';
 import type { StoredProject } from '@audacity-ui/components';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import { getAllEffects } from '@audacity-ui/core';
-import { useTracksDispatch } from '../contexts/TracksContext';
+import { useTracksDispatch } from '../contexts/useTracks';
 import { getProject, getProjects, deleteProject } from '../utils/projectDatabase';
 import { deleteProject as adieuDeleteProject } from '../lib/adieu-client';
 import type { AdieuProjectSummary } from '../lib/adieu-client';

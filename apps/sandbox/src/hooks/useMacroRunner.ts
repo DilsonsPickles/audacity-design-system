@@ -1,6 +1,6 @@
 import { toast } from '@audacity-ui/components';
 import { useMacros } from '../contexts/MacrosContext';
-import { useTracks } from '../contexts/TracksContext';
+import { useTracks } from '../contexts/useTracks';
 import { runMacroSteps } from '../macros/macroActions';
 
 /**

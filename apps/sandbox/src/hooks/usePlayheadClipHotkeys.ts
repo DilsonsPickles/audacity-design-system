@@ -36,7 +36,7 @@
  */
 import React from 'react';
 import { announce } from '@audacity-ui/components';
-import { useTracks } from '../contexts/TracksContext';
+import { useTracks } from '../contexts/useTracks';
 import { dialogOwnsKeyboard } from '../utils/focusRouting';
 import { fadeTargets } from '../utils/fadeTargets';
 import { keyboardEditTargets } from '../utils/keyboardEditTargets';

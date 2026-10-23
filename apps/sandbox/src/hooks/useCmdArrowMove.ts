@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTracksDispatch, type Track } from '../contexts/TracksContext';
+import { type Track } from '../contexts/TracksContext';
+import { useTracksDispatch } from '../contexts/useTracks';
 import { pendingClipMoveResolution } from '../utils/pendingClipMoveResolution';
 import { provisionalKeyboardTrackIds } from '../utils/provisionalKeyboardTrackIds';
 

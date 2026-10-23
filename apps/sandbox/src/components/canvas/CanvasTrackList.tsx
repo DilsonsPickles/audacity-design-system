@@ -1,7 +1,8 @@
 import React from 'react';
 import { TrackNew, CLIP_CONTENT_OFFSET, scrollIntoViewIfNeeded, announce, useCollapseTransition, type SpectrogramScale, type ClipHandleHint } from '@audacity-ui/components';
 import { GROUP_COLLAPSE_MS, GROUP_COLLAPSE_EASING, computeGroupLayout, groupLabelIndent, type GroupRowLayout } from '@audacity-ui/core';
-import { useTracksDispatch, type Clip, type Track, type TimeSelection, type TracksAction } from '../../contexts/TracksContext';
+import { type Clip, type Track, type TimeSelection, type TracksAction } from '../../contexts/TracksContext';
+import { useTracksDispatch } from '../../contexts/useTracks';
 import { buildTrimParticipants } from '../../utils/trimParticipants';
 import { keyboardEditTargets } from '../../utils/keyboardEditTargets';
 import { fadeTargets, clampFadeSeconds } from '../../utils/fadeTargets';

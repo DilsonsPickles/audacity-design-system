@@ -12,7 +12,8 @@ import {
 import React from 'react';
 import { flushSync } from 'react-dom';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
-import { useTracksDispatch, type Track, type TimeSelection } from '../contexts/TracksContext';
+import { type Track, type TimeSelection } from '../contexts/TracksContext';
+import { useTracksDispatch } from '../contexts/useTracks';
 import { trackAudioExtent } from '../utils/trackAudioExtent';
 import { selectTrackExclusive, toggleTrackSelection } from '../utils/trackSelection';
 import type { EffectsPanelState, TrackContextMenuState } from '../hooks/useContextMenuState';

@@ -9,7 +9,7 @@ import { buildNewTrack } from '../utils/trackManagement';
 import type { TrackType } from '@audacity-ui/components';
 import { useLoopRegionContext } from '../contexts/LoopRegionContext';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
-import { useTracks } from '../contexts/TracksContext';
+import { useTracks } from '../contexts/useTracks';
 import type { Clip } from '../contexts/TracksContext';
 import { useClipProperties } from '../contexts/ClipPropertiesContext';
 import type { ClipboardState } from '../hooks/useKeyboardShortcuts';

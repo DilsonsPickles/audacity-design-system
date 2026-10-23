@@ -2,7 +2,7 @@ import React from 'react';
 import { WelcomeDialog, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, Dialog, DialogFooter, SignInActionBar, LabeledInput, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, PreferencesModal, PluginBrowserDialog, MacroBuilderDialog, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, VSTEffectOptionsDialog, AlertDialog, toast, type PreferencesState, type StoredProject } from '@audacity-ui/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { AccessibilityProfile } from '@audacity-ui/core';
-import { useTracks } from '../contexts/TracksContext';
+import { useTracks } from '../contexts/useTracks';
 import type { Label } from '../contexts/TracksContext';
 import type { AudioEngineContextValue } from '../contexts/AudioEngineContext';
 import type { CloudAudioFile } from '../utils/cloudProjects';

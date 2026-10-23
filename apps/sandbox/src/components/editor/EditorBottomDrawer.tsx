@@ -1,7 +1,8 @@
 import React from 'react';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import { MixerPanel, PianoRollPanel, PanelHeader, ContextMenu, ContextMenuItem, type MixerPanelChannel, type PanelHeaderTab, type ThemeTokens } from '@audacity-ui/components';
-import { useTracksDispatch, type TracksState } from '../../contexts/TracksContext';
+import { type TracksState } from '../../contexts/TracksContext';
+import { useTracksDispatch } from '../../contexts/useTracks';
 import { MIDI_INSTRUMENTS } from '../../contexts/AudioEngineContext';
 import type { EffectSelectorMenuState } from '../../hooks/useContextMenuState';
 import { MacrosDockPanel } from './MacrosDockPanel';

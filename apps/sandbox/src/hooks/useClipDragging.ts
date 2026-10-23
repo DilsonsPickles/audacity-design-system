@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { effectiveTrackHeight } from '../utils/trackFolders';
-import { ClipDragState, useTracksDispatch, Track } from '../contexts/TracksContext';
+import { ClipDragState, Track } from '../contexts/TracksContext';
+import { useTracksDispatch } from '../contexts/useTracks';
 import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 import { snapToClipEdges } from '../utils/snapToClipEdges';
 import { cloneClipsInPlace } from '../utils/cloneClipsInPlace';

@@ -1,7 +1,8 @@
 import React from 'react';
 import type { MutableRefObject } from 'react';
 import type { UseAudioSelectionReturn } from '@audacity-ui/components';
-import { useTracksDispatch, type Track, type TimeSelection } from '../contexts/TracksContext';
+import { type Track, type TimeSelection } from '../contexts/TracksContext';
+import { useTracksDispatch } from '../contexts/useTracks';
 import { calculateTrackYOffset } from '../utils/trackLayout';
 import { resolveTrackIndexFromY } from '../utils/canvasGeometry';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from '../constants/canvas';

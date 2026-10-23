@@ -1,7 +1,7 @@
 import React from 'react';
 import type { MenuItem } from '@audacity-ui/components';
 import { createMenuDefinitions } from '../data/menuDefinitions';
-import { useTracksDispatch } from '../contexts/TracksContext';
+import { useTracksDispatch } from '../contexts/useTracks';
 import type { Track, TracksState } from '../contexts/TracksContext';
 import type { EffectsPanelState } from './useContextMenuState';
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ProjectToolbar, type TransportToolbarProps } from '@audacity-ui/components';
 import { useDialogs } from '../contexts/DialogContext';
-import { useTracks } from '../contexts/TracksContext';
+import { useTracks } from '../contexts/useTracks';
 import { getProjects } from '../utils/projectDatabase';
 import type { StoredProject } from '@audacity-ui/components';
 

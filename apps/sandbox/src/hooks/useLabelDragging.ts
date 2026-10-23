@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { useTracksDispatch } from '../contexts/TracksContext';
+import { useTracksDispatch } from '../contexts/useTracks';
 import { snapToGrid, SnapOptions } from '../utils/snapToGrid';
 
 export interface LabelDragInfo {
