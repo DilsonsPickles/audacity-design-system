@@ -2,6 +2,7 @@ import { render, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
 import { TrackNew } from '../TrackNew';
+import { CLIP_CONTENT_OFFSET } from '../../constants';
 import { AccessibilityProfileProvider } from '../../contexts/AccessibilityProfileContext';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 
@@ -184,19 +185,20 @@ describe('trimming an unselected clip by its edge', () => {
     expect(onClipTrimEdge).not.toHaveBeenCalled();
   });
 
-  it('the edge zone and the fade CORNER ZONE share the edge: the corner is 32 square in the clip BODY\'s top corner, under the header, and UNDER the edge zone where the two overlap (2026-10-23)', () => {
+  it('the edge zone and the fade CORNER ZONE share the edge: the zone is 32 square at the top of the clip BODY, STRADDLING the fade\'s boundary — the clip\'s edge with no fade — and UNDER the edge zone where the two overlap (2026-10-23)', () => {
     // Until 2026-10-23 the hovered clip's fade HANDLE box started where
     // the zone ended (6px in); now an unselected clip fades by a corner
-    // zone instead, which spans the clip's first and last 32px — from
-    // the header's bottom, as the edge zone's row does: the header is
-    // the clip drag's — and so covers the edge zone's inside reach; the
-    // edge zone sits ABOVE it (440 over 439), so the edge's own 6px is
-    // still the trim, and the rest of the corner is the fade
+    // zone instead, 16px either side of the dashed line ("the 32px hit
+    // area straddles the dashed line") — from the header's bottom, as
+    // the edge zone's row does: the header is the clip drag's — and so
+    // covers the edge zone's inside reach; the edge zone sits ABOVE it
+    // (440 over 439), so the edge's own 11px is still the trim, and the
+    // rest of the zone is the fade
     const { container, zone, clipBox, span } = renderTrack();
     const box = clipBox(2);
     const corner = (side: 'in' | 'out') => container.querySelector<HTMLElement>(`[data-fade-zone="${side}"][data-clip-ref="2"]`)!;
-    expect(span(corner('in'))).toEqual({ left: box.left, right: box.left + 32 });
-    expect(span(corner('out'))).toEqual({ left: box.right - 32, right: box.right });
+    expect(span(corner('in'))).toEqual({ left: box.left - 16, right: box.left + 16 });
+    expect(span(corner('out'))).toEqual({ left: box.right - 16, right: box.right + 16 });
     for (const side of ['in', 'out'] as const) {
       expect(corner(side).style.top).toBe('20px');
       expect(corner(side).style.height).toBe('32px');
@@ -213,6 +215,25 @@ describe('trimming an unselected clip by its edge', () => {
     expect(Number(corner('in').style.zIndex)).toBe(439);
     expect(Number(corner('out').style.zIndex)).toBe(439);
     expect(zoneZ).toBeGreaterThan(439);
+  });
+
+  it('a corner zone FOLLOWS its fade: with a fade it straddles the dashed line, not the clip\'s edge (2026-10-23)', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 7, name: 'Faded', start: 1, duration: 4, fadeIn: 1, fadeOut: 0.5 }]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+          onClipTrimEdge={vi.fn()}
+        />
+      </Providers>,
+    );
+    const left = (side: string) => parseFloat((container.querySelector(`[data-fade-zone="${side}"][data-clip-ref="7"]`) as HTMLElement).style.left);
+    const clipLeft = CLIP_CONTENT_OFFSET + 100;
+    expect(left('in')).toBe(clipLeft + 100 - 16); // the fade-in's boundary, 1 s in
+    expect(left('out')).toBe(clipLeft + 400 - 50 - 16); // the fade-out's, 0.5 s before the end
   });
 
   it('corner zones are the UNSELECTED clip\'s: none on a selected clip, at the 44px floor, on a clip narrower than 64px, without fade editing, or on a clip being recorded (2026-10-23)', () => {

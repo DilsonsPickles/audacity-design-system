@@ -2634,9 +2634,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // THE CORNER ZONES (2026-10-23, "unselected clips will have a 32px
   // square hit area in the top corners and when the user moves their
   // cursor into the space, the cursor will change to the fade in/out
-  // icon"): an UNSELECTED clip shows no fade handles; each of its BODY's
-  // top corners — under the header, which stays the clip drag's — is a
-  // 32×32 zone wearing the fade cursor (Track.css), and a
+  // icon"): an UNSELECTED clip shows no fade handles; at the top of its
+  // BODY — under the header, which stays the clip drag's — a 32×32 zone
+  // straddles each fade's boundary (the dashed line; the clip's edge
+  // with no fade), wearing the fade cursor (Track.css), and a
   // press there is the fade length drag — the handle's own gesture,
   // beginFadeLengthDrag — so the clip fades without being selected, as
   // it trims by its edge zone. At track level under the edge zones
@@ -2663,6 +2664,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const clipWidth = clip.duration * pixelsPerSecond;
       if (clipWidth < 2 * ZONE) continue;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
+      // THE ZONE STRADDLES THE FADE'S BOUNDARY — the dashed line — at
+      // the top of the body (the same day, "the 32px hit area straddles
+      // the dashed line at the top of the clip body"): 16px either side
+      // of where the curve meets the body, so it follows the fade as
+      // the handle does; with no fade that is the clip's edge, where the
+      // edge zone (above it) keeps its own 11px for the trim.
+      const { fadeIn: fadeInSec, fadeOut: fadeOutSec } = clipQuickFadeGeometry(clip);
+      const boundaryX = { in: fadeInSec * pixelsPerSecond, out: clipWidth - fadeOutSec * pixelsPerSecond } as const;
       for (const side of ['in', 'out'] as const) {
         nodes.push(
           <div
@@ -2688,7 +2697,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               // not the clip's (the same day, "that'll clash with
               // header": the header is the clip drag's)
               top: `${CLIP_HEADER_H}px`,
-              left: `${side === 'in' ? xBase : xBase + clipWidth - ZONE}px`,
+              left: `${Math.round(xBase + boundaryX[side] - ZONE / 2)}px`,
               width: `${ZONE}px`,
               height: `${Math.max(0, Math.min(ZONE, height - CLIP_HEADER_H))}px`,
               zIndex: 439,
