@@ -7,7 +7,8 @@ import { render, screen, cleanup, waitFor, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MuseHubProvider, useMuseHub } from '../../contexts/MuseHubContext';
 import { AdieuProvider, useAdieu } from '../../contexts/AdieuContext';
-import { MuseIdProvider, useMuseId } from '../../contexts/MuseIdContext';
+import { MuseIdProvider } from '../../contexts/MuseIdContext';
+import { useMuseId } from '../../contexts/useMuseId';
 import { createMuseIdMock, type MuseIdMockControls } from '../../__tests__/museIdMock';
 import { MarketplaceModal } from '../MarketplaceModal';
 

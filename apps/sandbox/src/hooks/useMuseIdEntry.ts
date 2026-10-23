@@ -68,7 +68,8 @@ import {
   type ServiceExchangeResult,
   type ServiceName,
 } from '../lib/muse-id-client';
-import { MuseIdSignInCancelledError, useMuseId } from '../contexts/MuseIdContext';
+import { useMuseId } from '../contexts/useMuseId';
+import { MuseIdSignInCancelledError } from '../contexts/museIdErrors';
 
 export interface MuseIdEntryTokens {
   accessToken: string;

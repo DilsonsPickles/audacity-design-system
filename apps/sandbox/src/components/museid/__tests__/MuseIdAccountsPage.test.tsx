@@ -7,7 +7,8 @@ import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MuseHubProvider, useMuseHub } from '../../../contexts/MuseHubContext';
 import { AdieuProvider, useAdieu } from '../../../contexts/AdieuContext';
-import { MuseIdProvider, useMuseId } from '../../../contexts/MuseIdContext';
+import { MuseIdProvider } from '../../../contexts/MuseIdContext';
+import { useMuseId } from '../../../contexts/useMuseId';
 import { createMuseIdMock, type MuseIdMockControls } from '../../../__tests__/museIdMock';
 import { MuseIdAccountsPage } from '../MuseIdAccountsPage';
 import { adoptTokens as adoptMuseHubTokens } from '../../../lib/musehub-client';

@@ -19,7 +19,7 @@
 
 import React from 'react';
 import { Button, Icon } from '@audacity-ui/components';
-import { useMuseId } from '../../contexts/MuseIdContext';
+import { useMuseId } from '../../contexts/useMuseId';
 import { useMuseHub } from '../../contexts/MuseHubContext';
 import { useAdieu } from '../../contexts/AdieuContext';
 

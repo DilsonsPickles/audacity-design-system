@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { MarketplaceEffect } from '../MarketplaceModal';
 import { useMuseHub, useSignedIn, useWalletBalance } from '../../contexts/MuseHubContext';
-import { useMuseId } from '../../contexts/MuseIdContext';
+import { useMuseId } from '../../contexts/useMuseId';
 import './SignInRequiredPrompt.css';
 
 type Phase = 'idle' | 'processing' | 'success';

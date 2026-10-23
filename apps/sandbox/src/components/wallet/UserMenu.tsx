@@ -5,7 +5,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMuseHub, useUser } from '../../contexts/MuseHubContext';
-import { useMuseId } from '../../contexts/MuseIdContext';
+import { useMuseId } from '../../contexts/useMuseId';
 import './UserMenu.css';
 
 const POPOVER_WIDTH = 260;

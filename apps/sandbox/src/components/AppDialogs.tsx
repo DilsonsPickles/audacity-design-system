@@ -20,7 +20,7 @@ import { findMacroRowButton } from '../utils/focusRouting';
 import { MuseIdAccountsPage } from './museid/MuseIdAccountsPage';
 import { useContextMenus } from '../contexts/ContextMenuContext';
 import { useAdieu, SignInCancelledError } from '../contexts/AdieuContext';
-import { useMuseId } from '../contexts/MuseIdContext';
+import { useMuseId } from '../contexts/useMuseId';
 import {
   saveProject as adieuSaveProject,
   ADIEU_BASE,

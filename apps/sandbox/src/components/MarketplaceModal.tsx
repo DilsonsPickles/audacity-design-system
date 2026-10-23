@@ -6,7 +6,7 @@ import { MuseWallet } from './wallet/MuseWallet';
 import { UserMenu } from './wallet/UserMenu';
 import { SignInRequiredPrompt } from './wallet/SignInRequiredPrompt';
 import { useSignedIn, useMuseHub } from '../contexts/MuseHubContext';
-import { useMuseId } from '../contexts/MuseIdContext';
+import { useMuseId } from '../contexts/useMuseId';
 import { getPlugins, type MuseHubPlugin } from '../lib/musehub-client';
 import './MarketplaceModal.css';
 

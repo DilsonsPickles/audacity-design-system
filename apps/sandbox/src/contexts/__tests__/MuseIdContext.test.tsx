@@ -15,7 +15,8 @@ import { renderHook, waitFor, cleanup, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MuseHubProvider, useMuseHub } from '../MuseHubContext';
 import { AdieuProvider, useAdieu } from '../AdieuContext';
-import { MuseIdProvider, useMuseId } from '../MuseIdContext';
+import { MuseIdProvider } from '../MuseIdContext';
+import { useMuseId } from '../useMuseId';
 import { createMuseIdMock, type MuseIdMockControls, ADIEU_BASE, MOOSEHUB_BASE } from '../../__tests__/museIdMock';
 
 afterEach(cleanup);

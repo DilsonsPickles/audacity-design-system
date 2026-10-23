@@ -27,7 +27,7 @@
 // has yet on first visit to this page.
 
 import React from 'react';
-import { useMuseId } from '../../contexts/MuseIdContext';
+import { useMuseId } from '../../contexts/useMuseId';
 import { useMuseHub } from '../../contexts/MuseHubContext';
 import { useAdieu } from '../../contexts/AdieuContext';
 import type { ServiceName } from '../../lib/muse-id-client';

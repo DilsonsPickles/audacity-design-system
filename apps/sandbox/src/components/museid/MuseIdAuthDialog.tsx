@@ -38,7 +38,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useMuseId } from '../../contexts/MuseIdContext';
+import { useMuseId } from '../../contexts/useMuseId';
 import {
   beginBrowserAuthorize,
   clearBrowserAuthorizeState,
