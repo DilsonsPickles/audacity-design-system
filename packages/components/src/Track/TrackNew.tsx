@@ -2407,8 +2407,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // same for itself.)
   // (…and, DIMMED, for a clip whose TRIM or STRETCH handle the keyboard
   // holds — the whole set in view, 2026-10-12: `fadeHandleGhosted`.)
+  // THE FADE LENGTH HANDLES SHOW ON SELECTED CLIPS (2026-10-23, "fade
+  // handles only show on selected clips" — reversing 2026-10-06's
+  // hover-only rule): a selected clip wears them whatever the pointer
+  // does; an UNSELECTED clip shows none and fades by its CORNER ZONES
+  // instead (renderFadeCornerZones — the edge zone's model). A drag in
+  // hand and a keyboard-held handle still mount them.
   const fadeHandleActive = clips
-    .filter((c) => (fadeHoverClipId === c.id || fadeDragClipId === c.id || fadeKeyFocus?.clipId === c.id || handleKeyFocus?.clipId === c.id) && !hidesHandlesOf(c.id))
+    .filter((c) => (!!c.selected || fadeDragClipId === c.id || fadeKeyFocus?.clipId === c.id || handleKeyFocus?.clipId === c.id) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
   // A fade handle mounted ONLY because T / S holds one of the clip's
   // other handles: drawn dimmed, taking no pointer (user decision
@@ -2417,6 +2423,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const fadeHandleGhosted = (clipId: string | number) =>
     handleKeyFocus?.clipId === clipId && fadeHoverClipId !== clipId && fadeDragClipId !== clipId && fadeKeyFocus?.clipId !== clipId;
   const leavingFadeHandles = useLeavingKeys(fadeHandleActive);
+  // THE DASHED GUIDELINES ALSO SHOW ON AN UNSELECTED CLIP UNDER THE
+  // POINTER (2026-10-23, "on an unselected clip ON hover we need to see
+  // the dashed line"): the lining-up aid without the handles. Their own
+  // soft exit, since the handles' set no longer follows the pointer.
+  const hoverGuideActive = clips
+    .filter((c) => !fadeHandleActive.includes(String(c.id)) && fadeHoverClipId === c.id && !hidesHandlesOf(c.id))
+    .map((c) => String(c.id));
+  const leavingHoverGuides = useLeavingKeys(hoverGuideActive);
   const buriedActive = clips
     .filter((c) => handlesFollow(c) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
@@ -2617,6 +2631,154 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // so they sit ABOVE the fade veils (z 450); inside the clip wrapper
   // they were trapped under its low stacking context and the veil
   // sheeted over them.
+  // THE CORNER ZONES (2026-10-23, "unselected clips will have a 32px
+  // square hit area in the top corners and when the user moves their
+  // cursor into the space, the cursor will change to the fade in/out
+  // icon"): an UNSELECTED clip shows no fade handles; each of its BODY's
+  // top corners — under the header, which stays the clip drag's — is a
+  // 32×32 zone wearing the fade cursor (Track.css), and a
+  // press there is the fade length drag — the handle's own gesture,
+  // beginFadeLengthDrag — so the clip fades without being selected, as
+  // it trims by its edge zone. At track level under the edge zones
+  // (440), so the edge's own 6px stays the trim; above the clips, so no
+  // clip drag or time selection starts from a corner. A right-click is
+  // the fade's menu. None at the 44px floor (no fade controls there),
+  // none on a clip too narrow for two, none while a drag hides handles.
+  const renderFadeCornerZones = () => {
+    if (isMidiTrack || !onClipFadeChange || clipDragInProgress) return null;
+    if (height <= FADE_CONTROLS_MIN_CLIP_HEIGHT) return null;
+    const ZONE = 32;
+    const CLIP_HEADER_H = 20;
+    const nodes: React.ReactNode[] = [];
+    for (const clip of clips) {
+      if (clip.selected || clip.id === recordingClipId || hidesHandlesOf(clip.id)) continue;
+      // A keyboard-held handle has the clip's handles up: no zones. A
+      // zone's OWN drag keeps it mounted — the zone holds the pointer
+      // capture, and unmounting it on the press (as a first cut did)
+      // orphaned the gesture: no pointerup ever reached it, the drag
+      // state never cleared, and the handles, the hidden zones and the
+      // status hint all stuck ("fade handles seem to be getting stuck",
+      // 2026-10-23). The handles mount above it (455 over 439).
+      if (fadeKeyFocus?.clipId === clip.id || handleKeyFocus?.clipId === clip.id) continue;
+      const clipWidth = clip.duration * pixelsPerSecond;
+      if (clipWidth < 2 * ZONE) continue;
+      const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
+      for (const side of ['in', 'out'] as const) {
+        nodes.push(
+          <div
+            key={`fade-zone-${clip.id}-${side}`}
+            className={`track-fade-zone track-fade-zone--${side}`}
+            data-fade-zone={side}
+            data-clip-ref={clip.id}
+            aria-hidden="true"
+            {...withHint(fadeHoverProps(clip.id), 'fade-length')}
+            onContextMenu={(e) => {
+              if (!onFadeContextMenu) return;
+              e.preventDefault();
+              e.stopPropagation();
+              onFadeContextMenu(clip.id, side, e.clientX, e.clientY);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => beginFadeLengthDrag(clip, side, e)}
+            style={{
+              position: 'absolute',
+              // In the clip BODY's top corners, under the 20px header —
+              // not the clip's (the same day, "that'll clash with
+              // header": the header is the clip drag's)
+              top: `${CLIP_HEADER_H}px`,
+              left: `${side === 'in' ? xBase : xBase + clipWidth - ZONE}px`,
+              width: `${ZONE}px`,
+              height: `${Math.max(0, Math.min(ZONE, height - CLIP_HEADER_H))}px`,
+              zIndex: 439,
+            }}
+          />,
+        );
+      }
+    }
+    return nodes.length > 0 ? nodes : null;
+  };
+
+  /** A fade LENGTH drag from the press on `el` — the corner handle's, and
+   *  since 2026-10-23 the unselected clip's corner ZONE's: one gesture,
+   *  two doors. Relative: the boundary moves by the pointer's travel. */
+  const beginFadeLengthDrag = (clip: TrackClip, side: 'in' | 'out', e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    e.preventDefault();
+    const { windowLen, fadeIn: fadeInSec, fadeOut: fadeOutSec } = clipQuickFadeGeometry(clip);
+    const handleEl = e.currentTarget as HTMLElement;
+    try { handleEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
+    setFadeHoverClipId(clip.id); // a press on it proves the pointer is here
+    setFadeDragClipId(clip.id);
+    setFadeDragSide(side);
+    onFadeDragChange?.(clip.id);
+    // The clip is static during a fade drag, so the fades
+    // captured here stay valid for the session. The drag is
+    // RELATIVE: the boundary moves by the pointer's travel from
+    // the press, so the handle stays under the pointer wherever
+    // on it the press landed (it used to put the boundary
+    // itself under the pointer, a body's width away from the
+    // handle in hand).
+    // The handle is EXTENT ONLY (2026-09-21: "keep them
+    // separate") — the midpoint dot owns the shape.
+    const ownFade = side === 'in' ? fadeInSec : fadeOutSec;
+    const pressX = e.clientX;
+    const clipEnd = clip.start + clip.duration;
+    // The whole window: the opposite fade is no cap — pulled
+    // into, it gives way (the host's reducer shrinks it;
+    // 2026-10-06, "have the other one pushed out of the way")
+    const maxSeconds = windowLen;
+    const onMove = (ev: PointerEvent) => {
+      const travel = (ev.clientX - pressX) / pixelsPerSecond;
+      let seconds = ownFade + (side === 'in' ? travel : -travel);
+      // Grid snap: it is the fade's BOUNDARY, in project time,
+      // that lands on the grid — not its length. Shift INVERTS
+      // the host's switch, read live on each move, as a clip
+      // drag's does (2026-10-01; it was Alt-to-bypass)
+      let snappedTo: number | null = null;
+      let snappedKind: 'grid' | 'alignment' | null = null;
+      const snapNow = ev.shiftKey ? !snapEnabled : snapEnabled;
+      // Shift with snapping ON is no snap at all — not even the
+      // clip-edge alignment that stands in for the grid when
+      // the switch is off (the clip drag's rule, 2026-10-01)
+      const noSnapAtAll = ev.shiftKey && snapEnabled;
+      const rawBoundary = side === 'in' ? clip.start + seconds : clipEnd - seconds;
+      // A target the fade cannot reach (past its limits) is
+      // not a snap: keep the pointer's own value there
+      const take = (boundary: number, kind: 'grid' | 'alignment') => {
+        const snappedSeconds = side === 'in' ? boundary - clip.start : clipEnd - boundary;
+        if (snappedSeconds < 0 || snappedSeconds > maxSeconds) return;
+        seconds = snappedSeconds;
+        snappedTo = boundary;
+        snappedKind = kind;
+      };
+      if (snapTime && snapNow) {
+        take(snapTime(rawBoundary), 'grid');
+      } else if (alignFadeBoundary && !noSnapAtAll) {
+        // Alignment: the boundary magnetically meets a clip
+        // edge on another track, as a clip's edges do
+        const edge = alignFadeBoundary(rawBoundary, trackIndex);
+        if (edge !== null) take(edge, 'alignment');
+      }
+      // Clamp to the free window: a quick fade never overlaps
+      // a crossfade (or the opposite quick fade)
+      seconds = Math.max(0, Math.min(maxSeconds, seconds));
+      if (seconds < 0.02) seconds = 0; // snap tiny fades away
+      onClipFadeChange?.(clip.id, side, seconds);
+      if (snapTime || alignFadeBoundary) onFadeSnapGuideline?.(snappedTo, snappedKind);
+    };
+    bindCapturedDrag(handleEl, onMove, (ev) => {
+      setFadeDragClipId(null);
+      setFadeDragSide(null);
+      onFadeDragChange?.(null);
+      settleHint(handleEl, ev);
+      settleFadeHover(clip.id, ev, handleEl);
+      if (snapTime || alignFadeBoundary) onFadeSnapGuideline?.(null, null);
+    });
+  };
+
   const renderFadeHandles = () => {
     // (A clip drag empties fadeHandleActive via hidesHandlesOf; the
     // leaving ones still get their fade out)
@@ -2677,7 +2839,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // Active, or on its way out (the soft exit)
       const clipActive = fadeHandleActive.includes(String(clip.id));
       const leaving = !clipActive && leavingFadeHandles.has(String(clip.id));
-      if (!clipActive && !leaving) continue;
+      // An UNSELECTED clip under the pointer: its guidelines alone
+      // (2026-10-23), with their own exit tail
+      const hoverGuide = !clipActive && hoverGuideActive.includes(String(clip.id));
+      const hoverGuideLeaving = !clipActive && !hoverGuide && leavingHoverGuides.has(String(clip.id));
+      if (!clipActive && !leaving && !hoverGuide && !hoverGuideLeaving) continue;
+      const showHandles = clipActive || leaving;
       const ghosted = clipActive && fadeHandleGhosted(clip.id);
       const clipWidth = clip.duration * pixelsPerSecond;
       const keyHeld = fadeKeyFocus?.clipId === clip.id;
@@ -2880,80 +3047,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // must not bubble into it (mirrors the trim handles)
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => {
-              if (e.button !== 0) return;
-              e.stopPropagation();
-              e.preventDefault();
-              const handleEl = e.currentTarget as HTMLElement;
-              try { handleEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
-              setFadeHoverClipId(clip.id); // a press on it proves the pointer is here
-              setFadeDragClipId(clip.id);
-              setFadeDragSide(side);
-              onFadeDragChange?.(clip.id);
-              // The clip is static during a fade drag, so the fades
-              // captured here stay valid for the session. The drag is
-              // RELATIVE: the boundary moves by the pointer's travel from
-              // the press, so the handle stays under the pointer wherever
-              // on it the press landed (it used to put the boundary
-              // itself under the pointer, a body's width away from the
-              // handle in hand).
-              // The handle is EXTENT ONLY (2026-09-21: "keep them
-              // separate") — the midpoint dot owns the shape.
-              const ownFade = side === 'in' ? fadeInSec : fadeOutSec;
-              const pressX = e.clientX;
-              const clipEnd = clip.start + clip.duration;
-              // The whole window: the opposite fade is no cap — pulled
-              // into, it gives way (the host's reducer shrinks it;
-              // 2026-10-06, "have the other one pushed out of the way")
-              const maxSeconds = windowLen;
-              const onMove = (ev: PointerEvent) => {
-                const travel = (ev.clientX - pressX) / pixelsPerSecond;
-                let seconds = ownFade + (side === 'in' ? travel : -travel);
-                // Grid snap: it is the fade's BOUNDARY, in project time,
-                // that lands on the grid — not its length. Shift INVERTS
-                // the host's switch, read live on each move, as a clip
-                // drag's does (2026-10-01; it was Alt-to-bypass)
-                let snappedTo: number | null = null;
-                let snappedKind: 'grid' | 'alignment' | null = null;
-                const snapNow = ev.shiftKey ? !snapEnabled : snapEnabled;
-                // Shift with snapping ON is no snap at all — not even the
-                // clip-edge alignment that stands in for the grid when
-                // the switch is off (the clip drag's rule, 2026-10-01)
-                const noSnapAtAll = ev.shiftKey && snapEnabled;
-                const rawBoundary = side === 'in' ? clip.start + seconds : clipEnd - seconds;
-                // A target the fade cannot reach (past its limits) is
-                // not a snap: keep the pointer's own value there
-                const take = (boundary: number, kind: 'grid' | 'alignment') => {
-                  const snappedSeconds = side === 'in' ? boundary - clip.start : clipEnd - boundary;
-                  if (snappedSeconds < 0 || snappedSeconds > maxSeconds) return;
-                  seconds = snappedSeconds;
-                  snappedTo = boundary;
-                  snappedKind = kind;
-                };
-                if (snapTime && snapNow) {
-                  take(snapTime(rawBoundary), 'grid');
-                } else if (alignFadeBoundary && !noSnapAtAll) {
-                  // Alignment: the boundary magnetically meets a clip
-                  // edge on another track, as a clip's edges do
-                  const edge = alignFadeBoundary(rawBoundary, trackIndex);
-                  if (edge !== null) take(edge, 'alignment');
-                }
-                // Clamp to the free window: a quick fade never overlaps
-                // a crossfade (or the opposite quick fade)
-                seconds = Math.max(0, Math.min(maxSeconds, seconds));
-                if (seconds < 0.02) seconds = 0; // snap tiny fades away
-                onClipFadeChange?.(clip.id, side, seconds);
-                if (snapTime || alignFadeBoundary) onFadeSnapGuideline?.(snappedTo, snappedKind);
-              };
-              bindCapturedDrag(handleEl, onMove, (ev) => {
-                setFadeDragClipId(null);
-                setFadeDragSide(null);
-                onFadeDragChange?.(null);
-                settleHint(handleEl, ev);
-                settleFadeHover(clip.id, ev, handleEl);
-                if (snapTime || alignFadeBoundary) onFadeSnapGuideline?.(null, null);
-              });
-            }}
+            onPointerDown={(e) => beginFadeLengthDrag(clip, side, e)}
             style={{
               position: 'absolute',
               top: FADE_HANDLE_TOP,
@@ -2999,8 +3093,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // Held by the KEYBOARD alone (F, no pointer on the clip): BOTH fade
       // handles, as the pair of trim handles for T (2026-10-12, "we can
       // show both sides at the same time")
-      if (!crossfadedEdges.has(`${clip.id}:in`) && roomFor(fadeInSec)) nodes.push(handle('in'));
-      if (!crossfadedEdges.has(`${clip.id}:out`) && roomFor(fadeOutSec)) nodes.push(handle('out'));
+      if (showHandles && !crossfadedEdges.has(`${clip.id}:in`) && roomFor(fadeInSec)) nodes.push(handle('in'));
+      if (showHandles && !crossfadedEdges.has(`${clip.id}:out`) && roomFor(fadeOutSec)) nodes.push(handle('out'));
       // A dashed line drops from each fade's boundary — where the curve
       // meets the body's top — to the clip's BOTTOM, so the boundary can
       // be lined up against the waveform (the dev's lining-up aid, user
@@ -3021,15 +3115,24 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // the curve itself (clipBodyGeometry; "same for the dashed line",
       // 2026-10-13) — to the clip's bottom
       const guideTop = clipBodyGeometry(height, headerShownFor(clip.id)).bodyTop - 1;
+      // The line leaves with the handles — or, hover-only, with the pointer
+      const guideLeaving = showHandles ? leaving : hoverGuideLeaving;
       for (const side of guidelineSides) {
         const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
+        // WHILE THE FADE IS BEING EDITED — its length handle or its shape
+        // handle in hand — the line is BLACK AND WHITE alternating dashes
+        // (2026-10-23, "when editing the curve, the dashed line should go
+        // black/white alternating dashes"): the focus frame's contrast
+        // rule, so it reads on any waveform; at rest the 45% ink
+        const editing = (fadeDragClipId === clip.id && fadeDragSide === side) || shapeDrag === `${clip.id}:${side}`;
         nodes.push(
           <div
             key={`fade-guideline-${clip.id}-${side}`}
             className="track-fade-guideline"
             data-fade-guideline={side}
             data-fade-clip={clip.id}
-            data-leaving={leaving ? 'true' : undefined}
+            data-editing={editing ? 'true' : undefined}
+            data-leaving={guideLeaving ? 'true' : undefined}
             style={{
               position: 'absolute',
               top: guideTop,
@@ -3418,6 +3521,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         {renderFadeCurveOverlays()}
         {renderCrossfadeNodes()}
         {renderQuickFadeNodes()}
+        {renderFadeCornerZones()}
         {renderFadeHandles()}
         {renderBuriedEdgeHandles()}
         {renderEnvelopeInteractionLayers()}

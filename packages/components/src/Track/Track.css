@@ -112,9 +112,32 @@
   background-size: 1px 8px;
 }
 
+/* While its fade is being EDITED — length or shape handle in hand —
+   the line is black and white alternating dashes (2026-10-23): the
+   focus frame's contrast rule, so it reads on any waveform. */
+.track-fade-guideline[data-editing] {
+  background-image: repeating-linear-gradient(to bottom, #000000 0 4px, #ffffff 4px 8px);
+}
+
 /* Edge trim zones — the invisible strips ON an unselected clip's edges.
    The cursor is the trim handles' own (Clip.css), so it previews the
    same action; the hotspots are explained there and must match. */
+/* An UNSELECTED clip's fade corner zones (2026-10-23): the body's top
+   corners wear the FADE HANDLE as the cursor — the same black rounded
+   body, white halo and white curve as the handle itself ("the cursor
+   should change to the fade in handle"), drawn at 1x and 2x so it is
+   crisp on a Retina display; the hotspot is the body's centre. A press
+   is the fade length drag. */
+.track-fade-zone--in {
+  cursor: -webkit-image-set(url('../assets/cursors/FadeIn.png') 1x, url('../assets/cursors/FadeIn@2x.png') 2x) 16 16, pointer;
+  cursor: image-set(url('../assets/cursors/FadeIn.png') 1x, url('../assets/cursors/FadeIn@2x.png') 2x) 16 16, pointer;
+}
+
+.track-fade-zone--out {
+  cursor: -webkit-image-set(url('../assets/cursors/FadeOut.png') 1x, url('../assets/cursors/FadeOut@2x.png') 2x) 16 16, pointer;
+  cursor: image-set(url('../assets/cursors/FadeOut.png') 1x, url('../assets/cursors/FadeOut@2x.png') 2x) 16 16, pointer;
+}
+
 .track-edge-trim--left {
   cursor: url('../assets/cursors/ClipTrimLeft.png') 15 16, ew-resize;
 }
