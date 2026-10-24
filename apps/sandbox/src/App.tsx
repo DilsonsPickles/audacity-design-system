@@ -1199,7 +1199,13 @@ function CanvasDemoContent() {
           />
         </div>
       ) : (
-        <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0 }}>
+        // The open project's id, for whoever needs to know the project
+        // bootstrap has SETTLED: createNewProject awaits an IndexedDB write
+        // before it dispatches RESET_STATE and sets the id, and the editor
+        // renders before any of that — the integration tests seed tracks
+        // right after opening the Project tab and were wiped by the late
+        // RESET_STATE on a slow CI runner (2026-10-25). They wait for this.
+        <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0 }} data-project-id={currentProjectId ?? undefined}>
         <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <EditorLayout
           activeMenuItem={activeMenuItem}

@@ -193,13 +193,15 @@ async function gotoProject(rendered: ReturnType<typeof renderApp>): Promise<void
   // file that seeds tracks right after gotoProject() races this: if
   // RESET_STATE lands after the seed, it silently wipes the tracks back
   // to empty (observed as intermittent `trackPanelNames(container) ===
-  // []` failures). Yielding a real macrotask here lets the pending
-  // IndexedDB write + RESET_STATE dispatch settle before any test
-  // proceeds — this is a pre-existing async hazard in the app's own
-  // project-bootstrap code, not something specific to the actions this
-  // suite drives.
+  // []` failures). A fixed 250ms yield covered it locally and lost on a
+  // slow CI runner (three "Track management" tests, 2026-10-23/25), so
+  // since 2026-10-25 this WAITS FOR THE BOOTSTRAP TO SETTLE: App stamps
+  // the editor wrapper with `data-project-id` once createNewProject has
+  // dispatched RESET_STATE and set the id — a deterministic signal — and
+  // one macrotask after it lets that dispatch's render flush.
+  await waitFor(() => expect(container.querySelector('[data-project-id]')).toBeTruthy(), { timeout: 5000 });
   await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 }
 
