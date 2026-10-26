@@ -1644,7 +1644,19 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             zIndex: 450,
           }}
         >
-          <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ display: 'block', overflow: 'visible' }}>
+          {/* THE CURVE GROWS OUT OF THE EDGE (2026-10-27, "can it
+              animate"): the svg is anchored to the clip's edge and its
+              WIDTH runs 0 → the full sliver (Track.css, @starting-style),
+              so the curve stretches out as a dragged fade would — the
+              stroke is non-scaling, so it keeps its weight while it grows;
+              on the way out it shrinks back into the edge. */}
+          <svg
+            className="track-fade-peek__curve"
+            height="100%"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            style={{ position: 'absolute', top: 0, [side === 'in' ? 'left' : 'right']: 0, display: 'block', overflow: 'visible' }}
+          >
             <path d={fadeAreaAbovePath(side, 64, DEFAULT_QUICK_FADE_SHAPE)} fill="rgba(0, 0, 0, 0.2)" stroke="none" />
             <path d={fadeCurvePath(side, 64, DEFAULT_QUICK_FADE_SHAPE)} fill="none" stroke="rgba(0, 0, 0, 0.45)" strokeWidth={1.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
           </svg>
