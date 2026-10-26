@@ -6,7 +6,7 @@ import type { SpectrogramScale } from '../ClipBody/ClipBody';
 import { EnvelopeInteractionLayer } from '../EnvelopeInteractionLayer/EnvelopeInteractionLayer';
 import { generateSpeechWaveform } from '../utils/waveform';
 import { CrossfadeGhost } from './CrossfadeGhost';
-import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveFades, fadeAreaAbovePath, fadeAreaBelowPath, fadeCurvePath, fadeHandleOf, clampFadeHandle, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
+import { computeCrossfades, computeFadeCurves, crossfadeIntersection, quickFadePieces, fadeAreaAbovePath, fadeAreaBelowPath, fadeCurvePath, fadeHandleOf, clampFadeHandle, quickFadeWindows, type FadeShape, localFadeRegionsByClip, DEFAULT_CROSSFADE_SHAPE, DEFAULT_QUICK_FADE_SHAPE } from '../utils/clipCrossfades';
 import { computeEdgeHitZones, EDGE_HIT_INSIDE_PX } from '../utils/clipEdgeHitZones';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
@@ -265,6 +265,10 @@ export interface TrackClip {
    *  intersection node's state; see utils/clipCrossfades.ts) */
   crossfadeInShape?: number | 'linear';
   crossfadeOutShape?: number | 'linear';
+  /** A FADE PIECE — the part of a longer fade curve a split left on this
+   *  clip (see CrossfadeClipLike in utils/clipCrossfades.ts) */
+  fadeInLead?: number;
+  fadeOutTail?: number;
 }
 
 export interface TrackProps {
@@ -1485,6 +1489,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         const fade = side === 'in' ? eff.fadeIn : eff.fadeOut;
         if (fade <= 0) continue;
         if (crossfadedEdges.has(`${clip.id}:${side}`)) continue;
+        // A FADE PIECE has no shape dot (2026-10-27): its curve's handle
+        // may lie outside the slice this clip shows. Its length handle
+        // still drags, and makes it an ordinary fade again.
+        if (side === 'in' ? eff.pieceIn : eff.pieceOut) continue;
         const dragKey = `${clip.id}:${side}`;
         // HOVER ONLY (user decision 2026-09-29): selection alone does
         // not show the shape handle — it would sit on every selected
@@ -1780,7 +1788,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const editing = region.authored
         ? shapeDrag === `${region.clipId}:${region.side}`
         : crossfadeOf != null && crossfadeDrag === `${crossfadeOf.outgoingClipId}-${crossfadeOf.incomingClipId}`;
-      const curvePath = fadeCurvePath(region.side, 64, region.shape);
+      const curvePath = fadeCurvePath(region.side, 64, region.shape, region.span);
       const belowClipId = `${fadeClipIdBase}-below-${region.clipId}-${region.side}`;
       // The LINE shows only while its clip is selected, focused, under
       // the pointer, or being edited (2026-10-06, "what if the line
@@ -1826,7 +1834,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
                 above both, takes both dims. */}
             <path
               data-fade-dim={region.side}
-              d={fadeAreaAbovePath(region.side, 64, region.shape)}
+              d={fadeAreaAbovePath(region.side, 64, region.shape, region.span)}
               fill={FADE_DIM_FILL}
               stroke="none"
             />
@@ -1834,7 +1842,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               <>
                 <defs>
                   <clipPath id={belowClipId}>
-                    <path d={fadeAreaBelowPath(region.side, 64, region.shape)} />
+                    <path d={fadeAreaBelowPath(region.side, 64, region.shape, region.span)} />
                   </clipPath>
                 </defs>
                 <path
@@ -2738,12 +2746,18 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const clipQuickFadeGeometry = (clip: TrackClip) => {
     const w = fadeWindows.get(String(clip.id)) ?? { start: clip.start, end: clip.start + clip.duration };
     const windowLen = Math.max(0, w.end - w.start);
-    const eff = effectiveFades(
-      crossfadedEdges.has(`${clip.id}:in`) ? 0 : clip.fadeIn,
-      crossfadedEdges.has(`${clip.id}:out`) ? 0 : clip.fadeOut,
+    // The VISIBLE fades: an ordinary fade's effective length, or the
+    // length of a FADE PIECE's slice (utils/clipCrossfades.ts) — where
+    // the handle, the zone and the dashed line sit
+    const pieces = quickFadePieces(clip, w, crossfadedEdges.has(`${clip.id}:in`), crossfadedEdges.has(`${clip.id}:out`));
+    return {
       windowLen,
-    );
-    return { windowLen, ...eff };
+      fadeIn: pieces.fadeIn ? pieces.fadeIn.end - pieces.fadeIn.start : 0,
+      fadeOut: pieces.fadeOut ? pieces.fadeOut.end - pieces.fadeOut.start : 0,
+      /** Is that side a piece of a longer curve (a split cut through it) */
+      pieceIn: clip.fadeInLead !== undefined && !!pieces.fadeIn,
+      pieceOut: clip.fadeOutTail !== undefined && !!pieces.fadeOut,
+    };
   };
 
   // Quick-fade HANDLES — rendered at TRACK level (like the shape dots)

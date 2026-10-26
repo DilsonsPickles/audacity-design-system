@@ -17,6 +17,7 @@ import {
   fadeHandleOf,
   handleCurveGain,
   isDefaultQuickFadeShape,
+  quickFadePieces,
 } from '../clipCrossfades';
 
 const clip = (id: number, start: number, duration: number) => ({ id, start, duration });
@@ -366,7 +367,10 @@ describe('the handle-shaped S-curve', () => {
 });
 
 describe('the areas either side of a fade curve', () => {
-  it('both are the curve itself, closed through the corner on their own side', () => {
+  // Closed along the box's edge through BOTH corners since 2026-10-27: a
+  // fade PIECE starts and ends part-way up, so neither corner can be
+  // assumed; a whole curve visits one of them itself, so its area is the same
+  it('both are the curve itself, closed along the top (above) or bottom (below) edge', () => {
     for (const shape of [2, 'linear' as const, { t: 0.2, g: 0.7 }]) {
       for (const side of ['in', 'out'] as const) {
         const curve = fadeCurvePath(side, 8, shape);
@@ -374,10 +378,8 @@ describe('the areas either side of a fade curve', () => {
         const below = fadeAreaBelowPath(side, 8, shape);
         expect(above.startsWith(curve)).toBe(true);
         expect(below.startsWith(curve)).toBe(true);
-        // A fade in runs bottom-left → top-right: top-left is above it,
-        // bottom-right below. A fade out is the mirror image.
-        expect(above.slice(curve.length)).toBe(side === 'in' ? ' L 0.00,0.00 Z' : ' L 100.00,0.00 Z');
-        expect(below.slice(curve.length)).toBe(side === 'in' ? ' L 100.00,100.00 Z' : ' L 0.00,100.00 Z');
+        expect(above.slice(curve.length)).toBe(' L 100.00,0.00 L 0.00,0.00 Z');
+        expect(below.slice(curve.length)).toBe(' L 100.00,100.00 L 0.00,100.00 Z');
       }
     }
   });
@@ -407,5 +409,40 @@ describe('a crossfade has its own shapes (2026-10-01)', () => {
     ]);
     expect(regions.find((r) => r.clipId === 1 && !r.authored)!.shape).toBe('linear');
     expect(regions.find((r) => r.clipId === 2 && !r.authored)!.shape).toBe(2);
+  });
+});
+
+describe('fade pieces (2026-10-27, a split through a fade)', () => {
+  it('the right half of a cut shows the rest of the curve, starting part-way along it', () => {
+    const p = quickFadePieces({ id: 2, start: 1, duration: 5, fadeIn: 2, fadeInLead: 1 }, { start: 1, end: 6 }, false, false);
+    expect(p.fadeIn).toEqual({ start: 1, end: 2, u0: 0.5, u1: 1 });
+  });
+
+  it('the left half keeps the whole curve, cut off where it ends — never squashed', () => {
+    const p = quickFadePieces({ id: 1, start: 0, duration: 1, fadeIn: 2, fadeInLead: 0 }, { start: 0, end: 1 }, false, false);
+    expect(p.fadeIn).toEqual({ start: 0, end: 1, u0: 0, u1: 0.5 });
+  });
+
+  it('a fade-out piece mirrors it, and an ordinary fade beside a piece takes what is left', () => {
+    const p = quickFadePieces({ id: 1, start: 0, duration: 3, fadeOut: 2, fadeOutTail: 1, fadeIn: 5 }, { start: 0, end: 3 }, false, false);
+    expect(p.fadeOut).toEqual({ start: 2, end: 3, u0: 0, u1: 0.5 });
+    expect(p.fadeIn).toEqual({ start: 0, end: 2, u0: 0, u1: 1 });
+  });
+
+  it('ordinary fades are unchanged: shrunk in proportion when they would cross', () => {
+    const p = quickFadePieces({ id: 1, start: 0, duration: 2, fadeIn: 2, fadeOut: 2 }, { start: 0, end: 2 }, false, false);
+    expect(p.fadeIn).toEqual({ start: 0, end: 1, u0: 0, u1: 1 });
+    expect(p.fadeOut).toEqual({ start: 1, end: 2, u0: 0, u1: 1 });
+  });
+
+  it('a piece\'s region carries its span, the gain reads through it, and its areas close along the box edge', () => {
+    const regions = computeFadeCurves([{ id: 2, start: 1, duration: 5, fadeIn: 2, fadeInLead: 1, fadeInShape: 'linear' }]);
+    expect(regions[0]).toMatchObject({ side: 'in', start: 1, end: 2, span: [0.5, 1] });
+    const local = localFadeRegionsByClip([{ id: 2, start: 1, duration: 5 }], regions).get(2)!;
+    expect(fadeGainAt(0, local)).toBeCloseTo(0.5, 6); // half-way up a linear fade at the cut
+    expect(fadeGainAt(0.5, local)).toBeCloseTo(0.75, 6);
+    const path = fadeCurvePath('in', 4, 'linear', [0.5, 1]);
+    expect(path.startsWith('M 0.00,50.00')).toBe(true);
+    expect(fadeAreaAbovePath('in', 4, 'linear', [0.5, 1]).endsWith('L 100.00,0.00 L 0.00,0.00 Z')).toBe(true);
   });
 });

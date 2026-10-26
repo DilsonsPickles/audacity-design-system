@@ -86,6 +86,15 @@ export interface Clip {
    *  above are never read by a crossfade and survive one untouched */
   crossfadeInShape?: number | 'linear';
   crossfadeOutShape?: number | 'linear';
+  /** A FADE PIECE (2026-10-27): present — even 0 — means the edge's fade
+   *  is the slice of a longer curve that a SPLIT left on this clip, so the
+   *  cut never changes the sound. fadeIn / fadeOut stay the whole curve's
+   *  length; `fadeInLead` is the seconds of the fade-in curve before this
+   *  clip's start, `fadeOutTail` the seconds of the fade-out curve after
+   *  its end. Setting the fade's length makes it ordinary again. See
+   *  CrossfadeClipLike in components' utils/clipCrossfades.ts. */
+  fadeInLead?: number;
+  fadeOutTail?: number;
   /**
    * Original clip id that owns the audio buffer. When a clip is split,
    * the right segment gets a new id but should still play from the

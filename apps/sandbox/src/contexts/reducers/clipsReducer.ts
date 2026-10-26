@@ -197,12 +197,31 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
           // dialog. 0 clears a field (undefined is dropped by JSON
           // persistence, keeping stored projects clean).
           const own = Math.max(0, Math.min(clip.duration, seconds));
-          const otherNow = (side === 'in' ? clip.fadeOut : clip.fadeIn) ?? 0;
-          const otherLeft = Math.min(otherNow, Math.max(0, clip.duration - own));
           const store = (n: number) => (n >= MIN_FADE_SECONDS ? n : undefined);
+          // A FADE PIECE (a split's slice of a longer curve, 2026-10-27)
+          // takes room by what it SHOWS, not its whole curve's length
+          const visible = (s: 'in' | 'out') => {
+            const len = (s === 'in' ? clip.fadeIn : clip.fadeOut) ?? 0;
+            const piece = s === 'in' ? clip.fadeInLead : clip.fadeOutTail;
+            return piece === undefined ? len : Math.max(0, len - piece);
+          };
+          const otherSide = side === 'in' ? 'out' : 'in';
+          const room = Math.max(0, clip.duration - own);
+          // The fade being SET becomes an ordinary fade — editing a piece
+          // makes it one ("dragging its handle turns it into an ordinary
+          // fade from that edge"); the other side keeps what it is unless
+          // it must give way, when it too becomes ordinary, at what is left
+          const otherGivesWay = visible(otherSide) > room;
+          const { fadeInLead: _fil, fadeOutTail: _fot, ...base } = clip;
+          const keepOtherPiece = otherGivesWay
+            ? {}
+            : otherSide === 'in'
+              ? (clip.fadeInLead !== undefined ? { fadeInLead: clip.fadeInLead } : {})
+              : (clip.fadeOutTail !== undefined ? { fadeOutTail: clip.fadeOutTail } : {});
+          const otherLen = otherGivesWay ? room : ((otherSide === 'in' ? clip.fadeIn : clip.fadeOut) ?? 0);
           return side === 'in'
-            ? { ...clip, fadeIn: store(own), fadeOut: store(otherLeft) }
-            : { ...clip, fadeOut: store(own), fadeIn: store(otherLeft) };
+            ? { ...base, ...keepOtherPiece, fadeIn: store(own), fadeOut: store(otherLen) }
+            : { ...base, ...keepOtherPiece, fadeOut: store(own), fadeIn: store(otherLen) };
         }),
       };
       return { ...state, tracks: newTracks };
@@ -332,17 +351,60 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
           const originalEnd = clip.start + clip.duration;
           const fullDuration = clip.fullDuration ?? (originalTrimStart + clip.duration);
 
-          // A cut edge has NO fade: the left half keeps only the original's
-          // fade-in, the right half only its fade-out (shapes go with them).
-          // Spreading the whole clip into both put the fade-out on the left
-          // half's cut edge and the fade-in on the right's — every split
-          // grew two fades that nobody asked for.
-          const { fadeOut: _lo, fadeOutShape: _los, crossfadeOutShape: _lxs, ...leftBase } = clip;
-          const { fadeIn: _ri, fadeInShape: _ris, crossfadeInShape: _rxs, ...rightBase } = clip;
+          // A cut edge has NO fade of its own: the left half keeps only the
+          // original's fade-in, the right half only its fade-out (shapes go
+          // with them). Spreading the whole clip into both put the fade-out
+          // on the left half's cut edge and the fade-in on the right's —
+          // every split grew two fades that nobody asked for.
+          const { fadeOut: _lo, fadeOutShape: _los, crossfadeOutShape: _lxs, fadeOutTail: _lot, ...leftBase } = clip;
+          const { fadeIn: _ri, fadeInShape: _ris, crossfadeInShape: _rxs, fadeInLead: _ril, ...rightBase } = clip;
+
+          // A CUT THROUGH A FADE DIVIDES IT (2026-10-27, "try the partial
+          // fade approach"): the split must not change the sound, so each
+          // half keeps its own slice of the curve — a FADE PIECE (Clip.
+          // fadeInLead / fadeOutTail). The half holding the fade's edge
+          // keeps the whole curve's length, cut off where it now ends; the
+          // other half carries the rest, starting part-way along it. Played
+          // back to back the halves sound exactly as the clip did. A cut in
+          // the flat middle touches neither fade, as before. The two cut
+          // points may differ — a range taken out of the clip is a split
+          // with a gap — so each half is judged at its own edge, and every
+          // sample that remains keeps the gain it had.
+          const inLen = clip.fadeIn ?? 0;
+          const inLead = clip.fadeInLead ?? 0;
+          /** Is clip time `at` (seconds from the start) still inside the fade-in? */
+          const insideFadeIn = (at: number) => inLen > 0 && at < inLen - inLead - 1e-9;
+          const outLen = clip.fadeOut ?? 0;
+          const outTail = clip.fadeOutTail ?? 0;
+          /** Is clip time `at` (seconds before the end) still inside the fade-out? */
+          const insideFadeOut = (fromEnd: number) => outLen > 0 && fromEnd < outLen - outTail - 1e-9;
+          const leftCut = mutation.leftEnd;
+          const rightCut = mutation.rightStart;
+          const leftPieces: Partial<Clip> = {
+            // The left half's own fade-in, cut off where the half now ends
+            ...(insideFadeIn(leftCut - clip.start) ? { fadeInLead: inLead } : {}),
+            // The start of the fade-out, which the left half now carries
+            ...(insideFadeOut(originalEnd - leftCut) ? {
+              fadeOut: outLen,
+              ...(clip.fadeOutShape !== undefined ? { fadeOutShape: clip.fadeOutShape } : {}),
+              fadeOutTail: outTail + (originalEnd - leftCut),
+            } : {}),
+          };
+          const rightPieces: Partial<Clip> = {
+            // The rest of the fade-in, starting part-way up the curve
+            ...(insideFadeIn(rightCut - clip.start) ? {
+              fadeIn: inLen,
+              ...(clip.fadeInShape !== undefined ? { fadeInShape: clip.fadeInShape } : {}),
+              fadeInLead: inLead + (rightCut - clip.start),
+            } : {}),
+            // The right half's own fade-out, cut off where the half now starts
+            ...(insideFadeOut(originalEnd - rightCut) ? { fadeOutTail: outTail } : {}),
+          };
 
           // Left segment keeps the original id and waveform reference.
           const leftSegment: Clip = {
             ...leftBase,
+            ...leftPieces,
             duration: mutation.leftEnd - clip.start,
             fullDuration,
           };
@@ -352,6 +414,7 @@ export function clipsReducer(state: TracksState, action: TracksAction): TracksSt
           // first split) so the audio engine can find the shared buffer.
           const rightSegment: Clip = {
             ...rightBase,
+            ...rightPieces,
             id: nextId++,
             start: mutation.rightStart,
             duration: originalEnd - mutation.rightStart,

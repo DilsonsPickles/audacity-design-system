@@ -71,8 +71,9 @@ describe('clip fades', () => {
       // The dimmed area's lower edge IS the drawn curve, whatever its shape…
       expect(line.getAttribute('d')).toBe(fadeCurvePath(side, 64, shape));
       expect(dim.getAttribute('d')!.startsWith(line.getAttribute('d')!)).toBe(true);
-      // …and it closes along the top, through the corner above the silent end
-      expect(dim.getAttribute('d')!.endsWith(side === 'in' ? ' L 0.00,0.00 Z' : ' L 100.00,0.00 Z')).toBe(true);
+      // …and it closes along the top edge
+      // (both top corners since 2026-10-27 — a fade piece starts part-way up)
+      expect(dim.getAttribute('d')!.endsWith(' L 100.00,0.00 L 0.00,0.00 Z')).toBe(true);
       expect(dim.getAttribute('fill')).toMatch(/^rgba\(0, 0, 0, 0\.\d+\)$/);
       expect(dim.getAttribute('stroke')).toBe('none');
     }
@@ -462,7 +463,8 @@ describe('clip fades', () => {
       const dim = container.querySelector(`[data-fade-dim="${side}"]`)!;
       const line = container.querySelector(`[data-fade-line="${side}"]`)!;
       expect(dim.getAttribute('d')!.startsWith(line.getAttribute('d')!)).toBe(true);
-      expect(dim.getAttribute('d')!.endsWith(side === 'in' ? ' L 0.00,0.00 Z' : ' L 100.00,0.00 Z')).toBe(true);
+      // (both top corners since 2026-10-27 — a fade piece starts part-way up)
+      expect(dim.getAttribute('d')!.endsWith(' L 100.00,0.00 L 0.00,0.00 Z')).toBe(true);
       expect(dim.getAttribute('fill')).toMatch(/^rgba\(0, 0, 0, 0\.\d+\)$/);
       expect(dim.closest('[data-fade-curve]')).toBe(line.closest('[data-fade-curve]'));
     }
@@ -1710,6 +1712,31 @@ describe('the peek becomes the fade (2026-10-27, "you click it and it gets shy a
     fireEvent.pointerDown(handle, { button: 0, clientX: 10, clientY: 30, pointerId: 6 });
     expect(container.querySelector('[data-fade-peek]')).toBeNull();
     fireEvent.pointerUp(handle, { clientX: 10, clientY: 30, pointerId: 6 });
+  });
+});
+
+describe('a fade piece on the canvas (2026-10-27, a split through a fade)', () => {
+  it('draws its slice of the curve, starting part-way up, and its zone sits where the slice ends', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 2, name: 'B', start: 1, duration: 5, fadeIn: 2, fadeInLead: 1 }]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    // The default S-curve is at half gain half-way along: the slice
+    // starts there, y 50 in the curve's box, not at the bottom
+    const curve = container.querySelector('[data-fade-curve="in"]') as HTMLElement;
+    expect(curve.innerHTML).toContain('M 0.00,50.00');
+    expect(curve.style.width).toBe('100px'); // 1s of the 2s curve shows
+    // The corner zone straddles the slice's end, 1s into the clip
+    const zone = container.querySelector('[data-fade-zone="in"][data-clip-ref="2"]') as HTMLElement;
+    expect(zone.style.left).toBe(`${CLIP_CONTENT_OFFSET + 100 + 100 - 16}px`);
+    expect(zone.getAttribute('data-has-fade')).toBe('true');
   });
 });
 
