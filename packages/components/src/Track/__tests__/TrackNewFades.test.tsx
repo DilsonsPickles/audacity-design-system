@@ -1646,6 +1646,73 @@ describe('the peek — a bare edge\'s curve says hello under the corner zone (20
   });
 });
 
+describe('the peek becomes the fade (2026-10-27, "you click it and it gets shy and pops away")', () => {
+  it('a press holds the peek; the dragged fade takes over once longer than the sliver, the curve and the dashed line waiting until then', () => {
+    const onClipFadeChange = vi.fn();
+    const tree = (fadeIn?: number) => (
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn }]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+        />
+      </Providers>
+    );
+    const { container, rerender } = render(tree());
+    const zone = () => container.querySelector('[data-fade-zone="in"][data-clip-ref="1"]') as HTMLElement;
+    const peek = () => container.querySelector('[data-fade-peek]') as HTMLElement | null;
+    const curve = () => container.querySelector('[data-fade-curve="in"][data-fade-authored="true"]');
+    const line = () => container.querySelector('[data-fade-guideline="in"][data-fade-clip="1"]');
+    fireEvent.mouseEnter(zone(), { buttons: 0 });
+    fireEvent.pointerDown(zone(), { button: 0, clientX: 10, clientY: 30, pointerId: 5 });
+    // Pressed: the peek stays, not leaving; nothing else drawn yet
+    expect(peek()).not.toBeNull();
+    expect(peek()?.hasAttribute('data-leaving')).toBe(false);
+    expect(line()).toBeNull();
+    // Dragged 5px (0.05s at 100px/s): still shorter than the sliver — the
+    // peek stands in, the real curve and the line wait
+    rerender(tree(0.05));
+    expect(peek()).not.toBeNull();
+    expect(curve()).toBeNull();
+    expect(line()).toBeNull();
+    // Past the sliver (30px): the real fade takes over — no peek, the curve
+    // and its dashed line drawn
+    rerender(tree(0.3));
+    expect(peek()).toBeNull();
+    expect(curve()).not.toBeNull();
+    expect(line()).not.toBeNull();
+    // Back under it mid-press: the peek stands in again
+    rerender(tree(0.1));
+    expect(peek()).not.toBeNull();
+    expect(curve()).toBeNull();
+    fireEvent.pointerUp(zone(), { clientX: 20, clientY: 30, pointerId: 5 });
+    // Released short of the sliver: what was made is drawn (jsdom: no exit tail)
+    fireEvent.mouseLeave(zone());
+    expect(peek()).toBeNull();
+    expect(curve()).not.toBeNull();
+  });
+
+  it('a press on the handle of a SELECTED clip holds no peek', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, selected: true }]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+        />
+      </Providers>,
+    );
+    const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]') as HTMLElement;
+    fireEvent.pointerDown(handle, { button: 0, clientX: 10, clientY: 30, pointerId: 6 });
+    expect(container.querySelector('[data-fade-peek]')).toBeNull();
+    fireEvent.pointerUp(handle, { clientX: 10, clientY: 30, pointerId: 6 });
+  });
+});
+
 describe('fade handle grid snap (2026-09-30)', () => {
   // A 0.5s grid; the clip runs 1s..5s at 100px/s, so its left edge is
   // at x=100 and its right edge at x=500 in the mocked rect below
