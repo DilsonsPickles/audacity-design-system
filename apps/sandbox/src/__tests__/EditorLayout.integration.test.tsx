@@ -199,7 +199,9 @@ async function gotoProject(rendered: ReturnType<typeof renderApp>): Promise<void
   // the editor wrapper with `data-project-id` once createNewProject has
   // dispatched RESET_STATE and set the id — a deterministic signal — and
   // one macrotask after it lets that dispatch's render flush.
-  await waitFor(() => expect(container.querySelector('[data-project-id]')).toBeTruthy(), { timeout: 5000 });
+  // The IndexedDB write behind it is slow on GitHub's runner — a 5 s cap
+  // was hit there (2026-10-25); the suite's testTimeout is 30 s to match
+  await waitFor(() => expect(container.querySelector('[data-project-id]')).toBeTruthy(), { timeout: 15000 });
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });

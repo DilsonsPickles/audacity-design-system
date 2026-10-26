@@ -25,5 +25,12 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/__tests__/setup.ts'],
+    // The integration tests boot the whole app, seed tracks through the
+    // real Debug dialog and wait on the project bootstrap's IndexedDB
+    // write; on GitHub's runner they take 3–6 s each (the file ~5 min),
+    // against Vitest's 5 s default — "Focus routing" tests failed there
+    // at exactly that line (2026-10-25). The budget is the runner's, not
+    // a hidden bug's: a test that hangs still fails, later.
+    testTimeout: 30000,
   },
 });
