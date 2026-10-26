@@ -171,9 +171,18 @@ body[data-fade-length-drag] * {
   }
 }
 
+/* …and RETRACTS INTO IT on the way out (2026-10-27, "and it should
+   animate out"): the grow played backwards — a slight lean outward, then
+   back into the edge — over the same 0.18s (PEEK_LEAVE_MS in TrackNew
+   keeps it mounted that long), the sliver fading over the back half. The
+   !important beats the shared [data-leaving] rule's 60ms below. */
+.track-fade-peek[data-leaving] {
+  transition: opacity 0.1s ease-in 0.08s !important;
+}
+
 .track-fade-peek[data-leaving] .track-fade-peek__curve {
   width: 0;
-  transition: width 0.06s ease-in;
+  transition: width 0.18s cubic-bezier(0.36, 0, 0.66, -0.4);
 }
 
 /* With a fade already there — its dashed line up under the pointer —

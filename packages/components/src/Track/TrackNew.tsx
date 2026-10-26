@@ -10,7 +10,10 @@ import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveF
 import { computeEdgeHitZones, EDGE_HIT_INSIDE_PX } from '../utils/clipEdgeHitZones';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
-import { useLeavingKeys } from '../hooks/useLeavingKeys';
+import { useLeavingKeys, handleLeaveMs } from '../hooks/useLeavingKeys';
+
+/** The fade peek's exit, the length of its grow (Track.css, 0.18s) — keep the two in step. */
+const PEEK_LEAVE_MS = 180;
 import type { ClipColor } from '../types/clip';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 import { getInputMode } from '../utils/inputMode';
@@ -2508,7 +2511,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     && !hidesHandlesOf(peekClip.id)
     && ((fadePeek.side === 'in' ? peekClip.fadeIn : peekClip.fadeOut) ?? 0) === 0; // the stored fade: bare means none authored
   const peekActive = peekLive && fadePeek ? [`${fadePeek.clipId}:${fadePeek.side}`] : [];
-  const leavingPeeks = useLeavingKeys(peekActive);
+  // The peek ANIMATES OUT as it came in (2026-10-27, "and it should
+  // animate out"): its own tail, PEEK_LEAVE_MS, the grow's length, so the
+  // curve visibly retracts into the edge (Track.css) instead of vanishing
+  // in the handles' 60ms; zero wherever nothing animates, as theirs is.
+  const leavingPeeks = useLeavingKeys(peekActive, handleLeaveMs() > 0 ? PEEK_LEAVE_MS : 0);
   const buriedActive = clips
     .filter((c) => handlesFollow(c) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
