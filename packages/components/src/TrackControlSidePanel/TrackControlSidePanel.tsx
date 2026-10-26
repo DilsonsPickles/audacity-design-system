@@ -895,31 +895,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
             </>
           );
         })()}
-        {/* This track's height — a PARENT item, as Track color and Track
-            view are (the same day: "those need to go into a parent menu
-            item"); one track, as the parent says */}
-        {(onCollapseTrack || onExpandTrack || onFitTrackToHeight) && (
-          <div data-track-height-items="">
-            <ContextMenuItem label="Track height" onClose={handleMenuClose}>
-              {([
-                ['Collapse', onCollapseTrack],
-                ['Expand', onExpandTrack],
-                ['Fit to height', onFitTrackToHeight],
-              ] as const).map(([label, handler]) => handler && (
-                <ContextMenuItem
-                  key={label}
-                  label={label}
-                  onClick={() => {
-                    handler(menuState.trackIndex);
-                    handleMenuClose();
-                  }}
-                  onClose={handleMenuClose}
-                />
-              ))}
-            </ContextMenuItem>
-            <ContextMenuItem isDivider label="" />
-          </div>
-        )}
+        <ContextMenuItem isDivider label="" />
         <ContextMenuItem
           label="Move track up"
           onClick={() => {
@@ -936,20 +912,30 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           }}
           disabled={menuState.trackIndex === childArray.length - 1}
         />
-        {/* Track view menu - hidden for label tracks */}
+        {/* THE TRACK'S LOOK, in one group (2026-10-26, "put all the track
+            visual controls together"): Track color, Label text size, Track
+            view and Track height — until then Track height sat up with
+            Delete and Duplicate. MIDI tracks get only the height (no colour
+            to pick, nothing to view); LABEL tracks get Track color (their
+            labels render in it) and the text size, but no Track view. */}
         {(() => {
           const trackChild = childArray[menuState.trackIndex];
           const isLabelTrack = trackChild?.props?.trackType === 'label';
           const isMidiTrack = trackChild?.props?.trackType === 'midi';
+          const heightItems = ([
+            ['Collapse', onCollapseTrack],
+            ['Expand', onExpandTrack],
+            ['Fit to height', onFitTrackToHeight],
+          ] as const).flatMap(([label, handler]) => (handler ? [[label, handler] as const] : []));
+          const hasHeightItems = heightItems.length > 0;
 
-          // MIDI tracks get neither; LABEL tracks get Track color (their
-          // labels render in it) but no Track view (nothing to view).
-          if (isMidiTrack) return null;
+          if (isMidiTrack && !hasHeightItems) return null;
 
           return (
             <>
               <div className="context-menu-separator" />
               {/* Track color submenu */}
+              {!isMidiTrack && (
               <ContextMenuItem label="Track color" onClose={handleMenuClose}>
                 {(['cyan', 'blue', 'violet', 'magenta', 'red', 'orange', 'yellow', 'green', 'teal'] as const).map((color) => {
                   const isActive = trackColors[menuState.trackIndex] === color;
@@ -977,6 +963,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                   );
                 })}
               </ContextMenuItem>
+              )}
               {isLabelTrack && labelTextSizePt !== undefined && onLabelTextSizeChange && (
                 <ContextMenuItem label="Label text size" onClose={handleMenuClose}>
                   {/* Keep in sync with AppearancePage's LABEL_TEXT_SIZE_OPTIONS */}
@@ -994,7 +981,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                   ))}
                 </ContextMenuItem>
               )}
-              {!isLabelTrack && (
+              {!isLabelTrack && !isMidiTrack && (
               <ContextMenuItem
                 label="Track view"
                 hasSubmenu={true}
@@ -1035,6 +1022,26 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                   </>
                 )}
               </ContextMenuItem>
+              )}
+              {/* This track's height — a PARENT item, as Track color and
+                  Track view are ("those need to go into a parent menu item",
+                  2026-10-22); one track, as the parent says */}
+              {hasHeightItems && (
+                <div data-track-height-items="">
+                  <ContextMenuItem label="Track height" onClose={handleMenuClose}>
+                    {heightItems.map(([label, handler]) => (
+                      <ContextMenuItem
+                        key={label}
+                        label={label}
+                        onClick={() => {
+                          handler(menuState.trackIndex);
+                          handleMenuClose();
+                        }}
+                        onClose={handleMenuClose}
+                      />
+                    ))}
+                  </ContextMenuItem>
+                </div>
               )}
             </>
           );

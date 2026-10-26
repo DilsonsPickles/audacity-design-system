@@ -65,7 +65,10 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
           ))}
         </div>
       </div>
-      {/* This track's height — a PARENT item, "Track height", with the three under it */}
+      {/* The track's look stays together (2026-10-26): colour, height and
+          the spectrogram's settings, then a divider before the one
+          destructive action. The height is a PARENT item, "Track height",
+          with the three under it. */}
       {hasHeightItems && (
         <div data-track-height-items="">
           <ContextMenuItem label="Track height" onClose={onClose}>
@@ -78,7 +81,6 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
               />
             ))}
           </ContextMenuItem>
-          <ContextMenuItem isDivider label="" />
         </div>
       )}
       {/* Spectrogram settings */}
@@ -89,6 +91,7 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
           onClose={onClose}
         />
       )}
+      <ContextMenuItem isDivider label="" />
       {/* Delete track */}
       <ContextMenuItem
         label="Delete track"
