@@ -1090,8 +1090,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const storedFadePx = (clip: TrackClip, side: 'in' | 'out') =>
     ((side === 'in' ? clip.fadeIn : clip.fadeOut) ?? 0) * pixelsPerSecond;
   /** The held peek is standing in for a fade still shorter than itself */
+  // …UNTIL THE FIRST PIXEL OF MOVEMENT (2026-10-27, the same day: "it's
+  // made it so that I can't make a REALLY short fade" — standing in until
+  // the fade passed the 16px sliver hid every fade shorter than that).
+  // The press holds the peek; the moment there is a fade at all, the real
+  // curve and its dashed line show at their true length and the peek
+  // RETRACTS into the edge with its exit, as on a release short of it.
+  // Dragged back to nothing, the peek grows out again.
   const peekStandsIn = (clip: TrackClip, side: 'in' | 'out') =>
-    peekHeld != null && peekHeld.clipId === clip.id && peekHeld.side === side && storedFadePx(clip, side) < PEEK_PX;
+    peekHeld != null && peekHeld.clipId === clip.id && peekHeld.side === side && storedFadePx(clip, side) <= 0;
   // HANDLES FOLLOW THE POINTER, NOT THE SELECTION (user decision
   // 2026-10-01: six selected clips put forty icons on screen, most of
   // them 24px outside the clips in empty track). The trim and stretch
@@ -2537,11 +2544,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const hoverPeekLive = !!fadePeek && !!peekClip && !peekClip.selected && fadeDragClipId !== peekClip.id
     && !hidesHandlesOf(peekClip.id)
     && ((fadePeek.side === 'in' ? peekClip.fadeIn : peekClip.fadeOut) ?? 0) === 0; // the stored fade: bare means none authored
-  // A HELD peek stays ACTIVE for the whole press, whatever the fade's
-  // length — so no exit runs mid-drag; it simply is not drawn once the
-  // fade covers it (renderFadePeek), and its exit runs at the release
+  // A HELD peek is ACTIVE while the press has made no fade yet; from the
+  // first pixel of fade it leaves — its exit retracts it into the edge
+  // over the real curve, now drawn at its true length — and it is never
+  // drawn once a fade covers its whole sliver (renderFadePeek)
   const heldPeekClip = peekHeld ? clips.find((c) => c.id === peekHeld.clipId) : undefined;
-  const heldPeekLive = !!peekHeld && !!heldPeekClip && !hidesHandlesOf(heldPeekClip.id);
+  const heldPeekLive = !!peekHeld && !!heldPeekClip && !hidesHandlesOf(heldPeekClip.id)
+    && storedFadePx(heldPeekClip, peekHeld.side) <= 0;
   const peekActive = heldPeekLive && peekHeld
     ? [`${peekHeld.clipId}:${peekHeld.side}`]
     : hoverPeekLive && fadePeek ? [`${fadePeek.clipId}:${fadePeek.side}`] : [];

@@ -1647,7 +1647,7 @@ describe('the peek — a bare edge\'s curve says hello under the corner zone (20
 });
 
 describe('the peek becomes the fade (2026-10-27, "you click it and it gets shy and pops away")', () => {
-  it('a press holds the peek; the dragged fade takes over once longer than the sliver, the curve and the dashed line waiting until then', () => {
+  it('a press holds the peek; from the first pixel of fade the real curve and its line show at their true length, however short', () => {
     const onClipFadeChange = vi.fn();
     const tree = (fadeIn?: number) => (
       <Providers>
@@ -1671,27 +1671,30 @@ describe('the peek becomes the fade (2026-10-27, "you click it and it gets shy a
     expect(peek()).not.toBeNull();
     expect(peek()?.hasAttribute('data-leaving')).toBe(false);
     expect(line()).toBeNull();
-    // Dragged 5px (0.05s at 100px/s): still shorter than the sliver — the
-    // peek stands in, the real curve and the line wait
-    rerender(tree(0.05));
+    // Dragged 3px (0.03s at 100px/s) — far shorter than the 16px sliver:
+    // the real curve and its dashed line show at that length, and the
+    // peek has left (2026-10-27, "I can't make a REALLY short fade";
+    // jsdom has no exit tail, so it is simply gone)
+    rerender(tree(0.03));
+    expect(peek()).toBeNull();
+    expect(curve()).not.toBeNull();
+    expect((curve() as HTMLElement).style.width).toBe('3px');
+    expect(line()).not.toBeNull();
+    // Longer: the same, the curve growing with the drag
+    rerender(tree(0.3));
+    expect(peek()).toBeNull();
+    expect((curve() as HTMLElement).style.width).toBe('30px');
+    // Dragged back to nothing mid-press: the peek says hello again
+    rerender(tree(undefined));
     expect(peek()).not.toBeNull();
     expect(curve()).toBeNull();
     expect(line()).toBeNull();
-    // Past the sliver (30px): the real fade takes over — no peek, the curve
-    // and its dashed line drawn
-    rerender(tree(0.3));
-    expect(peek()).toBeNull();
-    expect(curve()).not.toBeNull();
-    expect(line()).not.toBeNull();
-    // Back under it mid-press: the peek stands in again
-    rerender(tree(0.1));
-    expect(peek()).not.toBeNull();
-    expect(curve()).toBeNull();
-    fireEvent.pointerUp(zone(), { clientX: 20, clientY: 30, pointerId: 5 });
-    // Released short of the sliver: what was made is drawn (jsdom: no exit tail)
+    rerender(tree(0.05));
+    fireEvent.pointerUp(zone(), { clientX: 15, clientY: 30, pointerId: 5 });
+    // Released: the short fade made is what is drawn
     fireEvent.mouseLeave(zone());
     expect(peek()).toBeNull();
-    expect(curve()).not.toBeNull();
+    expect((curve() as HTMLElement).style.width).toBe('5px');
   });
 
   it('a press on the handle of a SELECTED clip holds no peek', () => {
