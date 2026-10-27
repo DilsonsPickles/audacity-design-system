@@ -159,36 +159,3 @@ describe('hover-dependent controls fade out rather than vanish (2026-10-01)', ()
     expect(count('[data-buried-handle]')).toBe(0);
   });
 });
-
-describe('the fade peek fades out with the handles\' tail', () => {
-  it('keeps the peek mounted, leaving, for its 60ms tail, then drops it', () => {
-    const { container } = render(
-      <Providers>
-        <TrackNew
-          clips={[{ id: 1, name: 'A', start: 0, duration: 4 }]}
-          width={1200}
-          trackIndex={0}
-          pixelsPerSecond={100}
-          onClipFadeChange={vi.fn()}
-        />
-      </Providers>,
-    );
-    const zone = container.querySelector('[data-fade-zone="in"][data-clip-ref="1"]') as HTMLElement;
-    const peek = () => container.querySelector('[data-fade-peek]') as HTMLElement | null;
-    fireEvent.mouseEnter(zone, { buttons: 0 });
-    expect(peek()?.hasAttribute('data-leaving')).toBe(false);
-    fireEvent.mouseLeave(zone);
-    expect(peek()?.getAttribute('data-leaving')).toBe('true');
-    // Mid-tail it is still fading
-    act(() => { vi.advanceTimersByTime(HANDLE_LEAVE_MS - 20); });
-    expect(peek()?.getAttribute('data-leaving')).toBe('true');
-    act(() => { vi.advanceTimersByTime(40); });
-    expect(peek()).toBeNull();
-    // Back over the corner mid-fade: it is back, no longer leaving
-    fireEvent.mouseEnter(zone, { buttons: 0 });
-    fireEvent.mouseLeave(zone);
-    act(() => { vi.advanceTimersByTime(30); });
-    fireEvent.mouseEnter(zone, { buttons: 0 });
-    expect(peek()?.hasAttribute('data-leaving')).toBe(false);
-  });
-});

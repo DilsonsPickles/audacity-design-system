@@ -10,10 +10,7 @@ import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveF
 import { computeEdgeHitZones, EDGE_HIT_INSIDE_PX } from '../utils/clipEdgeHitZones';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
-import { useLeavingKeys, HANDLE_LEAVE_MS } from '../hooks/useLeavingKeys';
-
-/** The peek's sliver, in px — and the length the real fade must pass to take over from it during a press. */
-const PEEK_PX = 16;
+import { useLeavingKeys } from '../hooks/useLeavingKeys';
 import type { ClipColor } from '../types/clip';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 import { getInputMode } from '../utils/inputMode';
@@ -1064,52 +1061,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // report the hover themselves — leaving the clip FOR one of its own
   // controls must not hide it.
   const [fadeHoverClipId, setFadeHoverClipId] = React.useState<string | number | null>(null);
-  // THE PEEK (2026-10-23, "when the user hovers in the corner of an
-  // unselected clip, the fade curve peeks out to say hello"): the corner
-  // zone of a BARE edge under the pointer — no fade there yet — shows a
-  // sliver of the fade it would make, PEEK_PX wide, drawn as the curve
-  // overlay draws a fade (the dim above the default S-curve and its
-  // line), so the gesture is announced before it is made. It goes with
-  // the pointer, or the moment a drag makes a real fade (which the
-  // curve overlay then draws).
-  const [fadePeek, setFadePeek] = React.useState<{ clipId: string | number; side: 'in' | 'out' } | null>(null);
-  // THE PEEK BECOMES THE FADE (2026-10-27, "it's like the curve peeks out
-  // to say hello, then you click it and it gets shy and pops away"): a
-  // press on a bare edge's zone HOLDS the peek — it stays drawn while the
-  // button is down, and the fade being dragged takes over from it once it
-  // is longer than the sliver (the real curve then sits exactly where the
-  // peek was, a 16px default S-curve, so the hand-off is seamless). Until
-  // then the peek stands in for it: the real curve and the dashed line
-  // wait. Released short of the sliver — or a click that never moved — it
-  // retracts to what was actually made, with its exit; nothing is created
-  // that was not dragged out.
-  const [peekHeld, setPeekHeld] = React.useState<{ clipId: string | number; side: 'in' | 'out' } | null>(null);
-  /** The stored fade at that edge, in px */
-  const storedFadePx = (clip: TrackClip, side: 'in' | 'out') =>
-    ((side === 'in' ? clip.fadeIn : clip.fadeOut) ?? 0) * pixelsPerSecond;
-  /** The held peek is standing in for a fade still shorter than itself */
-  // …UNTIL THE FIRST PIXEL OF MOVEMENT (2026-10-27, the same day: "it's
-  // made it so that I can't make a REALLY short fade" — standing in until
-  // the fade passed the 16px sliver hid every fade shorter than that).
-  // The press holds the peek; the moment there is a fade at all, the real
-  // curve and its dashed line show at their true length and the peek
-  // leaves with its exit, as on a release short of it.
-  // Dragged back to nothing, the peek comes back.
-  // …AND THE PRESS GRABS THE PEEK AS IT IS (the same day, "can't we make
-  // it so that you pull the curve from where it is and if you want to
-  // make it smaller it just lets you?"): the drag from a held peek starts
-  // AT the sliver's length — the first sideways pixel makes a PEEK_PX
-  // fade plus that pixel's travel — so the curve under the pointer is the
-  // one being pulled: out grows it, back toward the edge shrinks it, all
-  // the way to nothing. The peek then hands over AT ONCE (`peekTaken`):
-  // the real curve is drawn where it was, at the same length and shape,
-  // and the peek is simply not drawn — no exit over the real curve,
-  // nor a peek coming back when the fade is pulled to nothing (the
-  // curve in hand has gone, not a fresh one to offer). A click that never
-  // moves sideways still makes nothing and lets the peek go.
-  const [peekTaken, setPeekTaken] = React.useState<string | null>(null);
-  const peekStandsIn = (clip: TrackClip, side: 'in' | 'out') =>
-    peekHeld != null && peekHeld.clipId === clip.id && peekHeld.side === side && storedFadePx(clip, side) <= 0;
   // HANDLES FOLLOW THE POINTER, NOT THE SELECTION (user decision
   // 2026-10-01: six selected clips put forty icons on screen, most of
   // them 24px outside the clips in empty track). The trim and stretch
@@ -1650,60 +1601,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     return nodes.length > 0 ? nodes : null;
   };
 
-  const renderFadePeek = () => {
-    if (isMidiTrack || !onClipFadeChange) return null;
-    const keys = new Set<string>([...peekActive, ...leavingPeeks]);
-    if (keys.size === 0) return null;
-    const nodes: React.ReactNode[] = [];
-    for (const key of keys) {
-      const sep = key.lastIndexOf(':');
-      const clipId = key.slice(0, sep);
-      const side = key.slice(sep + 1) as 'in' | 'out';
-      const clip = clips.find((c) => String(c.id) === clipId);
-      if (!clip) continue;
-      // Where the real fade already covers the sliver it draws itself:
-      // the peek has handed over (mid-press) or has nothing to stand for
-      if (storedFadePx(clip, side) >= PEEK_PX) continue;
-      const leaving = !peekActive.includes(key);
-      // Taken by the drag: the real curve is the peek now, no exit
-      if (leaving && peekTaken === key) continue;
-      const clipWidth = clip.duration * pixelsPerSecond;
-      const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
-      const { bodyTop, bodyHeight } = clipBodyGeometry(height, headerShownFor(clip.id));
-      nodes.push(
-        <div
-          key={`fade-peek-${key}`}
-          className="track-fade-peek"
-          data-fade-peek={side}
-          data-clip-ref={clip.id}
-          data-leaving={leaving ? 'true' : undefined}
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            left: `${Math.round(side === 'in' ? xBase : xBase + clipWidth - PEEK_PX)}px`,
-            top: `${bodyTop}px`,
-            width: `${PEEK_PX}px`,
-            height: `${bodyHeight}px`,
-            pointerEvents: 'none',
-            zIndex: 450,
-          }}
-        >
-          <svg
-            width="100%"
-            height="100%"
-            viewBox="0 0 100 100"
-            preserveAspectRatio="none"
-            style={{ display: 'block', overflow: 'visible' }}
-          >
-            <path d={fadeAreaAbovePath(side, 64, DEFAULT_QUICK_FADE_SHAPE)} fill="rgba(0, 0, 0, 0.2)" stroke="none" />
-            <path d={fadeCurvePath(side, 64, DEFAULT_QUICK_FADE_SHAPE)} fill="none" stroke="rgba(0, 0, 0, 0.45)" strokeWidth={1.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-          </svg>
-        </div>,
-      );
-    }
-    return nodes;
-  };
-
   const renderFadeCurveOverlays = () => {
     if (fadeCurves.length === 0) return null;
     // The clip draws with a 1px border, so the header's true bottom is
@@ -1770,12 +1667,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       );
     });
     const curves = fadeCurves.map((region) => {
-      // The held peek stands in for a fade shorter than itself: two
-      // curves in one sliver would read as a glitch
-      if (region.authored) {
-        const regionClip = clips.find((c) => c.id === region.clipId);
-        if (regionClip && peekStandsIn(regionClip, region.side)) return null;
-      }
       const g = geometry(region);
       // A curve being EDITED — its shape handle is mid-drag, and nothing
       // less (user decision 2026-09-29: not the pointer being over the
@@ -2544,25 +2435,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     .filter((c) => !fadeHandleActive.includes(String(c.id)) && (fadeHoverClipId === c.id || fadeDragClipId === c.id) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
   const leavingHoverGuides = useLeavingKeys(hoverGuideActive);
-  // The peek is live while its zone is hovered, the clip unselected and
-  // that edge still bare (a drag making a fade retires it at once — the
-  // curve overlay takes over); it leaves with the handles' tail
-  const peekClip = fadePeek ? clips.find((c) => c.id === fadePeek.clipId) : undefined;
-  const hoverPeekLive = !!fadePeek && !!peekClip && !peekClip.selected && fadeDragClipId !== peekClip.id
-    && !hidesHandlesOf(peekClip.id)
-    && ((fadePeek.side === 'in' ? peekClip.fadeIn : peekClip.fadeOut) ?? 0) === 0; // the stored fade: bare means none authored
-  // A HELD peek is ACTIVE while the press has made no fade yet; from the
-  // first pixel of fade it leaves — its exit retracts it into the edge
-  // over the real curve, now drawn at its true length — and it is never
-  // drawn once a fade covers its whole sliver (renderFadePeek)
-  const heldPeekClip = peekHeld ? clips.find((c) => c.id === peekHeld.clipId) : undefined;
-  const heldPeekLive = !!peekHeld && !!heldPeekClip && !hidesHandlesOf(heldPeekClip.id)
-    && storedFadePx(heldPeekClip, peekHeld.side) <= 0;
-  const peekActive = heldPeekLive && peekHeld
-    ? [`${peekHeld.clipId}:${peekHeld.side}`]
-    : hoverPeekLive && fadePeek ? [`${fadePeek.clipId}:${fadePeek.side}`] : [];
-  // The peek fades out with the handles' tail, as every hover control does
-  const leavingPeeks = useLeavingKeys(peekActive);
   const buriedActive = clips
     .filter((c) => handlesFollow(c) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
@@ -2807,18 +2679,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       for (const side of ['in', 'out'] as const) {
         const hasFade = (side === 'in' ? fadeInSec : fadeOutSec) > 0;
         const hint = withHint(fadeHoverProps(clip.id), 'fade-length');
-        // A bare edge's zone also raises the PEEK while the pointer is on it
-        const zoneHover = {
-          ...hint,
-          onMouseEnter: (e: React.MouseEvent) => {
-            hint.onMouseEnter(e);
-            if (!hasFade && e.buttons === 0) setFadePeek({ clipId: clip.id, side });
-          },
-          onMouseLeave: () => {
-            hint.onMouseLeave();
-            setFadePeek((prev) => (prev?.clipId === clip.id && prev.side === side ? null : prev));
-          },
-        };
         nodes.push(
           <div
             key={`fade-zone-${clip.id}-${side}`}
@@ -2832,7 +2692,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             // think just showing the left right arrows as the cursor is OK")
             data-has-fade={hasFade ? 'true' : undefined}
             aria-hidden="true"
-            {...zoneHover}
+            {...hint}
             onContextMenu={(e) => {
               if (!onFadeContextMenu) return;
               e.preventDefault();
@@ -2842,7 +2702,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => beginFadeLengthDrag(clip, side, e, { holdPeek: !hasFade })}
+            onPointerDown={(e) => beginFadeLengthDrag(clip, side, e)}
             style={{
               position: 'absolute',
               // In the clip BODY's top corners, under the 20px header —
@@ -2864,15 +2724,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   /** A fade LENGTH drag from the press on `el` — the corner handle's, and
    *  since 2026-10-23 the unselected clip's corner ZONE's: one gesture,
    *  two doors. Relative: the boundary moves by the pointer's travel. */
-  const beginFadeLengthDrag = (clip: TrackClip, side: 'in' | 'out', e: React.PointerEvent, opts?: { holdPeek?: boolean }) => {
+  const beginFadeLengthDrag = (clip: TrackClip, side: 'in' | 'out', e: React.PointerEvent) => {
     if (e.button !== 0) return;
     e.stopPropagation();
     e.preventDefault();
-    const holdPeek = !!opts?.holdPeek;
-    if (holdPeek) {
-      setPeekHeld({ clipId: clip.id, side });
-      setPeekTaken(null);
-    }
     const { windowLen, fadeIn: fadeInSec, fadeOut: fadeOutSec } = clipQuickFadeGeometry(clip);
     const handleEl = e.currentTarget as HTMLElement;
     try { handleEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
@@ -2895,25 +2750,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // handle in hand).
     // The handle is EXTENT ONLY (2026-09-21: "keep them
     // separate") — the midpoint dot owns the shape.
-    // From a held peek the fade in hand is the peek's sliver (PEEK_PX),
-    // committed at the first sideways movement — so a click makes nothing
-    const ownFade = holdPeek
-      ? Math.min(windowLen, PEEK_PX / pixelsPerSecond)
-      : (side === 'in' ? fadeInSec : fadeOutSec);
+    const ownFade = side === 'in' ? fadeInSec : fadeOutSec;
     const pressX = e.clientX;
-    let taken = !holdPeek;
     const clipEnd = clip.start + clip.duration;
     // The whole window: the opposite fade is no cap — pulled
     // into, it gives way (the host's reducer shrinks it;
     // 2026-10-06, "have the other one pushed out of the way")
     const maxSeconds = windowLen;
     const onMove = (ev: PointerEvent) => {
-      if (!taken) {
-        if (ev.clientX === pressX) return;
-        taken = true;
-        setPeekHeld(null);
-        setPeekTaken(`${clip.id}:${side}`);
-      }
       const travel = (ev.clientX - pressX) / pixelsPerSecond;
       let seconds = ownFade + (side === 'in' ? travel : -travel);
       // Grid snap: it is the fade's BOUNDARY, in project time,
@@ -2954,10 +2798,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     };
     bindCapturedDrag(handleEl, onMove, (ev) => {
       handleEl.ownerDocument.body.removeAttribute('data-fade-length-drag');
-      setPeekHeld(null);
-      // Once the taken peek's would-be exit has run out, a later hover's
-      // peek on that edge leaves with its exit again
-      if (holdPeek && taken) window.setTimeout(() => setPeekTaken(null), HANDLE_LEAVE_MS);
       setFadeDragClipId(null);
       setFadeDragSide(null);
       onFadeDragChange?.(null);
@@ -3294,9 +3134,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // EFFECTIVE boundary, so a snapped drag's line sits on the
       // gridline. The dash is Track.css; it fades with the handles.
       const guidelineSides: Array<'in' | 'out'> = fadeDragClipId === clip.id && fadeDragSide
-        // …unless the held peek is standing in: the line would sit on the
-        // clip's edge while the curve is drawn 16px in
-        ? (peekStandsIn(clip, fadeDragSide) ? [] : [fadeDragSide])
+        ? [fadeDragSide]
         : ghosted ? []
         : (['in', 'out'] as const).filter((side) =>
           (side === 'in' ? fadeInSec : fadeOutSec) > 0 && !crossfadedEdges.has(`${clip.id}:${side}`));
@@ -3712,7 +3550,6 @@ const TrackNewComponent: React.FC<TrackProps> = ({
         {renderCrossfadeNodes()}
         {renderQuickFadeNodes()}
         {renderFadeCornerZones()}
-        {renderFadePeek()}
         {renderFadeHandles()}
         {renderBuriedEdgeHandles()}
         {renderEnvelopeInteractionLayers()}
