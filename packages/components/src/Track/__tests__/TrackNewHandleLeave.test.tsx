@@ -161,7 +161,7 @@ describe('hover-dependent controls fade out rather than vanish (2026-10-01)', ()
 });
 
 describe('the fade peek animates out (2026-10-27, "and it should animate out")', () => {
-  it('keeps the peek mounted, leaving, for its own 180ms tail — longer than the handles\' 60ms — then drops it', () => {
+  it('keeps the peek mounted, leaving, for its 60ms tail, then drops it', () => {
     const { container } = render(
       <Providers>
         <TrackNew
@@ -179,15 +179,15 @@ describe('the fade peek animates out (2026-10-27, "and it should animate out")',
     expect(peek()?.hasAttribute('data-leaving')).toBe(false);
     fireEvent.mouseLeave(zone);
     expect(peek()?.getAttribute('data-leaving')).toBe('true');
-    // Past the handles' tail it is still retracting
-    act(() => { vi.advanceTimersByTime(HANDLE_LEAVE_MS + 40); });
+    // Mid-tail it is still retracting
+    act(() => { vi.advanceTimersByTime(HANDLE_LEAVE_MS - 20); });
     expect(peek()?.getAttribute('data-leaving')).toBe('true');
-    act(() => { vi.advanceTimersByTime(180); });
+    act(() => { vi.advanceTimersByTime(40); });
     expect(peek()).toBeNull();
     // Back over the corner mid-retract: it grows again, no longer leaving
     fireEvent.mouseEnter(zone, { buttons: 0 });
     fireEvent.mouseLeave(zone);
-    act(() => { vi.advanceTimersByTime(50); });
+    act(() => { vi.advanceTimersByTime(30); });
     fireEvent.mouseEnter(zone, { buttons: 0 });
     expect(peek()?.hasAttribute('data-leaving')).toBe(false);
   });

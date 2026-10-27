@@ -13,7 +13,7 @@ import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { useLeavingKeys, handleLeaveMs } from '../hooks/useLeavingKeys';
 
 /** The fade peek's exit, the length of its grow (Track.css, 0.18s) — keep the two in step. */
-const PEEK_LEAVE_MS = 180;
+const PEEK_LEAVE_MS = 60;
 /** The peek's sliver, in px — and the length the real fade must pass to take over from it during a press. */
 const PEEK_PX = 16;
 import type { ClipColor } from '../types/clip';
@@ -2571,8 +2571,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     : hoverPeekLive && fadePeek ? [`${fadePeek.clipId}:${fadePeek.side}`] : [];
   // The peek ANIMATES OUT as it came in (2026-10-27, "and it should
   // animate out"): its own tail, PEEK_LEAVE_MS, the grow's length, so the
-  // curve visibly retracts into the edge (Track.css) instead of vanishing
-  // in the handles' 60ms; zero wherever nothing animates, as theirs is.
+  // curve retracts into the edge (Track.css) rather than only fading — 60ms
+  // like the handles' since the same day ("60ms animation duration
+  // please"; it was 180); zero wherever nothing animates, as theirs is.
   const leavingPeeks = useLeavingKeys(peekActive, handleLeaveMs() > 0 ? PEEK_LEAVE_MS : 0);
   const buriedActive = clips
     .filter((c) => handlesFollow(c) && !hidesHandlesOf(c.id))
