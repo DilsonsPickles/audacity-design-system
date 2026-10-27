@@ -39,84 +39,6 @@ export interface CrossfadeClipLike {
    *  no way back). */
   crossfadeInShape?: number | 'linear';
   crossfadeOutShape?: number | 'linear';
-  /** A FADE PIECE (2026-10-27, the cut tool through a fade: "try the
-   *  partial fade approach"). Present — even 0 — means this edge's fade
-   *  is a PIECE of a longer curve, the part a split left on this clip:
-   *  `fadeIn` / `fadeOut` stay the WHOLE curve's length, and the piece
-   *  shows its slice of it, never squashed to fit. `fadeInLead` is how
-   *  many seconds of the fade-in curve ran BEFORE this clip's start (the
-   *  right half of a cut starts part-way up); `fadeOutTail` how many
-   *  seconds of the fade-out curve run on AFTER its end. A piece runs
-   *  until the curve or the clip's free window ends. Absent = an ordinary
-   *  fade. Editing a piece's length makes it ordinary again. MUST MATCH
-   *  packages/audio/src/crossfadeGain.ts. */
-  fadeInLead?: number;
-  fadeOutTail?: number;
-}
-
-/** The slice of a fade's curve a clip shows, in timeline seconds and in
- *  the curve's own 0..1 time: an ordinary fade is the whole curve
- *  (u0 0, u1 1); a piece is part of it. */
-export interface FadePiece {
-  start: number;
-  end: number;
-  u0: number;
-  u1: number;
-}
-
-/** A clip's quick fades as the slices of curve it shows, inside its free
- *  window (crossfades consume the window's edges; a crossfaded edge has
- *  no quick fade). Ordinary fades keep effectiveFades' rule — shrunk in
- *  proportion when the two would cross; a PIECE is never squashed, it is
- *  cut off where the window ends, and an ordinary fade beside a piece
- *  takes what the piece leaves. MUST MATCH quickFadePieces in
- *  packages/audio/src/crossfadeGain.ts. */
-export function quickFadePieces(
-  clip: CrossfadeClipLike,
-  window: { start: number; end: number },
-  crossfadedIn: boolean,
-  crossfadedOut: boolean,
-): { fadeIn: FadePiece | null; fadeOut: FadePiece | null } {
-  const windowLen = Math.max(0, window.end - window.start);
-  const clipStart = clip.start;
-  const clipEnd = clip.start + clip.duration;
-  const lenIn = crossfadedIn ? 0 : Math.max(0, clip.fadeIn ?? 0);
-  const lenOut = crossfadedOut ? 0 : Math.max(0, clip.fadeOut ?? 0);
-  const inIsPiece = lenIn > EPSILON && clip.fadeInLead !== undefined;
-  const outIsPiece = lenOut > EPSILON && clip.fadeOutTail !== undefined;
-  let fadeIn: FadePiece | null = null;
-  let fadeOut: FadePiece | null = null;
-  if (inIsPiece) {
-    const lead = Math.max(0, Math.min(lenIn, clip.fadeInLead ?? 0));
-    const curveStart = clipStart - lead;
-    const end = Math.min(window.end, curveStart + lenIn);
-    if (end - clipStart > EPSILON) fadeIn = { start: clipStart, end, u0: lead / lenIn, u1: (end - curveStart) / lenIn };
-  }
-  if (outIsPiece) {
-    const tail = Math.max(0, Math.min(lenOut, clip.fadeOutTail ?? 0));
-    const curveStart = clipEnd + tail - lenOut;
-    const start = Math.max(window.start, curveStart);
-    if (clipEnd - start > EPSILON) fadeOut = { start, end: clipEnd, u0: (start - curveStart) / lenOut, u1: (clipEnd - curveStart) / lenOut };
-  }
-  const whole = (start: number, end: number): FadePiece | null => (end - start > EPSILON ? { start, end, u0: 0, u1: 1 } : null);
-  if (!inIsPiece && !outIsPiece) {
-    const eff = effectiveFades(lenIn, lenOut, windowLen);
-    return { fadeIn: whole(clipStart, clipStart + eff.fadeIn), fadeOut: whole(clipEnd - eff.fadeOut, clipEnd) };
-  }
-  if (!inIsPiece) {
-    const room = Math.max(0, windowLen - (fadeOut ? fadeOut.end - fadeOut.start : 0));
-    fadeIn = whole(clipStart, clipStart + Math.min(lenIn, room));
-  }
-  if (!outIsPiece) {
-    const room = Math.max(0, windowLen - (fadeIn ? fadeIn.end - fadeIn.start : 0));
-    fadeOut = whole(clipEnd - Math.min(lenOut, room), clipEnd);
-  }
-  return { fadeIn, fadeOut };
-}
-
-/** A piece's slice as a region's `span`, or undefined for the whole curve */
-function spanOf(piece: FadePiece): readonly [number, number] | undefined {
-  return piece.u0 > 1e-6 || piece.u1 < 1 - 1e-6 ? [piece.u0, piece.u1] : undefined;
 }
 
 export interface CrossfadeRegion {
@@ -207,9 +129,6 @@ export interface FadeCurveRegion {
   /** Curve shape, resolved: the stored one, else the default for
    *  this kind of fade (see `authored`) */
   shape: FadeShape;
-  /** A FADE PIECE's slice of its curve, in the curve's 0..1 time, drawn
-   *  across start..end. Absent = the whole curve. */
-  span?: readonly [number, number];
 }
 
 /** ONE fade per clip edge — the CROSSFADE wins (2026-09-21 "consume"
@@ -242,14 +161,16 @@ export function computeFadeCurves(clips: readonly CrossfadeClipLike[]): FadeCurv
     // Quick fades are confined to the free window (never overlapping a
     // crossfade) and may not cross each other within it
     const w = windows.get(String(c.id)) ?? { start: c.start, end: c.start + c.duration };
-    const { fadeIn, fadeOut } = quickFadePieces(c, w, crossfadedIn.has(String(c.id)), crossfadedOut.has(String(c.id)));
-    if (fadeIn) {
-      const span = spanOf(fadeIn);
-      regions.push({ clipId: c.id, side: 'in', start: fadeIn.start, end: fadeIn.end, authored: true, shape: c.fadeInShape ?? DEFAULT_QUICK_FADE_SHAPE, ...(span ? { span } : {}) });
+    const { fadeIn, fadeOut } = effectiveFades(
+      crossfadedIn.has(String(c.id)) ? 0 : c.fadeIn,
+      crossfadedOut.has(String(c.id)) ? 0 : c.fadeOut,
+      Math.max(0, w.end - w.start),
+    );
+    if (fadeIn > EPSILON) {
+      regions.push({ clipId: c.id, side: 'in', start: c.start, end: c.start + fadeIn, authored: true, shape: c.fadeInShape ?? DEFAULT_QUICK_FADE_SHAPE });
     }
-    if (fadeOut) {
-      const span = spanOf(fadeOut);
-      regions.push({ clipId: c.id, side: 'out', start: fadeOut.start, end: fadeOut.end, authored: true, shape: c.fadeOutShape ?? DEFAULT_QUICK_FADE_SHAPE, ...(span ? { span } : {}) });
+    if (fadeOut > EPSILON) {
+      regions.push({ clipId: c.id, side: 'out', start: c.start + c.duration - fadeOut, end: c.start + c.duration, authored: true, shape: c.fadeOutShape ?? DEFAULT_QUICK_FADE_SHAPE });
     }
   }
   return regions.sort((a, b) => a.start - b.start || String(a.clipId).localeCompare(String(b.clipId)));
@@ -444,14 +365,6 @@ export interface LocalFadeRegion {
   start: number;
   end: number;
   shape: FadeShape;
-  /** A fade piece's slice of its curve (see FadeCurveRegion.span) */
-  span?: readonly [number, number];
-}
-
-/** Curve time (0..1) at a region's normalised position u, through its
- *  span when it is a piece */
-function curveTimeIn(u: number, span: readonly [number, number] | undefined): number {
-  return span ? span[0] + u * (span[1] - span[0]) : u;
 }
 
 /** The fade gain at clip-local time `t` — the product of every region
@@ -467,7 +380,7 @@ export function fadeGainAt(t: number, regions: readonly LocalFadeRegion[] | unde
     if (len <= 0) continue;
     if (t < r.start) { if (r.side === 'in') g = 0; continue; }
     if (t > r.end) { if (r.side === 'out') g = 0; continue; }
-    const u = curveTimeIn((t - r.start) / len, r.span);
+    const u = (t - r.start) / len;
     g *= r.side === 'in' ? fadeInGain(u, r.shape) : fadeOutGain(u, r.shape);
   }
   return g;
@@ -486,7 +399,7 @@ export function localFadeRegionsByClip(
     const s0 = starts.get(r.clipId);
     if (s0 === undefined) continue;
     const list = out.get(r.clipId) ?? [];
-    list.push({ side: r.side, start: r.start - s0, end: r.end - s0, shape: r.shape, ...(r.span ? { span: r.span } : {}) });
+    list.push({ side: r.side, start: r.start - s0, end: r.end - s0, shape: r.shape });
     out.set(r.clipId, list);
   }
   return out;
@@ -497,13 +410,11 @@ export function localFadeRegionsByClip(
  *  `preserveAspectRatio="none"`. A bent shape exponent concentrates
  *  all the curvature near one end, so the sample count must be high
  *  enough that no segment reads as an angle. */
-export function fadeCurvePath(side: 'out' | 'in', samples = 64, shape: FadeShape = 1, span?: readonly [number, number]): string {
+export function fadeCurvePath(side: 'out' | 'in', samples = 64, shape: FadeShape = 1): string {
   const pts: string[] = [];
   for (let k = 0; k <= samples; k++) {
     const t = k / samples;
-    // A PIECE draws its slice of the curve across the whole box
-    const c = curveTimeIn(t, span);
-    const gain = side === 'out' ? fadeOutGain(c, shape) : fadeInGain(c, shape);
+    const gain = side === 'out' ? fadeOutGain(t, shape) : fadeInGain(t, shape);
     const xPos = t * 100;
     const yPos = (1 - gain) * 100;
     pts.push(`${xPos.toFixed(2)},${yPos.toFixed(2)}`);
@@ -519,13 +430,12 @@ export function fadeCurvePath(side: 'out' | 'in', samples = 64, shape: FadeShape
 /** The area BELOW a fade's curve — what the fade leaves. The curve,
  *  closed along the bottom edge through the corner under its full-gain
  *  end: bottom-right for a fade in, bottom-left for a fade out. */
-// Closed along the box's bottom (below) or top (above) edge through BOTH
-// corners: a whole curve visits one of them itself, a PIECE's slice
-// starts and ends part-way up, so neither corner can be assumed.
-export function fadeAreaBelowPath(side: 'out' | 'in', samples = 64, shape: FadeShape = 1, span?: readonly [number, number]): string {
-  return `${fadeCurvePath(side, samples, shape, span)} L 100.00,100.00 L 0.00,100.00 Z`;
+export function fadeAreaBelowPath(side: 'out' | 'in', samples = 64, shape: FadeShape = 1): string {
+  const corner = side === 'in' ? '100.00,100.00' : '0.00,100.00';
+  return `${fadeCurvePath(side, samples, shape)} L ${corner} Z`;
 }
 
-export function fadeAreaAbovePath(side: 'out' | 'in', samples = 64, shape: FadeShape = 1, span?: readonly [number, number]): string {
-  return `${fadeCurvePath(side, samples, shape, span)} L 100.00,0.00 L 0.00,0.00 Z`;
+export function fadeAreaAbovePath(side: 'out' | 'in', samples = 64, shape: FadeShape = 1): string {
+  const corner = side === 'in' ? '0.00,0.00' : '100.00,0.00';
+  return `${fadeCurvePath(side, samples, shape)} L ${corner} Z`;
 }

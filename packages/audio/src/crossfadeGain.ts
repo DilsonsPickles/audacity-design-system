@@ -43,78 +43,6 @@ export interface OverlapClipLike {
    *  MUST MATCH clipCrossfades.ts. */
   crossfadeInShape?: number | 'linear';
   crossfadeOutShape?: number | 'linear';
-  /** A FADE PIECE (2026-10-27): present — even 0 — means the edge's fade
-   *  is the slice of a longer curve a split left on this clip; fadeIn /
-   *  fadeOut stay the whole curve's length. `fadeInLead`: seconds of the
-   *  fade-in curve BEFORE the clip's start; `fadeOutTail`: seconds of the
-   *  fade-out curve AFTER its end. Never squashed, cut off where the free
-   *  window ends. MUST MATCH CrossfadeClipLike in clipCrossfades.ts. */
-  fadeInLead?: number;
-  fadeOutTail?: number;
-}
-
-/** The slice of a fade's curve a clip shows: timeline seconds, and the
- *  curve's own 0..1 time (an ordinary fade is 0..1). MUST MATCH
- *  FadePiece in components/utils/clipCrossfades.ts. */
-export interface FadePiece {
-  start: number;
-  end: number;
-  u0: number;
-  u1: number;
-}
-
-/** A clip's quick fades as curve slices inside its free window. MUST
- *  MATCH quickFadePieces in components/utils/clipCrossfades.ts, where
- *  the reasoning is; a sandbox test holds the two together. */
-export function quickFadePieces(
-  clip: OverlapClipLike,
-  window: { start: number; end: number },
-  crossfadedIn: boolean,
-  crossfadedOut: boolean,
-): { fadeIn: FadePiece | null; fadeOut: FadePiece | null } {
-  const windowLen = Math.max(0, window.end - window.start);
-  const clipStart = clip.start;
-  const clipEnd = clip.start + clip.duration;
-  const lenIn = crossfadedIn ? 0 : Math.max(0, clip.fadeIn ?? 0);
-  const lenOut = crossfadedOut ? 0 : Math.max(0, clip.fadeOut ?? 0);
-  const inIsPiece = lenIn > EPSILON && clip.fadeInLead !== undefined;
-  const outIsPiece = lenOut > EPSILON && clip.fadeOutTail !== undefined;
-  let fadeIn: FadePiece | null = null;
-  let fadeOut: FadePiece | null = null;
-  if (inIsPiece) {
-    const lead = Math.max(0, Math.min(lenIn, clip.fadeInLead ?? 0));
-    const curveStart = clipStart - lead;
-    const end = Math.min(window.end, curveStart + lenIn);
-    if (end - clipStart > EPSILON) fadeIn = { start: clipStart, end, u0: lead / lenIn, u1: (end - curveStart) / lenIn };
-  }
-  if (outIsPiece) {
-    const tail = Math.max(0, Math.min(lenOut, clip.fadeOutTail ?? 0));
-    const curveStart = clipEnd + tail - lenOut;
-    const start = Math.max(window.start, curveStart);
-    if (clipEnd - start > EPSILON) fadeOut = { start, end: clipEnd, u0: (start - curveStart) / lenOut, u1: (clipEnd - curveStart) / lenOut };
-  }
-  const whole = (start: number, end: number): FadePiece | null => (end - start > EPSILON ? { start, end, u0: 0, u1: 1 } : null);
-  if (!inIsPiece && !outIsPiece) {
-    // Ordinary fades: shrunk in proportion when the two would cross
-    let fi = Math.min(lenIn, windowLen);
-    let fo = Math.min(lenOut, windowLen);
-    const sum = fi + fo;
-    if (sum > windowLen && sum > 0) {
-      const scale = windowLen / sum;
-      fi *= scale;
-      fo *= scale;
-    }
-    return { fadeIn: whole(clipStart, clipStart + fi), fadeOut: whole(clipEnd - fo, clipEnd) };
-  }
-  if (!inIsPiece) {
-    const room = Math.max(0, windowLen - (fadeOut ? fadeOut.end - fadeOut.start : 0));
-    fadeIn = whole(clipStart, clipStart + Math.min(lenIn, room));
-  }
-  if (!outIsPiece) {
-    const room = Math.max(0, windowLen - (fadeIn ? fadeIn.end - fadeIn.start : 0));
-    fadeOut = whole(clipEnd - Math.min(lenOut, room), clipEnd);
-  }
-  return { fadeIn, fadeOut };
 }
 
 /** The point a quick fade's S-curve passes through: `t` along the fade
@@ -163,9 +91,6 @@ export interface ClipGainSegment {
    *  for its kind). Left off when it is 1 — equal-power, which is what
    *  `applyGainSegmentsToChannel` applies to a segment without one. */
   curve?: FadeShape;
-  /** A FADE PIECE's slice of its curve (0..1 curve time across the
-   *  segment). Absent = the whole curve. */
-  span?: readonly [number, number];
 }
 
 const EPSILON = 1e-9;
@@ -189,7 +114,6 @@ export function computeClipGainSegments(
     shape: ClipGainSegment['shape'],
     /** Which default an edge with no stored shape takes */
     kind: 'crossfade' | 'quick' = 'crossfade',
-    span?: readonly [number, number],
   ) => {
     const key = String(clip.id);
     const trimStart = clip.trimStart ?? 0;
@@ -206,7 +130,6 @@ export function computeClipGainSegments(
       endSec: trimStart + (endAbs - clip.start),
       shape,
       ...(curve !== undefined && curve !== 1 ? { curve } : {}),
-      ...(span ? { span } : {}),
     });
     out.set(key, list);
   };
@@ -256,16 +179,21 @@ export function computeClipGainSegments(
     // the clip's edges, and quick fades may not overlap them
     const windowStart = Math.max(clip.start, headConsumedTo.get(key) ?? clip.start);
     const windowEnd = Math.min(clip.start + clip.duration, tailConsumedFrom.get(key) ?? clip.start + clip.duration);
-    const { fadeIn, fadeOut } = quickFadePieces(
-      clip,
-      { start: windowStart, end: windowEnd },
-      crossfadedIn.has(key),
-      crossfadedOut.has(key),
-    );
-    const spanOf = (p: FadePiece): readonly [number, number] | undefined =>
-      (p.u0 > 1e-6 || p.u1 < 1 - 1e-6 ? [p.u0, p.u1] : undefined);
-    if (fadeIn) push(clip, fadeIn.start, fadeIn.end, 'fadeIn', 'quick', spanOf(fadeIn));
-    if (fadeOut) push(clip, fadeOut.start, fadeOut.end, 'fadeOut', 'quick', spanOf(fadeOut));
+    const windowLen = Math.max(0, windowEnd - windowStart);
+    let fadeIn = crossfadedIn.has(key) ? 0 : Math.min(Math.max(0, clip.fadeIn ?? 0), windowLen);
+    let fadeOut = crossfadedOut.has(key) ? 0 : Math.min(Math.max(0, clip.fadeOut ?? 0), windowLen);
+    const sum = fadeIn + fadeOut;
+    if (sum > windowLen && sum > 0) {
+      const scale = windowLen / sum;
+      fadeIn *= scale;
+      fadeOut *= scale;
+    }
+    if (fadeIn > EPSILON) {
+      push(clip, clip.start, clip.start + fadeIn, 'fadeIn', 'quick');
+    }
+    if (fadeOut > EPSILON) {
+      push(clip, clip.start + clip.duration - fadeOut, clip.start + clip.duration, 'fadeOut', 'quick');
+    }
   }
   return out;
 }
@@ -290,9 +218,7 @@ export function applyGainSegmentsToChannel(
         out[i] = 0;
         continue;
       }
-      const along = Math.max(0, Math.min(1, (i / sampleRate - seg.startSec) / span));
-      // A FADE PIECE plays its slice of the curve across the segment
-      const t = seg.span ? seg.span[0] + along * (seg.span[1] - seg.span[0]) : along;
+      const t = Math.max(0, Math.min(1, (i / sampleRate - seg.startSec) / span));
       if (seg.curve === 'linear') {
         out[i] *= seg.shape === 'fadeOut' ? 1 - t : t;
         continue;
