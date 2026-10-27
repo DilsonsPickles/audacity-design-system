@@ -1097,6 +1097,19 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // curve and its dashed line show at their true length and the peek
   // RETRACTS into the edge with its exit, as on a release short of it.
   // Dragged back to nothing, the peek grows out again.
+  // …AND THE PRESS GRABS THE PEEK AS IT IS (the same day, "can't we make
+  // it so that you pull the curve from where it is and if you want to
+  // make it smaller it just lets you?"): the drag from a held peek starts
+  // AT the sliver's length — the first sideways pixel makes a PEEK_PX
+  // fade plus that pixel's travel — so the curve under the pointer is the
+  // one being pulled: out grows it, back toward the edge shrinks it, all
+  // the way to nothing. The peek then hands over AT ONCE (`peekTaken`):
+  // the real curve is drawn where it was, at the same length and shape,
+  // and the peek is simply not drawn — no retract over the real curve,
+  // nor a peek growing back when the fade is pulled to nothing (the
+  // curve in hand has gone, not a fresh one to offer). A click that never
+  // moves sideways still makes nothing and retracts the peek.
+  const [peekTaken, setPeekTaken] = React.useState<string | null>(null);
   const peekStandsIn = (clip: TrackClip, side: 'in' | 'out') =>
     peekHeld != null && peekHeld.clipId === clip.id && peekHeld.side === side && storedFadePx(clip, side) <= 0;
   // HANDLES FOLLOW THE POINTER, NOT THE SELECTION (user decision
@@ -1654,6 +1667,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // the peek has handed over (mid-press) or has nothing to retract to
       if (storedFadePx(clip, side) >= PEEK_PX) continue;
       const leaving = !peekActive.includes(key);
+      // Taken by the drag: the real curve is the peek now, no exit
+      if (leaving && peekTaken === key) continue;
       const clipWidth = clip.duration * pixelsPerSecond;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
       const { bodyTop, bodyHeight } = clipBodyGeometry(height, headerShownFor(clip.id));
@@ -2864,7 +2879,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     if (e.button !== 0) return;
     e.stopPropagation();
     e.preventDefault();
-    if (opts?.holdPeek) setPeekHeld({ clipId: clip.id, side });
+    const holdPeek = !!opts?.holdPeek;
+    if (holdPeek) {
+      setPeekHeld({ clipId: clip.id, side });
+      setPeekTaken(null);
+    }
     const { windowLen, fadeIn: fadeInSec, fadeOut: fadeOutSec } = clipQuickFadeGeometry(clip);
     const handleEl = e.currentTarget as HTMLElement;
     try { handleEl.setPointerCapture(e.pointerId); } catch { /* jsdom / older engines */ }
@@ -2887,14 +2906,25 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // handle in hand).
     // The handle is EXTENT ONLY (2026-09-21: "keep them
     // separate") — the midpoint dot owns the shape.
-    const ownFade = side === 'in' ? fadeInSec : fadeOutSec;
+    // From a held peek the fade in hand is the peek's sliver (PEEK_PX),
+    // committed at the first sideways movement — so a click makes nothing
+    const ownFade = holdPeek
+      ? Math.min(windowLen, PEEK_PX / pixelsPerSecond)
+      : (side === 'in' ? fadeInSec : fadeOutSec);
     const pressX = e.clientX;
+    let taken = !holdPeek;
     const clipEnd = clip.start + clip.duration;
     // The whole window: the opposite fade is no cap — pulled
     // into, it gives way (the host's reducer shrinks it;
     // 2026-10-06, "have the other one pushed out of the way")
     const maxSeconds = windowLen;
     const onMove = (ev: PointerEvent) => {
+      if (!taken) {
+        if (ev.clientX === pressX) return;
+        taken = true;
+        setPeekHeld(null);
+        setPeekTaken(`${clip.id}:${side}`);
+      }
       const travel = (ev.clientX - pressX) / pixelsPerSecond;
       let seconds = ownFade + (side === 'in' ? travel : -travel);
       // Grid snap: it is the fade's BOUNDARY, in project time,
@@ -2936,6 +2966,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     bindCapturedDrag(handleEl, onMove, (ev) => {
       handleEl.ownerDocument.body.removeAttribute('data-fade-length-drag');
       setPeekHeld(null);
+      // Once the taken peek's would-be exit has run out, a later hover's
+      // peek on that edge leaves with its exit again
+      if (holdPeek && taken) window.setTimeout(() => setPeekTaken(null), PEEK_LEAVE_MS);
       setFadeDragClipId(null);
       setFadeDragSide(null);
       onFadeDragChange?.(null);

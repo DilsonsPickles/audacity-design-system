@@ -1647,7 +1647,7 @@ describe('the peek — a bare edge\'s curve says hello under the corner zone (20
 });
 
 describe('the peek becomes the fade (2026-10-27, "you click it and it gets shy and pops away")', () => {
-  it('a press holds the peek; from the first pixel of fade the real curve and its line show at their true length, however short', () => {
+  it('a press GRABS the peek: the drag starts at its 16px, out grows it, back shrinks it to nothing, and the real curve takes over at once', () => {
     const onClipFadeChange = vi.fn();
     const tree = (fadeIn?: number) => (
       <Providers>
@@ -1665,36 +1665,63 @@ describe('the peek becomes the fade (2026-10-27, "you click it and it gets shy a
     const peek = () => container.querySelector('[data-fade-peek]') as HTMLElement | null;
     const curve = () => container.querySelector('[data-fade-curve="in"][data-fade-authored="true"]');
     const line = () => container.querySelector('[data-fade-guideline="in"][data-fade-clip="1"]');
+    const last = () => onClipFadeChange.mock.calls[onClipFadeChange.mock.calls.length - 1][2] as number;
     fireEvent.mouseEnter(zone(), { buttons: 0 });
     fireEvent.pointerDown(zone(), { button: 0, clientX: 10, clientY: 30, pointerId: 5 });
-    // Pressed: the peek stays, not leaving; nothing else drawn yet
+    // Pressed: the peek stays, not leaving; nothing else drawn, nothing made
     expect(peek()).not.toBeNull();
     expect(peek()?.hasAttribute('data-leaving')).toBe(false);
     expect(line()).toBeNull();
-    // Dragged 3px (0.03s at 100px/s) — far shorter than the 16px sliver:
-    // the real curve and its dashed line show at that length, and the
-    // peek has left (2026-10-27, "I can't make a REALLY short fade";
-    // jsdom has no exit tail, so it is simply gone)
-    rerender(tree(0.03));
+    // A vertical wobble is not a pull
+    fireEvent.pointerMove(zone(), { clientX: 10, clientY: 34, pointerId: 5 });
+    expect(onClipFadeChange).not.toHaveBeenCalled();
+    // One pixel out: the 16px peek plus that pixel (2026-10-27, "pull the
+    // curve from where it is")
+    fireEvent.pointerMove(zone(), { clientX: 11, clientY: 30, pointerId: 5 });
+    expect(last()).toBeCloseTo(0.17, 6);
+    rerender(tree(0.17));
     expect(peek()).toBeNull();
-    expect(curve()).not.toBeNull();
-    expect((curve() as HTMLElement).style.width).toBe('3px');
+    expect((curve() as HTMLElement).style.width).toBe('17px');
     expect(line()).not.toBeNull();
-    // Longer: the same, the curve growing with the drag
-    rerender(tree(0.3));
-    expect(peek()).toBeNull();
-    expect((curve() as HTMLElement).style.width).toBe('30px');
-    // Dragged back to nothing mid-press: the peek says hello again
+    // Back toward the edge: smaller, however short ("it just lets you")
+    fireEvent.pointerMove(zone(), { clientX: -3, clientY: 30, pointerId: 5 });
+    expect(last()).toBeCloseTo(0.03, 6);
+    rerender(tree(0.03));
+    expect(peek()).toBeNull(); // taken: no exit drawn over the real curve
+    expect((curve() as HTMLElement).style.width).toBe('3px');
+    // Past the edge: nothing — and no fresh peek offered mid-pull
+    fireEvent.pointerMove(zone(), { clientX: -20, clientY: 30, pointerId: 5 });
+    expect(last()).toBe(0);
     rerender(tree(undefined));
-    expect(peek()).not.toBeNull();
+    expect(peek()).toBeNull();
     expect(curve()).toBeNull();
-    expect(line()).toBeNull();
+    fireEvent.pointerMove(zone(), { clientX: -1, clientY: 30, pointerId: 5 });
+    expect(last()).toBeCloseTo(0.05, 6);
     rerender(tree(0.05));
-    fireEvent.pointerUp(zone(), { clientX: 15, clientY: 30, pointerId: 5 });
-    // Released: the short fade made is what is drawn
+    fireEvent.pointerUp(zone(), { clientX: -1, clientY: 30, pointerId: 5 });
     fireEvent.mouseLeave(zone());
     expect(peek()).toBeNull();
     expect((curve() as HTMLElement).style.width).toBe('5px');
+  });
+
+  it('a click on the peek that never moves sideways makes nothing', () => {
+    const onClipFadeChange = vi.fn();
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4 }]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={onClipFadeChange}
+        />
+      </Providers>,
+    );
+    const zone = container.querySelector('[data-fade-zone="in"][data-clip-ref="1"]') as HTMLElement;
+    fireEvent.mouseEnter(zone, { buttons: 0 });
+    fireEvent.pointerDown(zone, { button: 0, clientX: 10, clientY: 30, pointerId: 6 });
+    fireEvent.pointerUp(zone, { clientX: 10, clientY: 30, pointerId: 6 });
+    expect(onClipFadeChange).not.toHaveBeenCalled();
   });
 
   it('a press on the handle of a SELECTED clip holds no peek', () => {
