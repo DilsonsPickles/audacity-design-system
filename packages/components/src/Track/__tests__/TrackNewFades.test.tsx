@@ -1622,19 +1622,12 @@ describe('the peek — a bare edge\'s curve says hello under the corner zone (20
     expect(peek()?.style.left).toBe(`${CLIP_CONTENT_OFFSET}px`);
     expect(peek()?.style.width).toBe('16px');
     expect(peek()?.querySelector('path[d]')).not.toBeNull();
-    // The curve grows out of the clip's edge (2026-10-27): the svg is
-    // anchored to the edge the fade starts from, its width animated by CSS
-    const curve = () => peek()?.querySelector('.track-fade-peek__curve') as SVGElement | null;
-    expect(curve()?.style.left).toBe('0px');
-    expect(curve()?.style.right).toBe('');
     fireEvent.mouseLeave(zone(1, 'in'));
     expect(peek()).toBeNull(); // jsdom: no tail
     // The out edge: the sliver sits at the clip's right edge
     fireEvent.mouseEnter(zone(1, 'out'), { buttons: 0 });
     expect(peek()?.getAttribute('data-fade-peek')).toBe('out');
     expect(peek()?.style.left).toBe(`${CLIP_CONTENT_OFFSET + 400 - 16}px`);
-    expect(curve()?.style.right).toBe('0px');
-    expect(curve()?.style.left).toBe('');
     fireEvent.mouseLeave(zone(1, 'out'));
     // An edge that already has a fade shows the real curve, no peek
     fireEvent.mouseEnter(zone(2, 'in'), { buttons: 0 });

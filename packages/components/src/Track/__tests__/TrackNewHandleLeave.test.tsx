@@ -160,7 +160,7 @@ describe('hover-dependent controls fade out rather than vanish (2026-10-01)', ()
   });
 });
 
-describe('the fade peek animates out (2026-10-27, "and it should animate out")', () => {
+describe('the fade peek fades out with the handles\' tail', () => {
   it('keeps the peek mounted, leaving, for its 60ms tail, then drops it', () => {
     const { container } = render(
       <Providers>
@@ -179,12 +179,12 @@ describe('the fade peek animates out (2026-10-27, "and it should animate out")',
     expect(peek()?.hasAttribute('data-leaving')).toBe(false);
     fireEvent.mouseLeave(zone);
     expect(peek()?.getAttribute('data-leaving')).toBe('true');
-    // Mid-tail it is still retracting
+    // Mid-tail it is still fading
     act(() => { vi.advanceTimersByTime(HANDLE_LEAVE_MS - 20); });
     expect(peek()?.getAttribute('data-leaving')).toBe('true');
     act(() => { vi.advanceTimersByTime(40); });
     expect(peek()).toBeNull();
-    // Back over the corner mid-retract: it grows again, no longer leaving
+    // Back over the corner mid-fade: it is back, no longer leaving
     fireEvent.mouseEnter(zone, { buttons: 0 });
     fireEvent.mouseLeave(zone);
     act(() => { vi.advanceTimersByTime(30); });

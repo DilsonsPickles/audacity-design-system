@@ -147,43 +147,19 @@ body[data-fade-length-drag] * {
 }
 
 /* The PEEK — a bare edge's fade curve showing a sliver of itself while
-   its corner zone is under the pointer (2026-10-23). Since 2026-10-27
-   ("can it animate") the curve GROWS OUT OF THE EDGE: the svg, anchored
-   to the clip's edge, runs its width from 0 to the sliver's 16px with a
-   small overshoot, so the fade stretches out the way a drag would make
-   it and settles — at the handles' 60ms since the same day ("60ms
-   animation duration please"; it was 0.18s). Out via [data-leaving]: it
-   shrinks back into the edge as it fades. */
+   its corner zone is under the pointer (2026-10-23). It FADES in and out
+   like every hover control, over the handles' 60ms (the shared
+   [data-leaving] rule takes it out). It grew out of the edge and
+   retracted into it for a day (2026-10-27, "can it animate") — 0.18s,
+   then 60ms, at which "you just can't see it come in", so the grow went. */
 .track-fade-peek {
   transition: opacity 0.06s ease-out;
-}
-
-.track-fade-peek__curve {
-  width: 100%;
-  transition: width 0.06s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 @starting-style {
   .track-fade-peek {
     opacity: 0;
   }
-  .track-fade-peek__curve {
-    width: 0;
-  }
-}
-
-/* …and RETRACTS INTO IT on the way out (2026-10-27, "and it should
-   animate out"): the grow played backwards — a slight lean outward, then
-   back into the edge — over the same 60ms (PEEK_LEAVE_MS in TrackNew
-   keeps it mounted that long), the sliver fading over the back half. The
-   !important beats the shared [data-leaving] rule's plain fade below. */
-.track-fade-peek[data-leaving] {
-  transition: opacity 0.03s ease-in 0.03s !important;
-}
-
-.track-fade-peek[data-leaving] .track-fade-peek__curve {
-  width: 0;
-  transition: width 0.06s cubic-bezier(0.36, 0, 0.66, -0.4);
 }
 
 /* With a fade already there — its dashed line up under the pointer —
@@ -354,8 +330,7 @@ body[data-fade-length-drag] * {
   .track-fade-guideline,
   [data-crossfade-node],
   [data-fade-curve] [data-fade-line],
-  .track-fade-peek,
-  .track-fade-peek__curve {
+  .track-fade-peek {
     transition: none;
   }
 }

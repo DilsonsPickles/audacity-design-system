@@ -10,10 +10,8 @@ import { computeCrossfades, computeFadeCurves, crossfadeIntersection, effectiveF
 import { computeEdgeHitZones, EDGE_HIT_INSIDE_PX } from '../utils/clipEdgeHitZones';
 import { CLIP_CONTENT_OFFSET } from '../constants';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
-import { useLeavingKeys, handleLeaveMs } from '../hooks/useLeavingKeys';
+import { useLeavingKeys, HANDLE_LEAVE_MS } from '../hooks/useLeavingKeys';
 
-/** The fade peek's exit, the length of its grow (Track.css, 0.18s) — keep the two in step. */
-const PEEK_LEAVE_MS = 60;
 /** The peek's sliver, in px — and the length the real fade must pass to take over from it during a press. */
 const PEEK_PX = 16;
 import type { ClipColor } from '../types/clip';
@@ -1095,8 +1093,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // the fade passed the 16px sliver hid every fade shorter than that).
   // The press holds the peek; the moment there is a fade at all, the real
   // curve and its dashed line show at their true length and the peek
-  // RETRACTS into the edge with its exit, as on a release short of it.
-  // Dragged back to nothing, the peek grows out again.
+  // leaves with its exit, as on a release short of it.
+  // Dragged back to nothing, the peek comes back.
   // …AND THE PRESS GRABS THE PEEK AS IT IS (the same day, "can't we make
   // it so that you pull the curve from where it is and if you want to
   // make it smaller it just lets you?"): the drag from a held peek starts
@@ -1105,10 +1103,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // one being pulled: out grows it, back toward the edge shrinks it, all
   // the way to nothing. The peek then hands over AT ONCE (`peekTaken`):
   // the real curve is drawn where it was, at the same length and shape,
-  // and the peek is simply not drawn — no retract over the real curve,
-  // nor a peek growing back when the fade is pulled to nothing (the
+  // and the peek is simply not drawn — no exit over the real curve,
+  // nor a peek coming back when the fade is pulled to nothing (the
   // curve in hand has gone, not a fresh one to offer). A click that never
-  // moves sideways still makes nothing and retracts the peek.
+  // moves sideways still makes nothing and lets the peek go.
   const [peekTaken, setPeekTaken] = React.useState<string | null>(null);
   const peekStandsIn = (clip: TrackClip, side: 'in' | 'out') =>
     peekHeld != null && peekHeld.clipId === clip.id && peekHeld.side === side && storedFadePx(clip, side) <= 0;
@@ -1664,7 +1662,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const clip = clips.find((c) => String(c.id) === clipId);
       if (!clip) continue;
       // Where the real fade already covers the sliver it draws itself:
-      // the peek has handed over (mid-press) or has nothing to retract to
+      // the peek has handed over (mid-press) or has nothing to stand for
       if (storedFadePx(clip, side) >= PEEK_PX) continue;
       const leaving = !peekActive.includes(key);
       // Taken by the drag: the real curve is the peek now, no exit
@@ -1690,18 +1688,12 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             zIndex: 450,
           }}
         >
-          {/* THE CURVE GROWS OUT OF THE EDGE (2026-10-27, "can it
-              animate"): the svg is anchored to the clip's edge and its
-              WIDTH runs 0 → the full sliver (Track.css, @starting-style),
-              so the curve stretches out as a dragged fade would — the
-              stroke is non-scaling, so it keeps its weight while it grows;
-              on the way out it shrinks back into the edge. */}
           <svg
-            className="track-fade-peek__curve"
+            width="100%"
             height="100%"
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
-            style={{ position: 'absolute', top: 0, [side === 'in' ? 'left' : 'right']: 0, display: 'block', overflow: 'visible' }}
+            style={{ display: 'block', overflow: 'visible' }}
           >
             <path d={fadeAreaAbovePath(side, 64, DEFAULT_QUICK_FADE_SHAPE)} fill="rgba(0, 0, 0, 0.2)" stroke="none" />
             <path d={fadeCurvePath(side, 64, DEFAULT_QUICK_FADE_SHAPE)} fill="none" stroke="rgba(0, 0, 0, 0.45)" strokeWidth={1.5} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
@@ -2569,12 +2561,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   const peekActive = heldPeekLive && peekHeld
     ? [`${peekHeld.clipId}:${peekHeld.side}`]
     : hoverPeekLive && fadePeek ? [`${fadePeek.clipId}:${fadePeek.side}`] : [];
-  // The peek ANIMATES OUT as it came in (2026-10-27, "and it should
-  // animate out"): its own tail, PEEK_LEAVE_MS, the grow's length, so the
-  // curve retracts into the edge (Track.css) rather than only fading — 60ms
-  // like the handles' since the same day ("60ms animation duration
-  // please"; it was 180); zero wherever nothing animates, as theirs is.
-  const leavingPeeks = useLeavingKeys(peekActive, handleLeaveMs() > 0 ? PEEK_LEAVE_MS : 0);
+  // The peek fades out with the handles' tail, as every hover control does
+  const leavingPeeks = useLeavingKeys(peekActive);
   const buriedActive = clips
     .filter((c) => handlesFollow(c) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
@@ -2969,7 +2957,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       setPeekHeld(null);
       // Once the taken peek's would-be exit has run out, a later hover's
       // peek on that edge leaves with its exit again
-      if (holdPeek && taken) window.setTimeout(() => setPeekTaken(null), PEEK_LEAVE_MS);
+      if (holdPeek && taken) window.setTimeout(() => setPeekTaken(null), HANDLE_LEAVE_MS);
       setFadeDragClipId(null);
       setFadeDragSide(null);
       onFadeDragChange?.(null);
