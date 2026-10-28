@@ -6,6 +6,7 @@
  * - Ripple Cut: Deletes audio and shifts everything left (ripple effect)
  */
 
+import type { FadeShape } from '@audacity-ui/components';
 import type { Label } from '../contexts/TracksContext';
 
 export type CutMode = 'split' | 'ripple';
@@ -36,6 +37,12 @@ interface Clip {
    *  so canvas-time deltas map to source-time updates correctly. */
   stretchFactor?: number;
   deletedRegions?: DeletedRegion[];
+  fadeIn?: number;
+  fadeOut?: number;
+  fadeInShape?: FadeShape;
+  fadeOutShape?: FadeShape;
+  crossfadeInShape?: number | 'linear';
+  crossfadeOutShape?: number | 'linear';
 }
 
 interface Track {
@@ -46,6 +53,46 @@ interface Track {
   channelSplitRatio?: number;
   clips: Clip[];
   labels?: Label[];
+}
+
+/** A fade shorter than this is no fade (the reducers' MIN_FADE_SECONDS) */
+const MIN_FADE_SECONDS = 0.02;
+
+/**
+ * A CUT THROUGH A FADE (user decision 2026-10-28, "what do we do when we
+ * cut audio from the middle of a clip with a long fade?" — the split's
+ * rule of 2026-10-27, which range cuts had never followed: they copied
+ * both fades onto both halves, so each cut edge grew a fade and a half
+ * could keep a fade longer than itself). A FADE BELONGS TO ITS EDGE,
+ * SHORTENED TO FIT: a cut edge grows no fade; a fade whose edge
+ * survives is stored at what still fits — a whole fade, squeezed — and
+ * one under MIN_FADE_SECONDS is dropped with its shape.
+ */
+function withFades<C extends Clip>(clip: C, fadeIn: number, fadeOut: number): C {
+  const keep = (n: number) => (n >= MIN_FADE_SECONDS ? n : undefined);
+  const fi = keep(fadeIn);
+  const fo = keep(fadeOut);
+  return {
+    ...clip,
+    fadeIn: fi,
+    fadeOut: fo,
+    ...(fi === undefined ? { fadeInShape: undefined } : {}),
+    ...(fo === undefined ? { fadeOutShape: undefined } : {}),
+  };
+}
+
+/** An edge cut away from a clip now `duration` long: the fade at the
+ *  edge that stays keeps its length (to the clip's), and the fade at the
+ *  edge that moved gets the room that is left. */
+function fadesAfterEdgeCut<C extends Clip>(clip: C, duration: number, movedEdge: 'start' | 'end'): C {
+  const fadeIn = clip.fadeIn ?? 0;
+  const fadeOut = clip.fadeOut ?? 0;
+  if (movedEdge === 'start') {
+    const out = Math.min(fadeOut, duration);
+    return withFades(clip, Math.min(fadeIn, duration - out), out);
+  }
+  const inn = Math.min(fadeIn, duration);
+  return withFades(clip, inn, Math.min(fadeOut, duration - inn));
 }
 
 /**
@@ -96,14 +143,18 @@ export function applySplitCut(
         const relativeStart = startTime - clipStart;       // canvas time
         const relativeEnd = endTime - clipStart;           // canvas time
 
-        // First clip: from start to deletion start
-        const firstClip: Clip = {
-          ...clip,
+        // First clip: from start to deletion start. The halves split the
+        // fades as a point split does: the left keeps the fade-in, the
+        // right the fade-out, each fitted to its half (withFades).
+        const { fadeOut: _fo, fadeOutShape: _fos, crossfadeOutShape: _xos, ...leftBase } = clip;
+        const { fadeIn: _fi, fadeInShape: _fis, crossfadeInShape: _xis, ...rightBase } = clip;
+        const firstClip: Clip = withFades({
+          ...leftBase,
           duration: relativeStart,
           trimStart: clip.trimStart, // Preserve existing trimStart (don't inherit from spread)
           fullDuration: inferredFullDuration,
           envelopePoints: clip.envelopePoints.filter(p => p.time < relativeStart),
-        };
+        }, Math.min(clip.fadeIn ?? 0, relativeStart), 0);
 
         // Second clip: from deletion end to clip end. Both clips inherit the
         // parent's stretchFactor; trimStart advances by the canvas-time gap
@@ -111,8 +162,8 @@ export function applySplitCut(
         const secondClipDuration = clipEnd - endTime;
         const newTrimStart = (clip.trimStart || 0) + relativeEnd / stretch;
 
-        const secondClip: Clip = {
-          ...clip,
+        const secondClip: Clip = withFades({
+          ...rightBase,
           id: nextClipId++,
           name: `${clip.name} (split)`,
           start: endTime,
@@ -122,7 +173,7 @@ export function applySplitCut(
           envelopePoints: clip.envelopePoints
             .filter(p => p.time >= relativeEnd)
             .map(p => ({ ...p, time: p.time - relativeEnd })),
-        };
+        }, 0, Math.min(clip.fadeOut ?? 0, secondClipDuration));
 
         return [firstClip, secondClip];
       }
@@ -133,7 +184,7 @@ export function applySplitCut(
         const newDuration = clip.duration - overlapDuration;
         const newTrimStart = (clip.trimStart || 0) + overlapDuration / stretch;
 
-        return [{
+        return [fadesAfterEdgeCut({
           ...clip,
           start: endTime,
           duration: newDuration,
@@ -142,7 +193,7 @@ export function applySplitCut(
           envelopePoints: clip.envelopePoints
             .map(p => ({ ...p, time: p.time - overlapDuration }))
             .filter(p => p.time >= 0),
-        }];
+        }, newDuration, 'start')];
       }
 
       // Case 5: Deletion overlaps end of clip - trim end
@@ -150,12 +201,12 @@ export function applySplitCut(
         const relativeStart = startTime - clipStart;       // canvas time
         const newDuration = relativeStart;
 
-        return [{
+        return [fadesAfterEdgeCut({
           ...clip,
           duration: newDuration,
           fullDuration: inferredFullDuration,
           envelopePoints: clip.envelopePoints.filter(p => p.time < relativeStart),
-        }];
+        }, newDuration, 'end')];
       }
 
       return [clip];
@@ -221,11 +272,20 @@ export function applyRippleCut(
         // Update duration (reduced by deletion)
         const newDuration = clip.duration - deletionDuration;
 
-        return {
+        // The clip stays one clip, so both edges and their fades stay;
+        // a fade the hole cuts into loses the part taken out of it
+        const relativeEnd = relativeStart + deletionDuration;
+        const overlap = (a: number, b: number) => Math.max(0, Math.min(b, relativeEnd) - Math.max(a, relativeStart));
+        const fadeIn = clip.fadeIn ?? 0;
+        const fadeOut = clip.fadeOut ?? 0;
+        const inLeft = fadeIn - overlap(0, fadeIn);
+        const outLeft = fadeOut - overlap(clip.duration - fadeOut, clip.duration);
+
+        return withFades({
           ...clip,
           duration: newDuration,
           deletedRegions: newDeletedRegions
-        };
+        }, Math.min(inLeft, newDuration), Math.min(outLeft, Math.max(0, newDuration - inLeft)));
       }
 
       // Case 4: Deletion overlaps start of clip
@@ -246,14 +306,14 @@ export function applyRippleCut(
           .map(region => ({ ...region, startTime: region.startTime - overlapDuration }))
           .filter(region => region.startTime >= 0);
 
-        return {
+        return fadesAfterEdgeCut({
           ...clip,
           start: startTime, // Clip starts where deletion started (shifted left)
           duration: newDuration,
           trimStart: newTrimStart,
           envelopePoints: shiftedEnvelopePoints,
           deletedRegions: shiftedDeletedRegions.length > 0 ? shiftedDeletedRegions : undefined
-        };
+        }, newDuration, 'start');
       }
 
       // Case 5: Deletion overlaps end of clip
@@ -270,12 +330,12 @@ export function applyRippleCut(
         const filteredDeletedRegions = (clip.deletedRegions || [])
           .filter(region => region.startTime < relativeStart);
 
-        return {
+        return fadesAfterEdgeCut({
           ...clip,
           duration: newDuration,
           envelopePoints: filteredEnvelopePoints,
           deletedRegions: filteredDeletedRegions.length > 0 ? filteredDeletedRegions : undefined
-        };
+        }, newDuration, 'end');
       }
 
       return clip;

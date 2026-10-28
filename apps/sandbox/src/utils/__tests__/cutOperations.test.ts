@@ -217,3 +217,75 @@ describe('applyCut', () => {
     expect(result[0].clips[0].start).toBe(3);
   });
 });
+
+// A cut through a fade (2026-10-28): the split's rule — a fade belongs to
+// its edge, shortened to fit — for range cuts, which copied both fades
+// onto both halves until then.
+describe('a range cut through a fade', () => {
+  // A 6 s clip with a 4 s fade-in (shaped) and a 1 s fade-out
+  const faded = () => [{
+    id: 0,
+    name: 'Track 1',
+    clips: [{
+      id: 1, name: 'Clip 1', start: 0, duration: 6, envelopePoints: [],
+      fadeIn: 4, fadeOut: 1, fadeInShape: 'linear' as const, fadeOutShape: 1,
+    }],
+  }];
+
+  it('split cut from the middle of the fade-in: the left half keeps a fitted fade-in and no fade-out; the right half keeps the fade-out and no fade-in', () => {
+    const [left, right] = applySplitCut(faded(), 1, 2, [0])[0].clips;
+    expect(left.duration).toBe(1);
+    expect(left.fadeIn).toBe(1);
+    expect(left.fadeInShape).toBe('linear');
+    expect(left.fadeOut).toBeUndefined();
+    expect(left.fadeOutShape).toBeUndefined();
+    expect(right.fadeIn).toBeUndefined();
+    expect(right.fadeInShape).toBeUndefined();
+    expect(right.fadeOut).toBe(1);
+    expect(right.fadeOutShape).toBe(1);
+  });
+
+  it('split cut leaving a sliver too short for a fade keeps none, nor its shape', () => {
+    const [left] = applySplitCut(faded(), 0.01, 2, [0])[0].clips;
+    expect(left.fadeIn).toBeUndefined();
+    expect(left.fadeInShape).toBeUndefined();
+  });
+
+  it('a cut over the clip\'s start keeps the fade-out and gives the fade-in the room that is left', () => {
+    // 3 s cut from the head: 3 s left, the 1 s fade-out stays, the fade-in fits into 2 s
+    const [clip] = applySplitCut(faded(), 0, 3, [0])[0].clips;
+    expect(clip.duration).toBe(3);
+    expect(clip.fadeOut).toBe(1);
+    expect(clip.fadeIn).toBe(2);
+  });
+
+  it('a cut over the clip\'s end keeps the fade-in to what fits and drops a fade-out with no room', () => {
+    const [clip] = applySplitCut(faded(), 4, 6, [0])[0].clips;
+    expect(clip.duration).toBe(4);
+    expect(clip.fadeIn).toBe(4);
+    expect(clip.fadeOut).toBeUndefined();
+    expect(clip.fadeOutShape).toBeUndefined();
+  });
+
+  it('ripple cut inside the fade-in shortens it by what was taken out; the fade-out is untouched', () => {
+    const [clip] = applyRippleCut(faded(), 1, 2, [0])[0].clips;
+    expect(clip.duration).toBe(5);
+    expect(clip.fadeIn).toBe(3);
+    expect(clip.fadeOut).toBe(1);
+  });
+
+  it('ripple cut in the flat middle keeps both fades', () => {
+    const tracks = faded();
+    tracks[0].clips[0].fadeIn = 1;
+    const [clip] = applyRippleCut(tracks, 2, 3, [0])[0].clips;
+    expect(clip.fadeIn).toBe(1);
+    expect(clip.fadeOut).toBe(1);
+  });
+
+  it('ripple cut over the clip\'s end shortens the fades to fit', () => {
+    const [clip] = applyRippleCut(faded(), 3, 6, [0])[0].clips;
+    expect(clip.duration).toBe(3);
+    expect(clip.fadeIn).toBe(3);
+    expect(clip.fadeOut).toBeUndefined();
+  });
+});
