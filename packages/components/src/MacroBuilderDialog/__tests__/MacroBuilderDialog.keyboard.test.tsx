@@ -121,8 +121,9 @@ describe('Edit macro keyboard — Tab stops', () => {
   it('each list is ONE tab stop, however much it holds', () => {
     const { stops, command, cell } = renderBuilder();
     expect(stops('.macro-builder__command-list')).toEqual([command('select-all')]);
-    // The table's stop starts on the head's first cell — the top left, the Reorder column
-    expect(stops('.macro-builder__step-table')).toEqual([cell(0, 'grip')]);
+    // The table's stop starts on the head's first cell — Step: the empty
+    // Reorder header above the grips is skipped
+    expect(stops('.macro-builder__step-table')).toEqual([cell(0, 'number')]);
   });
 
   it('the window has five stops, in reading order — with or without a selection', () => {
@@ -325,9 +326,15 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
     expect(focused()).toBe(cell(2, 'grip'));
     press('ArrowLeft');
     expect(focused()).toBe(cell(2, 'actions'));
-    focus(cell(0, 'grip'));
+    // The head has no grip cell to land on: it wraps past it
+    focus(cell(0, 'actions'));
     press('ArrowRight');
     expect(focused()).toBe(cell(0, 'number'));
+    // And Up from a grip lands on the head's first cell
+    focus(cell(1, 'grip'));
+    press('ArrowUp');
+    expect(focused()).toBe(cell(0, 'number'));
+    expect(cell(0, 'grip')).toBeNull();
   });
 
   it('Home and End go to the ends of the row; Cmd/Ctrl+Home and End to the table\'s corners', () => {
@@ -340,7 +347,7 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
     press('End', { metaKey: true });
     expect(focused()).toBe(cell(3, 'actions'));
     press('Home', { ctrlKey: true });
-    expect(focused()).toBe(cell(0, 'grip'));
+    expect(focused()).toBe(cell(0, 'number'));
   });
 
   it('Enter or Space on the Command cell opens the step\'s editor', () => {
@@ -455,7 +462,7 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
 
   it('Enter or Space on a head cell, or the Step number, goes nowhere — and never reaches the app', () => {
     const { cell, focus, focused } = renderBuilder();
-    for (const target of [cell(0, 'grip'), cell(0, 'command'), cell(1, 'number')]) {
+    for (const target of [cell(0, 'number'), cell(0, 'command'), cell(1, 'number')]) {
       focus(target);
       const keys = leaked(() => {
         fireEvent.keyDown(focused(), { key: 'Enter' });
@@ -563,10 +570,10 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
     api.press('Delete');
     api.rerenderWith({ macro: { ...MACRO, steps: [] } });
     act(() => { vi.runAllTimers(); });
-    expect(api.focused()).toBe(api.cell(0, 'grip'));
+    expect(api.focused()).toBe(api.cell(0, 'number'));
     // And with no steps Down from the head goes nowhere, but is still kept from the app
     expect(leaked(() => api.press('ArrowDown'))).toEqual([]);
-    expect(api.focused()).toBe(api.cell(0, 'grip'));
+    expect(api.focused()).toBe(api.cell(0, 'number'));
   });
 
   it('the menu\'s Move down takes focus with the step, on its menu button', () => {
@@ -597,7 +604,7 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
     const onDeleteStep = vi.fn();
     const onMoveStep = vi.fn();
     const { stops, cell, stepEdit, focus, focused, press } = renderBuilder({ onDeleteStep, onMoveStep }, 'wcag-flat');
-    expect(stops('.macro-builder__step-table-head')).toHaveLength(4);
+    expect(stops('.macro-builder__step-table-head')).toHaveLength(3); // not the empty Reorder header
     expect(stops('.macro-builder__step-list')).toHaveLength(MACRO.steps.length * 6); // 4 cells + 2 controls
     focus(cell(2, 'command'));
     expect(fireEvent.keyDown(focused(), { key: 'ArrowDown' })).toBe(true);

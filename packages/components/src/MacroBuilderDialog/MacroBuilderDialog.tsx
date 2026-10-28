@@ -91,6 +91,11 @@ interface CommandDrag {
  *  carry the step with Up / Down. */
 type GridCol = 'grip' | 'number' | 'command' | 'actions';
 const GRID_COLS: readonly GridCol[] = ['grip', 'number', 'command', 'actions'];
+/** The head row's columns: its grip cell is empty, so it takes no focus
+ *  (2026-10-29, "an empty cell in the table header that receives
+ *  keyboard focus. Can we skip that?") — the head starts on Step. */
+const HEAD_COLS: readonly GridCol[] = GRID_COLS.filter((col) => col !== 'grip');
+const colsOfRow = (row: number): readonly GridCol[] => (row === 0 ? HEAD_COLS : GRID_COLS);
 /** The controls inside the Actions cell, left to right. */
 type ActionControl = 'edit' | 'menu';
 const ACTION_CONTROLS: readonly ActionControl[] = ['edit', 'menu'];
@@ -106,7 +111,7 @@ interface GridPos {
   inner?: ActionControl;
 }
 /** Where Tab lands before the table has been used: the head's first cell. */
-const HEAD_CELL: GridPos = { row: 0, col: 'grip' };
+const HEAD_CELL: GridPos = { row: 0, col: HEAD_COLS[0] };
 const samePos = (a: GridPos, b: GridPos) => a.row === b.row && a.col === b.col && a.inner === b.inner;
 
 function gridPosOf(el: Element): GridPos | null {
@@ -306,7 +311,9 @@ export function MacroBuilderDialog({
     if (!cell || !pos.inner) return cell;
     return cell.querySelector<HTMLElement>(`.${pos.inner === 'edit' ? STEP_EDIT_CLASS : STEP_MENU_CLASS}`);
   };
-  function focusGridCell(pos: GridPos) {
+  function focusGridCell(to: GridPos) {
+    // Up from a grip lands on the head's first focusable cell
+    const pos = colsOfRow(to.row).includes(to.col) ? to : { row: to.row, col: colsOfRow(to.row)[0] };
     const el = gridCellElement(pos);
     if (!el) return;
     setActivePos(pos);
@@ -733,11 +740,12 @@ export function MacroBuilderDialog({
         focusGridCell({ ...pos, inner: ACTION_CONTROLS[(at + by + ACTION_CONTROLS.length) % ACTION_CONTROLS.length] });
         return;
       }
-      const at = GRID_COLS.indexOf(pos.col);
+      const cols = colsOfRow(pos.row);
+      const at = cols.indexOf(pos.col);
       const to = cycle
-        ? (at + by + GRID_COLS.length) % GRID_COLS.length
-        : Math.max(0, Math.min(GRID_COLS.length - 1, at + by));
-      if (to !== at) focusGridCell({ row: pos.row, col: GRID_COLS[to] });
+        ? (at + by + cols.length) % cols.length
+        : Math.max(0, Math.min(cols.length - 1, at + by));
+      if (to !== at) focusGridCell({ row: pos.row, col: cols[to] });
     };
     const toCol = (col: GridCol) => {
       consume();
@@ -747,7 +755,7 @@ export function MacroBuilderDialog({
     switch (e.key) {
       case 'ArrowDown': goToRow(cycle ? (pos.row + 1) % rowCount : pos.row + 1); break;
       case 'ArrowUp': goToRow(cycle ? (pos.row - 1 + rowCount) % rowCount : pos.row - 1); break;
-      case 'Home': toCol(GRID_COLS[0]); break;
+      case 'Home': toCol(colsOfRow(pos.row)[0]); break;
       case 'End': toCol(GRID_COLS[GRID_COLS.length - 1]); break;
       case 'PageDown': goToRow(pos.row + screenful(stepListRef.current, rowEl)); break;
       case 'PageUp': goToRow(pos.row - screenful(stepListRef.current, rowEl)); break;
@@ -1027,9 +1035,6 @@ export function MacroBuilderDialog({
                 role="columnheader"
                 aria-colindex={1}
                 aria-label="Reorder"
-                data-grid-row={0}
-                data-grid-col="grip"
-                tabIndex={gridTabIndex({ row: 0, col: 'grip' })}
               />
               <span
                 className="macro-builder__step-number macro-builder__step-head-cell"
