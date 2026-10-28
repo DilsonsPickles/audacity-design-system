@@ -58,8 +58,6 @@ Loose threads from the builder iteration, each awaiting a product call:
   Today every add appends. The one interaction idea deliberately shelved.
 - **No confirmation on destructive actions** — "Remove all steps" and "Delete macro"
   act immediately (consistent with each other). Decide whether both should confirm.
-- **Splitter width isn't persisted** — resets to the spec's 322px whenever the
-  builder opens.
 - **Step table keyboard nav** — command list has full ↑/↓/Enter flow; step rows only
   Tab + Enter-to-edit. Add arrow walking for symmetry if desired.
 - **Figma drift to reconcile in the file** — code decisions the spec doesn't show:

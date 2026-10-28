@@ -246,7 +246,7 @@ nothing. Enter, Cmd/Ctrl+Enter, F2 and Shift+F10 still work.
 
 ### Edit macro window (MacroBuilderDialog.tsx)
 
-Six Tab stops, however many commands and steps there are (it was 322
+Five Tab stops, however many commands and steps there are (it was 322
 with 280 commands and 12 steps — every command and every step control
 was its own stop):
 
@@ -254,10 +254,9 @@ was its own stop):
 |---|------|-----------|
 | 1 | Search field | Down drops into the command list; Enter adds the first match |
 | 2 | Command list | A listbox — arrows, below |
-| 3 | Splitter | Arrows resize, below |
-| 4 | Macro menu button | Enter opens the menu |
-| 5 | Step table | Starts on the head's first cell; arrows, below |
-| 6 | Footer | Run / Run on files… / Done (`useContainerTabGroup`) |
+| 3 | Macro menu button | Enter opens the menu |
+| 4 | Step table | Starts on the head's first cell; arrows, below |
+| 5 | Footer | Run / Run on files… / Done (`useContainerTabGroup`) |
 
 The window floats outside the app's numbered Tab order: its stops are
 `tabindex=0`, as every dialog's are.
@@ -373,14 +372,10 @@ Flat profile: every cell AND every control is a Tab stop and the arrows
 do nothing; Enter / Space, Escape, Cmd/Ctrl+arrow, Delete and Shift+F10
 still work.
 
-**Splitter** — a focusable `role="separator"` with `aria-valuenow` /
-`min` / `max` in pixels.
-
-| Key | Action |
-|-----|--------|
-| ArrowLeft / ArrowRight | Narrow / widen the command list by 16px (Shift: 64px) |
-| Home / End | Its narrowest / widest |
-| Enter | Reset to the default — the mouse's double-click |
+**No splitter** (2026-10-28): the command list is a fixed 280px and the
+divider between the panes is a plain line — no stop, nothing to drag.
+Until then it was a focusable `role="separator"` (arrows resized,
+Home / End went to the limits, Enter reset) and the window had six stops.
 
 **Focus after an action:**
 

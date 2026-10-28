@@ -240,32 +240,6 @@ describe('MacroBuilderDialog', () => {
     expect(pane.style.flex).toBe('0 0 280px');
   });
 
-  it('the splitter drag resizes the commands pane; double-click resets it', () => {
-    const { container } = renderBuilder();
-    const columns = container.querySelector<HTMLElement>('.macro-builder__columns')!;
-    const pane = container.querySelector<HTMLElement>('.macro-builder__commands-pane')!;
-    // jsdom has no layout — give the panes real horizontal extents
-    columns.getBoundingClientRect = () => ({
-      top: 0, bottom: 500, left: 0, right: 700, width: 700, height: 500, x: 0, y: 0, toJSON: () => ({}),
-    });
-    pane.getBoundingClientRect = () => ({
-      top: 0, bottom: 500, left: 0, right: 300, width: 300, height: 500, x: 0, y: 0, toJSON: () => ({}),
-    });
-    const splitter = container.querySelector<HTMLElement>('.macro-builder__splitter')!;
-    fireEvent.mouseDown(splitter, { button: 0, clientX: 300 });
-    fireEvent.mouseMove(document, { clientX: 380 });
-    fireEvent.mouseUp(document);
-    expect(pane.style.flex).toBe('0 0 380px');
-    // Clamped at the minimum on the way down
-    fireEvent.mouseDown(splitter, { button: 0, clientX: 300 });
-    fireEvent.mouseMove(document, { clientX: 0 });
-    fireEvent.mouseUp(document);
-    expect(pane.style.flex).toBe('0 0 180px');
-    fireEvent.doubleClick(splitter);
-    // Reset returns to the default
-    expect(pane.style.flex).toBe('0 0 280px');
-  });
-
   it('Enter on a command adds it', () => {
     const onAddCommand = vi.fn();
     const { container } = renderBuilder({ onAddCommand });

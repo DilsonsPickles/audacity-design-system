@@ -63,11 +63,10 @@ function renderBuilder(props: Props = {}, profile: Profile = 'au4-tab-groups') {
   const menuItem = (label: string) =>
     all('[role="menuitem"]').find((el) => el.textContent?.trim() === label)!;
   const search = () => q<HTMLInputElement>('input[aria-label="Search commands"]');
-  const splitter = () => q('.macro-builder__splitter');
   const pane = () => q('.macro-builder__commands-pane');
   return {
     ...utils, rerenderWith: (p: Props) => utils.rerender(ui(p)),
-    q, all, command, step, stepEdit, stepMenu, cell, focused, focus, press, selected, stops, menuItem, search, splitter, pane,
+    q, all, command, step, stepEdit, stepMenu, cell, focused, focus, press, selected, stops, menuItem, search, pane,
   };
 }
 
@@ -126,7 +125,7 @@ describe('Edit macro keyboard — Tab stops', () => {
     expect(stops('.macro-builder__step-table')).toEqual([cell(0, 'grip')]);
   });
 
-  it('the window has six stops, in reading order — with or without a selection', () => {
+  it('the window has five stops, in reading order — with or without a selection', () => {
     const { all, command } = renderBuilder();
     fireEvent.click(command('split'));
     const zones = all('.macro-builder button, .macro-builder input, .macro-builder [tabindex]')
@@ -135,11 +134,10 @@ describe('Edit macro keyboard — Tab stops', () => {
       .map((el) =>
         el.matches('input') ? 'search'
           : el.closest('.macro-builder__command-list') ? 'commands'
-            : el.matches('.macro-builder__splitter') ? 'splitter'
                 : el.closest('.macro-builder__steps-header') ? 'macro-menu'
                   : el.closest('.macro-builder__step-table') ? 'steps'
                     : el.closest('.macro-builder__footer') ? 'footer' : '?');
-    expect(zones).toEqual(['search', 'commands', 'splitter', 'macro-menu', 'steps', 'footer']);
+    expect(zones).toEqual(['search', 'commands', 'macro-menu', 'steps', 'footer']);
   });
 
   it('the footer is one stop with the arrows between its buttons', () => {
@@ -615,50 +613,15 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
   });
 });
 
-describe('Edit macro keyboard — the splitter', () => {
-  const width = (el: HTMLElement) => el.style.flex;
-
-  it('is a stop, and a control with a value', () => {
-    const { splitter } = renderBuilder();
-    expect(splitter().tabIndex).toBe(0);
-    expect(splitter().getAttribute('role')).toBe('separator');
-    expect(splitter().getAttribute('aria-valuenow')).toBe('280');
-    expect(splitter().getAttribute('aria-valuemin')).toBe('180');
-  });
-
-  it('arrows resize the pane; Shift takes a bigger step', () => {
-    const { splitter, pane, focus, press } = renderBuilder();
-    focus(splitter());
-    press('ArrowRight');
-    expect(width(pane())).toBe('0 0 296px');
-    press('ArrowLeft', { shiftKey: true });
-    expect(width(pane())).toBe('0 0 232px');
-    expect(splitter().getAttribute('aria-valuenow')).toBe('232');
-  });
-
-  it('cannot go below the minimum; Home goes straight there', () => {
-    const { splitter, pane, focus, press } = renderBuilder();
-    focus(splitter());
-    for (let i = 0; i < 12; i++) press('ArrowLeft');
-    expect(width(pane())).toBe('0 0 180px');
-    press('ArrowRight');
-    press('Home');
-    expect(width(pane())).toBe('0 0 180px');
-  });
-
-  it('Enter resets it, as a double-click does', () => {
-    const { splitter, pane, focus, press } = renderBuilder();
-    focus(splitter());
-    press('ArrowRight', { shiftKey: true });
-    press('Enter');
-    expect(width(pane())).toBe('0 0 280px');
-  });
-
-  it('keeps its keys from the app', () => {
-    const { splitter, focus, focused } = renderBuilder();
-    focus(splitter());
-    const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'Enter'];
-    expect(leaked(() => keys.forEach((key) => fireEvent.keyDown(focused(), { key })))).toEqual([]);
+describe('Edit macro — the commands pane has a fixed width (2026-10-28)', () => {
+  it('no splitter: the divider is a line, no stop, nothing to drag', () => {
+    const { q, all, pane } = renderBuilder();
+    expect(all('.macro-builder__splitter')).toEqual([]);
+    expect(all('.macro-builder [role="separator"]')).toEqual([]);
+    const divider = q('.macro-builder__divider');
+    expect(divider.getAttribute('aria-hidden')).toBe('true');
+    expect(divider.hasAttribute('tabindex')).toBe(false);
+    expect(pane().style.flex).toBe('0 0 280px');
   });
 });
 

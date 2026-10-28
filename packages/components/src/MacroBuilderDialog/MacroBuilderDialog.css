@@ -56,45 +56,12 @@
   min-height: 0;
 }
 
-/* Splitter owns the divider line the commands pane used to draw.
-   The 7px grab zone OVERLAPS both panes (negative margins) so its
-   visual footprint is only the 1px line — no gutter beside the well. */
-.macro-builder__splitter {
-  width: 7px;
-  margin: 0 -3px;
-  z-index: 2;
-  flex-shrink: 0;
-  cursor: col-resize;
-  position: relative;
-}
-
-.macro-builder__splitter::before {
-  content: '';
-  position: absolute;
-  left: 3px;
-  top: 0;
-  bottom: 0;
+/* The divider between the panes (it was a draggable splitter until
+   2026-10-28 — the commands pane has a fixed width now) */
+.macro-builder__divider {
   width: 1px;
+  flex-shrink: 0;
   background: var(--stroke-primary, #d4d5d9);
-}
-
-/* Focus shows the way hover does: the splitter IS its line */
-.macro-builder__splitter:focus-visible {
-  outline: none;
-}
-
-.macro-builder__splitter:hover::before,
-.macro-builder__splitter:focus-visible::before,
-.macro-builder__columns--resizing .macro-builder__splitter::before {
-  left: 2px;
-  width: 3px;
-  background: var(--accent-primary, #677ce4);
-}
-
-/* While resizing, suppress selection and keep the resize cursor */
-.macro-builder__columns--resizing {
-  user-select: none;
-  cursor: col-resize;
 }
 
 /* Search — its own bordered field, filling this half of the band */

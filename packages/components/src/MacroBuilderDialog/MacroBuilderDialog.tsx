@@ -64,16 +64,10 @@ export interface MacroBuilderDialogProps {
   os?: 'macos' | 'windows';
 }
 
-/** The commands pane's width until the user drags the splitter, and
- *  what a double-click on it returns to. */
-const DEFAULT_COMMANDS_PANE_WIDTH = 280;
-const MIN_PANE_WIDTH = 180;
-/** What the steps pane keeps beyond its own minimum when the commands
- *  pane is widened as far as it goes. */
-const STEPS_PANE_RESERVE = 60;
-/** One arrow press on the splitter; Shift takes a bigger bite. */
-const SPLITTER_STEP = 16;
-const SPLITTER_BIG_STEP = 64;
+/** The commands pane's width — FIXED (2026-10-28, "remove ability to
+ *  resize left hand column in Edit macro modal"): the splitter that
+ *  dragged it, and its tab stop, are gone; the divider is a line. */
+const COMMANDS_PANE_WIDTH = 280;
 
 /** Pointer travel before a press on a command becomes a drag. */
 const COMMAND_DRAG_THRESHOLD = 4;
@@ -154,8 +148,8 @@ function prettyParameters(parameters: string): string {
  * removes it. Non-modal and auto-saving, like MacroEditorDialog.
  *
  * KEYBOARD (docs/accessibility-architecture.md → Edit macro window).
- * Six Tab stops, however many commands and steps there are: search,
- * the command list, the splitter, the macro's menu, the step list, the
+ * Five Tab stops, however many commands and steps there are: search,
+ * the command list, the macro's menu, the step list, the
  * footer — and Tab goes ROUND them: past the footer is the top again. Both lists are driven by the arrows. The
  * window is non-modal, so the app's document-level shortcuts are still
  * listening: every key a list uses is stopped from reaching them, or
@@ -230,13 +224,7 @@ export function MacroBuilderDialog({
   // (and the header's matching segment) only exist when there is
   // something to scroll
   const [stepsOverflowing, setStepsOverflowing] = React.useState(false);
-  // Splitter: explicit commands-pane width once the user drags (null =
-  // DEFAULT_COMMANDS_PANE_WIDTH). Session-scoped, survives macro switches.
-  const [commandsPaneWidth, setCommandsPaneWidth] = React.useState<number | null>(null);
-  const [splitterActive, setSplitterActive] = React.useState(false);
-  const columnsRef = React.useRef<HTMLDivElement>(null);
   const commandsPaneRef = React.useRef<HTMLDivElement>(null);
-  const [columnsWidth, setColumnsWidth] = React.useState(0);
 
   const { activeProfile } = useAccessibilityProfile();
   const isFlat = activeProfile.config.tabNavigation === 'sequential';
@@ -278,17 +266,6 @@ export function MacroBuilderDialog({
   React.useEffect(() => {
     initFooterStops();
   }, [initFooterStops, isOpen, macro?.id, onRun, onRunFiles]);
-
-  // The splitter's range, for its arrows and for assistive tech
-  React.useEffect(() => {
-    const columns = columnsRef.current;
-    if (!columns) return;
-    const update = () => setColumnsWidth(columns.getBoundingClientRect().width);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(columns);
-    return () => observer.disconnect();
-  }, [isOpen, macro?.id]);
 
   // Place focus after the steps changed under it
   React.useEffect(() => {
@@ -350,10 +327,6 @@ export function MacroBuilderDialog({
   if (!macro) return null;
 
   const stepCount = macro.steps.length;
-  const maxPaneWidth = columnsWidth > 0
-    ? Math.max(MIN_PANE_WIDTH, columnsWidth - MIN_PANE_WIDTH - STEPS_PANE_RESERVE)
-    : undefined;
-  const paneWidth = commandsPaneWidth ?? DEFAULT_COMMANDS_PANE_WIDTH;
 
   // The command list's one tab stop: where focus last was, else the
   // selected command if it is showing, else the top of the list
@@ -616,56 +589,6 @@ export function MacroBuilderDialog({
     // (focusing it lets go of the selection), so there is no other
     // candidate — and what Enter adds is always the top of what shows.
     if (visible[0]) addCommand(visible[0]);
-  };
-
-  // Splitter between the commands pane and the rest: drag sets an
-  // explicit width (clamped so neither pane collapses); double-click
-  // resets to the default. Self-cleaning document listeners.
-  const handleSplitterMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = commandsPaneRef.current?.getBoundingClientRect().width ?? 0;
-    const columnsWidth = columnsRef.current?.getBoundingClientRect().width ?? 0;
-    const MIN_PANE = MIN_PANE_WIDTH;
-    setSplitterActive(true);
-
-    const onMouseMove = (ev: MouseEvent) => {
-      let width = startWidth + (ev.clientX - startX);
-      width = Math.max(MIN_PANE, width);
-      if (columnsWidth > 0) width = Math.min(width, columnsWidth - MIN_PANE - STEPS_PANE_RESERVE);
-      setCommandsPaneWidth(width);
-    };
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      setSplitterActive(false);
-    };
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  };
-
-  // The splitter from the keyboard: arrows resize, Home/End go to the
-  // limits, Enter resets — the mouse's drag and double-click.
-  const handleSplitterKeyDown = (e: React.KeyboardEvent) => {
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    const max = maxPaneWidth ?? Number.POSITIVE_INFINITY;
-    const by = e.shiftKey ? SPLITTER_BIG_STEP : SPLITTER_STEP;
-    let width: number | null;
-    switch (e.key) {
-      case 'ArrowLeft': width = paneWidth - by; break;
-      case 'ArrowRight': width = paneWidth + by; break;
-      case 'Home': width = MIN_PANE_WIDTH; break;
-      case 'End': if (maxPaneWidth === undefined) return; width = maxPaneWidth; break;
-      case 'Enter': width = null; break;
-      // Kept from the app even though they do nothing here
-      case 'ArrowUp':
-      case 'ArrowDown': e.preventDefault(); e.stopPropagation(); return;
-      default: return;
-    }
-    e.preventDefault();
-    e.stopPropagation();
-    setCommandsPaneWidth(width === null ? null : Math.max(MIN_PANE_WIDTH, Math.min(max, width)));
   };
 
   // Where focus goes is said BEFORE the change, and placed once the
@@ -953,12 +876,12 @@ export function MacroBuilderDialog({
         customLayout
         className="macro-builder"
       >
-        <div ref={columnsRef} className={`macro-builder__columns${splitterActive ? ' macro-builder__columns--resizing' : ''}`}>
+        <div className="macro-builder__columns">
           {/* Command pane — the mockup's "Instruments" pane */}
           <div
             ref={commandsPaneRef}
             className="macro-builder__commands-pane"
-            style={{ flex: `0 0 ${commandsPaneWidth ?? DEFAULT_COMMANDS_PANE_WIDTH}px` }}
+            style={{ flex: `0 0 ${COMMANDS_PANE_WIDTH}px` }}
           >
             {/* One header band, two jobs: this half filters the list */}
             <div className="macro-builder__commands-header">
@@ -1059,23 +982,8 @@ export function MacroBuilderDialog({
             </div>
           </div>
 
-          {/* Splitter — drag to resize the commands pane; double-click
-              resets it to the default width */}
-          <div
-            className="macro-builder__splitter"
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize command list"
-            // A focusable separator is a control with a value
-            aria-valuenow={Math.round(paneWidth)}
-            aria-valuemin={MIN_PANE_WIDTH}
-            aria-valuemax={maxPaneWidth === undefined ? undefined : Math.round(maxPaneWidth)}
-            aria-valuetext={`${Math.round(paneWidth)} pixels`}
-            tabIndex={0}
-            onKeyDown={handleSplitterKeyDown}
-            onMouseDown={handleSplitterMouseDown}
-            onDoubleClick={() => setCommandsPaneWidth(null)}
-          />
+          {/* The divider between the panes — a line, not a control */}
+          <div className="macro-builder__divider" aria-hidden="true" />
 
           {/* Steps pane — its header shares the band: macro name + menu.
               Below it, the macro as a TABLE: Step | Command | Actions. */}

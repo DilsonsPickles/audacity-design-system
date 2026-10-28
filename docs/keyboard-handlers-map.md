@@ -74,7 +74,6 @@ This document maps ALL keyboard event handlers in the codebase to prevent wastin
 |--------|---------|------|
 | Search field | `handleSearchKeyDown` | ArrowDown (into the list), Enter (add) |
 | Command list | `handleCommandListKeyDown` | Arrows, Home/End, PageUp/PageDown, Enter (single selection — Shift changes nothing) |
-| Splitter | `handleSplitterKeyDown` | ArrowLeft/Right (±16px, Shift ±64px), Home/End, Enter (reset) |
 | Step list | `handleStepListKeyDown` | Arrows, Home/End, PageUp/PageDown, Enter, Cmd/Ctrl+ArrowUp/Down (move), Delete/Backspace, Shift+F10 / ContextMenu |
 | Footer | `useContainerTabGroup` | Arrows between its buttons |
 
