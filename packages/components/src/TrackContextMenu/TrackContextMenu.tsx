@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatPaletteShortcut } from '../CommandPalette/CommandPalette';
 import { ContextMenu } from '../ContextMenu/ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem/ContextMenuItem';
 import './TrackContextMenu.css';
@@ -28,6 +29,8 @@ export interface TrackContextMenuProps {
   onFitTrackToHeight?: () => void;
   /** Back to the default height, whatever it is (2026-10-29) */
   onResetTrackHeight?: () => void;
+  /** The OS whose glyphs the shortcuts are written in */
+  os?: 'macos' | 'windows';
 }
 
 export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
@@ -43,12 +46,13 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
   onExpandTrack,
   onFitTrackToHeight,
   onResetTrackHeight,
+  os = 'macos',
 }) => {
   const heightItems = [
-    ['Collapse', onCollapseTrack],
-    ['Expand', onExpandTrack],
-    ['Fit to height', onFitTrackToHeight],
-    ['Reset height', onResetTrackHeight],
+    ['Collapse', onCollapseTrack, 'Ctrl+Alt+C'],
+    ['Expand', onExpandTrack, 'Ctrl+Alt+X'],
+    ['Fit to height', onFitTrackToHeight, 'Ctrl+Alt+0'],
+    ['Reset height', onResetTrackHeight, undefined],
   ] as const;
   const hasHeightItems = heightItems.some(([, handler]) => handler);
   return (
@@ -77,13 +81,14 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
         <div data-track-height-items="">
           <ContextMenuItem label="Track height" onClose={onClose}>
             {/* Reset sits apart, below a divider (2026-10-29) */}
-            {heightItems.map(([label, handler]) => handler && (
+            {heightItems.map(([label, handler, chord]) => handler && (
               <React.Fragment key={label}>
                 {label === 'Reset height' && heightItems.some(([l, h]) => l !== label && h) && (
                   <div className="context-menu-separator" />
                 )}
                 <ContextMenuItem
                   label={label}
+                  shortcut={chord && formatPaletteShortcut(chord, os)}
                   onClick={handler}
                   onClose={onClose}
                 />

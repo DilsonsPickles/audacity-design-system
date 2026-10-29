@@ -6,7 +6,7 @@ import { Canvas } from './Canvas';
 import { MarketplaceModal, type MarketplaceEffect } from './MarketplaceModal';
 import { EffectPickerMenu } from './EffectPickerMenu';
 import { useMuseHub } from '../contexts/MuseHubContext';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs, useAppearancePrefs, DockPanel, ContextMenu, ContextMenuItem, type PanelHeaderTab } from '@audacity-ui/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs, useAppearancePrefs, useGeneralPrefs, DockPanel, ContextMenu, ContextMenuItem, type PanelHeaderTab } from '@audacity-ui/components';
 import type { SpectrogramScale, WaveformRulerFormat, ThemeTokens } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useTracks } from '../contexts/useTracks';
@@ -209,6 +209,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   // Label text size — surfaced in the label track's context menu (global
   // preference; all label tracks share it).
   const { labelTextSizePt, updatePreference: updateAppearancePreference } = useAppearancePrefs();
+  const { operatingSystem } = useGeneralPrefs();
   const { setIsSpectrogramSettingsOpen, setIsPluginManagerOpen } = useDialogs();
   const {
     effectsPanel, setEffectsPanel, setEffectDialog, setEffectSelectorMenu,
@@ -766,6 +767,7 @@ export function EditorLayout(props: EditorLayoutProps) {
       {/* Track Control Side Panel - Hidden on export tab */}
       {activeMenuItem !== 'export' && (
         <TrackControlSidePanel
+          os={operatingSystem}
           trackHeights={state.tracks.map((_t, i) => effectiveTrackHeight(state.tracks, i, 114))}
           dragPreview={trackDragPreview}
           // While a reorder drag is live the panel draws the PREVIEWED

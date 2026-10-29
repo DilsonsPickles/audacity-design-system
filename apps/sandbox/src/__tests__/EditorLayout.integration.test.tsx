@@ -268,8 +268,9 @@ function trackMenuButton(container: HTMLElement, index: number): HTMLButtonEleme
  *  role="menuitem", and only one menu is ever open at a time in these
  *  tests (each interaction below closes its menu before opening another). */
 function menuItem(container: HTMLElement, label: string): HTMLElement {
+  // By the item's LABEL — a row also carries its chord
   const item = Array.from(container.querySelectorAll('[role="menuitem"]')).find(
-    (el) => el.textContent?.trim() === label,
+    (el) => (el.querySelector('.context-menu-item-label') ?? el).textContent?.trim() === label,
   );
   if (!item) throw new Error(`menu item "${label}" not found`);
   return item as HTMLElement;
@@ -1378,8 +1379,10 @@ describe('Selection playback', () => {
     const list = container.querySelector('.track-control-side-panel__list')!;
     fireEvent.contextMenu(list, { clientX: 40, clientY: 400 });
     const items = () => [...document.querySelectorAll('[data-track-panel-menu] [role="menuitem"]')];
-    const labels = () => items().map((i) => i.textContent?.trim().replace(/▸$/, ''));
+    const labels = () => items().map((i) => i.querySelector('.context-menu-item-label')?.textContent?.trim());
     await waitFor(() => expect(labels()).toEqual(['Add track', 'Collapse all tracks', 'Expand collapsed tracks', 'Fit tracks to height', 'Reset all track heights']));
+    // The all-tracks chords, Audacity 3's (the test host's OS is Windows)
+    expect(items().map((i) => i.querySelector('.context-menu-item-shortcut')?.textContent ?? '')).toEqual(['', 'Ctrl+Shift+C', 'Ctrl+Shift+X', 'Ctrl+Shift+F', '']);
     // Add a track from here: the parent opens on a click, the types are the flyout's
     fireEvent.click(items()[0]);
     await waitFor(() => expect(labels().slice(1, 5)).toEqual(['Mono', 'Stereo', 'Label', 'MIDI']));
@@ -1389,7 +1392,7 @@ describe('Selection playback', () => {
 
     fireEvent.contextMenu(list, { clientX: 40, clientY: 400 });
     await waitFor(() => expect(labels()).toHaveLength(5));
-    fireEvent.click(items().find((i) => i.textContent?.trim() === 'Collapse all tracks')!);
+    fireEvent.click(items().find((i) => i.querySelector('.context-menu-item-label')?.textContent === 'Collapse all tracks')!);
     await waitFor(() => {
       expect((panels()[0] as HTMLElement).style.height).toBe('44px');
       expect((panels()[1] as HTMLElement).style.height).toBe('44px');
@@ -1398,7 +1401,7 @@ describe('Selection playback', () => {
 
     fireEvent.contextMenu(list, { clientX: 40, clientY: 400 });
     await waitFor(() => expect(labels()).toHaveLength(5));
-    fireEvent.click(items().find((i) => i.textContent?.trim() === 'Expand collapsed tracks')!);
+    fireEvent.click(items().find((i) => i.querySelector('.context-menu-item-label')?.textContent === 'Expand collapsed tracks')!);
     await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('114px'));
   });
 

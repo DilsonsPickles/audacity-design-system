@@ -1,4 +1,5 @@
 import React, { ReactElement, cloneElement, useState } from 'react';
+import { formatPaletteShortcut } from '../CommandPalette/CommandPalette';
 import { SidePanel } from '../SidePanel';
 import { ResizablePanel, type ResizeSource } from '../ResizablePanel';
 import { Button } from '../Button';
@@ -201,6 +202,9 @@ export interface TrackControlSidePanelProps {
   onCollapseTrack?: (trackIndex: number) => void;
   onExpandTrack?: (trackIndex: number) => void;
   onFitTrackToHeight?: (trackIndex: number) => void;
+  /** The OS whose glyphs the menu's shortcuts are written in (⌥⌘C /
+   *  Ctrl+Alt+C), as the clip menu's are */
+  os?: 'macos' | 'windows';
   /** Reset height (2026-10-29): back to the default, whatever it is —
    *  Track height ▸ Reset height, and a double-click on the row's
    *  resize edge */
@@ -321,6 +325,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   onExpandTrack,
   onFitTrackToHeight,
   onResetTrackHeight,
+  os = 'macos',
   onMoveTrackToTop,
   onMoveTrackToBottom,
   showVerticalRulers,
@@ -1018,20 +1023,24 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
             onClick: () => { handler?.(index); handleMenuClose(); },
             onClose: handleMenuClose,
           });
+          // Each with the chord that does the same to the track you are
+          // on (2026-10-29, "put the shortcuts in the right click menu");
+          // Reset has none
           const heightItems = ([
-            ['Collapse', onCollapseTrack],
-            ['Expand', onExpandTrack],
-            ['Fit to height', onFitTrackToHeight],
-            ['Reset height', onResetTrackHeight],
-          ] as const).flatMap(([label, handler]) => (handler ? [[label, handler] as const] : []));
+            ['Collapse', onCollapseTrack, 'Ctrl+Alt+C'],
+            ['Expand', onExpandTrack, 'Ctrl+Alt+X'],
+            ['Fit to height', onFitTrackToHeight, 'Ctrl+Alt+0'],
+            ['Reset height', onResetTrackHeight, undefined],
+          ] as const).flatMap(([label, handler, chord]) => (handler ? [[label, handler, chord] as const] : []));
           const format = trackSampleFormats[index] ?? 'float32';
           const formatLabel = TRACK_SAMPLE_FORMATS.find((f) => f.id === format)?.label ?? '32-bit Float';
           const rate = trackSampleRates[index] ?? defaultSampleRate;
           return (
             <>
               <ContextMenuItem label="Move track" onClose={handleMenuClose}>
-                <ContextMenuItem label="Move track up" {...act(onMoveTrackUp)} disabled={!onMoveTrackUp || index === 0} />
-                <ContextMenuItem label="Move track down" {...act(onMoveTrackDown)} disabled={!onMoveTrackDown || index === lastIndex} />
+                {/* ⌘↑ / ⌘↓ on a focused track (useTrackKeyboardHandlers' reorder); top and bottom have no chord */}
+                <ContextMenuItem label="Move track up" shortcut={formatPaletteShortcut('Ctrl+↑', os)} {...act(onMoveTrackUp)} disabled={!onMoveTrackUp || index === 0} />
+                <ContextMenuItem label="Move track down" shortcut={formatPaletteShortcut('Ctrl+↓', os)} {...act(onMoveTrackDown)} disabled={!onMoveTrackDown || index === lastIndex} />
                 <div className="context-menu-separator" />
                 <ContextMenuItem label="Move track to top" {...act(onMoveTrackToTop)} disabled={!onMoveTrackToTop || index === 0} />
                 <ContextMenuItem label="Move track to bottom" {...act(onMoveTrackToBottom)} disabled={!onMoveTrackToBottom || index === lastIndex} />
@@ -1141,13 +1150,14 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                   <ContextMenuItem label="Track height" onClose={handleMenuClose}>
                     {/* Reset sits apart, below a divider (2026-10-29):
                         the other three change a height, Reset undoes it */}
-                    {heightItems.map(([label, handler]) => (
+                    {heightItems.map(([label, handler, chord]) => (
                       <React.Fragment key={label}>
                         {label === 'Reset height' && heightItems.length > 1 && (
                           <div className="context-menu-separator" />
                         )}
                         <ContextMenuItem
                           label={label}
+                          shortcut={chord && formatPaletteShortcut(chord, os)}
                           onClick={() => {
                             handler(index);
                             handleMenuClose();

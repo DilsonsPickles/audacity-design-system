@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipContextMenu, type GapMode, FadeMenuItems, TrackContextMenu, TimelineRulerContextMenu, ContextMenu, ContextMenuItem, Dialog, DialogFooter, Button } from '@audacity-ui/components';
+import { ClipContextMenu, type GapMode, FadeMenuItems, TrackContextMenu, TimelineRulerContextMenu, ContextMenu, ContextMenuItem, Dialog, DialogFooter, Button, formatPaletteShortcut } from '@audacity-ui/components';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { Effect } from '@audacity-ui/components';
@@ -358,6 +358,7 @@ export function AppContextMenus({
           onExpandTrack={onExpandTrack && (() => onExpandTrack(trackContextMenu.trackIndex))}
           onFitTrackToHeight={onFitTrackToHeight && (() => onFitTrackToHeight(trackContextMenu.trackIndex))}
           onResetTrackHeight={onResetTrackHeight && (() => onResetTrackHeight(trackContextMenu.trackIndex))}
+          os={os}
           onDelete={() => {
             if (trackContextMenu) {
               const deletedIdx = trackContextMenu.trackIndex;
@@ -451,9 +452,9 @@ export function AppContextMenus({
               ))}
             </ContextMenuItem>
             <ContextMenuItem isDivider label="" />
-            <ContextMenuItem label="Collapse all tracks" disabled={!tracks.some((t) => !isCollapsedHeight(t.height || DEFAULT_TRACK_HEIGHT))} onClick={() => { setTrackPanelContextMenu(null); onCollapseAllTracks?.(); }} />
-            <ContextMenuItem label="Expand collapsed tracks" disabled={!tracks.some((t) => isCollapsedHeight(t.height || DEFAULT_TRACK_HEIGHT))} onClick={() => { setTrackPanelContextMenu(null); onExpandAllTracks?.(); }} />
-            <ContextMenuItem label="Fit tracks to height" onClick={() => { setTrackPanelContextMenu(null); onFitTracksToHeight?.(); }} />
+            <ContextMenuItem label="Collapse all tracks" shortcut={formatPaletteShortcut('Ctrl+Shift+C', os)} disabled={!tracks.some((t) => !isCollapsedHeight(t.height || DEFAULT_TRACK_HEIGHT))} onClick={() => { setTrackPanelContextMenu(null); onCollapseAllTracks?.(); }} />
+            <ContextMenuItem label="Expand collapsed tracks" shortcut={formatPaletteShortcut('Ctrl+Shift+X', os)} disabled={!tracks.some((t) => isCollapsedHeight(t.height || DEFAULT_TRACK_HEIGHT))} onClick={() => { setTrackPanelContextMenu(null); onExpandAllTracks?.(); }} />
+            <ContextMenuItem label="Fit tracks to height" shortcut={formatPaletteShortcut('Ctrl+Shift+F', os)} onClick={() => { setTrackPanelContextMenu(null); onFitTracksToHeight?.(); }} />
             <ContextMenuItem isDivider label="" />
             <ContextMenuItem label="Reset all track heights" onClick={() => { setTrackPanelContextMenu(null); onResetAllTrackHeights?.(); }} />
           </div>
