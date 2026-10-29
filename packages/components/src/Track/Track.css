@@ -154,10 +154,14 @@ body[data-fade-length-drag='out'] * {
    Since 2026-10-29 ("could we try a fade icon that is a mix between
    arrows and the fade icon we have now?") the handle wears the TRIM
    cursor's ◂ ▸ arrowheads either side — the trim cursor's own pixels
-   (ClipTrimLeft.png), 1px clear of the body — so one cursor says both
+   (ClipTrimLeft.png) — so one cursor says both
    "a fade" and "drag sideways", with a fade or without: it replaced the
    bare-edge glyph and the plain left/right arrows the zone wore once
-   there was a fade (FadeIn.png / FadeOut.png are kept for a revert). */
+   there was a fade (FadeIn.png / FadeOut.png are kept for a revert).
+   The same day the glyph went down to the HANDLE's own 10px body (it was
+   the 12px of FadeIn.png; "make the fade icon a bit smaller, but keep
+   arrows the same"), radius 2.5, 1px white halo, the handle's curve —
+   2px clear of each arrowhead. */
 .track-fade-zone--in {
   cursor: -webkit-image-set(url('../assets/cursors/FadeInResize.png') 1x, url('../assets/cursors/FadeInResize@2x.png') 2x) 16 16, ew-resize;
   cursor: image-set(url('../assets/cursors/FadeInResize.png') 1x, url('../assets/cursors/FadeInResize@2x.png') 2x) 16 16, ew-resize;
