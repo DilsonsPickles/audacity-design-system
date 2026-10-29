@@ -11,6 +11,11 @@
  * size to remember.) The memory counts only while the track is STILL
  * collapsed: collapse, fit, expand gives the default, since Fit already
  * moved it. One rule for the all-tracks and the selected-tracks forms.
+ *
+ * EXPAND NEVER SHRINKS (2026-10-29, "funny how if the track is larger
+ * than the default size, when you press expand, it gets smaller"): an
+ * open track TALLER than the default is already expanded and keeps its
+ * height; only a shorter one is raised to the default.
  */
 import { DEFAULT_TRACK_HEIGHT } from '../constants/canvas';
 
@@ -49,8 +54,9 @@ export function collapseTracks(tracks: readonly HeightTrack[], targets: readonly
 }
 
 /** The updates that take every target to its open height: a collapsed
- *  track to its remembered height (the default when it has none), every
- *  other track to the default. A track already there gets no update. */
+ *  track to its remembered height (the default when it has none), an
+ *  open track shorter than the default up to it, a taller one left as
+ *  it is. A track already there gets no update. */
 export function expandTracks(tracks: readonly HeightTrack[], targets: readonly number[], memory: HeightMemory): HeightUpdate[] {
   const updates: HeightUpdate[] = [];
   for (const index of targets) {
@@ -59,7 +65,9 @@ export function expandTracks(tracks: readonly HeightTrack[], targets: readonly n
     const current = heightOf(t);
     const remembered = isCollapsedHeight(current) ? memory.get(t.id) : undefined;
     memory.delete(t.id); // used, or stale — a track that is open again has no collapse to undo
-    const height = remembered !== undefined && !isCollapsedHeight(remembered) ? remembered : DEFAULT_TRACK_HEIGHT;
+    const height = remembered !== undefined && !isCollapsedHeight(remembered)
+      ? remembered
+      : Math.max(current, DEFAULT_TRACK_HEIGHT);
     if (height !== current) updates.push({ index, height });
   }
   return updates;

@@ -1321,16 +1321,20 @@ describe('Selection playback', () => {
       expect((panels()[1] as HTMLElement).style.height).toBe('189px');
       expect((panels()[2] as HTMLElement).style.height).toBe('189px');
     });
-    // Expand all with nothing collapsed takes every track to the default
-    // ("I did fit and then expand, but they didn't expand") — the fitted
-    // set is gone with their heights, so a fresh fit of track 0 is the
-    // two-others rule
+    // Expand all with nothing collapsed NEVER SHRINKS (2026-10-29, "if
+    // the track is larger than the default size, when you press expand,
+    // it gets smaller"): the two 189s are already open, and keep their
+    // height — so they are still the fitted set, and a fit of track 0
+    // shares the room three ways: (500 - 2 - 3×2) / 3 = 164
     fireEvent.keyDown(document.body, { key: 'X', code: 'KeyX', metaKey: true, shiftKey: true });
-    await waitFor(() => expect((panels()[2] as HTMLElement).style.height).toBe('114px'));
+    await new Promise((r) => setTimeout(r, 50));
+    expect((panels()[1] as HTMLElement).style.height).toBe('189px');
+    expect((panels()[2] as HTMLElement).style.height).toBe('189px');
     act(() => { (headers()[0] as HTMLElement).focus(); });
     fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
-    await waitFor(() => expect((panels()[0] as HTMLElement).style.height).toBe('264px'));
-    expect((panels()[1] as HTMLElement).style.height).toBe('114px');
+    await waitFor(() => expect((panels()[0] as HTMLElement).style.height).toBe('164px'));
+    expect((panels()[1] as HTMLElement).style.height).toBe('164px');
+    expect((panels()[2] as HTMLElement).style.height).toBe('164px');
   });
 
   it('a right-click on empty canvas with no time selection opens the canvas menu: Paste (dimmed with nothing to paste) and Add track (2026-10-22)', async () => {

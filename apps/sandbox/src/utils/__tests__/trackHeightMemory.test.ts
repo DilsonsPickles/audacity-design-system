@@ -28,13 +28,19 @@ describe('collapse remembers, expand restores (2026-10-22)', () => {
     expect(memory.size).toBe(0); // used up
   });
 
-  it('expand takes an open track to the default too — "I did fit and then expand, but they didn\'t expand"', () => {
+  it('expand raises an open track shorter than the default to it — "I did fit and then expand, but they didn\'t expand"', () => {
     const memory: HeightMemory = new Map();
-    const fitted = [{ id: 'a', height: 125 }, { id: 'b', height: 125 }, { id: 'c', height: 114 }];
+    const fitted = [{ id: 'a', height: 80 }, { id: 'b', height: 80 }, { id: 'c', height: 114 }];
     expect(expandTracks(fitted, [0, 1, 2], memory)).toEqual([
       { index: 0, height: 114 },
       { index: 1, height: 114 },
     ]);
+  });
+
+  it('expand never SHRINKS: an open track taller than the default keeps its height (2026-10-29)', () => {
+    const memory: HeightMemory = new Map();
+    const tall = [{ id: 'a', height: 125 }, { id: 'b', height: 300 }, { id: 'c', height: 60 }];
+    expect(expandTracks(tall, [0, 1, 2], memory)).toEqual([{ index: 2, height: 114 }]);
   });
 
   it('a remembered height counts only while the track is still collapsed: collapse, fit, expand gives the default', () => {
@@ -43,7 +49,7 @@ describe('collapse remembers, expand restores (2026-10-22)', () => {
     expect(expandTracks(mixed, [0, 1, 2], memory)).toEqual([
       { index: 0, height: 114 },
       { index: 1, height: 114 },
-      { index: 2, height: 114 },
+      // c, open and taller than the default, keeps its 160 (2026-10-29)
     ]);
     expect(memory.size).toBe(0); // the stale memory for a is gone with it
   });
