@@ -452,6 +452,7 @@ export function AppContextMenus({
             <ContextMenuItem label="Collapse all tracks" onClick={() => { setTrackPanelContextMenu(null); onCollapseAllTracks?.(); }} />
             <ContextMenuItem label="Expand all tracks" onClick={() => { setTrackPanelContextMenu(null); onExpandAllTracks?.(); }} />
             <ContextMenuItem label="Fit tracks to height" onClick={() => { setTrackPanelContextMenu(null); onFitTracksToHeight?.(); }} />
+            <ContextMenuItem isDivider label="" />
             <ContextMenuItem label="Reset all track heights" onClick={() => { setTrackPanelContextMenu(null); onResetAllTrackHeights?.(); }} />
           </div>
         </ContextMenu>

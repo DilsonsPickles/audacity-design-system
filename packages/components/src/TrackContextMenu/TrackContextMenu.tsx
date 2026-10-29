@@ -76,13 +76,18 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
       {hasHeightItems && (
         <div data-track-height-items="">
           <ContextMenuItem label="Track height" onClose={onClose}>
+            {/* Reset sits apart, below a divider (2026-10-29) */}
             {heightItems.map(([label, handler]) => handler && (
-              <ContextMenuItem
-                key={label}
-                label={label}
-                onClick={handler}
-                onClose={onClose}
-              />
+              <React.Fragment key={label}>
+                {label === 'Reset height' && heightItems.some(([l, h]) => l !== label && h) && (
+                  <div className="context-menu-separator" />
+                )}
+                <ContextMenuItem
+                  label={label}
+                  onClick={handler}
+                  onClose={onClose}
+                />
+              </React.Fragment>
             ))}
           </ContextMenuItem>
         </div>

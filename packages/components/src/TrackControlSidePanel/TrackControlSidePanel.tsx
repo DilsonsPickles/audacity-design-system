@@ -1139,16 +1139,22 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               {heightItems.length > 0 && (
                 <div data-track-height-items="">
                   <ContextMenuItem label="Track height" onClose={handleMenuClose}>
+                    {/* Reset sits apart, below a divider (2026-10-29):
+                        the other three change a height, Reset undoes it */}
                     {heightItems.map(([label, handler]) => (
-                      <ContextMenuItem
-                        key={label}
-                        label={label}
-                        onClick={() => {
-                          handler(index);
-                          handleMenuClose();
-                        }}
-                        onClose={handleMenuClose}
-                      />
+                      <React.Fragment key={label}>
+                        {label === 'Reset height' && heightItems.length > 1 && (
+                          <div className="context-menu-separator" />
+                        )}
+                        <ContextMenuItem
+                          label={label}
+                          onClick={() => {
+                            handler(index);
+                            handleMenuClose();
+                          }}
+                          onClose={handleMenuClose}
+                        />
+                      </React.Fragment>
                     ))}
                   </ContextMenuItem>
                 </div>
