@@ -379,12 +379,20 @@ const ClipComponent: React.FC<ClipProps> = ({
   // wired symmetrically; if `onStretchEdge` is absent the handles still
   // render but produce no edit, so the layout can be reviewed visually
   // before the audio side is hooked up.
+  // A press NEVER FOCUSES a handle (2026-10-29, "it's showing the
+  // stretch and trim icons but disabled, don't do that"): a focused
+  // handle is the KEYBOARD's (T / S), which dims the clip's other
+  // handles beside it — a mouse press, a right-click above all, must not
+  // put the clip in that mode. Only the left button drags.
   const handleVisibleTrimMouseDown = (edge: 'left' | 'right') => (e: React.MouseEvent) => {
-    if (!onTrimEdge) return;
+    e.preventDefault();
+    if (!onTrimEdge || e.button !== 0) return;
     e.stopPropagation();
     setTrimEdge(edge);
   };
   const handleStretchMouseDown = (edge: 'left' | 'right') => (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (e.button !== 0) return;
     e.stopPropagation();
     setStretchEdge(edge);
   };

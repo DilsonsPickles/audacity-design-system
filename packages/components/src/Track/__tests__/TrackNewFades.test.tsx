@@ -1536,6 +1536,34 @@ describe('the hover handles of an unselected clip (2026-10-29, "when you hover i
   });
 });
 
+describe('a press never focuses a handle (2026-10-29, "it\'s showing the stretch and trim icons but disabled, don\'t do that")', () => {
+  it('a press on a fade, trim or stretch handle — left or right button — is default-prevented, so it takes no focus and dims nothing', () => {
+    const { container } = render(
+      <Providers>
+        <TrackNew
+          clips={[{ id: 1, name: 'A', start: 0, duration: 4, fadeIn: 1, selected: true }]}
+          width={1200}
+          trackIndex={0}
+          pixelsPerSecond={100}
+          onClipFadeChange={vi.fn()}
+          onClipTrimEdge={vi.fn()}
+          onClipStretchEdge={vi.fn()}
+        />
+      </Providers>,
+    );
+    const fade = container.querySelector('[data-fade-handle="in"]') as HTMLElement;
+    const trim = container.querySelector('[data-handle-kind="trim"]') as HTMLElement;
+    const stretch = container.querySelector('[data-handle-kind="stretch"]') as HTMLElement;
+    for (const el of [fade, trim, stretch]) {
+      expect(el, 'handle present').toBeTruthy();
+      for (const button of [0, 2]) {
+        expect(fireEvent.mouseDown(el, { button }), `${el.getAttribute('data-handle-kind') ?? 'fade'} button ${button}`).toBe(false);
+      }
+    }
+    expect(container.querySelector('[data-disabled]')).toBeNull();
+  });
+});
+
 describe('the dashed guideline on an UNSELECTED clip under the pointer (2026-10-23)', () => {
   it('hover shows the guideline and the handle for every fade with length; leaving takes them away', () => {
     const { container } = render(

@@ -3153,8 +3153,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             aria-valuemax={Math.round(windowLen * 100) / 100}
             aria-valuetext={`${(Math.round((side === 'in' ? fadeInSec : fadeOutSec) * 100) / 100)} seconds, ${quickFadeShapeName(side, (side === 'in' ? clip.fadeInShape : clip.fadeOutShape) ?? DEFAULT_QUICK_FADE_SHAPE)}`}
             // The clip body is the time-selection surface — a fade drag
-            // must not bubble into it (mirrors the trim handles)
-            onMouseDown={(e) => e.stopPropagation()}
+            // must not bubble into it (mirrors the trim handles). And a
+            // press NEVER FOCUSES the handle (2026-10-29): focus is F's,
+            // and a focused fade handle dims the clip's trim and stretch
+            // handles beside it — a right-click put the clip in that mode
+            onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => beginFadeLengthDrag(clip, side, e)}
             style={{
