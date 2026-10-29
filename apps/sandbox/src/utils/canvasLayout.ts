@@ -51,3 +51,29 @@ export function computeCanvasHeights(
 
   return { tracksHeight, totalHeight, containerHeight };
 }
+
+/** The empty space below the last track, as a share of the viewport. */
+export const SCROLL_BUFFER_SHARE = 0.4;
+
+/**
+ * The scroll buffer below the last track — empty space so the content
+ * can be scrolled further up the screen — once the tracks FILL the
+ * viewport. "Fill" includes a FIT: Fit to height sizes the rows to the
+ * viewport less one trailing track gap, rounding each row down a pixel
+ * at most (computeFitTrackHeight), so fitted content is up to
+ * `trackGap + rowCount` short of the viewport and the old "taller than
+ * the viewport" test dropped the buffer on every fit (2026-10-29, "when
+ * we set a track's height to 'fit to height' we need to preserve that
+ * additional scroll area at the bottom"). Content shorter than that
+ * needs no scrolling and gets none.
+ */
+export function scrollBufferFor(
+  contentHeight: number,
+  viewportHeight: number,
+  rowCount: number,
+  trackGap: number,
+): number {
+  if (viewportHeight <= 0) return 0;
+  const fills = contentHeight + trackGap + rowCount > viewportHeight;
+  return fills ? Math.round(viewportHeight * SCROLL_BUFFER_SHARE) : 0;
+}

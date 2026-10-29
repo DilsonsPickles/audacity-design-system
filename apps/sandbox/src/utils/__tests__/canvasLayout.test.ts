@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { computeCanvasHeights } from '../canvasLayout';
+import { computeCanvasHeights, scrollBufferFor } from '../canvasLayout';
+import { computeFitTrackHeight } from '../trackManagement';
 import type { CanvasHeightTrack } from '../canvasLayout';
 
 describe('computeCanvasHeights', () => {
@@ -56,5 +57,23 @@ describe('computeCanvasHeights', () => {
     // tracksHeight = 80 + topGap(2) + trackGap(2) * (1 - 1) = 82
     const result = computeCanvasHeights(tracks, opts);
     expect(result.tracksHeight).toBe(82);
+  });
+});
+
+describe('scrollBufferFor — the empty space below the last track (2026-10-29)', () => {
+  it('content taller than the viewport gets 40% of the viewport', () => {
+    expect(scrollBufferFor(900, 500, 4, 2)).toBe(200);
+  });
+  it('a FIT keeps it: the fitted rows land up to a gap and a pixel per row short of the viewport', () => {
+    // 4 rows fitted into 500: per = floor((500 - 2 - 4×2) / 4) = 122 →
+    // content = 2 + 4×122 + 3×2 = 496, 4px short
+    const per = computeFitTrackHeight(500, 4, 2, 2)!;
+    const { totalHeight } = computeCanvasHeights([{ height: per }, { height: per }, { height: per }, { height: per }], { topGap: 2, trackGap: 2, defaultTrackHeight: 114, bottomBuffer: 0 });
+    expect(totalHeight).toBeLessThan(500);
+    expect(scrollBufferFor(totalHeight, 500, 4, 2)).toBe(200);
+  });
+  it('content that leaves room in the viewport gets none, nor does an unmeasured viewport', () => {
+    expect(scrollBufferFor(300, 500, 2, 2)).toBe(0);
+    expect(scrollBufferFor(900, 0, 4, 2)).toBe(0);
   });
 });

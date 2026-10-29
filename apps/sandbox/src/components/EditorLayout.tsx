@@ -14,6 +14,8 @@ import { useContextMenus } from '../contexts/ContextMenuContext';
 import { useAudioEngine, MIDI_INSTRUMENTS } from '../contexts/AudioEngineContext';
 import { selectTrackExclusive } from '../utils/trackSelection';
 import { snapToGrid } from '../utils/snapToGrid';
+import { scrollBufferFor } from '../utils/canvasLayout';
+import { TRACK_GAP as CANVAS_TRACK_GAP } from '../constants/canvas';
 import { confirmTrackDelete } from '../utils/confirmTrackDelete';
 import { usePianoRollSmoothScroll } from '../hooks/usePianoRollSmoothScroll';
 import { useMeasuredWidth } from '../hooks/useMeasuredWidth';
@@ -712,9 +714,10 @@ export function EditorLayout(props: EditorLayoutProps) {
   }, [showVerticalRulers, state.tracks, trackSelectionMode, dispatch, setSelectionAnchor]);
 
 
-  // Buffer zone below tracks so user can scroll content further up the screen
+  // Buffer zone below tracks so user can scroll content further up the
+  // screen — kept through a Fit to height (scrollBufferFor)
   const viewportH = scrollContainerRef.current?.clientHeight || 0;
-  const scrollBuffer = viewportH > 0 && canvasHeight > viewportH ? Math.round(viewportH * 0.4) : 0;
+  const scrollBuffer = scrollBufferFor(canvasHeight, viewportH, state.tracks.length, CANVAS_TRACK_GAP);
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden' }}>
