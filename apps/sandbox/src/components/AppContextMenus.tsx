@@ -672,6 +672,7 @@ export function AppContextMenus({
               onEdit={(s) => openFadeDialogFor(trackIndex, clipId, s)}
               onRemove={(s) => removeFade(trackIndex, clipId, s)}
               onClose={close}
+              os={os}
             />
           </ContextMenu>
         );

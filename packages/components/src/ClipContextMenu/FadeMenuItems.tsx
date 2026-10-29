@@ -51,6 +51,9 @@ export interface FadeMenuItemsProps {
   /** "Remove fade-in" — length 0 */
   onRemove?: (side: FadeSide) => void;
   onClose?: () => void;
+  /** The OS whose key name Remove shows — ⌫ / Delete, the key a focused
+   *  handle takes for the same (2026-10-29) */
+  os?: 'macos' | 'windows';
 }
 
 /** The noun: the fade on that edge */
@@ -68,7 +71,7 @@ function FadeCurveGlyph({ side, shape }: { side: FadeSide; shape: FadeShape }) {
   );
 }
 
-export function FadeMenuItems({ side, state, presets, onShape, onEdit, onRemove, onClose }: FadeMenuItemsProps) {
+export function FadeMenuItems({ side, state, presets, onShape, onEdit, onRemove, onClose, os = 'macos' }: FadeMenuItemsProps) {
   const noun = fadeSideLabel(side).toLowerCase();
   return (
     <>
@@ -90,6 +93,7 @@ export function FadeMenuItems({ side, state, presets, onShape, onEdit, onRemove,
       <ContextMenuItem label={`Edit ${noun}…`} onClick={() => { onEdit?.(side); onClose?.(); }} />
       <ContextMenuItem
         label={`Remove ${noun}`}
+        shortcut={os === 'macos' ? '⌫' : 'Delete'}
         disabled={!state.hasFade}
         onClick={() => { onRemove?.(side); onClose?.(); }}
       />

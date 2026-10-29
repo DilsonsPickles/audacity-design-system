@@ -25,6 +25,21 @@ describe('FadeMenuItems — the fade handle\'s menu', () => {
     expect(onRemove).toHaveBeenCalledWith('in');
   });
 
+  it('Remove shows the key a focused handle takes for it — ⌫ on macOS, Delete on Windows (2026-10-29)', () => {
+    const shortcutOf = (os: 'macos' | 'windows') => {
+      const { getByText, unmount } = render(
+        <ThemeProvider>
+          <FadeMenuItems side="in" state={{ hasFade: true }} os={os} />
+        </ThemeProvider>,
+      );
+      const text = getByText('Remove fade-in').closest('.context-menu-item')!.querySelector('.context-menu-item-shortcut')?.textContent;
+      unmount();
+      return text;
+    };
+    expect(shortcutOf('macos')).toBe('⌫');
+    expect(shortcutOf('windows')).toBe('Delete');
+  });
+
   it('names the other side, and dims Remove while there is no fade', () => {
     const onRemove = vi.fn();
     const { getByText } = render(
