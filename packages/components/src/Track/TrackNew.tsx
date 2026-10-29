@@ -2640,8 +2640,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // cursor into the space, the cursor will change to the fade in/out
   // icon"): an UNSELECTED clip shows no fade handles; at the top of its
   // BODY — under the header, which stays the clip drag's — a 32×32 zone
-  // straddles each fade's boundary (the dashed line; the clip's edge
-  // with no fade), wearing the fade cursor (Track.css), and a
+  // straddles each fade's boundary (the dashed line), held inside the
+  // clip clear of the trim's 6px (with no fade it starts there),
+  // wearing the fade cursor (Track.css), and a
   // press there is the fade length drag — the handle's own gesture,
   // beginFadeLengthDrag — so the clip fades without being selected, as
   // it trims by its edge zone. At track level under the edge zones
@@ -2666,16 +2667,23 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // 2026-10-23). The handles mount above it (455 over 439).
       if (fadeKeyFocus?.clipId === clip.id || handleKeyFocus?.clipId === clip.id) continue;
       const clipWidth = clip.duration * pixelsPerSecond;
-      if (clipWidth < 2 * ZONE) continue;
+      if (clipWidth < 2 * (ZONE + FADE_HANDLE_BOX_INSET)) continue;
       const xBase = CLIP_CONTENT_OFFSET + clip.start * pixelsPerSecond;
       // THE ZONE STRADDLES THE FADE'S BOUNDARY — the dashed line — at
       // the top of the body (the same day, "the 32px hit area straddles
       // the dashed line at the top of the clip body"): 16px either side
       // of where the curve meets the body, so it follows the fade as
-      // the handle does; with no fade that is the clip's edge, where the
-      // edge zone (above it) keeps its own 11px for the trim.
+      // the handle does — BUT NEVER PAST THE TRIM'S REACH (2026-10-29,
+      // "I don't want it to straddle the corner because that collides
+      // with trim handle"): it stops FADE_HANDLE_BOX_INSET (the edge
+      // zone's 6px) inside the clip's edge, so a bare edge's zone is
+      // 6..38 inside the clip, wholly the fade's, and the edge is wholly
+      // the trim's; a short fade's zone is held there too.
       const { fadeIn: fadeInSec, fadeOut: fadeOutSec } = clipQuickFadeGeometry(clip);
-      const boundaryX = { in: fadeInSec * pixelsPerSecond, out: clipWidth - fadeOutSec * pixelsPerSecond } as const;
+      const zoneLeft = {
+        in: Math.max(FADE_HANDLE_BOX_INSET, fadeInSec * pixelsPerSecond - ZONE / 2),
+        out: Math.min(clipWidth - FADE_HANDLE_BOX_INSET - ZONE, clipWidth - fadeOutSec * pixelsPerSecond - ZONE / 2),
+      } as const;
       for (const side of ['in', 'out'] as const) {
         const hasFade = (side === 'in' ? fadeInSec : fadeOutSec) > 0;
         const hint = withHint(fadeHoverProps(clip.id), 'fade-length');
@@ -2709,7 +2717,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               // not the clip's (the same day, "that'll clash with
               // header": the header is the clip drag's)
               top: `${CLIP_HEADER_H}px`,
-              left: `${Math.round(xBase + boundaryX[side] - ZONE / 2)}px`,
+              left: `${Math.round(xBase + zoneLeft[side])}px`,
               width: `${ZONE}px`,
               height: `${Math.max(0, Math.min(ZONE, height - CLIP_HEADER_H))}px`,
               zIndex: 439,

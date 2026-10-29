@@ -185,7 +185,7 @@ describe('trimming an unselected clip by its edge', () => {
     expect(onClipTrimEdge).not.toHaveBeenCalled();
   });
 
-  it('the edge zone and the fade CORNER ZONE share the edge: the zone is 32 square at the top of the clip BODY, STRADDLING the fade\'s boundary — the clip\'s edge with no fade — and UNDER the edge zone where the two overlap (2026-10-23)', () => {
+  it('the edge zone and the fade CORNER ZONE meet at the edge: with no fade the zone is 32 square at the top of the clip BODY, INSIDE the clip, starting where the edge zone ends (2026-10-29)', () => {
     // Until 2026-10-23 the hovered clip's fade HANDLE box started where
     // the zone ended (6px in); now an unselected clip fades by a corner
     // zone instead, 16px either side of the dashed line ("the 32px hit
@@ -193,12 +193,15 @@ describe('trimming an unselected clip by its edge', () => {
     // the edge zone's row does: the header is the clip drag's — and so
     // covers the edge zone's inside reach; the edge zone sits ABOVE it
     // (440 over 439), so the edge's own 11px is still the trim, and the
-    // rest of the zone is the fade
+    // rest of the zone is the fade. Since 2026-10-29 ("I don't want it
+    // to straddle the corner because that collides with trim handle")
+    // the zone stops at the edge zone's 6px: on a bare edge it is all
+    // inside the clip, and the two butt up against each other
     const { container, zone, clipBox, span } = renderTrack();
     const box = clipBox(2);
     const corner = (side: 'in' | 'out') => container.querySelector<HTMLElement>(`[data-fade-zone="${side}"][data-clip-ref="2"]`)!;
-    expect(span(corner('in'))).toEqual({ left: box.left - 16, right: box.left + 16 });
-    expect(span(corner('out'))).toEqual({ left: box.right - 16, right: box.right + 16 });
+    expect(span(corner('in'))).toEqual({ left: box.left + 6, right: box.left + 38 });
+    expect(span(corner('out'))).toEqual({ left: box.right - 38, right: box.right - 6 });
     for (const side of ['in', 'out'] as const) {
       expect(corner(side).style.top).toBe('20px');
       expect(corner(side).style.height).toBe('32px');
@@ -207,10 +210,10 @@ describe('trimming an unselected clip by its edge', () => {
     }
     const zoneLeft = span(zone(2, 'left')!);
     const zoneRight = span(zone(2, 'right')!);
-    // They overlap in x (the edge zone's 6px inside the clip lies in the corner)…
-    expect(zoneLeft.right).toBeGreaterThan(span(corner('in')).left);
-    expect(zoneRight.left).toBeLessThan(span(corner('out')).right);
-    // …and the EDGE zone is the one on top
+    // They meet and do not overlap…
+    expect(zoneLeft.right).toBe(span(corner('in')).left);
+    expect(zoneRight.left).toBe(span(corner('out')).right);
+    // …and the EDGE zone stays on top, for a fade short enough to hold the zone there
     const zoneZ = Number(zone(2, 'left')!.style.zIndex);
     expect(Number(corner('in').style.zIndex)).toBe(439);
     expect(Number(corner('out').style.zIndex)).toBe(439);
@@ -242,9 +245,18 @@ describe('trimming an unselected clip by its edge', () => {
       </Providers>,
     );
     expect(bare.container.querySelector('[data-fade-zone="in"][data-clip-ref="8"]')!.hasAttribute('data-has-fade')).toBe(false);
+    // A fade too short to clear the trim (under 22px) holds its zone 6px in (2026-10-29)
+    const short = render(
+      <Providers>
+        <TrackNew clips={[{ id: 9, name: 'Short', start: 1, duration: 4, fadeIn: 0.1, fadeOut: 0.1 }]} width={1200} trackIndex={0} pixelsPerSecond={100} onClipFadeChange={vi.fn()} />
+      </Providers>,
+    );
+    const shortLeft = (side: string) => parseFloat((short.container.querySelector(`[data-fade-zone="${side}"][data-clip-ref="9"]`) as HTMLElement).style.left);
+    expect(shortLeft('in')).toBe(clipLeft + 6);
+    expect(shortLeft('out')).toBe(clipLeft + 400 - 6 - 32);
   });
 
-  it('corner zones are the UNSELECTED clip\'s: none on a selected clip, at the 44px floor, on a clip narrower than 64px, without fade editing, or on a clip being recorded (2026-10-23)', () => {
+  it('corner zones are the UNSELECTED clip\'s: none on a selected clip, at the 44px floor, on a clip narrower than 76px, without fade editing, or on a clip being recorded (2026-10-23)', () => {
     const zones = (container: HTMLElement, clipId: number) =>
       container.querySelectorAll(`[data-fade-zone][data-clip-ref="${clipId}"]`);
     // Selected clip 1 has its fade handles and no corner zones; the
@@ -274,10 +286,10 @@ describe('trimming an unselected clip by its edge', () => {
     const c2 = renderTrack({ height: 50 });
     expect((zones(c2.container, 2)[0] as HTMLElement).style.height).toBe('30px');
     cleanup();
-    // Too narrow for two zones (under 64px): none; 64 is enough
+    // Too narrow for two zones clear of the edges (under 2 × (32 + 6) = 76px): none; 76 is enough
     const d = renderTrack({ clips: [
-      { id: 2, name: 'Narrow', start: 5, duration: 0.63 },
-      { id: 3, name: 'Just wide enough', start: 7, duration: 0.64 },
+      { id: 2, name: 'Narrow', start: 5, duration: 0.75 },
+      { id: 3, name: 'Just wide enough', start: 7, duration: 0.76 },
     ] });
     expect(zones(d.container, 2)).toHaveLength(0);
     expect(zones(d.container, 3)).toHaveLength(2);
