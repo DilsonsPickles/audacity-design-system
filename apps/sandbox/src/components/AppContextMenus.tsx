@@ -15,6 +15,7 @@ import { useClipProperties } from '../contexts/ClipPropertiesContext';
 import type { ClipboardState } from '../hooks/useKeyboardShortcuts';
 import { FadeDialog, FADE_MIXED, type FadeDialogEdits, type FadeDialogValues } from './FadeDialog';
 import { fadeTargets } from '../utils/fadeTargets';
+import { fadeShapePresetActions } from '../utils/fadeShapePresetActions';
 import { FADE_SHAPE_PRESETS, fadeShapePresetOf, CROSSFADE_SHAPE_PRESETS, crossfadeShapePresetOf } from '../utils/fadeShapePresets';
 
 export interface AppContextMenusProps {
@@ -93,13 +94,12 @@ export function AppContextMenus({
       dispatch({ type: 'SET_CLIP_FADE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side, seconds: 0 } });
     }
   };
-  // A curve type from the handle's menu — every target by the fade rule
+  // A curve type from the handle's menu — every target by the fade
+  // rule; where there is no fade, one is made in that shape
   const setFadeShape = (trackIndex: number, clipId: number, side: 'in' | 'out', presetId: string) => {
     const preset = FADE_SHAPE_PRESETS.find((p) => p.id === presetId);
     if (!preset) return;
-    for (const t of fadeTargets(tracks, trackIndex, clipId)) {
-      dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: t.trackIndex, clipId: t.clipId, side, shape: preset.shape } });
-    }
+    for (const action of fadeShapePresetActions(tracks, trackIndex, clipId, side, preset.shape)) dispatch(action);
   };
   const openFadeDialog = (side: 'in' | 'out') => {
     if (!clipContextMenu) return;
@@ -649,14 +649,16 @@ export function AppContextMenus({
         const clip = tracks[trackIndex]?.clips.find((c: Clip) => c.id === clipId);
         if (!clip) return null;
         const close = () => setFadeContextMenu(null);
+        // No fade, no curve: nothing is checked until a pick makes one
+        const hasFade = (side === 'in' ? clip.fadeIn ?? 0 : clip.fadeOut ?? 0) > 0;
         return (
           <ContextMenu isOpen={fadeContextMenu.isOpen} x={x} y={y} onClose={close}>
             <FadeMenuItems
               side={side}
               presets={FADE_SHAPE_PRESETS}
               state={{
-                presetId: fadeShapePresetOf(side === 'in' ? clip.fadeInShape : clip.fadeOutShape),
-                hasFade: (side === 'in' ? clip.fadeIn ?? 0 : clip.fadeOut ?? 0) > 0,
+                presetId: hasFade ? fadeShapePresetOf(side === 'in' ? clip.fadeInShape : clip.fadeOutShape) : undefined,
+                hasFade,
               }}
               onShape={(s, presetId) => setFadeShape(trackIndex, clipId, s, presetId)}
               onEdit={(s) => openFadeDialogFor(trackIndex, clipId, s)}

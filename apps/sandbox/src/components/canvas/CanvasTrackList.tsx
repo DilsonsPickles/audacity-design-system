@@ -6,6 +6,7 @@ import { useTracksDispatch } from '../../contexts/useTracks';
 import { buildTrimParticipants } from '../../utils/trimParticipants';
 import { keyboardEditTargets } from '../../utils/keyboardEditTargets';
 import { fadeTargets, clampFadeSeconds } from '../../utils/fadeTargets';
+import { fadeShapePresetActions } from '../../utils/fadeShapePresetActions';
 import { computeFadeToTime, fadeSideForTime } from '../../utils/fadeToPlayhead';
 import { computeKeyboardTrimToTimeBatch, computeKeyboardTrimToTimeAnnouncement } from '../../utils/clipKeyboardEdit';
 import { FADE_SHAPE_PRESETS } from '../../utils/fadeShapePresets';
@@ -1083,14 +1084,13 @@ const CanvasTrack = React.memo(function CanvasTrack({
           : undefined}
         // THE FADE HANDLES' KEYS (2026-10-12): a number key is the fade
         // menu's preset at that place, by the fade-edit rule (a selected
-        // clip's fade is every selected clip's)
+        // clip's fade is every selected clip's) — and, as the menu's,
+        // makes a fade where there is none (2026-10-29)
         onFadeShapePreset={showQuickFadeHandles ? (clipId, side, index) => {
           dropSelectionForEdit(tracksRef, dispatch, trackIndex, clipId);
           const preset = FADE_SHAPE_PRESETS[index];
           if (!preset) return;
-          for (const target of fadeTargets(tracksRef.current, trackIndex, clipId as number)) {
-            dispatch({ type: 'SET_CLIP_FADE_SHAPE', payload: { trackIndex: target.trackIndex, clipId: target.clipId, side, shape: preset.shape } });
-          }
+          for (const action of fadeShapePresetActions(tracksRef.current, trackIndex, clipId as number, side, preset.shape)) dispatch(action);
         } : undefined}
         onCrossfadeContextMenu={onCrossfadeContextMenu
           ? (outId, inId, x, y) => onCrossfadeContextMenu(outId as number, inId as number, trackIndex, x, y)
