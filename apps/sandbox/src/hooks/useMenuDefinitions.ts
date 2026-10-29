@@ -1,6 +1,8 @@
 import React from 'react';
 import type { MenuItem } from '@audacity-ui/components';
 import { createMenuDefinitions } from '../data/menuDefinitions';
+import { isCollapsedHeight } from '../utils/trackHeightMemory';
+import { DEFAULT_TRACK_HEIGHT } from '../constants/canvas';
 import { useTracksDispatch } from '../contexts/useTracks';
 import type { Track, TracksState } from '../contexts/TracksContext';
 import type { EffectsPanelState } from './useContextMenuState';
@@ -36,7 +38,7 @@ export interface UseMenuDefinitionsOptions {
   setIsMacrosPanelOpen: (open: boolean) => void;
   /** View > Fit tracks to height (AU3 heritage) */
   onFitTracksToHeight: () => void;
-  /** View > Expand all tracks (undo a collapse: back to the remembered height) */
+  /** View > Expand collapsed tracks (undo a collapse: back to the remembered height) */
   onExpandAllTracks: () => void;
   /** View > Collapse all tracks (minimum height) */
   onCollapseAllTracks: () => void;
@@ -200,6 +202,8 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onFitSelectedTracksToHeight,
     onZoomIn,
     onZoomOut,
+    anyTrackCollapsed: state.tracks.some((t) => isCollapsedHeight(t.height || DEFAULT_TRACK_HEIGHT)),
+    anyTrackOpen: state.tracks.some((t) => !isCollapsedHeight(t.height || DEFAULT_TRACK_HEIGHT)),
   });
 
   return menuDefinitions;

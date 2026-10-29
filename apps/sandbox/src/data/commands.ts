@@ -135,7 +135,7 @@ export const availableCommands: Command[] = [
   { id: 'remove-tracks', name: 'Remove tracks', category: 'Tracks' },
   { id: 'mixdown-to', name: 'Mix-down to', category: 'Tracks' },
   { id: 'collapse-all-tracks', name: 'Collapse all tracks', category: 'Tracks' },
-  { id: 'expand-all-tracks', name: 'Expand all tracks', category: 'Tracks' },
+  { id: 'expand-all-tracks', name: 'Expand collapsed tracks', category: 'Tracks' },
   { id: 'collapse-selected-tracks', name: 'Collapse selected tracks', category: 'Tracks' },
   { id: 'expand-selected-tracks', name: 'Expand selected tracks', category: 'Tracks' },
   { id: 'fit-selected-tracks-to-height', name: 'Fit selected tracks to height', category: 'Tracks' },

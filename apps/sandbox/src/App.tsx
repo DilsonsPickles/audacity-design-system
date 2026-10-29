@@ -46,7 +46,7 @@ import { RecordingManager } from './utils/RecordingManager';
 import { computeFitTrackHeight, buildNewTrack } from './utils/trackManagement';
 import { handlePaste } from './hooks/handlers/clipboardHandlers';
 import type { TrackType } from '@audacity-ui/components';
-import { collapseTracks, expandTracks, resetTracks, type HeightMemory, type HeightUpdate } from './utils/trackHeightMemory';
+import { collapseTracks, expandTracks, resetTracks, isCollapsedHeight, type HeightMemory, type HeightUpdate } from './utils/trackHeightMemory';
 import { effectiveTrackStride } from './utils/trackFolders';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from './constants/canvas';
 import { MuseHubProvider, useMuseHub, useInstalledEffects } from './contexts/MuseHubContext';
@@ -1013,6 +1013,9 @@ function CanvasDemoContent() {
       onCollapseTracks: handleCollapseAllTracks,
       onExpandTracks: handleExpandAllTracks,
       onFitTracksToHeight: handleFitTracksToHeight,
+      // A button with nothing to do is dimmed (2026-10-29)
+      canCollapseTracks: state.tracks.some((t) => !isCollapsedHeight(t.height || DEFAULT_TRACK_HEIGHT)),
+      canExpandTracks: state.tracks.some((t) => isCollapsedHeight(t.height || DEFAULT_TRACK_HEIGHT)),
       onShareClick: () => setIsShareDialogOpen(true),
       onExportAudioClick: () => {
         setInitialExportType('full-project');

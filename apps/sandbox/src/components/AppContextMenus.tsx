@@ -15,6 +15,8 @@ import { useClipProperties } from '../contexts/ClipPropertiesContext';
 import type { ClipboardState } from '../hooks/useKeyboardShortcuts';
 import { FadeDialog, FADE_MIXED, type FadeDialogEdits, type FadeDialogValues } from './FadeDialog';
 import { fadeTargets } from '../utils/fadeTargets';
+import { isCollapsedHeight } from '../utils/trackHeightMemory';
+import { DEFAULT_TRACK_HEIGHT } from '../constants/canvas';
 import { fadeShapePresetActions } from '../utils/fadeShapePresetActions';
 import { FADE_SHAPE_PRESETS, fadeShapePresetOf, CROSSFADE_SHAPE_PRESETS, crossfadeShapePresetOf } from '../utils/fadeShapePresets';
 
@@ -354,6 +356,7 @@ export function AppContextMenus({
           }}
           onCollapseTrack={onCollapseTrack && (() => onCollapseTrack(trackContextMenu.trackIndex))}
           onExpandTrack={onExpandTrack && (() => onExpandTrack(trackContextMenu.trackIndex))}
+          isCollapsed={isCollapsedHeight(tracks[trackContextMenu.trackIndex]?.height || DEFAULT_TRACK_HEIGHT)}
           onFitTrackToHeight={onFitTrackToHeight && (() => onFitTrackToHeight(trackContextMenu.trackIndex))}
           onResetTrackHeight={onResetTrackHeight && (() => onResetTrackHeight(trackContextMenu.trackIndex))}
           onDelete={() => {
@@ -449,8 +452,8 @@ export function AppContextMenus({
               ))}
             </ContextMenuItem>
             <ContextMenuItem isDivider label="" />
-            <ContextMenuItem label="Collapse all tracks" onClick={() => { setTrackPanelContextMenu(null); onCollapseAllTracks?.(); }} />
-            <ContextMenuItem label="Expand all tracks" onClick={() => { setTrackPanelContextMenu(null); onExpandAllTracks?.(); }} />
+            <ContextMenuItem label="Collapse all tracks" disabled={!tracks.some((t) => !isCollapsedHeight(t.height || DEFAULT_TRACK_HEIGHT))} onClick={() => { setTrackPanelContextMenu(null); onCollapseAllTracks?.(); }} />
+            <ContextMenuItem label="Expand collapsed tracks" disabled={!tracks.some((t) => isCollapsedHeight(t.height || DEFAULT_TRACK_HEIGHT))} onClick={() => { setTrackPanelContextMenu(null); onExpandAllTracks?.(); }} />
             <ContextMenuItem label="Fit tracks to height" onClick={() => { setTrackPanelContextMenu(null); onFitTracksToHeight?.(); }} />
             <ContextMenuItem isDivider label="" />
             <ContextMenuItem label="Reset all track heights" onClick={() => { setTrackPanelContextMenu(null); onResetAllTrackHeights?.(); }} />

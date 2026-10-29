@@ -86,6 +86,21 @@ describe('the track menu is the real build\'s (2026-10-29, trackcontextmenumodel
     expect(onMoveTrackToBottom).toHaveBeenCalledWith(0);
   });
 
+  it('one track\'s height menu offers Collapse while it is open and Expand once it is collapsed (2026-10-29)', () => {
+    const handlers = { onCollapseTrack: vi.fn(), onExpandTrack: vi.fn(), onFitTrackToHeight: vi.fn(), onResetTrackHeight: vi.fn() };
+    const heightLabels = (r: ReturnType<typeof renderMenu>) => {
+      fireEvent.click(r.item('Track height'));
+      return [...r.menu().querySelectorAll('[data-track-height-items] .context-menu-submenu .context-menu-item-label')].map((l) => l.textContent);
+    };
+    const open = renderMenu({ ...handlers, trackHeights: [180, 114] });
+    expect(heightLabels(open)).toEqual(['Collapse', 'Fit to height', 'Reset height']);
+    open.unmount();
+    const collapsed = renderMenu({ ...handlers, trackHeights: [44, 114] });
+    expect(heightLabels(collapsed)).toEqual(['Expand', 'Fit to height', 'Reset height']);
+    fireEvent.click(collapsed.item('Expand'));
+    expect(handlers.onExpandTrack).toHaveBeenCalledWith(0);
+  });
+
   it('Rename starts the row\'s own name editor', () => {
     const { item, container } = renderMenu();
     act(() => { fireEvent.click(item('Rename')); });

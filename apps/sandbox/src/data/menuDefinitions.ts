@@ -43,6 +43,10 @@ export interface MenuDefinitionDeps {
   onExpandAllTracks: () => void;
   onCollapseAllTracks: () => void;
   onResetAllTrackHeights: () => void;
+  /** Whether any track is collapsed / open — dims the Expand / Collapse
+   *  commands with nothing to do (2026-10-29) */
+  anyTrackCollapsed: boolean;
+  anyTrackOpen: boolean;
   onCollapseSelectedTracks: () => void;
   onExpandSelectedTracks: () => void;
   onFitSelectedTracksToHeight: () => void;
@@ -151,14 +155,18 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       onClick: deps.onFitTracksToHeight,
     },
     {
-      label: 'Expand all tracks',
+      // Audacity 3's name for it: Expand only undoes a collapse
+      // (2026-10-29), so it says so, and dims with nothing collapsed
+      label: 'Expand collapsed tracks',
       shortcut: 'Ctrl+Shift+X',
       onClick: deps.onExpandAllTracks,
+      disabled: !deps.anyTrackCollapsed,
     },
     {
       label: 'Collapse all tracks',
       shortcut: 'Ctrl+Shift+C',
       onClick: deps.onCollapseAllTracks,
+      disabled: !deps.anyTrackOpen,
     },
     {
       // Back to the default height, whatever each track is (2026-10-29 —
@@ -172,11 +180,13 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Expand selected tracks',
       shortcut: 'Ctrl+Alt+X',
       onClick: deps.onExpandSelectedTracks,
+      disabled: !deps.anyTrackCollapsed,
     },
     {
       label: 'Collapse selected tracks',
       shortcut: 'Ctrl+Alt+C',
       onClick: deps.onCollapseSelectedTracks,
+      disabled: !deps.anyTrackOpen,
     },
     {
       label: 'Fit selected tracks to height',

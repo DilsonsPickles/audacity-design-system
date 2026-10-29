@@ -103,7 +103,7 @@ export const SHORTCUT_ROWS: ReadonlyArray<ShortcutRow> = [
     { id: '38e', action: 'Collapse selected tracks', shortcut: '⌥⌘C' },
     { id: '38f', action: 'Expand selected tracks', shortcut: '⌥⌘X' },
     { id: '38g', action: 'Collapse all tracks', shortcut: '⌥⌘⇧C · ⌘⇧C' },
-    { id: '38h', action: 'Expand all tracks', shortcut: '⌥⌘⇧X · ⌘⇧X' },
+    { id: '38h', action: 'Expand collapsed tracks', shortcut: '⌥⌘⇧X · ⌘⇧X' },
     { id: '39', action: 'Fit to width', shortcut: '' },
     { id: '40', action: 'Generate', shortcut: '' },
     { id: '41', action: 'Generate silence', shortcut: '⌘L', contexts: ['time'] },

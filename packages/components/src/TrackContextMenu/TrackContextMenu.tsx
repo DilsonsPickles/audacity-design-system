@@ -28,6 +28,9 @@ export interface TrackContextMenuProps {
   onFitTrackToHeight?: () => void;
   /** Back to the default height, whatever it is (2026-10-29) */
   onResetTrackHeight?: () => void;
+  /** Whether the track is collapsed: when given, the menu offers only
+   *  the one of Collapse / Expand that applies (2026-10-29) */
+  isCollapsed?: boolean;
 }
 
 export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
@@ -43,10 +46,11 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
   onExpandTrack,
   onFitTrackToHeight,
   onResetTrackHeight,
+  isCollapsed,
 }) => {
   const heightItems = [
-    ['Collapse', onCollapseTrack],
-    ['Expand', onExpandTrack],
+    ['Collapse', isCollapsed === true ? undefined : onCollapseTrack],
+    ['Expand', isCollapsed === false ? undefined : onExpandTrack],
     ['Fit to height', onFitTrackToHeight],
     ['Reset height', onResetTrackHeight],
   ] as const;

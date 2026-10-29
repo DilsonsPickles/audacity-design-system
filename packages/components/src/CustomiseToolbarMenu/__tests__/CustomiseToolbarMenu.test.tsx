@@ -67,6 +67,6 @@ describe('CustomiseToolbarMenu — the cog\'s popover (2026-10-07)', () => {
     expect(ids.indexOf('fit-tracks-height')).toBe(ids.indexOf('expand-tracks') + 1);
     expect(ids.indexOf('expand-tracks')).toBe(ids.indexOf('collapse-tracks') + 1);
     const entries = CUSTOMISE_TOOLBAR_ENTRIES.filter((e) => e.kind === 'tool' && (e.id === 'collapse-tracks' || e.id === 'expand-tracks'));
-    expect(entries.map((e) => (e.kind === 'tool' ? e.label : ''))).toEqual(['Collapse tracks', 'Expand tracks']);
+    expect(entries.map((e) => (e.kind === 'tool' ? e.label : ''))).toEqual(['Collapse tracks', 'Expand collapsed tracks']);
   });
 });

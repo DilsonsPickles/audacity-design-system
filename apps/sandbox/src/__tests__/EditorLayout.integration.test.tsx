@@ -1379,7 +1379,7 @@ describe('Selection playback', () => {
     fireEvent.contextMenu(list, { clientX: 40, clientY: 400 });
     const items = () => [...document.querySelectorAll('[data-track-panel-menu] [role="menuitem"]')];
     const labels = () => items().map((i) => i.textContent?.trim().replace(/▸$/, ''));
-    await waitFor(() => expect(labels()).toEqual(['Add track', 'Collapse all tracks', 'Expand all tracks', 'Fit tracks to height', 'Reset all track heights']));
+    await waitFor(() => expect(labels()).toEqual(['Add track', 'Collapse all tracks', 'Expand collapsed tracks', 'Fit tracks to height', 'Reset all track heights']));
     // Add a track from here: the parent opens on a click, the types are the flyout's
     fireEvent.click(items()[0]);
     await waitFor(() => expect(labels().slice(1, 5)).toEqual(['Mono', 'Stereo', 'Label', 'MIDI']));
@@ -1398,7 +1398,7 @@ describe('Selection playback', () => {
 
     fireEvent.contextMenu(list, { clientX: 40, clientY: 400 });
     await waitFor(() => expect(labels()).toHaveLength(5));
-    fireEvent.click(items().find((i) => i.textContent?.trim() === 'Expand all tracks')!);
+    fireEvent.click(items().find((i) => i.textContent?.trim() === 'Expand collapsed tracks')!);
     await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('114px'));
   });
 
