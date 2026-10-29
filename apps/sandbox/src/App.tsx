@@ -1229,6 +1229,7 @@ function CanvasDemoContent() {
           controlPointStyle={controlPointStyle}
           spectrogramScale={spectrogramScale}
           showVerticalRulers={showVerticalRulers}
+          setShowVerticalRulers={setShowVerticalRulers}
           showQuickFadeHandles={showQuickFadeHandles}
           isPlaying={isPlaying}
           setIsPlaying={setIsPlaying}

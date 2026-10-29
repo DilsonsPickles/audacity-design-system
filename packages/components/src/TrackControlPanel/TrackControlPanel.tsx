@@ -42,6 +42,9 @@ export interface TrackControlPanelProps {
    * double-click on the name text starts the inline edit; Enter
    * commits, Escape cancels. */
   onRename?: (newName: string) => void;
+  /** A host's request to start the inline rename — the track menu's
+   *  Rename (2026-10-29). Each new value starts it once. */
+  renameRequest?: number;
   /** Available MIDI instruments (shown for MIDI tracks) */
   instruments?: Array<{ id: string; label: string }>;
   /** Currently selected instrument id */
@@ -148,6 +151,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   onEffectsClick,
   onAddLabelClick,
   onRename,
+  renameRequest,
   instruments,
   instrument,
   onInstrumentChange,
@@ -242,6 +246,15 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
     setRenameDraft(trackName);
     setIsRenaming(true);
   };
+  // The menu's Rename: a new request value starts the edit (the first
+  // render's value does not — it is not a request)
+  const lastRenameRequestRef = React.useRef(renameRequest);
+  React.useEffect(() => {
+    if (renameRequest === undefined || renameRequest === lastRenameRequestRef.current) return;
+    lastRenameRequestRef.current = renameRequest;
+    startRename();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renameRequest]);
 
   const commitRename = () => {
     const next = renameDraft.trim();

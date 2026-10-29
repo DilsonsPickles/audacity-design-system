@@ -798,7 +798,7 @@ export function AppDialogs(props: AppDialogsProps) {
                 <ContextMenuItem
                   key={device.deviceId}
                   label={device.label || 'Unknown Device'}
-                  icon={selectedPlaybackDevice === device.label ? <span style={{ marginRight: '8px' }}>✓</span> : undefined}
+                  checked={selectedPlaybackDevice === device.label}
                   onClick={async () => {
                     setSelectedPlaybackDevice(device.label || 'Unknown Device');
                     setAudioSetupMenuAnchor(null);
@@ -821,7 +821,7 @@ export function AppDialogs(props: AppDialogsProps) {
                 <ContextMenuItem
                   key={device.deviceId}
                   label={device.label || 'Unknown Device'}
-                  icon={selectedRecordingDevice === device.label ? <span style={{ marginRight: '8px' }}>✓</span> : undefined}
+                  checked={selectedRecordingDevice === device.label}
                   onClick={() => {
                     setSelectedRecordingDevice(device.label || 'Unknown Device');
                     setAudioSetupMenuAnchor(null);

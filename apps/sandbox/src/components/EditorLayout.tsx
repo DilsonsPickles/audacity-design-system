@@ -1,5 +1,6 @@
 import { computeGroupLayout, GROUP_END_PAD, FOLDER_ROW_HEIGHT } from '@audacity-ui/core';
 import React from 'react';
+import * as Tone from 'tone';
 import type { SpectralSelection } from '../contexts/SpectralSelectionContext';
 import { Canvas } from './Canvas';
 import { MarketplaceModal, type MarketplaceEffect } from './MarketplaceModal';
@@ -90,6 +91,7 @@ export interface EditorLayoutProps {
   controlPointStyle: EnvelopePointStyleKey;
   spectrogramScale: SpectrogramScale;
   showVerticalRulers: boolean;
+  setShowVerticalRulers: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Playback
   isPlaying: boolean;
@@ -185,7 +187,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     onCollapseTrack, onExpandTrack, onFitTrackToHeight,
     scrollContainerRef, trackHeaderScrollRef,
     pixelsPerSecond, timelineWidth, timelineDuration, timelineFormat, bpm, beatsPerMeasure,
-    showRmsInWaveform, showQuickFadeHandles, controlPointStyle, spectrogramScale, showVerticalRulers,
+    showRmsInWaveform, showQuickFadeHandles, controlPointStyle, spectrogramScale, showVerticalRulers, setShowVerticalRulers,
     isPlaying, setIsPlaying, trackMeterLevels, isMicMonitoring, recordingClipId,
     selectionAnchor, setSelectionAnchor, setControlPanelHasFocus,
     containerFocusedTrack, setContainerFocusedTrack,
@@ -714,6 +716,10 @@ export function EditorLayout(props: EditorLayoutProps) {
   }, [showVerticalRulers, state.tracks, trackSelectionMode, dispatch, setSelectionAnchor]);
 
 
+  // The project's rate, the Rate ▸ menu's reading for a track with none
+  // of its own (the clip properties panel reads the same)
+  const engineSampleRate = React.useMemo(() => Tone.getContext().sampleRate, []);
+
   // Buffer zone below tracks so user can scroll content further up the
   // screen — kept through a Fit to height (scrollBufferFor)
   const viewportH = scrollContainerRef.current?.clientHeight || 0;
@@ -878,9 +884,32 @@ export function EditorLayout(props: EditorLayoutProps) {
               });
             });
           }}
-          onMoveTrackUp={() => {
+          // THE TRACK MENU'S MOVES (2026-10-29; up / down were empty stubs
+          // until then): up and down are the header's Cmd+Arrow reorder;
+          // top and bottom move the row to the list's ends, out of any group
+          onMoveTrackUp={(trackIndex) => onTrackReorderVertical('up', trackIndex)}
+          onMoveTrackDown={(trackIndex) => onTrackReorderVertical('down', trackIndex)}
+          onMoveTrackToTop={(trackIndex) => {
+            dispatch({ type: 'MOVE_TRACK', payload: { fromIndex: trackIndex, toIndex: 0, membership: { parentId: null } } });
           }}
-          onMoveTrackDown={() => {
+          onMoveTrackToBottom={(trackIndex) => {
+            dispatch({ type: 'MOVE_TRACK', payload: { fromIndex: trackIndex, toIndex: state.tracks.length, membership: { parentId: null } } });
+          }}
+          showVerticalRulers={showVerticalRulers}
+          onToggleVerticalRulers={() => setShowVerticalRulers((on) => !on)}
+          halfWave={halfWave}
+          onHalfWaveChange={setHalfWave}
+          // Format ▸ and Rate ▸ store on the track (the clip properties
+          // panel shows the rate); Other…, Resample, Make stereo and the
+          // meters are not built — the menu dims them
+          trackSampleFormats={state.tracks.map((t) => t.sampleFormat)}
+          onTrackSampleFormatChange={(trackIndex, sampleFormat) => {
+            dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { sampleFormat } } });
+          }}
+          trackSampleRates={state.tracks.map((t) => t.sampleRate)}
+          defaultSampleRate={engineSampleRate}
+          onTrackSampleRateChange={(trackIndex, sampleRate) => {
+            dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { sampleRate } } });
           }}
           onTrackViewChange={(trackIndex, viewMode) => {
             dispatch({ type: 'UPDATE_TRACK_VIEW', payload: { index: trackIndex, viewMode } });

@@ -202,6 +202,51 @@ export interface TrackControlSidePanelProps {
   onExpandTrack?: (trackIndex: number) => void;
   onFitTrackToHeight?: (trackIndex: number) => void;
 
+  /*
+   * THE REAL BUILD'S TRACK MENU (2026-10-29, "can we make sure we have
+   * all these items in the track context menu?" — trackcontextmenumodel.cpp:
+   * Rename · Duplicate · Delete | Move track ▸ · Track visualization ▸ ·
+   * Track color ▸ · Show vertical rulers · Meters & monitoring ▸ | Make
+   * stereo track | Format ▸ · Rate ▸ · Resample track…). An item whose
+   * handler the host does not pass is DIMMED (in the design, not built);
+   * the stereo-only and label-only items, which the design's mono menu
+   * does not show, appear only when the host passes them.
+   */
+  /** Move track ▸ Move track to top / to bottom */
+  onMoveTrackToTop?: (trackIndex: number) => void;
+  onMoveTrackToBottom?: (trackIndex: number) => void;
+  /** Show vertical rulers — a project-wide toggle, checked while on */
+  showVerticalRulers?: boolean;
+  onToggleVerticalRulers?: () => void;
+  /** Track visualization ▸ Half-wave — checked while on */
+  halfWave?: boolean;
+  onHalfWaveChange?: (on: boolean) => void;
+  /** Meters & monitoring ▸ Show mic metering · Turn on input monitoring */
+  micMetering?: boolean;
+  onToggleMicMetering?: (trackIndex: number) => void;
+  inputMonitoring?: boolean;
+  onToggleInputMonitoring?: (trackIndex: number) => void;
+  /** Make stereo track (a mono track with the mono track below it) */
+  onMakeStereoTrack?: (trackIndex: number) => void;
+  canMakeStereoTrack?: (trackIndex: number) => boolean;
+  /** A STEREO track's own items, in place of Make stereo track */
+  onSwapStereoChannels?: (trackIndex: number) => void;
+  onSplitStereoToMono?: (trackIndex: number, mode: 'left-right' | 'center') => void;
+  /** Format ▸ — the samples' format, "32-bit Float" when unset */
+  trackSampleFormats?: Array<TrackSampleFormat | undefined>;
+  onTrackSampleFormatChange?: (trackIndex: number, format: TrackSampleFormat) => void;
+  /** Rate ▸ — the track's sample rate in Hz, `defaultSampleRate` when unset */
+  trackSampleRates?: Array<number | undefined>;
+  /** @default 44100 */
+  defaultSampleRate?: number;
+  onTrackSampleRateChange?: (trackIndex: number, rate: number) => void;
+  /** Rate ▸ Other… */
+  onCustomTrackSampleRate?: (trackIndex: number) => void;
+  /** Resample track… */
+  onResampleTrack?: (trackIndex: number) => void;
+  /** A LABEL track's Export labels */
+  onExportLabels?: (trackIndex: number) => void;
+
   /**
    * Buffer space below the last track (px)
    * @default 0
@@ -225,6 +270,18 @@ export interface TrackControlSidePanelProps {
    */
   onLabelTextSizeChange?: (pt: number) => void;
 }
+
+/** A track's sample format (the real build's availableTrackFormats) */
+export type TrackSampleFormat = 'int16' | 'int24' | 'float32';
+export const TRACK_SAMPLE_FORMATS: ReadonlyArray<{ id: TrackSampleFormat; label: string }> = [
+  { id: 'int16', label: '16-bit PCM' },
+  { id: 'int24', label: '24-bit PCM' },
+  { id: 'float32', label: '32-bit Float' },
+];
+/** The Rate ▸ list — Audacity's standard rates (AudioIOBase::StandardRates) */
+export const TRACK_SAMPLE_RATES: readonly number[] = [
+  8000, 11025, 16000, 22050, 32000, 44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000,
+];
 
 export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   children,
@@ -259,6 +316,28 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   onCollapseTrack,
   onExpandTrack,
   onFitTrackToHeight,
+  onMoveTrackToTop,
+  onMoveTrackToBottom,
+  showVerticalRulers,
+  onToggleVerticalRulers,
+  halfWave,
+  onHalfWaveChange,
+  micMetering,
+  onToggleMicMetering,
+  inputMonitoring,
+  onToggleInputMonitoring,
+  onMakeStereoTrack,
+  canMakeStereoTrack,
+  onSwapStereoChannels,
+  onSplitStereoToMono,
+  trackSampleFormats = [],
+  onTrackSampleFormatChange,
+  trackSampleRates = [],
+  defaultSampleRate = 44100,
+  onTrackSampleRateChange,
+  onCustomTrackSampleRate,
+  onResampleTrack,
+  onExportLabels,
   bufferSpace = 0,
 }) => {
   const { theme } = useTheme();
@@ -295,6 +374,9 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
     x: 0,
     y: 0,
   });
+  // Rename from the menu: the row's own name editor, asked for by a
+  // counter the row watches (TrackControlPanel.renameRequest)
+  const [renameRequest, setRenameRequest] = useState<{ index: number; n: number }>({ index: -1, n: 0 });
   const [addTrackFlyoutOpen, setAddTrackFlyoutOpen] = useState(false);
   const [addTrackFlyoutPosition, setAddTrackFlyoutPosition] = useState({ x: 0, y: 0 });
   const [addTrackFlyoutAutoFocus, setAddTrackFlyoutAutoFocus] = useState(false);
@@ -778,6 +860,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                 // Only override isFocused if not already provided by parent
                 ...(child.props.isFocused === undefined && { isFocused }),
                 isMenuOpen: menuState.isOpen && menuState.trackIndex === index,
+                ...(renameRequest.index === index && { renameRequest: renameRequest.n }),
                 onMenuClick: (event: React.MouseEvent<HTMLButtonElement>) => handleMenuClick(index, event),
                 trackHeight: height,
               })}
@@ -796,16 +879,25 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
         {!(groupMenu?.isFolderRow(menuState.trackIndex)) && (
           <>
             <ContextMenuItem
-              label="Delete"
+              label="Rename"
+              disabled={!childArray[menuState.trackIndex]?.props?.onRename}
               onClick={() => {
-                onDeleteTrack?.(menuState.trackIndex);
+                const index = menuState.trackIndex;
                 handleMenuClose();
+                setRenameRequest((r) => ({ index, n: r.n + 1 }));
               }}
             />
             <ContextMenuItem
               label="Duplicate"
               onClick={() => {
                 onDuplicateTrack?.(menuState.trackIndex);
+                handleMenuClose();
+              }}
+            />
+            <ContextMenuItem
+              label="Delete"
+              onClick={() => {
+                onDeleteTrack?.(menuState.trackIndex);
                 handleMenuClose();
               }}
             />
@@ -896,53 +988,107 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           );
         })()}
         <ContextMenuItem isDivider label="" />
-        <ContextMenuItem
-          label="Move track up"
-          onClick={() => {
-            onMoveTrackUp?.(menuState.trackIndex);
-            handleMenuClose();
-          }}
-          disabled={menuState.trackIndex === 0}
-        />
-        <ContextMenuItem
-          label="Move track down"
-          onClick={() => {
-            onMoveTrackDown?.(menuState.trackIndex);
-            handleMenuClose();
-          }}
-          disabled={menuState.trackIndex === childArray.length - 1}
-        />
-        {/* THE TRACK'S LOOK, in one group (2026-10-26, "put all the track
-            visual controls together"): Track color, Label text size, Track
-            view and Track height — until then Track height sat up with
-            Delete and Duplicate. MIDI tracks get only the height (no colour
-            to pick, nothing to view); LABEL tracks get Track color (their
-            labels render in it) and the text size, but no Track view. */}
+        {/* THE REAL BUILD'S MIDDLE SECTION (2026-10-29): Move track ▸,
+            Track visualization ▸, Track color ▸, Show vertical rulers,
+            Meters & monitoring ▸ — with our Label text size and Track
+            height ▸ beside the colour (the track's look kept together,
+            2026-10-26). Then the audio-only foot: Make stereo track, and
+            Format ▸ · Rate ▸ · Resample track…. MIDI tracks get the move
+            and the height; LABEL tracks the colour and text size; group
+            rows keep what they had. */}
         {(() => {
-          const trackChild = childArray[menuState.trackIndex];
-          const isLabelTrack = trackChild?.props?.trackType === 'label';
-          const isMidiTrack = trackChild?.props?.trackType === 'midi';
+          const index = menuState.trackIndex;
+          const lastIndex = childArray.length - 1;
+          const trackChild = childArray[index];
+          const trackType = trackChild?.props?.trackType;
+          const isLabelTrack = trackType === 'label';
+          const isMidiTrack = trackType === 'midi';
+          const isStereoTrack = trackType === 'stereo';
+          const isFolderRow = !!groupMenu?.isFolderRow(index);
+          const isAudioTrack = !isLabelTrack && !isMidiTrack && !isFolderRow;
+          /** Runs an index handler and closes the menu; dimmed without one */
+          const act = (handler: ((i: number) => void) | undefined) => ({
+            disabled: !handler,
+            onClick: () => { handler?.(index); handleMenuClose(); },
+            onClose: handleMenuClose,
+          });
           const heightItems = ([
             ['Collapse', onCollapseTrack],
             ['Expand', onExpandTrack],
             ['Fit to height', onFitTrackToHeight],
           ] as const).flatMap(([label, handler]) => (handler ? [[label, handler] as const] : []));
-          const hasHeightItems = heightItems.length > 0;
-
-          if (isMidiTrack && !hasHeightItems) return null;
-
+          const format = trackSampleFormats[index] ?? 'float32';
+          const formatLabel = TRACK_SAMPLE_FORMATS.find((f) => f.id === format)?.label ?? '32-bit Float';
+          const rate = trackSampleRates[index] ?? defaultSampleRate;
           return (
             <>
-              <div className="context-menu-separator" />
+              <ContextMenuItem label="Move track" onClose={handleMenuClose}>
+                <ContextMenuItem label="Move track up" {...act(onMoveTrackUp)} disabled={!onMoveTrackUp || index === 0} />
+                <ContextMenuItem label="Move track down" {...act(onMoveTrackDown)} disabled={!onMoveTrackDown || index === lastIndex} />
+                <div className="context-menu-separator" />
+                <ContextMenuItem label="Move track to top" {...act(onMoveTrackToTop)} disabled={!onMoveTrackToTop || index === 0} />
+                <ContextMenuItem label="Move track to bottom" {...act(onMoveTrackToBottom)} disabled={!onMoveTrackToBottom || index === lastIndex} />
+              </ContextMenuItem>
+              {!isLabelTrack && !isMidiTrack && (
+              <ContextMenuItem
+                label="Track visualization"
+                hasSubmenu={true}
+                onClose={handleMenuClose}
+              >
+                <ContextMenuItem
+                  label="Waveform"
+                  checked={trackViewModes[index] === 'waveform' || trackViewModes[index] === undefined}
+                  onClick={() => {
+                    onTrackViewChange?.(index, 'waveform');
+                  }}
+                />
+                <ContextMenuItem
+                  label="Spectrogram"
+                  checked={trackViewModes[index] === 'spectrogram'}
+                  onClick={() => {
+                    onTrackViewChange?.(index, 'spectrogram');
+                  }}
+                />
+                <ContextMenuItem
+                  label="Split view"
+                  checked={trackViewModes[index] === 'split'}
+                  onClick={() => {
+                    onTrackViewChange?.(index, 'split');
+                  }}
+                />
+                {onHalfWaveChange && (
+                  <ContextMenuItem
+                    label="Half-wave"
+                    checked={!!halfWave}
+                    onClick={() => { onHalfWaveChange(!halfWave); handleMenuClose(); }}
+                    onClose={handleMenuClose}
+                  />
+                )}
+                {onSpectrogramSettings && (
+                  <>
+                    <div className="context-menu-separator" />
+                    <ContextMenuItem
+                      label="Spectrogram settings..."
+                      onClick={() => {
+                        onSpectrogramSettings(index);
+                        handleMenuClose();
+                      }}
+                      onClose={handleMenuClose}
+                    />
+                  </>
+                )}
+              </ContextMenuItem>
+              )}
               {/* Track color submenu */}
               {!isMidiTrack && (
               <ContextMenuItem label="Track color" onClose={handleMenuClose}>
                 {(['cyan', 'blue', 'violet', 'magenta', 'red', 'orange', 'yellow', 'green', 'teal'] as const).map((color) => {
-                  const isActive = trackColors[menuState.trackIndex] === color;
+                  const isActive = trackColors[index] === color;
                   return (
                     <ContextMenuItem
                       key={color}
                       label={color.charAt(0).toUpperCase() + color.slice(1)}
+                      checked={isActive}
                       icon={
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{
@@ -954,10 +1100,9 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                             border: '1px solid rgba(0,0,0,0.2)',
                             flexShrink: 0,
                           }} />
-                          {isActive && <span style={{ fontSize: 12 }}>✓</span>}
                         </span>
                       }
-                      onClick={() => { onTrackColorChange?.(menuState.trackIndex, color); handleMenuClose(); }}
+                      onClick={() => { onTrackColorChange?.(index, color); handleMenuClose(); }}
                       onClose={handleMenuClose}
                     />
                   );
@@ -971,7 +1116,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                     <ContextMenuItem
                       key={pt}
                       label={`${pt} pt`}
-                      icon={labelTextSizePt === pt ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
+                      checked={labelTextSizePt === pt}
                       onClick={() => {
                         onLabelTextSizeChange(pt);
                         handleMenuClose();
@@ -981,52 +1126,10 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                   ))}
                 </ContextMenuItem>
               )}
-              {!isLabelTrack && !isMidiTrack && (
-              <ContextMenuItem
-                label="Track view"
-                hasSubmenu={true}
-                onClose={handleMenuClose}
-              >
-                <ContextMenuItem
-                  label="Waveform"
-                  icon={trackViewModes[menuState.trackIndex] === 'waveform' || trackViewModes[menuState.trackIndex] === undefined ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
-                  onClick={() => {
-                    onTrackViewChange?.(menuState.trackIndex, 'waveform');
-                  }}
-                />
-                <ContextMenuItem
-                  label="Spectrogram"
-                  icon={trackViewModes[menuState.trackIndex] === 'spectrogram' ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
-                  onClick={() => {
-                    onTrackViewChange?.(menuState.trackIndex, 'spectrogram');
-                  }}
-                />
-                <ContextMenuItem
-                  label="Split view"
-                  icon={trackViewModes[menuState.trackIndex] === 'split' ? <span style={{ fontSize: '14px' }}>✓</span> : undefined}
-                  onClick={() => {
-                    onTrackViewChange?.(menuState.trackIndex, 'split');
-                  }}
-                />
-                {onSpectrogramSettings && (
-                  <>
-                    <div className="context-menu-separator" />
-                    <ContextMenuItem
-                      label="Spectrogram settings..."
-                      onClick={() => {
-                        onSpectrogramSettings(menuState.trackIndex);
-                        handleMenuClose();
-                      }}
-                      onClose={handleMenuClose}
-                    />
-                  </>
-                )}
-              </ContextMenuItem>
-              )}
               {/* This track's height — a PARENT item, as Track color and
-                  Track view are ("those need to go into a parent menu item",
-                  2026-10-22); one track, as the parent says */}
-              {hasHeightItems && (
+                  Track visualization are ("those need to go into a parent
+                  menu item", 2026-10-22); one track, as the parent says */}
+              {heightItems.length > 0 && (
                 <div data-track-height-items="">
                   <ContextMenuItem label="Track height" onClose={handleMenuClose}>
                     {heightItems.map(([label, handler]) => (
@@ -1034,7 +1137,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                         key={label}
                         label={label}
                         onClick={() => {
-                          handler(menuState.trackIndex);
+                          handler(index);
                           handleMenuClose();
                         }}
                         onClose={handleMenuClose}
@@ -1042,6 +1145,74 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
                     ))}
                   </ContextMenuItem>
                 </div>
+              )}
+              {isAudioTrack && (
+                <>
+                  <ContextMenuItem
+                    label="Show vertical rulers"
+                    checked={!!showVerticalRulers}
+                    disabled={!onToggleVerticalRulers}
+                    onClick={() => { onToggleVerticalRulers?.(); handleMenuClose(); }}
+                    onClose={handleMenuClose}
+                  />
+                  <ContextMenuItem label="Meters & monitoring" onClose={handleMenuClose}>
+                    <ContextMenuItem label="Show mic metering" checked={!!micMetering} {...act(onToggleMicMetering)} />
+                    <div className="context-menu-separator" />
+                    <ContextMenuItem label="Turn on input monitoring" checked={!!inputMonitoring} {...act(onToggleInputMonitoring)} />
+                  </ContextMenuItem>
+                  <div className="context-menu-separator" />
+                  {isStereoTrack ? (
+                    <>
+                      {onSwapStereoChannels && <ContextMenuItem label="Swap stereo channels" {...act(onSwapStereoChannels)} />}
+                      {onSplitStereoToMono && (
+                        <>
+                          <ContextMenuItem label="Split stereo to L/R mono" {...act((i) => onSplitStereoToMono(i, 'left-right'))} />
+                          <ContextMenuItem label="Split stereo to center mono" {...act((i) => onSplitStereoToMono(i, 'center'))} />
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <ContextMenuItem
+                      label="Make stereo track"
+                      {...act(onMakeStereoTrack)}
+                      disabled={!onMakeStereoTrack || (canMakeStereoTrack ? !canMakeStereoTrack(index) : false)}
+                    />
+                  )}
+                  {(!isStereoTrack || onSwapStereoChannels || onSplitStereoToMono) && <div className="context-menu-separator" />}
+                  <ContextMenuItem label={`Format: ${formatLabel}`} onClose={handleMenuClose}>
+                    {TRACK_SAMPLE_FORMATS.map((f) => (
+                      <ContextMenuItem
+                        key={f.id}
+                        label={f.label}
+                        checked={f.id === format}
+                        {...act(onTrackSampleFormatChange ? (i) => onTrackSampleFormatChange(i, f.id) : undefined)}
+                      />
+                    ))}
+                  </ContextMenuItem>
+                  <ContextMenuItem label={`Rate: ${rate} Hz`} onClose={handleMenuClose}>
+                    {TRACK_SAMPLE_RATES.map((r) => (
+                      <ContextMenuItem
+                        key={r}
+                        label={`${r} Hz`}
+                        checked={r === rate}
+                        {...act(onTrackSampleRateChange ? (i) => onTrackSampleRateChange(i, r) : undefined)}
+                      />
+                    ))}
+                    <div className="context-menu-separator" />
+                    <ContextMenuItem
+                      label="Other…"
+                      checked={!TRACK_SAMPLE_RATES.includes(rate)}
+                      {...act(onCustomTrackSampleRate)}
+                    />
+                  </ContextMenuItem>
+                  <ContextMenuItem label="Resample track…" {...act(onResampleTrack)} />
+                </>
+              )}
+              {isLabelTrack && onExportLabels && (
+                <>
+                  <div className="context-menu-separator" />
+                  <ContextMenuItem label="Export labels" {...act(onExportLabels)} />
+                </>
               )}
             </>
           );

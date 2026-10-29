@@ -119,6 +119,9 @@ export interface Track {
    *  the audio engine's context rate. An empty track takes an imported
    *  file's rate, as Audacity 3's new track does (2026-10-20). */
   sampleRate?: number;
+  /** The samples' format — the track menu's Format ▸ (2026-10-29);
+   *  absent = 32-bit float. Stored only: the engine plays float. */
+  sampleFormat?: 'int16' | 'int24' | 'float32';
   viewMode?: 'waveform' | 'spectrogram' | 'split';
   channelSplitRatio?: number; // For stereo tracks: ratio of top channel height (0-1, default 0.5)
   clips: Clip[];

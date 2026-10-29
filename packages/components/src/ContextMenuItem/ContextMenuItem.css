@@ -51,6 +51,54 @@
   flex-shrink: 0;
 }
 
+/* LABELS LINE UP (2026-10-29, "if there's a context menu line item that
+   can receive a checkmark, all items in the list are moved along to make
+   room for the checkmark and all item labels still line up"). A menu
+   list — the menu, or one submenu — has two leading COLUMNS: the
+   checkmark slot, there as soon as ANY item in the list is checkable
+   (`checked` given, true or false — a checkable item keeps its slot when
+   unchecked), and the icon slot, there as soon as any item has an icon.
+   An item missing a column gets a 16px spacer in its place — ::before
+   for the checkmark, ::after (ordered between the icons and the label)
+   for the icon — so every label in the list starts on one line. Items
+   reach their list directly or through one wrapper element. The CLIP
+   menu keeps its own single "checkmark frame" slot (the Figma frame,
+   ClipContextMenu.css) and is left out. */
+.context-menu-item-label,
+.context-menu-item-shortcut,
+.context-menu-item-arrow {
+  order: 2;
+}
+
+:is(.context-menu, .context-menu-submenu):not(.clip-context-menu, .clip-context-menu *):has(
+  > .context-menu-item > .context-menu-item-content > .context-menu-item-checkmark,
+  > :not(.context-menu-item) > .context-menu-item > .context-menu-item-content > .context-menu-item-checkmark
+) > .context-menu-item > .context-menu-item-content:not(:has(> .context-menu-item-checkmark))::before,
+:is(.context-menu, .context-menu-submenu):not(.clip-context-menu, .clip-context-menu *):has(
+  > .context-menu-item > .context-menu-item-content > .context-menu-item-checkmark,
+  > :not(.context-menu-item) > .context-menu-item > .context-menu-item-content > .context-menu-item-checkmark
+) > :not(.context-menu-item) > .context-menu-item > .context-menu-item-content:not(:has(> .context-menu-item-checkmark))::before {
+  content: '';
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+:is(.context-menu, .context-menu-submenu):not(.clip-context-menu, .clip-context-menu *):has(
+  > .context-menu-item > .context-menu-item-content > .context-menu-item-icon,
+  > :not(.context-menu-item) > .context-menu-item > .context-menu-item-content > .context-menu-item-icon
+) > .context-menu-item > .context-menu-item-content:not(:has(> .context-menu-item-icon))::after,
+:is(.context-menu, .context-menu-submenu):not(.clip-context-menu, .clip-context-menu *):has(
+  > .context-menu-item > .context-menu-item-content > .context-menu-item-icon,
+  > :not(.context-menu-item) > .context-menu-item > .context-menu-item-content > .context-menu-item-icon
+) > :not(.context-menu-item) > .context-menu-item > .context-menu-item-content:not(:has(> .context-menu-item-icon))::after {
+  content: '';
+  order: 1;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
 .context-menu-item-label {
   flex: 1;
   white-space: nowrap;
