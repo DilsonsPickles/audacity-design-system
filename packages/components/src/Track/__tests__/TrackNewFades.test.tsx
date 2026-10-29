@@ -1695,6 +1695,11 @@ describe('fade handle grid snap (2026-09-30)', () => {
     hoverClip(container, 1);
     expect(line()).toBeNull();
     fireEvent.pointerDown(handle('in'), { button: 0, clientX: 100, clientY: 30, pointerId: 7 });
+    // Pressed, and moved inside the edge clearance: the fade in hand has
+    // no length yet, so no line — it would sit on the clip's edge (2026-10-29)
+    expect(line()).toBeNull();
+    fireEvent.pointerMove(handle('in'), { clientX: 103, clientY: 30, pointerId: 7, shiftKey: true });
+    expect(line()).toBeNull();
     // Snapped: project 2.37s → 2.5s, and the line is on the gridline
     fireEvent.pointerMove(handle('in'), { clientX: 237, clientY: 30, pointerId: 7 });
     let l = line()!;

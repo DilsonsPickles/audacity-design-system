@@ -3164,11 +3164,16 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // — and during a drag for the fade in hand alone. It follows the
       // EFFECTIVE boundary, so a snapped drag's line sits on the
       // gridline. The dash is Track.css; it fades with the handles.
+      // Never for a fade with no length — not even the one in hand: its
+      // boundary IS the clip's edge, and a drag from a bare edge drew the
+      // line there until the fade cleared the edge (2026-10-29, "when I
+      // first start dragging, the dashed line sits on edge of clip").
+      const hasLength = (side: 'in' | 'out') => (side === 'in' ? fadeInSec : fadeOutSec) > 0;
       const guidelineSides: Array<'in' | 'out'> = fadeDragClipId === clip.id && fadeDragSide
-        ? [fadeDragSide]
+        ? [fadeDragSide].filter(hasLength)
         : ghosted ? []
         : (['in', 'out'] as const).filter((side) =>
-          (side === 'in' ? fadeInSec : fadeOutSec) > 0 && !crossfadedEdges.has(`${clip.id}:${side}`));
+          hasLength(side) && !crossfadedEdges.has(`${clip.id}:${side}`));
       // From where the curve meets the body's top — under the header, or
       // at the clip's top while a collapsed clip's header is hidden, as
       // the curve itself (clipBodyGeometry; "same for the dashed line",
