@@ -135,22 +135,22 @@ body[data-fade-length-drag] * {
    body, white halo and white curve as the handle itself ("the cursor
    should change to the fade in handle"), drawn at 1x and 2x so it is
    crisp on a Retina display; the hotspot is the body's centre. A press
-   is the fade length drag. */
+   is the fade length drag.
+   Since 2026-10-29 ("could we try a fade icon that is a mix between
+   arrows and the fade icon we have now?") the handle wears the TRIM
+   cursor's ◂ ▸ arrowheads either side — the trim cursor's own pixels
+   (ClipTrimLeft.png), 1px clear of the body — so one cursor says both
+   "a fade" and "drag sideways", with a fade or without: it replaced the
+   bare-edge glyph and the plain left/right arrows the zone wore once
+   there was a fade (FadeIn.png / FadeOut.png are kept for a revert). */
 .track-fade-zone--in {
-  cursor: -webkit-image-set(url('../assets/cursors/FadeIn.png') 1x, url('../assets/cursors/FadeIn@2x.png') 2x) 16 16, pointer;
-  cursor: image-set(url('../assets/cursors/FadeIn.png') 1x, url('../assets/cursors/FadeIn@2x.png') 2x) 16 16, pointer;
+  cursor: -webkit-image-set(url('../assets/cursors/FadeInResize.png') 1x, url('../assets/cursors/FadeInResize@2x.png') 2x) 16 16, ew-resize;
+  cursor: image-set(url('../assets/cursors/FadeInResize.png') 1x, url('../assets/cursors/FadeInResize@2x.png') 2x) 16 16, ew-resize;
 }
 
 .track-fade-zone--out {
-  cursor: -webkit-image-set(url('../assets/cursors/FadeOut.png') 1x, url('../assets/cursors/FadeOut@2x.png') 2x) 16 16, pointer;
-  cursor: image-set(url('../assets/cursors/FadeOut.png') 1x, url('../assets/cursors/FadeOut@2x.png') 2x) 16 16, pointer;
-}
-
-/* With a fade already there — its dashed line up under the pointer —
-   the zone's cursor is the drag's left/right arrows (2026-10-23); the
-   handle glyph is for a bare edge, where it says a fade can start. */
-.track-fade-zone[data-has-fade] {
-  cursor: ew-resize;
+  cursor: -webkit-image-set(url('../assets/cursors/FadeOutResize.png') 1x, url('../assets/cursors/FadeOutResize@2x.png') 2x) 16 16, ew-resize;
+  cursor: image-set(url('../assets/cursors/FadeOutResize.png') 1x, url('../assets/cursors/FadeOutResize@2x.png') 2x) 16 16, ew-resize;
 }
 
 .track-edge-trim--left {
