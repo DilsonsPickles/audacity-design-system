@@ -2742,8 +2742,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // "once I start dragging out the handle, my cursor changes to left
     // right arrows"): a document-wide flag Track.css reads (`body[data-
     // fade-length-drag] *`), since the pointer is captured and may leave
-    // the handle, the zone and the clip; cleared with the drag.
-    handleEl.ownerDocument.body.setAttribute('data-fade-length-drag', '');
+    // the handle, the zone and the clip; cleared with the drag. Since
+    // 2026-10-29 ("keep it for the whole drag too") the value is the
+    // SIDE, and the cursor is the corner zone's — the fade handle with
+    // the trim arrowheads — for that side, from either door.
+    handleEl.ownerDocument.body.setAttribute('data-fade-length-drag', side);
     setFadeHoverClipId(clip.id); // a press on it proves the pointer is here
     setFadeDragClipId(clip.id);
     setFadeDragSide(side);

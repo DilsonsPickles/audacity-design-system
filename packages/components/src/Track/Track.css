@@ -113,11 +113,26 @@
 }
 
 /* A fade LENGTH drag in hand, from the handle or the corner zone: the
-   cursor is left/right arrows everywhere until the pointer is let go
-   (2026-10-23) — the pointer is captured, so it may be anywhere. */
+   cursor holds everywhere until the pointer is let go (2026-10-23) — the
+   pointer is captured, so it may be anywhere. It was the left/right
+   arrows; since 2026-10-29 ("keep it for the whole drag too") it is the
+   corner zone's own cursor for the side in hand (the attribute's value),
+   so hover and drag wear one cursor. */
 body[data-fade-length-drag],
 body[data-fade-length-drag] * {
   cursor: ew-resize !important;
+}
+
+body[data-fade-length-drag='in'],
+body[data-fade-length-drag='in'] * {
+  cursor: -webkit-image-set(url('../assets/cursors/FadeInResize.png') 1x, url('../assets/cursors/FadeInResize@2x.png') 2x) 16 16, ew-resize !important;
+  cursor: image-set(url('../assets/cursors/FadeInResize.png') 1x, url('../assets/cursors/FadeInResize@2x.png') 2x) 16 16, ew-resize !important;
+}
+
+body[data-fade-length-drag='out'],
+body[data-fade-length-drag='out'] * {
+  cursor: -webkit-image-set(url('../assets/cursors/FadeOutResize.png') 1x, url('../assets/cursors/FadeOutResize@2x.png') 2x) 16 16, ew-resize !important;
+  cursor: image-set(url('../assets/cursors/FadeOutResize.png') 1x, url('../assets/cursors/FadeOutResize@2x.png') 2x) 16 16, ew-resize !important;
 }
 
 /* While its fade is being EDITED — length or shape handle in hand —

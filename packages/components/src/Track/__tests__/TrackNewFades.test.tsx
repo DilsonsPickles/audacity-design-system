@@ -1586,6 +1586,8 @@ describe('the cursor during a fade length drag (2026-10-23)', () => {
     const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]') as HTMLElement;
     fireEvent.pointerDown(handle, { button: 0, clientX: 100, clientY: 30, pointerId: 1 });
     expect(flag()).toBe(true);
+    // The value is the side in hand — Track.css gives it that side's cursor (2026-10-29)
+    expect(document.body.getAttribute('data-fade-length-drag')).toBe('in');
     fireEvent.pointerUp(handle, { button: 0, clientX: 140, clientY: 30, pointerId: 1 });
     expect(flag()).toBe(false);
     const zone = container.querySelector('[data-fade-zone="in"][data-clip-ref="2"]') as HTMLElement;
