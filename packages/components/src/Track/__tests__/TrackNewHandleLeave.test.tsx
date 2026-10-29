@@ -5,10 +5,10 @@
  * no matchMedia, which the hook reads as "nothing can animate" — so
  * every other test sees instant exits; this one supplies a matchMedia.
  *
- * Since 2026-10-23 the fade LENGTH handles are the SELECTION's, not the
- * pointer's: what makes them leave is the clip being DESELECTED (or a
- * drag ending), so those parts of the test rerender the clip unselected
- * rather than moving the pointer off it.
+ * From 2026-10-23 the fade LENGTH handles were the SELECTION's, not the
+ * pointer's. Since 2026-10-29 one selected clip wears all its handles and
+ * SEVERAL show theirs on hover — and three clips are selected here, so
+ * the fade handles follow the pointer again, leaving with it.
  */
 import { render, fireEvent, cleanup, act } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
@@ -40,7 +40,7 @@ function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Clip 1 selected (the single selection) with fades; clip 2 and 3 a
+// Clip 1 selected (one of three selected) with fades; clip 2 and 3 a
 // crossfading pair; clip 4 selected and wholly under clip 2 (buried
 // duplicates)
 const clips = [
@@ -81,11 +81,10 @@ function renderTrack() {
 }
 
 describe('hover-dependent controls fade out rather than vanish (2026-10-01)', () => {
-  it('the shape handles and the in-clip trim/stretch pair linger with data-leaving for HANDLE_LEAVE_MS when the pointer leaves, the fade handles when the clip is DESELECTED (2026-10-23), then go', () => {
+  it('the fade handles, the shape handles and the in-clip trim/stretch pair linger with data-leaving for HANDLE_LEAVE_MS when the pointer leaves, then go', () => {
     const { clip, count, setClips } = renderTrack();
-    // The fade handles are the selected clip's, up before the pointer
-    // arrives (2026-10-23)
-    expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(2);
+    // One of several selected: nothing up before the pointer arrives (2026-10-29)
+    expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(0);
     fireEvent.mouseEnter(clip(1), { buttons: 0 });
     expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(2);
     expect(count('[data-quickfade-node][data-clip-ref="1"]')).toBe(2);
@@ -93,14 +92,9 @@ describe('hover-dependent controls fade out rather than vanish (2026-10-01)', ()
     expect(count('[data-leaving]')).toBe(0);
 
     fireEvent.mouseLeave(clip(1));
-    // The pointer's controls are on their way out; the fade handles stay
-    // put — the clip is still selected
+    // All on their way out together
     expect(count('[data-quickfade-node][data-clip-ref="1"][data-leaving]')).toBe(2);
     expect(count('[data-clip-id="1"] .clip-display__handle[data-leaving]')).toBe(4);
-    expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(2);
-    expect(count('[data-fade-handle][data-fade-clip="1"][data-leaving]')).toBe(0);
-    // Deselected: now the fade handles take the same exit
-    setClips(deselected(1));
     expect(count('[data-fade-handle][data-fade-clip="1"][data-leaving]')).toBe(2);
 
     act(() => { vi.advanceTimersByTime(HANDLE_LEAVE_MS - 1); });
@@ -113,17 +107,19 @@ describe('hover-dependent controls fade out rather than vanish (2026-10-01)', ()
     expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(0);
     expect(count('[data-leaving]')).toBe(0);
     // …and, unselected, the clip fades by its corner zones instead
+    setClips(deselected(1));
     expect(count('[data-fade-zone][data-clip-ref="1"]')).toBe(2);
   });
 
   it('coming back mid-exit cancels it: the same elements, no longer leaving', () => {
-    const { clip, container, count, setClips } = renderTrack();
-    // The fade handle: deselected, then reselected before the exit is over
+    const { clip, container, count } = renderTrack();
+    // The fade handle: the pointer leaves, then comes back before the exit is over
+    fireEvent.mouseEnter(clip(1), { buttons: 0 });
     const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]')!;
-    setClips(deselected(1));
+    fireEvent.mouseLeave(clip(1));
     expect(handle.getAttribute('data-leaving')).toBe('true');
     act(() => { vi.advanceTimersByTime(HANDLE_LEAVE_MS / 2); });
-    setClips(clips);
+    fireEvent.mouseEnter(clip(1), { buttons: 0 });
     expect(container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]')).toBe(handle); // never unmounted
     expect(handle.getAttribute('data-leaving')).toBeNull();
     act(() => { vi.advanceTimersByTime(HANDLE_LEAVE_MS); });

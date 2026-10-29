@@ -64,22 +64,23 @@ function renderTrack(draggingClipIds: ReadonlySet<number>) {
 describe('while a fade is being dragged, every OTHER clip\'s handles are hidden (2026-10-01)', () => {
   it('dragging an unselected clip\'s fade from its CORNER ZONE hides the selected clips\' handles; they return on release (2026-10-23)', () => {
     const { container, count } = renderTrack(new Set());
-    // Before: the SELECTED clips wear their fade handles whatever the
-    // pointer does (2026-10-23) — clip 1 its fade-in only, its right
-    // edge being crossfaded under clip 3; clip 4 both — and no trim or
-    // stretch handles (those still follow the pointer); the UNSELECTED
-    // clip 2 has no fade handles but two corner zones; clip 1 keeps its
-    // edge zones (its free left edge, and its right edge crossfaded
-    // under clip 3); the crossfade node needs its clips hovered, so it
-    // is not up
+    // Before: TWO clips are selected, so their handles follow the
+    // pointer (2026-10-29: one selected clip wears all its handles,
+    // several on hover). Unhovered, neither selected clip shows any; the
+    // UNSELECTED clip 2 has no fade handles but two corner zones
     expect(count('[data-fade-handle][data-fade-clip="2"]')).toBe(0);
     expect(count('[data-fade-zone][data-clip-ref="2"]')).toBe(2);
-    expect(count('[data-clip-id="1"] .clip-display__handle')).toBe(0);
+    expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(0);
+    expect(count('[data-fade-handle][data-fade-clip="4"]')).toBe(0);
+    // Hovered, clip 1 shows its fade-in handle (its right edge is
+    // crossfaded under clip 3), its in-clip pair at the free left edge;
+    // clip 3 keeps its edge zones
+    const clip1 = container.querySelector('[data-clip-id="1"]') as HTMLElement;
+    fireEvent.mouseEnter(clip1, { buttons: 0, clientX: 200, clientY: 50 });
+    fireEvent.mouseMove(clip1, { buttons: 0, clientX: 200, clientY: 50 });
     expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(1);
-    expect(count('[data-fade-handle][data-fade-clip="4"]')).toBe(2);
-    expect(count('[data-edge-trim][data-clip-ref="1"]')).toBe(2);
+    expect(count('[data-clip-id="1"] .clip-display__handle')).toBeGreaterThan(0);
     expect(count('[data-edge-trim][data-clip-ref="3"]')).toBe(2);
-    expect(count('[data-crossfade-node]')).toBe(0);
     const inZone = container.querySelector('[data-fade-zone="in"][data-clip-ref="2"]') as HTMLElement;
     fireEvent.pointerDown(inZone, { button: 0, clientX: 620, clientY: 30, pointerId: 51 });
     // In hand: the other clips' zones and fade handles are gone; clip 2,
@@ -102,11 +103,11 @@ describe('while a fade is being dragged, every OTHER clip\'s handles are hidden 
     expect(count('[data-fade-handle][data-fade-clip="2"]')).toBe(0);
     expect(count('[data-fade-guideline="in"][data-fade-clip="2"]')).toBe(0);
     fireEvent.pointerUp(inZone, { clientX: 620, clientY: 30, pointerId: 51 });
-    // Released: back as they were
-    expect(count('[data-edge-trim][data-clip-ref="1"]')).toBe(2);
+    // Released: back as they were — the hovered clip 1's handles
+    fireEvent.mouseEnter(clip1, { buttons: 0, clientX: 200, clientY: 50 });
+    fireEvent.mouseMove(clip1, { buttons: 0, clientX: 200, clientY: 50 });
     expect(count('[data-edge-trim][data-clip-ref="3"]')).toBe(2);
     expect(count('[data-fade-handle][data-fade-clip="1"]')).toBe(1);
-    expect(count('[data-fade-handle][data-fade-clip="4"]')).toBe(2);
     expect(count('[data-fade-handle][data-fade-clip="2"]')).toBe(0);
     expect(count('[data-fade-zone][data-clip-ref="2"]')).toBe(2);
   });
@@ -158,6 +159,10 @@ describe('a fade drag on ANOTHER track hides this track\'s handles too', () => {
     expect(onFadeDragChange).toHaveBeenLastCalledWith(2);
     fireEvent.pointerUp(zone, { clientX: 620, clientY: 30, pointerId: 61 });
     expect(onFadeDragChange).toHaveBeenLastCalledWith(null);
+    // (two clips selected: clip 1's handles are up under the pointer)
+    const clip1 = container.querySelector('[data-clip-id="1"]') as HTMLElement;
+    fireEvent.mouseEnter(clip1, { buttons: 0, clientX: 200, clientY: 50 });
+    fireEvent.mouseMove(clip1, { buttons: 0, clientX: 200, clientY: 50 });
     const handle = container.querySelector('[data-fade-handle="in"][data-fade-clip="1"]') as HTMLElement;
     fireEvent.pointerDown(handle, { button: 0, clientX: 20, clientY: 30, pointerId: 62 });
     expect(onFadeDragChange).toHaveBeenLastCalledWith(1);

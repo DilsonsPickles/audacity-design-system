@@ -6,6 +6,7 @@ import { useTracksDispatch } from '../../contexts/useTracks';
 import { buildTrimParticipants } from '../../utils/trimParticipants';
 import { keyboardEditTargets } from '../../utils/keyboardEditTargets';
 import { fadeTargets, clampFadeSeconds } from '../../utils/fadeTargets';
+import { countSelectedClips } from '../../utils/clipSelectionCount';
 import { fadeShapePresetActions } from '../../utils/fadeShapePresetActions';
 import { computeFadeToTime, fadeSideForTime } from '../../utils/fadeToPlayhead';
 import { computeKeyboardTrimToTimeBatch, computeKeyboardTrimToTimeAnnouncement } from '../../utils/clipKeyboardEdit';
@@ -226,6 +227,9 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
   // every non-soloed track reads as effectively muted (matches the audio
   // behaviour). Computed once per render. Folder solo counts through
   // its children (cascade), never through the folder row itself.
+  // One selected clip in the whole project wears all its handles;
+  // several show theirs on hover (2026-10-29) — TrackNew sees one track
+  const singleSelection = React.useMemo(() => countSelectedClips(tracks) === 1, [tracks]);
   const anySoloed = tracks.some((t, i) => t.type !== 'folder' && effectiveTrackSoloed(tracks, i));
 
   // Collapse/expand tween — the same hook the panel column runs, fed the
@@ -409,6 +413,7 @@ export function CanvasTrackList(props: CanvasTrackListProps) {
             track={track}
             trackIndex={trackIndex}
             anySoloed={anySoloed}
+            singleSelection={singleSelection}
             tracksRef={tracksRef}
             yOffset={yOffset}
             ghosted={ghosted}
@@ -431,6 +436,8 @@ interface CanvasTrackProps extends Omit<CanvasTrackListProps, 'tracks' | 'marque
    *  the list props). Null when no marquee is in flight. */
   marqueePreviewClipIds: ReadonlySet<number> | null;
   anySoloed: boolean;
+  /** Exactly one clip selected in the whole project (2026-10-29) */
+  singleSelection: boolean;
   /** Live tracks array for event-time reads only — never render from it
    *  (a memo-skipped row would hold no stale data, but renders must come
    *  from the value props above so rows repaint when they change). */
@@ -447,6 +454,7 @@ interface CanvasTrackProps extends Omit<CanvasTrackListProps, 'tracks' | 'marque
 
 const CanvasTrack = React.memo(function CanvasTrack({
   ghosted,
+  singleSelection,
   collapseStyle,
   selectedTrackIndices,
   focusedTrackIndex,
@@ -1077,6 +1085,7 @@ const CanvasTrack = React.memo(function CanvasTrack({
         alignFadeBoundary={alignFadeBoundary}
         onFadeSnapGuideline={onFadeSnapGuideline}
         fadeInHandClipId={fadeInHandClipId}
+        singleSelection={singleSelection}
         onFadeDragChange={onFadeDragChange}
         onHandleHint={onHandleHint}
         onFadeContextMenu={onFadeContextMenu && showQuickFadeHandles
