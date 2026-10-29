@@ -495,8 +495,10 @@ const UNDOABLE_ACTIONS = new Set<TracksAction['type']>([
   'ADD_TRACK_TO_FOLDER',
   'REMOVE_TRACK_FROM_FOLDER',
   'DUPLICATE_FOLDER',
-  'UPDATE_TRACK_HEIGHT',
-  'UPDATE_CHANNEL_SPLIT_RATIO',
+  // UPDATE_TRACK_HEIGHT and UPDATE_CHANNEL_SPLIT_RATIO are NOT undoable
+  // (2026-10-29, "I don't think changing track height should be on the
+  // undo chain"): a track's height is the view, not the project's
+  // content — see `keepTrackView`, which also holds it through UNDO/REDO.
   // Clip lifecycle / edits
   'ADD_CLIP',
   'DELETE_CLIP',
@@ -555,8 +557,6 @@ const UNDO_COALESCE_GROUP: Partial<Record<TracksAction['type'], string>> = {
   SET_CROSSFADE_SHAPE: 'crossfade-shape',
   SET_CLIP_FADE_SHAPE: 'clip-fade-drag',
   UPDATE_CLIP_ENVELOPE_POINTS: 'envelope-drag',
-  UPDATE_TRACK_HEIGHT: 'track-resize',
-  UPDATE_CHANNEL_SPLIT_RATIO: 'track-resize',
   RESIZE_MIDI_NOTE: 'midi-resize',
   UPDATE_MIDI_NOTE: 'midi-resize',
   // APPLY_CLIP_PLACEMENT is intentionally absent: it's used both as the
@@ -571,6 +571,23 @@ const UNDO_COALESCE_GROUP: Partial<Record<TracksAction['type'], string>> = {
  *  any reaction-time pause breaks the group. */
 const COALESCE_TIMEOUT_MS = 250;
 
+/** A restored snapshot with the CURRENT view kept: each track still in
+ *  the project keeps the height and channel split it has now, so undo
+ *  and redo change the content and never resize a track (2026-10-29 —
+ *  heights are off the undo chain, and a snapshot taken before a resize
+ *  would otherwise put the old height back). Identity-preserving. */
+function keepTrackView(restored: Track[], current: Track[]): Track[] {
+  const view = new Map(current.map((t) => [t.id, t]));
+  let changed = false;
+  const out = restored.map((t) => {
+    const now = view.get(t.id);
+    if (!now || (now.height === t.height && now.channelSplitRatio === t.channelSplitRatio)) return t;
+    changed = true;
+    return { ...t, height: now.height, channelSplitRatio: now.channelSplitRatio };
+  });
+  return changed ? out : restored;
+}
+
 // Reducer
 export function tracksReducer(state: TracksState, action: TracksAction): TracksState {
   // UNDO / REDO swap the `tracks` array against the past/future stacks
@@ -581,7 +598,7 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
     const previousTracks = state.past[state.past.length - 1];
     return {
       ...state,
-      tracks: previousTracks,
+      tracks: keepTrackView(previousTracks, state.tracks),
       past: state.past.slice(0, -1),
       future: [state.tracks, ...state.future].slice(0, MAX_UNDO_HISTORY),
       lastUndoCoalesceGroup: null,
@@ -610,14 +627,14 @@ export function tracksReducer(state: TracksState, action: TracksAction): TracksS
   }
   if (action.type === 'CANCEL_UNDO_GESTURE') {
     if (!state.undoGesture) return state;
-    return { ...state, tracks: state.undoGesture, undoGesture: null };
+    return { ...state, tracks: keepTrackView(state.undoGesture, state.tracks), undoGesture: null };
   }
   if (action.type === 'REDO') {
     if (state.future.length === 0) return state;
     const nextTracks = state.future[0];
     return {
       ...state,
-      tracks: nextTracks,
+      tracks: keepTrackView(nextTracks, state.tracks),
       past: [...state.past, state.tracks].slice(-MAX_UNDO_HISTORY),
       future: state.future.slice(1),
       lastUndoCoalesceGroup: null,
