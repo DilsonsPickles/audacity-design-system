@@ -36,10 +36,12 @@ export interface UseMenuDefinitionsOptions {
   setIsMacrosPanelOpen: (open: boolean) => void;
   /** View > Fit tracks to height (AU3 heritage) */
   onFitTracksToHeight: () => void;
-  /** View > Expand all tracks (restore default height) */
+  /** View > Expand all tracks (undo a collapse: back to the remembered height) */
   onExpandAllTracks: () => void;
   /** View > Collapse all tracks (minimum height) */
   onCollapseAllTracks: () => void;
+  /** View > Reset all track heights (the default, whatever they are) */
+  onResetAllTrackHeights: () => void;
   /** View > Collapse / Expand selected tracks (2026-10-08) */
   onCollapseSelectedTracks: () => void;
   onExpandSelectedTracks: () => void;
@@ -84,6 +86,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onFitTracksToHeight,
     onExpandAllTracks,
     onCollapseAllTracks,
+    onResetAllTrackHeights,
     onCollapseSelectedTracks,
     onExpandSelectedTracks,
     onFitSelectedTracksToHeight,
@@ -191,6 +194,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onFitTracksToHeight,
     onExpandAllTracks,
     onCollapseAllTracks,
+    onResetAllTrackHeights,
     onCollapseSelectedTracks,
     onExpandSelectedTracks,
     onFitSelectedTracksToHeight,

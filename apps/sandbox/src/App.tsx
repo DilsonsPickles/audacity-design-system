@@ -46,7 +46,7 @@ import { RecordingManager } from './utils/RecordingManager';
 import { computeFitTrackHeight, buildNewTrack } from './utils/trackManagement';
 import { handlePaste } from './hooks/handlers/clipboardHandlers';
 import type { TrackType } from '@audacity-ui/components';
-import { collapseTracks, expandTracks, type HeightMemory, type HeightUpdate } from './utils/trackHeightMemory';
+import { collapseTracks, expandTracks, resetTracks, type HeightMemory, type HeightUpdate } from './utils/trackHeightMemory';
 import { effectiveTrackStride } from './utils/trackFolders';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from './constants/canvas';
 import { MuseHubProvider, useMuseHub, useInstalledEffects } from './contexts/MuseHubContext';
@@ -555,6 +555,10 @@ function CanvasDemoContent() {
   const handleExpandAllTracks = React.useCallback(() => {
     applyHeightUpdates(expandTracks(state.tracks, state.tracks.map((_, i) => i), heightMemoryRef.current));
   }, [state.tracks, applyHeightUpdates]);
+  // Reset (2026-10-29): every track back to the default, whatever it is
+  const handleResetAllTrackHeights = React.useCallback(() => {
+    applyHeightUpdates(resetTracks(state.tracks, state.tracks.map((_, i) => i), heightMemoryRef.current));
+  }, [state.tracks, applyHeightUpdates]);
   const handleCollapseAllTracks = React.useCallback(() => {
     applyHeightUpdates(collapseTracks(state.tracks, state.tracks.map((_, i) => i), heightMemoryRef.current));
   }, [state.tracks, applyHeightUpdates]);
@@ -647,6 +651,9 @@ function CanvasDemoContent() {
   const handleFitTrackToHeight = React.useCallback((index: number) => {
     fitTracksToHeightFor([index]);
   }, [fitTracksToHeightFor]);
+  const handleResetTrackHeight = React.useCallback((index: number) => {
+    applyHeightUpdates(resetTracks(state.tracks, [index], heightMemoryRef.current));
+  }, [state.tracks, applyHeightUpdates]);
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -940,6 +947,7 @@ function CanvasDemoContent() {
     onFitTracksToHeight: handleFitTracksToHeight,
     onExpandAllTracks: handleExpandAllTracks,
     onCollapseAllTracks: handleCollapseAllTracks,
+    onResetAllTrackHeights: handleResetAllTrackHeights,
     onCollapseSelectedTracks: handleCollapseSelectedTracks,
     onExpandSelectedTracks: handleExpandSelectedTracks,
     onFitSelectedTracksToHeight: handleFitSelectedTracksToHeight,
@@ -1217,6 +1225,7 @@ function CanvasDemoContent() {
           onCollapseTrack={handleCollapseTrack}
           onExpandTrack={handleExpandTrack}
           onFitTrackToHeight={handleFitTrackToHeight}
+          onResetTrackHeight={handleResetTrackHeight}
           scrollContainerRef={scrollContainerRef}
           trackHeaderScrollRef={trackHeaderScrollRef}
           pixelsPerSecond={pixelsPerSecond}
@@ -1492,9 +1501,11 @@ function CanvasDemoContent() {
         onCollapseAllTracks={handleCollapseAllTracks}
         onExpandAllTracks={handleExpandAllTracks}
         onFitTracksToHeight={handleFitTracksToHeight}
+        onResetAllTrackHeights={handleResetAllTrackHeights}
         onCollapseTrack={handleCollapseTrack}
         onExpandTrack={handleExpandTrack}
         onFitTrackToHeight={handleFitTrackToHeight}
+        onResetTrackHeight={handleResetTrackHeight}
       />
 
       {/* Time Selection Context Menu */}

@@ -120,6 +120,12 @@ export interface ResizablePanelProps {
    */
   onResizeEnd?: (finalHeight: number, source: ResizeSource) => void;
   /**
+   * A double-click on the resize edge — the reset gesture for anything
+   * dragged (2026-10-29, the track's Reset height). Stopped there, so
+   * the panel's own double-click never also runs.
+   */
+  onResetHeight?: () => void;
+  /**
    * Additional CSS class names
    */
   className?: string;
@@ -164,6 +170,7 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
   onHeightChange,
   onResizeStart,
   onResizeEnd,
+  onResetHeight,
   className = '',
   isFirstPanel = false,
   style: externalStyle,
@@ -327,24 +334,30 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+  /** Which resize edge the pointer is on, if any */
+  const edgeAt = (e: React.MouseEvent<HTMLDivElement>): 'top' | 'bottom' | null => {
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
 
-    let activeEdge: 'top' | 'bottom' | null = null;
-
     if (resizeEdge === 'bottom' || resizeEdge === 'both') {
       const bottomResizeStart = height - resizeThreshold;
-      if (y >= bottomResizeStart && y <= height) {
-        activeEdge = 'bottom';
-      }
+      if (y >= bottomResizeStart && y <= height) return 'bottom';
     }
+    if (resizeEdge === 'top' || resizeEdge === 'both') {
+      if (y >= 0 && y <= resizeThreshold) return 'top';
+    }
+    return null;
+  };
 
-    if (!activeEdge && (resizeEdge === 'top' || resizeEdge === 'both')) {
-      if (y >= 0 && y <= resizeThreshold) {
-        activeEdge = 'top';
-      }
-    }
+  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onResetHeight || !edgeAt(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onResetHeight();
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const activeEdge = edgeAt(e);
 
     if (activeEdge) {
       e.preventDefault();
@@ -389,6 +402,9 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
         // stopping it too late. Capturing lets the resize claim the
         // press before any descendant sees it.
         onMouseDownCapture={handleMouseDown}
+        // Capture too, so the reset beats the panel's own double-click
+        // (a header double-click selects the track's audio)
+        onDoubleClickCapture={handleDoubleClick}
         onMouseLeave={handleMouseLeave}
       >
         {children}

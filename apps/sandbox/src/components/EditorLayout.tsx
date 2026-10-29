@@ -73,6 +73,7 @@ export interface EditorLayoutProps {
   onCollapseTrack?: (trackIndex: number) => void;
   onExpandTrack?: (trackIndex: number) => void;
   onFitTrackToHeight?: (trackIndex: number) => void;
+  onResetTrackHeight?: (trackIndex: number) => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   trackHeaderScrollRef: React.RefObject<HTMLDivElement | null>;
 
@@ -184,7 +185,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     activeMenuItem,
     trackMenuTriggerRef,
     scrollX, scrollY, onScroll, onTrackHeaderScroll,
-    onCollapseTrack, onExpandTrack, onFitTrackToHeight,
+    onCollapseTrack, onExpandTrack, onFitTrackToHeight, onResetTrackHeight,
     scrollContainerRef, trackHeaderScrollRef,
     pixelsPerSecond, timelineWidth, timelineDuration, timelineFormat, bpm, beatsPerMeasure,
     showRmsInWaveform, showQuickFadeHandles, controlPointStyle, spectrogramScale, showVerticalRulers, setShowVerticalRulers,
@@ -823,6 +824,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           onCollapseTrack={onCollapseTrack}
           onExpandTrack={onExpandTrack}
           onFitTrackToHeight={onFitTrackToHeight}
+          onResetTrackHeight={onResetTrackHeight}
           bufferSpace={scrollBuffer}
           onTrackResize={(trackIndex, height, source) => {
             // SHIFT IS "EVERY TRACK" IN EVERY FAMILY (user decision

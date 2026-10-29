@@ -42,6 +42,7 @@ export interface MenuDefinitionDeps {
   onFitTracksToHeight: () => void;
   onExpandAllTracks: () => void;
   onCollapseAllTracks: () => void;
+  onResetAllTrackHeights: () => void;
   onCollapseSelectedTracks: () => void;
   onExpandSelectedTracks: () => void;
   onFitSelectedTracksToHeight: () => void;
@@ -158,6 +159,12 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Collapse all tracks',
       shortcut: 'Ctrl+Shift+C',
       onClick: deps.onCollapseAllTracks,
+    },
+    {
+      // Back to the default height, whatever each track is (2026-10-29 —
+      // Expand never shrinks, so this is the way back to normal)
+      label: 'Reset all track heights',
+      onClick: deps.onResetAllTrackHeights,
     },
     {
       // The one-track forms (2026-10-08, "collapse just the selected

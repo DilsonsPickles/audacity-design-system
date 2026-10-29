@@ -1321,11 +1321,10 @@ describe('Selection playback', () => {
       expect((panels()[1] as HTMLElement).style.height).toBe('189px');
       expect((panels()[2] as HTMLElement).style.height).toBe('189px');
     });
-    // Expand all with nothing collapsed NEVER SHRINKS (2026-10-29, "if
-    // the track is larger than the default size, when you press expand,
-    // it gets smaller"): the two 189s are already open, and keep their
-    // height — so they are still the fitted set, and a fit of track 0
-    // shares the room three ways: (500 - 2 - 3×2) / 3 = 164
+    // Expand all with nothing collapsed changes nothing — Expand only
+    // undoes a collapse, Audacity 3's rule (2026-10-29): the two 189s
+    // keep their height, so they are still the fitted set, and a fit of
+    // track 0 shares the room three ways: (500 - 2 - 3×2) / 3 = 164
     fireEvent.keyDown(document.body, { key: 'X', code: 'KeyX', metaKey: true, shiftKey: true });
     await new Promise((r) => setTimeout(r, 50));
     expect((panels()[1] as HTMLElement).style.height).toBe('189px');
@@ -1380,7 +1379,7 @@ describe('Selection playback', () => {
     fireEvent.contextMenu(list, { clientX: 40, clientY: 400 });
     const items = () => [...document.querySelectorAll('[data-track-panel-menu] [role="menuitem"]')];
     const labels = () => items().map((i) => i.textContent?.trim().replace(/▸$/, ''));
-    await waitFor(() => expect(labels()).toEqual(['Add track', 'Collapse all tracks', 'Expand all tracks', 'Fit tracks to height']));
+    await waitFor(() => expect(labels()).toEqual(['Add track', 'Collapse all tracks', 'Expand all tracks', 'Fit tracks to height', 'Reset all track heights']));
     // Add a track from here: the parent opens on a click, the types are the flyout's
     fireEvent.click(items()[0]);
     await waitFor(() => expect(labels().slice(1, 5)).toEqual(['Mono', 'Stereo', 'Label', 'MIDI']));
@@ -1389,7 +1388,7 @@ describe('Selection playback', () => {
     expect(document.querySelector('[data-track-panel-menu]')).toBeNull();
 
     fireEvent.contextMenu(list, { clientX: 40, clientY: 400 });
-    await waitFor(() => expect(labels()).toHaveLength(4));
+    await waitFor(() => expect(labels()).toHaveLength(5));
     fireEvent.click(items().find((i) => i.textContent?.trim() === 'Collapse all tracks')!);
     await waitFor(() => {
       expect((panels()[0] as HTMLElement).style.height).toBe('44px');
@@ -1398,7 +1397,7 @@ describe('Selection playback', () => {
     expect(document.querySelector('[data-track-panel-menu]')).toBeNull(); // the menu closed
 
     fireEvent.contextMenu(list, { clientX: 40, clientY: 400 });
-    await waitFor(() => expect(labels()).toHaveLength(4));
+    await waitFor(() => expect(labels()).toHaveLength(5));
     fireEvent.click(items().find((i) => i.textContent?.trim() === 'Expand all tracks')!);
     await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('114px'));
   });

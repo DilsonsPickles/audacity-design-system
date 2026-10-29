@@ -201,6 +201,10 @@ export interface TrackControlSidePanelProps {
   onCollapseTrack?: (trackIndex: number) => void;
   onExpandTrack?: (trackIndex: number) => void;
   onFitTrackToHeight?: (trackIndex: number) => void;
+  /** Reset height (2026-10-29): back to the default, whatever it is —
+   *  Track height ▸ Reset height, and a double-click on the row's
+   *  resize edge */
+  onResetTrackHeight?: (trackIndex: number) => void;
 
   /*
    * THE REAL BUILD'S TRACK MENU (2026-10-29, "can we make sure we have
@@ -316,6 +320,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   onCollapseTrack,
   onExpandTrack,
   onFitTrackToHeight,
+  onResetTrackHeight,
   onMoveTrackToTop,
   onMoveTrackToBottom,
   showVerticalRulers,
@@ -854,6 +859,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
               wheelResize
               onHeightChange={(newHeight, source) => onTrackResize?.(index, newHeight, source)}
               onResizeEnd={(finalHeight, source) => onTrackResize?.(index, finalHeight, source)}
+              onResetHeight={onResetTrackHeight && (() => onResetTrackHeight(index))}
             >
               {cloneElement(child, {
                 ...child.props,
@@ -1016,6 +1022,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
             ['Collapse', onCollapseTrack],
             ['Expand', onExpandTrack],
             ['Fit to height', onFitTrackToHeight],
+            ['Reset height', onResetTrackHeight],
           ] as const).flatMap(([label, handler]) => (handler ? [[label, handler] as const] : []));
           const format = trackSampleFormats[index] ?? 'float32';
           const formatLabel = TRACK_SAMPLE_FORMATS.find((f) => f.id === format)?.label ?? '32-bit Float';

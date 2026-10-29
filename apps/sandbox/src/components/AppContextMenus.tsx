@@ -55,10 +55,12 @@ export interface AppContextMenusProps {
   onCollapseAllTracks?: () => void;
   onExpandAllTracks?: () => void;
   onFitTracksToHeight?: () => void;
+  onResetAllTrackHeights?: () => void;
   // The track's own menu: ONE track's height (the brief's local control)
   onCollapseTrack?: (trackIndex: number) => void;
   onExpandTrack?: (trackIndex: number) => void;
   onFitTrackToHeight?: (trackIndex: number) => void;
+  onResetTrackHeight?: (trackIndex: number) => void;
 }
 
 export function AppContextMenus({
@@ -72,8 +74,8 @@ export function AppContextMenus({
   onClipboardSet,
   os,
   trackMenuTriggerRef,
-  onCollapseAllTracks, onExpandAllTracks, onFitTracksToHeight,
-  onCollapseTrack, onExpandTrack, onFitTrackToHeight,
+  onCollapseAllTracks, onExpandAllTracks, onFitTracksToHeight, onResetAllTrackHeights,
+  onCollapseTrack, onExpandTrack, onFitTrackToHeight, onResetTrackHeight,
 }: AppContextMenusProps) {
   const { state, dispatch } = useTracks();
   const { tracks, masterEffects } = state;
@@ -353,6 +355,7 @@ export function AppContextMenus({
           onCollapseTrack={onCollapseTrack && (() => onCollapseTrack(trackContextMenu.trackIndex))}
           onExpandTrack={onExpandTrack && (() => onExpandTrack(trackContextMenu.trackIndex))}
           onFitTrackToHeight={onFitTrackToHeight && (() => onFitTrackToHeight(trackContextMenu.trackIndex))}
+          onResetTrackHeight={onResetTrackHeight && (() => onResetTrackHeight(trackContextMenu.trackIndex))}
           onDelete={() => {
             if (trackContextMenu) {
               const deletedIdx = trackContextMenu.trackIndex;
@@ -449,6 +452,7 @@ export function AppContextMenus({
             <ContextMenuItem label="Collapse all tracks" onClick={() => { setTrackPanelContextMenu(null); onCollapseAllTracks?.(); }} />
             <ContextMenuItem label="Expand all tracks" onClick={() => { setTrackPanelContextMenu(null); onExpandAllTracks?.(); }} />
             <ContextMenuItem label="Fit tracks to height" onClick={() => { setTrackPanelContextMenu(null); onFitTracksToHeight?.(); }} />
+            <ContextMenuItem label="Reset all track heights" onClick={() => { setTrackPanelContextMenu(null); onResetAllTrackHeights?.(); }} />
           </div>
         </ContextMenu>
       )}

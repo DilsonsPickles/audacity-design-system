@@ -388,3 +388,25 @@ describe('createFrameCoalescer (2026-10-08, the trackpad judder)', () => {
     c.cancel();
   });
 });
+
+describe('ResizablePanel double-click on the resize edge resets (2026-10-29)', () => {
+  it('a double-click on the edge calls onResetHeight and stops there; one anywhere else passes through', () => {
+    const onResetHeight = vi.fn();
+    const onInnerDoubleClick = vi.fn();
+    const { container } = render(
+      <ResizablePanel initialHeight={114} onResetHeight={onResetHeight}>
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+        <div onDoubleClick={onInnerDoubleClick} style={{ height: '100%' }}>content</div>
+      </ResizablePanel>,
+    );
+    const inner = container.querySelector('.resizable-panel__content > div') as HTMLElement;
+    // jsdom's rects sit at 0, so clientY is the y within the panel: the
+    // bottom 8px (106–114) is the edge
+    fireEvent.doubleClick(inner, { clientY: 110 });
+    expect(onResetHeight).toHaveBeenCalledTimes(1);
+    expect(onInnerDoubleClick).not.toHaveBeenCalled();
+    fireEvent.doubleClick(inner, { clientY: 50 });
+    expect(onResetHeight).toHaveBeenCalledTimes(1);
+    expect(onInnerDoubleClick).toHaveBeenCalledTimes(1);
+  });
+});
