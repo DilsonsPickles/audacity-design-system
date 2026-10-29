@@ -23,10 +23,6 @@ export interface TrackGroupRowLayout {
   opensBelow: boolean;
 }
 
-/** The collapsed floor — a track at or under it is collapsed (the
- *  sandbox's `COLLAPSED_TRACK_HEIGHT`). */
-const TRACK_COLLAPSED_HEIGHT = 44;
-
 export interface TrackControlSidePanelProps {
   /** Track-folder items for the row's kebab menu (folders v1). The
    *  host supplies the model; this component only renders it. */
@@ -1022,16 +1018,9 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
             onClick: () => { handler?.(index); handleMenuClose(); },
             onClose: handleMenuClose,
           });
-          // ONE track has one state, so its menu offers the one that
-          // applies (2026-10-29, "in AU4 we're allowing the command to be
-          // run on individual tracks"): Collapse while it is open, Expand
-          // once it is collapsed — Expand only undoes a collapse, so on
-          // an open track it would do nothing. The all-tracks forms keep
-          // both and dim the one with nothing to do.
-          const collapsed = (trackHeights[index] || 114) <= TRACK_COLLAPSED_HEIGHT;
           const heightItems = ([
-            ['Collapse', collapsed ? undefined : onCollapseTrack],
-            ['Expand', collapsed ? onExpandTrack : undefined],
+            ['Collapse', onCollapseTrack],
+            ['Expand', onExpandTrack],
             ['Fit to height', onFitTrackToHeight],
             ['Reset height', onResetTrackHeight],
           ] as const).flatMap(([label, handler]) => (handler ? [[label, handler] as const] : []));

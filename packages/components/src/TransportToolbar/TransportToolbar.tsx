@@ -106,10 +106,6 @@ export interface TransportToolbarProps {
   /** TRACK HEIGHT BUTTONS (2026-10-20, "new toolbar buttons for expand/collapse track height" — "it should be ALL tracks"): the keyboard's ⌘⇧C / ⌘⇧X as buttons — EVERY track to 44 / 114 */
   onCollapseTracks?: () => void;
   onExpandTracks?: () => void;
-  /** Dim Collapse while every track is collapsed and Expand while none
-   *  is — a button with nothing to do (2026-10-29); undefined = live */
-  canCollapseTracks?: boolean;
-  canExpandTracks?: boolean;
   /** Fit tracks to height — with Collapse / Expand in the track-height group, not the zoom tools (2026-10-22) */
   onFitTracksToHeight?: () => void;
 
@@ -237,7 +233,7 @@ export function TransportToolbar({
   onGripperMouseDown,
   envelopeMode, spectrogramMode, splitMode = false, onToggleEnvelope, onToggleSpectrogram, onToggleSplit,
   onZoomIn, onZoomOut, onZoomToSelection, onZoomToFitProject, onZoomToggle,
-  onCollapseTracks, onExpandTracks, onFitTracksToHeight, canCollapseTracks, canExpandTracks,
+  onCollapseTracks, onExpandTracks, onFitTracksToHeight,
   currentTime, timeCodeFormat, onTimeCodeChange, onTimeCodeFormatChange,
   onShareClick, onExportAudioClick, onExportLoopRegionClick,
   masterLevelLeft = -60, masterLevelRight = -60, masterClippedLeft = false, masterClippedRight = false,
@@ -489,8 +485,8 @@ export function TransportToolbar({
 
               {(show('collapse-tracks') || show('expand-tracks') || show('fit-tracks-height')) && (
               <ToolbarButtonGroup gap={2}>
-                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} disabled={canCollapseTracks === false} />}
-                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} disabled={canExpandTracks === false} />}
+                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
+                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} />}
                 {show('fit-tracks-height') && <ToolButton icon="track-fit-height" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
               </ToolbarButtonGroup>
               )}
@@ -536,8 +532,8 @@ export function TransportToolbar({
 
               {(show('collapse-tracks') || show('expand-tracks') || show('fit-tracks-height')) && (
               <ToolbarButtonGroup gap={2}>
-                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} disabled={canCollapseTracks === false} />}
-                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} disabled={canExpandTracks === false} />}
+                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
+                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} />}
                 {show('fit-tracks-height') && <ToolButton icon="track-fit-height" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
               </ToolbarButtonGroup>
               )}
@@ -583,8 +579,8 @@ export function TransportToolbar({
 
               {(show('collapse-tracks') || show('expand-tracks') || show('fit-tracks-height')) && (
               <ToolbarButtonGroup gap={2}>
-                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} disabled={canCollapseTracks === false} />}
-                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} disabled={canExpandTracks === false} />}
+                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
+                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} />}
                 {show('fit-tracks-height') && <ToolButton icon="track-fit-height" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
               </ToolbarButtonGroup>
               )}
@@ -618,8 +614,8 @@ export function TransportToolbar({
 
               {(show('collapse-tracks') || show('expand-tracks') || show('fit-tracks-height')) && (
               <ToolbarButtonGroup gap={2}>
-                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} disabled={canCollapseTracks === false} />}
-                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} disabled={canExpandTracks === false} />}
+                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
+                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} />}
                 {show('fit-tracks-height') && <ToolButton icon="track-fit-height" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
               </ToolbarButtonGroup>
               )}

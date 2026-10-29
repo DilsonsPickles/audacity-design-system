@@ -356,7 +356,6 @@ export function AppContextMenus({
           }}
           onCollapseTrack={onCollapseTrack && (() => onCollapseTrack(trackContextMenu.trackIndex))}
           onExpandTrack={onExpandTrack && (() => onExpandTrack(trackContextMenu.trackIndex))}
-          isCollapsed={isCollapsedHeight(tracks[trackContextMenu.trackIndex]?.height || DEFAULT_TRACK_HEIGHT)}
           onFitTrackToHeight={onFitTrackToHeight && (() => onFitTrackToHeight(trackContextMenu.trackIndex))}
           onResetTrackHeight={onResetTrackHeight && (() => onResetTrackHeight(trackContextMenu.trackIndex))}
           onDelete={() => {
