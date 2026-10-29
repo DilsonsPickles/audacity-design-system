@@ -95,12 +95,13 @@ describe('while a fade is being dragged, every OTHER clip\'s handles are hidden 
     expect(count('[data-fade-zone][data-clip-ref="2"]')).toBe(2);
     expect(container.querySelector('[data-fade-zone="in"][data-clip-ref="2"]')).toBe(inZone); // the same element
     expect(count('[data-crossfade-node]')).toBe(0);
-    // …and the clip in hand mounts NO handles of its own: it is unselected
-    // (2026-10-23, "they shouldn't appear unless the clip is selected") —
-    // the zone and the guideline of the fade in hand are its furniture —
-    // the guideline once the fade has length: at the press it has none,
-    // and its line would sit on the clip's edge (2026-10-29)
-    expect(count('[data-fade-handle][data-fade-clip="2"]')).toBe(0);
+    // …and the clip in hand shows the handle of the fade in hand, that
+    // side's alone (2026-10-29, the hover handles — until then it mounted
+    // none: "they shouldn't appear unless the clip is selected"); the
+    // guideline once the fade has length: at the press it has none, and
+    // its line would sit on the clip's edge
+    expect(count('[data-fade-handle][data-fade-clip="2"]')).toBe(1);
+    expect(count('[data-fade-handle="in"][data-fade-clip="2"]')).toBe(1);
     expect(count('[data-fade-guideline="in"][data-fade-clip="2"]')).toBe(0);
     fireEvent.pointerUp(inZone, { clientX: 620, clientY: 30, pointerId: 51 });
     // Released: back as they were — the hovered clip 1's handles

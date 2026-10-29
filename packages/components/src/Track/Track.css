@@ -114,25 +114,14 @@
 
 /* A fade LENGTH drag in hand, from the handle or the corner zone: the
    cursor holds everywhere until the pointer is let go (2026-10-23) — the
-   pointer is captured, so it may be anywhere. It was the left/right
-   arrows; since 2026-10-29 ("keep it for the whole drag too") it is the
-   corner zone's own cursor for the side in hand (the attribute's value),
-   so hover and drag wear one cursor. */
+   pointer is captured, so it may be anywhere. The LEFT/RIGHT ARROWS: for
+   one day (2026-10-29) it was the corner zone's fade-handle-with-arrows
+   cursor; the same day the handle itself became what shows ("the icon
+   appears, the cursor does not become the icon"), so the cursor went
+   back to the arrows. The attribute's value is still the side. */
 body[data-fade-length-drag],
 body[data-fade-length-drag] * {
   cursor: ew-resize !important;
-}
-
-body[data-fade-length-drag='in'],
-body[data-fade-length-drag='in'] * {
-  cursor: -webkit-image-set(url('../assets/cursors/FadeInResize.png') 1x, url('../assets/cursors/FadeInResize@2x.png') 2x) 16 16, ew-resize !important;
-  cursor: image-set(url('../assets/cursors/FadeInResize.png') 1x, url('../assets/cursors/FadeInResize@2x.png') 2x) 16 16, ew-resize !important;
-}
-
-body[data-fade-length-drag='out'],
-body[data-fade-length-drag='out'] * {
-  cursor: -webkit-image-set(url('../assets/cursors/FadeOutResize.png') 1x, url('../assets/cursors/FadeOutResize@2x.png') 2x) 16 16, ew-resize !important;
-  cursor: image-set(url('../assets/cursors/FadeOutResize.png') 1x, url('../assets/cursors/FadeOutResize@2x.png') 2x) 16 16, ew-resize !important;
 }
 
 /* While its fade is being EDITED — length or shape handle in hand —
@@ -145,31 +134,18 @@ body[data-fade-length-drag='out'] * {
 /* Edge trim zones — the invisible strips ON an unselected clip's edges.
    The cursor is the trim handles' own (Clip.css), so it previews the
    same action; the hotspots are explained there and must match. */
-/* An UNSELECTED clip's fade corner zones (2026-10-23): the body's top
-   corners wear the FADE HANDLE as the cursor — the same black rounded
-   body, white halo and white curve as the handle itself ("the cursor
-   should change to the fade in handle"), drawn at 1x and 2x so it is
-   crisp on a Retina display; the hotspot is the body's centre. A press
-   is the fade length drag.
-   Since 2026-10-29 ("could we try a fade icon that is a mix between
-   arrows and the fade icon we have now?") the handle wears the TRIM
-   cursor's ◂ ▸ arrowheads either side — the trim cursor's own pixels
-   (ClipTrimLeft.png) — so one cursor says both
-   "a fade" and "drag sideways", with a fade or without: it replaced the
-   bare-edge glyph and the plain left/right arrows the zone wore once
-   there was a fade (FadeIn.png / FadeOut.png are kept for a revert).
-   The same day the glyph went down to the HANDLE's own 10px body (it was
-   the 12px of FadeIn.png; "make the fade icon a bit smaller, but keep
-   arrows the same"), radius 2.5, 1px white halo, the handle's curve —
-   2px clear of each arrowhead. */
-.track-fade-zone--in {
-  cursor: -webkit-image-set(url('../assets/cursors/FadeInResize.png') 1x, url('../assets/cursors/FadeInResize@2x.png') 2x) 16 16, ew-resize;
-  cursor: image-set(url('../assets/cursors/FadeInResize.png') 1x, url('../assets/cursors/FadeInResize@2x.png') 2x) 16 16, ew-resize;
-}
-
+/* An UNSELECTED clip's fade corner zones (2026-10-23): the LEFT/RIGHT
+   ARROWS (2026-10-29, "when you hover in the top corners of the clip
+   body the icon appears, the cursor does not become the icon. The cursor
+   instead changes to the left right arrows") — the fade HANDLE itself
+   shows on the clip while the pointer is in the zone (TrackNew), so the
+   cursor only says "drag sideways". Until then the cursor WAS the icon:
+   the handle's glyph (FadeIn.png / FadeOut.png), then the same day the
+   glyph with the trim arrowheads (FadeInResize.png / FadeOutResize.png);
+   the images are kept for a revert. */
+.track-fade-zone--in,
 .track-fade-zone--out {
-  cursor: -webkit-image-set(url('../assets/cursors/FadeOutResize.png') 1x, url('../assets/cursors/FadeOutResize@2x.png') 2x) 16 16, ew-resize;
-  cursor: image-set(url('../assets/cursors/FadeOutResize.png') 1x, url('../assets/cursors/FadeOutResize@2x.png') 2x) 16 16, ew-resize;
+  cursor: ew-resize;
 }
 
 .track-edge-trim--left {

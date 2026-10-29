@@ -1086,6 +1086,9 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // report the hover themselves — leaving the clip FOR one of its own
   // controls must not hide it.
   const [fadeHoverClipId, setFadeHoverClipId] = React.useState<string | number | null>(null);
+  /** The corner ZONE under the pointer, `${clipId}:${side}` — its fade
+   *  handle shows while it is (2026-10-29) */
+  const [fadeZoneHover, setFadeZoneHover] = React.useState<string | null>(null);
   // HANDLES FOLLOW THE POINTER, NOT THE SELECTION (user decision
   // 2026-10-01: six selected clips put forty icons on screen, most of
   // them 24px outside the clips in empty track). The trim and stretch
@@ -2465,6 +2468,28 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     .filter((c) => !fadeHandleActive.includes(String(c.id)) && (fadeHoverClipId === c.id || fadeDragClipId === c.id) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
   const leavingHoverGuides = useLeavingKeys(hoverGuideActive);
+  // A CLIP WITHOUT ITS HANDLES UP SHOWS A FADE HANDLE ON HOVER, SIDE BY
+  // SIDE (2026-10-29, "when you hover in the top corners of the clip
+  // body the icon appears… Then once a fade exists, the icon shows on
+  // clip hover" — reversing the same-month rule that an unselected clip
+  // shows none and that a drag from its corner zone mounts none): a side
+  // WITH a fade shows its handle while the pointer is on the clip; a
+  // BARE side while the pointer is in that side's corner zone; the side
+  // in hand for its whole drag. Keys are `${clipId}:${side}`.
+  const fadeHoverHandleActive = clips.flatMap((c) => {
+    if (fadeHandleActive.includes(String(c.id)) || hidesHandlesOf(c.id)) return [];
+    return (['in', 'out'] as const)
+      .filter((side) => {
+        const key = `${c.id}:${side}`;
+        // The stored length (a crossfaded edge's handle is left out at
+        // render, where the effective geometry is known)
+        const hasFade = ((side === 'in' ? c.fadeIn : c.fadeOut) ?? 0) > 0;
+        return (hasFade && fadeHoverClipId === c.id) || fadeZoneHover === key
+          || (fadeDragClipId === c.id && fadeDragSide === side);
+      })
+      .map((side) => `${c.id}:${side}`);
+  });
+  const leavingFadeHoverHandles = useLeavingKeys(fadeHoverHandleActive);
   const buriedActive = clips
     .filter((c) => handlesFollow(c) && !hidesHandlesOf(c.id))
     .map((c) => String(c.id));
@@ -2742,6 +2767,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             onClick={(e) => e.stopPropagation()}
             onDoubleClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => beginFadeLengthDrag(clip, side, e)}
+            onPointerEnter={() => setFadeZoneHover(`${clip.id}:${side}`)}
+            onPointerLeave={() => setFadeZoneHover((prev) => (prev === `${clip.id}:${side}` ? null : prev))}
             style={{
               position: 'absolute',
               // In the clip BODY's top corners, under the 20px header —
@@ -2916,7 +2943,11 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // (2026-10-23), with their own exit tail
       const hoverGuide = !clipActive && hoverGuideActive.includes(String(clip.id));
       const hoverGuideLeaving = !clipActive && !hoverGuide && leavingHoverGuides.has(String(clip.id));
-      if (!clipActive && !leaving && !hoverGuide && !hoverGuideLeaving) continue;
+      // …and its hover handles, side by side (2026-10-29)
+      const hoverHandleOn = (side: 'in' | 'out') => !clipActive && fadeHoverHandleActive.includes(`${clip.id}:${side}`);
+      const hoverHandleLeaving = (side: 'in' | 'out') => !clipActive && !hoverHandleOn(side) && leavingFadeHoverHandles.has(`${clip.id}:${side}`);
+      const anyHoverHandle = (['in', 'out'] as const).some((s) => hoverHandleOn(s) || hoverHandleLeaving(s));
+      if (!clipActive && !leaving && !hoverGuide && !hoverGuideLeaving && !anyHoverHandle) continue;
       const showHandles = clipActive || leaving;
       const ghosted = clipActive && fadeHandleGhosted(clip.id);
       const clipWidth = clip.duration * pixelsPerSecond;
@@ -2943,8 +2974,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       const GAP = FADE_HANDLE_EDGE_INSET;
       const RETREAT_GAP = 0;
       const handlesRetreat = boundaryOutX - boundaryInX < 2 * (GAP + HALF_BODY + FADE_HIT_REACH) + RETREAT_GAP;
-      const handle = (side: 'in' | 'out') => {
+      const handle = (side: 'in' | 'out', sideLeaving = leaving) => {
         const boundaryX = side === 'in' ? boundaryInX : boundaryOutX;
+        // A hover handle on a BARE side is a picture of what the corner
+        // zone under it will do: it takes no pointer, so the zone keeps
+        // the hover and the press (otherwise the handle, mounted over the
+        // zone, would take the pointer from it and flicker)
+        const passive = !showHandles && (side === 'in' ? fadeInSec : fadeOutSec) <= 0;
         const inward = side === 'in' ? !handlesRetreat : handlesRetreat;
         // The VISIBLE BODY is what is placed: its near edge keeps a
         // constant gap to the boundary whichever side it sits on. The
@@ -2981,7 +3017,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
             data-fade-handle={side}
             data-fade-clip={clip.id}
             data-track-index={trackIndex}
-            data-leaving={leaving ? 'true' : undefined}
+            data-leaving={sideLeaving ? 'true' : undefined}
             data-disabled={ghosted ? 'true' : undefined}
             aria-disabled={ghosted ? true : undefined}
             // Keyboard-focusable (F on the clip, 2026-10-12), never in
@@ -3128,6 +3164,7 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               width: boxRight - boxLeft,
               height: FADE_ROW_H,
               cursor: 'ew-resize',
+              pointerEvents: passive ? 'none' : undefined,
               // Above the fade veils (450), beside the shape dots (460);
               // the keyboard-held one above its twin (they overlap on a
               // clip under the pointer's width floor)
@@ -3168,6 +3205,13 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       // show both sides at the same time")
       if (showHandles && !crossfadedEdges.has(`${clip.id}:in`) && roomFor(fadeInSec)) nodes.push(handle('in'));
       if (showHandles && !crossfadedEdges.has(`${clip.id}:out`) && roomFor(fadeOutSec)) nodes.push(handle('out'));
+      if (!showHandles) {
+        for (const side of ['in', 'out'] as const) {
+          if (crossfadedEdges.has(`${clip.id}:${side}`) || !roomFor(side === 'in' ? fadeInSec : fadeOutSec)) continue;
+          if (hoverHandleOn(side)) nodes.push(handle(side, false));
+          else if (hoverHandleLeaving(side)) nodes.push(handle(side, true));
+        }
+      }
       // A dashed line drops from each fade's boundary — where the curve
       // meets the body's top — to the clip's BOTTOM, so the boundary can
       // be lined up against the waveform (the dev's lining-up aid, user
