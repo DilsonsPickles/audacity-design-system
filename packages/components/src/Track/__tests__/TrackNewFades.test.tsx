@@ -831,7 +831,13 @@ describe('clip fades', () => {
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 1.5);
     // past the clip's end clamps to its 4s duration
     fireEvent.pointerMove(inHandle, { clientX: 900, clientY: 30, pointerId: 1 });
-    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 4);
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 3.94); // 6px (0.06 s) short of the far edge — the dashed line never sits on it (2026-10-29)
+    // within the edge clearance (6px) of its own edge the fade clears too —
+    // 5px is 0.05 s, over the old 0.02 s sliver (2026-10-29)
+    fireEvent.pointerMove(inHandle, { clientX: 5, clientY: 30, pointerId: 1 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 0);
+    fireEvent.pointerMove(inHandle, { clientX: 6, clientY: 30, pointerId: 1 });
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 0.06);
     // dragging back to (almost) zero snaps the fade away
     fireEvent.pointerMove(inHandle, { clientX: 1, clientY: 30, pointerId: 1 });
     expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 0);
@@ -867,7 +873,7 @@ describe('clip fades', () => {
     // pointer at 0px → the whole 4s: the 3s fade in is pushed out of the
     // way by the host's reducer, not a cap here
     fireEvent.pointerMove(outHandle, { clientX: 0, clientY: 30, pointerId: 2 });
-    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 4);
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 3.94); // 6px (0.06 s) short of the far edge — the dashed line never sits on it (2026-10-29)
     fireEvent.pointerUp(outHandle, { pointerId: 2 });
   });
 
@@ -1787,12 +1793,14 @@ describe('fade handle grid snap (2026-09-30)', () => {
     // Past the clip's end (4.3s → project 5.3s) the gridline at 5.5s is
     // out of reach: the fade clamps to the clip's 4s, and shows no guideline
     fireEvent.pointerMove(handle('in'), { clientX: 530, clientY: 30, pointerId: 4 });
-    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 4);
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 3.94); // 6px (0.06 s) short of the far edge — the dashed line never sits on it (2026-10-29)
     expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null);
-    // …while a gridline AT the limit is reachable, and is a snap
+    // …and the gridline ON the clip's far edge is out of reach too since
+    // 2026-10-29 — the dashed line never sits on the edge, so the fade
+    // stops 6px (0.06 s) short and it is not a snap
     fireEvent.pointerMove(handle('in'), { clientX: 500, clientY: 30, pointerId: 4 }); // project 5.0s = the whole clip
-    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 4);
-    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(5, 'grid');
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'in', 3.94);
+    expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null);
     fireEvent.pointerUp(handle('in'), { clientX: 500, clientY: 30, pointerId: 4 });
   });
 
@@ -2067,7 +2075,7 @@ describe('fade boundary ALIGNMENT to clip edges on other tracks (2026-10-01) —
     // 4.2s → the edge at project 0.8 is before the clip's start: a 4.2s
     // fade cannot be — clamped to the clip's 4s, not snapped
     fireEvent.pointerMove(handle, { clientX: 80, clientY: 30, pointerId: 4 });
-    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 4);
+    expect(onClipFadeChange).toHaveBeenLastCalledWith(1, 'out', 3.94); // 6px (0.06 s) short of the far edge — the dashed line never sits on it (2026-10-29)
     expect(onFadeSnapGuideline).toHaveBeenLastCalledWith(null, null);
     fireEvent.pointerUp(handle, { clientX: 80, clientY: 30, pointerId: 4 });
   });

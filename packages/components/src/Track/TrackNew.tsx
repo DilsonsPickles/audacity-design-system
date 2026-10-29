@@ -148,6 +148,24 @@ const FADE_GLYPH_BODY = {
  *  it was 12 — Clip.css: 30 wide at −24), so it is one line whatever
  *  the clip's state. */
 const FADE_HANDLE_BOX_INSET: number = EDGE_HIT_INSIDE_PX;
+/** THE DASHED LINE NEVER SITS ON A CLIP EDGE (2026-10-29, "can we make
+ *  sure that the dashed line can't sit on the very edge of the clip?"):
+ *  a fade's boundary keeps this far from both ends of its window — the
+ *  trim's inside reach, so the line is never under the edge's own
+ *  control. Dragged or nudged nearer its own edge, the fade CLEARS (as
+ *  a sliver under 0.02 s always did); nearer the far edge, it STOPS
+ *  this far short. A pointer and arrow-key rule, in screen pixels, so
+ *  it scales with the zoom; the dialog and the menus still set exact
+ *  lengths. */
+const FADE_EDGE_CLEARANCE_PX: number = EDGE_HIT_INSIDE_PX;
+/** A fade length held clear of both ends of its window (see above). */
+function clearOfEdges(seconds: number, windowLen: number, pixelsPerSecond: number): number {
+  const clearance = FADE_EDGE_CLEARANCE_PX / pixelsPerSecond;
+  const longest = windowLen - clearance;
+  if (longest <= clearance) return 0; // no room for a line anywhere
+  const held = Math.min(longest, seconds);
+  return held < Math.max(0.02, clearance) ? 0 : held;
+}
 /** Where the fade handle's BODY rests, in from the clip's edge — and
  *  the same distance past a fade's boundary once there is a fade: 10px
  *  since 2026-10-07, half the 30px box less half the body, so the HIT
@@ -2766,7 +2784,8 @@ const TrackNewComponent: React.FC<TrackProps> = ({
     // The whole window: the opposite fade is no cap — pulled
     // into, it gives way (the host's reducer shrinks it;
     // 2026-10-06, "have the other one pushed out of the way")
-    const maxSeconds = windowLen;
+    // — less the edge clearance: the dashed line stops short of the far edge
+    const maxSeconds = Math.max(0, windowLen - FADE_EDGE_CLEARANCE_PX / pixelsPerSecond);
     const onMove = (ev: PointerEvent) => {
       const travel = (ev.clientX - pressX) / pixelsPerSecond;
       let seconds = ownFade + (side === 'in' ? travel : -travel);
@@ -2801,8 +2820,10 @@ const TrackNewComponent: React.FC<TrackProps> = ({
       }
       // Clamp to the free window: a quick fade never overlaps
       // a crossfade (or the opposite quick fade)
-      seconds = Math.max(0, Math.min(maxSeconds, seconds));
-      if (seconds < 0.02) seconds = 0; // snap tiny fades away
+      // Held clear of both clip edges: a fade too near its own edge
+      // clears (tiny fades snap away), one reaching for the far edge
+      // stops short of it
+      seconds = clearOfEdges(Math.max(0, seconds), windowLen, pixelsPerSecond);
       onClipFadeChange?.(clip.id, side, seconds);
       if (snapTime || alignFadeBoundary) onFadeSnapGuideline?.(snappedTo, snappedKind);
     };
@@ -3025,15 +3046,15 @@ const TrackNewComponent: React.FC<TrackProps> = ({
               }
               // ← → move the fade's BOUNDARY (→ = later), a tenth of a
               // second, Shift a second — the panel's clip strip's steps.
-              // Clamped to the free window as the drag is; a sliver
-              // under 0.02 s clears.
+              // Held clear of both edges of the free window as the drag
+              // is: too near its own edge it clears, the far edge it
+              // stops short of.
               if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                 stop();
                 const step = e.shiftKey ? 1 : 0.1;
                 const later = e.key === 'ArrowRight';
                 const delta = (side === 'in') === later ? step : -step;
-                let seconds = Math.max(0, Math.min(windowLen, ownFade + delta));
-                if (seconds < 0.02) seconds = 0;
+                const seconds = clearOfEdges(Math.max(0, ownFade + delta), windowLen, pixelsPerSecond);
                 if (seconds !== ownFade) onClipFadeChange?.(clip.id, side, seconds);
                 return;
               }
