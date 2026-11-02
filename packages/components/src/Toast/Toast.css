@@ -87,14 +87,21 @@
   padding: 0 var(--toast-column-inset);
 }
 
-/* Compact, persistent — 32: the line 4 below the header, 12 under it. A
-   TITLE-ONLY toast keeps the line's room (2026-11-02, "we can't have that
-   48px one"): 64 is the smallest toast there is */
+/* THE DESCRIPTION SITS RIGHT UNDER THE TITLE, THE SAME IN EVERY TOAST
+   (2026-11-02, "only thing that's bugging me now is space between title and
+   description"): the body has NO top padding, so the description's line is
+   6px below the title's (the title's 2px + the header's 4) whatever the
+   kind — it was 6 timed, 10 persistent and 14 tall. The room each kind's
+   height needs goes UNDER the text instead. */
+
+/* Compact, persistent — 32: the line, 16 under it. A TITLE-ONLY toast keeps
+   the line's room (2026-11-02, "we can't have that 48px one"): 64 is the
+   smallest toast there is */
 .toast__body--compact {
   min-height: 32px;
   box-sizing: border-box;
-  padding-top: 4px;
-  padding-bottom: 12px;
+  padding-top: 0;
+  padding-bottom: 16px;
 }
 
 /* Compact, timed — 26 over the 6px timer strip: the line against the
@@ -106,11 +113,11 @@
   padding-bottom: 10px;
 }
 
-/* Tall message — 56: up to two lines, 8 above */
+/* Tall message — 56: up to three lines, 8 above the buttons at least */
 .toast__body--message {
   min-height: 56px;
   box-sizing: border-box;
-  padding-top: 8px;
+  padding-top: 0;
   padding-bottom: 8px;
 }
 

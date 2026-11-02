@@ -120,7 +120,7 @@ function fireToastSet() {
       undefined,
       TOAST_SET_TIMED_MS,
     ),
-    // TALL — 128 (one and two lines), 136 (three)
+    // TALL — 128 (one, two and three lines)
     () => toast.info('Track deleted', 'Drums and its 3 clips were removed', [{ label: 'Undo', onClick: noop }]),
     () => toast.warning(
       'Recording device disconnected',

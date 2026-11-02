@@ -9,8 +9,9 @@
  *   HEADER (32): the type's icon, the title in semibold, and a close ×
  *     (the small ghost icon button) on every toast.
  *   BODY: one line of description on a COMPACT toast (64 in all), or on a
- *     TALL toast (128 in all) a 56px band holding up to two lines of
- *     description, or the progress bar over "… remaining" / "50%".
+ *     TALL toast (128 in all) a 56px band holding up to three lines of
+ *     description, or the progress bar over "… remaining" / "50%". The
+ *     description always starts 6px under the title's line.
  *   FOOTER (tall only, 40): two equal buttons — the toast's action(s),
  *     then Dismiss.
  *
@@ -36,7 +37,8 @@
  *   COMPACT, persistent or timed: 64 (one line), 80 (two — the most the
  *     copy is written for, ≈ 55 characters a line in the 328px column). A title-only toast
  *     keeps its line's room: 64 is the floor, never 48.
- *   TALL (buttons): 128 (up to two lines), 136 (three, the most).
+ *   TALL (buttons): 128 (up to three lines, the most — the body has no
+ *     top padding, so three lines fit its 56px; a fourth makes 144).
  *   PROGRESS: 128.
  *
  * THE COUNTDOWN PAUSES while the pointer is over the toast or the
