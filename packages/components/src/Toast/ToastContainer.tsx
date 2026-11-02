@@ -13,8 +13,8 @@
  * nothing lands silently in the bell. The one silent mode is MUTE, which
  * the user chooses, and even muted an ERROR still pops out.
  *
- * THE BELL IS THE ARCHIVE, NOT THE DOORBELL (`NotificationBell`, on the
- * status bar's right end): a notification that is closed or times out goes
+ * THE BELL IS THE ARCHIVE, NOT THE DOORBELL (`NotificationBell`, at the
+ * top bar's right end, the card hanging below it): a notification that is closed or times out goes
  * into the archive instead of away; opening the bell shows the archive in
  * the same card, with MUTE and CLEAR ALL at its foot. Progress
  * notifications are not archived (their outcome is its own notification).
@@ -25,10 +25,12 @@
  * the bell clears it. A notification that popped out has been seen,
  * whatever happens to it next.
  *
- * THE × STAYS UNDER THE POINTER: the stack holds its top edge while the
- * pointer (or the focus) is in it, so closing the top row slides the next
- * into the same place; newest at the bottom, so one arriving mid-clear never
- * lands under the pointer unread (see the render).
+ * PINNED TOP-RIGHT (2026-11-02, "I think we have to go top right... the
+ * notifications going up when anchored bottom right is just weird"): the
+ * card's top edge is fixed under the toolbar, so closing the top row slides
+ * the next into the same place and the × stays under the pointer; newest at
+ * the bottom, so one arriving mid-clear never lands under the pointer unread.
+ * (A bottom position still works: it holds its top edge while hovered.)
  */
 
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';

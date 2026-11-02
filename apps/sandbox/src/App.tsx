@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksProvider';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ToastContainer, NotificationBell, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@audacity-ui/components';
+import { ApplicationHeader, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@audacity-ui/components';
 import { ADIEU_BASE } from './lib/adieu-client';
 import { type EnvelopePointStyleKey, yToTrackIndex } from '@audacity-ui/core';
 import { createWheelTargetLock } from './utils/canvasWheelTarget';
@@ -108,6 +108,21 @@ function CanvasDemoContent() {
   const [scrollY, setScrollY] = React.useState(0);
   const welcomeDialog = useWelcomeDialog();
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('home');
+  // The notification card hangs 16px under the transport toolbar, top-right
+  // under the bell (2026-11-02, "I think we have to go top right... the
+  // notifications going up when anchored bottom right is just weird") —
+  // measured, since the toolbar wraps with the window's width and changes
+  // with the workspace; 16px from the top where there is no toolbar
+  const [toastTop, setToastTop] = React.useState(16);
+  React.useLayoutEffect(() => {
+    const toolbar = document.querySelector<HTMLElement>('.transport-toolbar');
+    const measure = () => setToastTop(toolbar ? Math.round(toolbar.getBoundingClientRect().bottom) + 16 : 16);
+    measure();
+    const observer = toolbar && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (toolbar) observer?.observe(toolbar);
+    window.addEventListener('resize', measure);
+    return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
+  }, [activeMenuItem]);
   const [homeTabKey, setHomeTabKey] = React.useState(0);
   const [currentProjectId, setCurrentProjectId] = React.useState<string | null>(null);
   const [indexedDBProjects, setIndexedDBProjects] = React.useState<StoredProject[]>([]);
@@ -1287,7 +1302,6 @@ function CanvasDemoContent() {
       {/* Selection Toolbar - Hidden in Home view */}
       {activeMenuItem !== 'home' && (
         <SelectionToolbar
-          trailing={<NotificationBell />}
           selectionStart={state.timeSelection?.startTime ?? null}
           selectionEnd={state.timeSelection?.endTime ?? null}
           format={selectionTimeCodeFormat}
@@ -1382,7 +1396,7 @@ function CanvasDemoContent() {
         onStop={timerRecord.stopNow}
         os={preferences.operatingSystem}
       />
-      <ToastContainer position="bottom-right" />
+      <ToastContainer position="top-right" top={toastTop} />
 
       <Dialog
         isOpen={cloudLoadProgress !== null}

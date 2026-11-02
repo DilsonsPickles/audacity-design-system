@@ -86,6 +86,9 @@ export interface ProjectToolbarProps {
    * Free-form right content. Used when `workspaceSelector` is not set.
    */
   rightContent?: React.ReactNode;
+  /** At the right end, after the workspace and history controls — the
+   *  notification bell (2026-11-02) */
+  trailingContent?: React.ReactNode;
   /**
    * Whether to show the debug menu item
    */
@@ -120,6 +123,7 @@ export function ProjectToolbar({
   labelsBelow = 900,
   centerContent,
   rightContent,
+  trailingContent,
   showDebugMenu = false,
   className = '',
 }: ProjectToolbarProps) {
@@ -380,6 +384,7 @@ export function ProjectToolbar({
       {activeItem !== 'home' && renderedRight && (
         <div className="project-toolbar__right" role="group" aria-label="Workspace controls">
           {renderedRight}
+          {trailingContent}
         </div>
       )}
     </div>
