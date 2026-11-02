@@ -119,18 +119,24 @@ function CanvasDemoContent() {
   const [toastAnchor, setToastAnchor] = React.useState<{ top: number; right: number; bottomInset: number }>({ top: 12, right: 12, bottomInset: 12 });
   React.useLayoutEffect(() => {
     const canvas = document.querySelector<HTMLElement>('.canvas-scroll-container');
+    const statusBar = document.querySelector<HTMLElement>('.selection-toolbar');
     const measure = () => {
       if (!canvas) { setToastAnchor({ top: 12, right: 12, bottomInset: 12 }); return; }
       const r = canvas.getBoundingClientRect();
+      // The canvas element can run on under the status bar (the Electron
+      // shell, "about 12px too far down"): the foot is whichever is higher,
+      // the canvas's bottom or the status bar's top
+      const foot = Math.min(r.bottom, statusBar ? statusBar.getBoundingClientRect().top : r.bottom);
       setToastAnchor({
         top: Math.round(r.top) + 12,
         right: Math.round(window.innerWidth - r.right) + 12,
-        bottomInset: Math.round(window.innerHeight - r.bottom) + 12,
+        bottomInset: Math.round(window.innerHeight - foot) + 12,
       });
     };
     measure();
     const observer = canvas && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
     if (canvas) observer?.observe(canvas);
+    if (statusBar) observer?.observe(statusBar);
     window.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, [activeMenuItem]);
