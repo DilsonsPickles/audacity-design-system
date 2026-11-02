@@ -49,6 +49,11 @@
   transform-origin: bottom right;
 }
 
+.toast-container--top-right .toast-wrapper,
+.toast-container--top-left .toast-wrapper {
+  transform-origin: top right;
+}
+
 /* Entrance animation - extremely subtle fade in with minimal movement */
 @keyframes toast-enter {
   from {

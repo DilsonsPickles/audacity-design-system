@@ -14,6 +14,9 @@ export interface ToastContainerProps {
   maxToasts?: number;
   /** Position of the container */
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+  /** For a TOP position: the stack's top edge in px from the viewport's
+   *  top (default 16) — a host pins it under its toolbar */
+  top?: number;
 }
 
 interface ManagedToast extends ToastProps {
@@ -116,6 +119,7 @@ export const toast = {
 export function ToastContainer({
   maxToasts = 5,
   position = 'bottom-right',
+  top,
 }: ToastContainerProps) {
   const [currentToasts, setCurrentToasts] = useState<ManagedToast[]>([]);
 
@@ -134,7 +138,17 @@ export function ToastContainer({
   }
 
   return (
-    <div className={`toast-container toast-container--${position}`}>
+    // PINNED AT THE TOP, NEWEST AT THE BOTTOM (2026-11-02, "the goal of
+    // the change was to make the 'X' button position a bit more consistent
+    // so it's easy to delete them all"): the × sits in each toast's header,
+    // so with the stack's TOP edge fixed, closing the top toast slides the
+    // next one up into the same place — the × lands under the pointer
+    // again, whatever the toasts' heights — and a toast arriving mid-clear
+    // joins at the bottom, never under the pointer unread.
+    <div
+      className={`toast-container toast-container--${position}`}
+      style={top !== undefined && position.startsWith('top') ? { top } : undefined}
+    >
       {visibleToasts.map((toastProps) => (
         <div
           key={toastProps.id}
