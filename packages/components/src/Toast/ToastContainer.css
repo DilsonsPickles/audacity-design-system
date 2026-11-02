@@ -34,23 +34,22 @@
   left: 16px;
 }
 
-/* Toast wrapper for individual animations */
+/* Toast wrapper for individual animations. It is a one-row grid so a
+   closing card's ROW can collapse from its real height (grid-template-rows
+   1fr → 0fr) — the card in it fades out at the same time. */
 .toast-wrapper {
   pointer-events: auto;
+  display: grid;
+  grid-template-rows: 1fr;
   animation: toast-enter 0.2s cubic-bezier(0.2, 0, 0.2, 1);
-  transform-origin: bottom right;
-  transition: transform 0.3s cubic-bezier(0.2, 0, 0.2, 1);
-}
-
-.toast-wrapper--exiting {
-  pointer-events: none;
-  animation: toast-exit 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
-  transform-origin: bottom right;
-}
-
-.toast-container--top-right .toast-wrapper,
-.toast-container--top-left .toast-wrapper {
   transform-origin: top right;
+  transition:
+    grid-template-rows var(--toast-exit-ms, 120ms) cubic-bezier(0.2, 0, 0, 1),
+    margin-bottom var(--toast-exit-ms, 120ms) cubic-bezier(0.2, 0, 0, 1);
+}
+
+.toast-wrapper > * {
+  min-height: 0;
 }
 
 /* Entrance animation - extremely subtle fade in with minimal movement */
@@ -65,24 +64,46 @@
   }
 }
 
-/* Exit animation — a row fades and folds away inside the card, the rows
-   below sliding up into its place (no gap to collapse since the rows are
-   flush, 2026-11-02) */
-@keyframes toast-exit {
-  from {
-    opacity: 1;
-    max-height: 200px;
-    margin-bottom: 0;
-  }
+/* A CLOSING NOTIFICATION GOES QUICKLY AND THE NEXT TAKES ITS PLACE AT ONCE
+   (2026-11-02, "fix the animation so the deleted one deletes quickly and the
+   next one moves up under the cursor quickly for deletion"): the card fades
+   in 80ms while its row closes over 120ms, both from the press, so the next
+   card's × arrives under the pointer in about a tenth of a second. It was a
+   300ms ease-in max-height collapse from 200px — taller than any compact
+   card, so nothing moved for most of it — cut off at 200ms, after which the
+   next card jumped. EXIT_MS in ToastContainer.tsx removes the row when the
+   collapse ends; keep the two in step. */
+.toast-wrapper--exiting {
+  pointer-events: none;
+  grid-template-rows: 0fr;
+  overflow: hidden;
+  animation: none;
+}
+
+.toast-wrapper--exiting > * {
+  animation: toast-fade-out 80ms linear forwards;
+}
+
+/* Popped-out cards stand 8px apart: the closing row gives back its gap too */
+.notification-panel:not(.notification-panel--open) .toast-wrapper--exiting {
+  margin-bottom: -8px;
+}
+
+@keyframes toast-fade-out {
   to {
     opacity: 0;
-    max-height: 0;
-    margin-bottom: -8px;
   }
 }
 
-.toast-wrapper--exiting {
-  overflow: hidden;
+@media (prefers-reduced-motion: reduce) {
+  .toast-wrapper {
+    animation: none;
+    transition: none;
+  }
+  .toast-wrapper--exiting > * {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 /* THE NOTIFICATION CENTRE: separate cards, 8px apart (2026-11-02, "re-add

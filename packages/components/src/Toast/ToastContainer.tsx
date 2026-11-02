@@ -101,6 +101,10 @@ function subscribe(listener: () => void) {
 
 const getSnapshot = () => state;
 
+/** A closing notification's row collapses over this long, then is removed —
+ *  ToastContainer.css's --toast-exit-ms default; keep the two in step */
+const EXIT_MS = 120;
+
 /** Errors and notifications with buttons are the ones that need you */
 const needsYou = (t: ToastProps) => t.type === 'error' || (t.actions?.length ?? 0) > 0;
 
@@ -160,7 +164,7 @@ export const toast = {
     const target = state.live.find((t) => t.id === id && !t.exiting);
     if (!target) return;
     setState({ live: state.live.map((t) => (t.id === id ? { ...t, exiting: true } : t)) });
-    // After the row's exit animation
+    // After the row's collapse (ToastContainer.css, --toast-exit-ms)
     setTimeout(() => {
       const leaving = state.live.find((t) => t.id === id);
       if (!leaving) return;
@@ -168,7 +172,7 @@ export const toast = {
         live: state.live.filter((t) => t.id !== id),
         archive: archived(leaving, true),
       });
-    }, 200);
+    }, EXIT_MS);
   },
 
   /** Take the popped-out notifications away, without archiving them */
@@ -251,7 +255,7 @@ export function useNotifications() {
 
 /** How long the pointer may be off the stack before a bottom stack lets
  *  go of its pinned top — long enough to cross the gap between two toasts
- *  or ride out a closing toast's 300ms collapse */
+ *  or ride out a closing toast's EXIT_MS collapse */
 const UNPIN_DELAY_MS = 400;
 
 export function ToastContainer({

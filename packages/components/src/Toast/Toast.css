@@ -26,21 +26,6 @@
   }
 }
 
-.toast.toast--exiting {
-  animation: toast-slide-out 0.2s ease-in forwards;
-}
-
-@keyframes toast-slide-out {
-  from {
-    transform: translateX(0);
-    opacity: 1;
-  }
-  to {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-}
-
 /* HEADER — 32: 8 above, the 20px row, 4 below */
 .toast__header {
   display: flex;
