@@ -187,7 +187,7 @@ export const lightTheme: ThemeTokens = {
         hover: '#EDEEF1',        // Light gray on hover
         selected: '#DEEBFF',     // Blue tint when selected
         text: '#14151A',         // Dark text
-        textSecondary: '#6F788F', // Muted gray for secondary text
+        textSecondary: '#5A6274', // Muted gray for secondary text — text.secondary's, AA on every row tone
         border: '#E2E3E6',       // Default border
       },
     },
@@ -225,7 +225,11 @@ export const lightTheme: ThemeTokens = {
   foreground: {
     text: {
       primary: '#14151A',        // Dark text for body content
-      secondary: '#6F788F',      // Muted gray for labels
+      // AA (4.5:1) ON EVERY LIGHT SURFACE (2026-11-02, "that secondary text can't
+      // pass contrast... surely not" → "darken the token app-wide"): #6F788F
+      // was 4.16 on default, 3.45 on elevated; this is 5.76 / 4.78 (white 6.12,
+      // subtle 5.28, inset 5.21). Icons keep #6F788F — 3:1 is their bar
+      secondary: '#5A6274',      // Muted gray for labels
       tertiary: '#949CAC',       // Light gray for hints
       disabled: '#C0C5CE',       // Very light gray for disabled
       inverse: '#FFFFFF',        // White text (for dark canvas)
