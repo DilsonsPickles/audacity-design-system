@@ -47,8 +47,8 @@
 }
 
 /* A NEW CARD OPENS ITS ROW FROM NOTHING (2026-11-02, "when a new one comes
-   in, can the animation show that it's pushed the others up?"): the row
-   grows from closed to the card's height over ENTER_MS while the card fades
+   in, can the animation show that it's pushed the others up?") — INTO A
+   FULL STACK ONLY (data-entering='push'): the row grows from closed to the card's height over ENTER_MS while the card fades
    in, and the stack follows its foot (ToastContainer.tsx), so the cards
    above are pushed up by exactly the room it takes. The row CLIPS the card
    while it opens — an unclipped card would overflow the closed row, count
@@ -58,8 +58,21 @@
 /* The gap is a VARIABLE, not a second set of keyframes: a selector that
    swapped the animation's name by :first-child would restart it on the next
    card whenever the top one closed (and on every card when the bell opens) */
-.toast-wrapper[data-entering] {
+.toast-wrapper[data-entering='push'] {
   animation: toast-row-open var(--toast-enter-ms, 200ms) cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* WITH ROOM BELOW THE LAST CARD THERE IS NOTHING TO PUSH (the same day, "only
+   do that when the list is full because when there's space it looks weird"):
+   the new card fades in where it lands */
+.toast-wrapper[data-entering='fade'] {
+  animation: toast-fade-in var(--toast-enter-ms, 200ms) ease-out;
+}
+
+@keyframes toast-fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
 .notification-panel:not(.notification-panel--open) .toast-wrapper:not(:first-child) {

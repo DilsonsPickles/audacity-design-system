@@ -297,8 +297,18 @@ export function ToastContainer({
   // stack, so it does not move under someone clearing it
   const hoveredRef = useRef(false);
   const lastLiveCount = useRef(0);
-  // When each live row was first drawn — only an ARRIVAL opens its row
-  const firstSeen = useRef(new Map<string, number>());
+  // When each live row was first drawn, and how it arrived: an ARRIVAL into a
+  // FULL stack opens its row and pushes the others up ('push'); one with room
+  // below the last card just fades in ('fade') — (2026-11-02, "only do that
+  // when the list is full because when there's space it looks weird")
+  const firstSeen = useRef(new Map<string, { at: number; mode: 'push' | 'fade' }>());
+  // Whether the stack was already full — scrolling — at the last commit, so
+  // an arrival knows how it came in (read in render, before it is drawn)
+  const fullRef = useRef(false);
+  React.useLayoutEffect(() => {
+    const panel = panelRef.current;
+    fullRef.current = !!panel && !panelOpen && panel.scrollHeight > panel.clientHeight + 1;
+  });
   React.useLayoutEffect(() => {
     const grew = live.length > lastLiveCount.current;
     lastLiveCount.current = live.length;
@@ -309,9 +319,9 @@ export function ToastContainer({
     // in, can the animation show that it's pushed the others up?"): the new
     // row grows open from nothing over ENTER_MS (ToastContainer.css), and
     // the stack is held scrolled to its foot on every frame of it, so the
-    // cards above glide up by the room it takes rather than jumping. In a
-    // stack that does not fill its frame nothing above moves — it hangs from
-    // the top, and the new card opens below the last
+    // cards above glide up by the room it takes rather than jumping — ONLY
+    // in a stack that was already full; with room below the last card the
+    // new one just fades in there, nothing above moves
     if (typeof requestAnimationFrame !== 'function') return;
     const until = performance.now() + ENTER_MS + 50;
     let frame = 0;
@@ -391,11 +401,14 @@ export function ToastContainer({
   // Only an ARRIVAL opens its row (the push-up, ToastContainer.css): a row
   // first drawn in the last ENTER_MS. Opening or closing the bell remounts
   // every row, and they must not all grow open again
-  const arriving = (id: string) => {
+  const arriving = (id: string): 'push' | 'fade' | undefined => {
     const now = performance.now();
-    const seen = firstSeen.current.get(id);
-    if (seen === undefined) { firstSeen.current.set(id, now); return true; }
-    return now - seen < ENTER_MS;
+    let seen = firstSeen.current.get(id);
+    if (seen === undefined) {
+      seen = { at: now, mode: fullRef.current ? 'push' : 'fade' };
+      firstSeen.current.set(id, seen);
+    }
+    return now - seen.at < ENTER_MS ? seen.mode : undefined;
   };
 
   const row = (t: ManagedToast, inArchive: boolean) => (
@@ -403,7 +416,7 @@ export function ToastContainer({
       key={t.id}
       className={t.exiting ? 'toast-wrapper toast-wrapper--exiting' : 'toast-wrapper'}
       data-archived={inArchive ? 'true' : undefined}
-      data-entering={!inArchive && !t.exiting && arriving(t.id) ? 'true' : undefined}
+      data-entering={!inArchive && !t.exiting ? arriving(t.id) : undefined}
     >
       <Toast
         {...t}

@@ -122,10 +122,11 @@ describe('the notification centre (2026-11-02, after Cakewalk\'s single panel)',
     expect(container.querySelectorAll('.notification-panel .toast')).toHaveLength(8);
   });
 
-  it('an arrival opens its row (the push-up); opening and closing the bell later does not replay it', async () => {
+  it('an arrival with room fades in (only a full stack pushes up); opening and closing the bell later does not replay it', async () => {
     const { container } = renderCentre();
     act(() => { toast.error('Save failed', 'Could not reach audio.com'); });
-    expect(container.querySelector('.toast-wrapper')!.getAttribute('data-entering')).toBe('true');
+    // jsdom lays nothing out, so the stack is never full: it fades in
+    expect(container.querySelector('.toast-wrapper')!.getAttribute('data-entering')).toBe('fade');
     await act(() => wait(260));
     const bell = container.querySelector('[data-notification-bell]') as HTMLElement;
     fireEvent.click(bell); // remounts every row as rows of the one card
