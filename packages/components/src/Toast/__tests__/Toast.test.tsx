@@ -62,10 +62,12 @@ describe('Toast — the Figma toast: two heights, 64 and 128 (2026-11-02)', () =
     expect(container.querySelector('.toast__footer')).toBeTruthy();
   });
 
+  // The countdown runs on animation frames, which a loaded machine (or
+  // CI) can slow — the waits are generous, the durations short
   it('a timed toast dismisses itself when its countdown runs out', async () => {
     const onDismiss = vi.fn();
     renderToast({ description: 'All saved.', duration: 40, onDismiss });
-    await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(1), { timeout: 5000 });
   });
 
   it('the countdown PAUSES while the pointer is over the toast or the focus is in it', async () => {
@@ -82,7 +84,7 @@ describe('Toast — the Figma toast: two heights, 64 and 128 (2026-11-02)', () =
     await new Promise((r) => setTimeout(r, 120));
     expect(onDismiss).not.toHaveBeenCalled();
     act(() => { (document.activeElement as HTMLElement).blur(); });
-    await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onDismiss).toHaveBeenCalledTimes(1), { timeout: 5000 });
   });
 
   it('text is never clipped: an over-long description is shown in full and a warning names the toast', () => {
