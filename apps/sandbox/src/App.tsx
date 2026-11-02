@@ -114,7 +114,8 @@ function CanvasDemoContent() {
   // bottom to the status bar's top, so a scrolled card slides under either;
   // at rest the first card sits 12px under the toolbar and the last 12px
   // above the status bar (the frame's own padding, ToastContainer.css), and
-  // the cards keep 12px in from the canvas's right edge. Measured in px on a
+  // the cards keep 12px from the window's right edge, over the vertical
+  // rulers ("notifications can overlay the ruler to the right"). Measured in px on a
   // ResizeObserver and on window resize — never 100vh, which the Electron
   // shell got wrong ("nope, it's off by 12px"). The window's top-right
   // corner where there is no editor (the home screen).
@@ -122,17 +123,15 @@ function CanvasDemoContent() {
   React.useLayoutEffect(() => {
     const toolbar = document.querySelector<HTMLElement>('.transport-toolbar');
     const statusBar = document.querySelector<HTMLElement>('.selection-toolbar');
-    const canvas = document.querySelector<HTMLElement>('.canvas-scroll-container');
     const measure = () => {
       if (!toolbar || !statusBar) { setToastAnchor({ top: 0, right: 12, bottomInset: 0 }); return; }
       const top = Math.round(toolbar.getBoundingClientRect().bottom);
       const foot = Math.round(statusBar.getBoundingClientRect().top);
-      const right = canvas ? Math.round(window.innerWidth - canvas.getBoundingClientRect().right) + 12 : 12;
-      setToastAnchor({ top, right, bottomInset: Math.round(window.innerHeight) - foot, maxHeight: foot - top });
+      setToastAnchor({ top, right: 12, bottomInset: Math.round(window.innerHeight) - foot, maxHeight: foot - top });
     };
     measure();
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
-    for (const el of [toolbar, statusBar, canvas]) if (el) observer?.observe(el);
+    for (const el of [toolbar, statusBar]) if (el) observer?.observe(el);
     window.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, [activeMenuItem]);
