@@ -108,18 +108,25 @@ function CanvasDemoContent() {
   const [scrollY, setScrollY] = React.useState(0);
   const welcomeDialog = useWelcomeDialog();
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('home');
-  // The notification card hangs 16px under the transport toolbar, top-right
-  // under the bell (2026-11-02, "I think we have to go top right... the
-  // notifications going up when anchored bottom right is just weird") —
-  // measured, since the toolbar wraps with the window's width and changes
-  // with the workspace; 16px from the top where there is no toolbar
-  const [toastTop, setToastTop] = React.useState(16);
+  // The notification card HANGS FROM THE BELL, 8px under it with its right
+  // edge on the bell's (2026-11-02, "why are the notifications so far from
+  // the bell?" → "hang it from the bell" — it hung 16px under the transport
+  // toolbar until then, the toolbar's height between it and the bell; while
+  // up it covers the toolbar's right end). Measured, since the top bar
+  // re-lays itself out with the window's width; 16px from the top-right
+  // corner where there is no bell (the home screen)
+  const [toastAnchor, setToastAnchor] = React.useState<{ top: number; right: number }>({ top: 16, right: 16 });
   React.useLayoutEffect(() => {
-    const toolbar = document.querySelector<HTMLElement>('.transport-toolbar');
-    const measure = () => setToastTop(toolbar ? Math.round(toolbar.getBoundingClientRect().bottom) + 16 : 16);
+    const bell = document.querySelector<HTMLElement>('[data-notification-bell]');
+    const measure = () => {
+      if (!bell) { setToastAnchor({ top: 16, right: 16 }); return; }
+      const r = bell.getBoundingClientRect();
+      setToastAnchor({ top: Math.round(r.bottom) + 8, right: Math.max(8, Math.round(window.innerWidth - r.right)) });
+    };
     measure();
-    const observer = toolbar && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
-    if (toolbar) observer?.observe(toolbar);
+    const bar = bell?.closest<HTMLElement>('.project-toolbar') ?? null;
+    const observer = bar && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (bar) observer?.observe(bar);
     window.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, [activeMenuItem]);
@@ -1396,7 +1403,7 @@ function CanvasDemoContent() {
         onStop={timerRecord.stopNow}
         os={preferences.operatingSystem}
       />
-      <ToastContainer position="top-right" top={toastTop} />
+      <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} />
 
       <Dialog
         isOpen={cloudLoadProgress !== null}

@@ -325,7 +325,7 @@ export function ProjectToolbar({
 
   return (
     <div
-      className={`project-toolbar ${className}`}
+      className={`project-toolbar${trailingContent && activeItem !== 'home' ? ' project-toolbar--has-trailing' : ''} ${className}`}
       style={{ height: `${height}px`, ...style }}
       role="toolbar"
       aria-label="Project toolbar"

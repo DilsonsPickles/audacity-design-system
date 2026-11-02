@@ -71,3 +71,9 @@
   height: 2px;
   background-color: var(--toolbar-active-indicator);
 }
+
+/* Ending with the notification bell: the bar's end is 12px past it
+   (2026-11-02, "bell should be 12px from end of toolbar") */
+.project-toolbar.project-toolbar--has-trailing {
+  padding-right: 12px;
+}

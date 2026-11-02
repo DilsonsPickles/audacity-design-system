@@ -45,6 +45,9 @@ export interface ToastContainerProps {
   /** For a TOP position: the stack's top edge in px from the viewport's
    *  top (default 16) — a host pins it under its toolbar */
   top?: number;
+  /** For a RIGHT position: the stack's right edge in px from the
+   *  viewport's right (default 16) — a host lines it up with its bell */
+  right?: number;
 }
 
 interface ManagedToast extends ToastProps {
@@ -238,6 +241,7 @@ export function ToastContainer({
   maxToasts = 5,
   position = 'bottom-right',
   top,
+  right,
 }: ToastContainerProps) {
   maxLive = maxToasts;
   const { live, archive, panelOpen, muted } = useNotifications();
@@ -295,9 +299,12 @@ export function ToastContainer({
   // The open panel is anchored by its foot (the footer is where the
   // pointer lives); the pop-out stack holds its top while hovered
   const pinTop = bottomAnchored && !panelOpen && pinnedTop !== null;
-  const style: React.CSSProperties | undefined = bottomAnchored
-    ? (pinTop ? { top: pinnedTop, bottom: 'auto' } : undefined)
-    : (top !== undefined ? { top } : undefined);
+  const style: React.CSSProperties = {
+    ...(bottomAnchored
+      ? (pinTop ? { top: pinnedTop, bottom: 'auto' } : {})
+      : (top !== undefined ? { top } : {})),
+    ...(right !== undefined && position.endsWith('right') ? { right } : {}),
+  };
 
   const row = (t: ManagedToast, inArchive: boolean) => (
     <div
