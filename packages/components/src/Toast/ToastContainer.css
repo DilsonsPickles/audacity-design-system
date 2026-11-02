@@ -202,15 +202,15 @@
      the cards 12px inside it at rest, and a scrolled card slides under
      either toolbar */
   box-sizing: content-box;
-  max-height: calc(var(--notification-stack-max, 100vh) - 24px);
+  max-height: calc(var(--notification-stack-max, 100vh) - var(--notification-rest-top, 12px) - 12px);
   overflow-y: auto;
   margin: 0 -12px 0 -24px;
-  padding: 12px 12px 12px 24px;
+  padding: var(--notification-rest-top, 12px) 12px 12px 24px;
 }
 
-/* The open archive sits 12px inside the same frame */
+/* The open archive sits at the cards' resting place in the same frame */
 .notification-panel.notification-panel--open {
-  margin-top: 12px;
+  margin-top: var(--notification-rest-top, 12px);
 }
 
 /* THE OPEN ARCHIVE IS ONE CARD (2026-11-02, "when looking at

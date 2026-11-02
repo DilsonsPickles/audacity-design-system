@@ -61,6 +61,10 @@ export interface ToastContainerProps {
    *  host — wins over `100vh - top - bottomInset`, which a shell whose 100vh
    *  is not its window's height gets wrong (the Electron shell, 2026-11-02) */
   maxHeight?: number;
+  /** For a TOP position: where the cards start at rest, in px down from
+   *  the frame's top (default 12) — a frame taller than its resting place,
+   *  so scrolled cards can slide up past it (2026-11-02) */
+  restTop?: number;
 }
 
 interface ManagedToast extends ToastProps {
@@ -257,6 +261,7 @@ export function ToastContainer({
   right,
   bottomInset = 16,
   maxHeight,
+  restTop,
 }: ToastContainerProps) {
   maxLive = maxToasts ?? Infinity;
   const { live, archive, panelOpen, muted } = useNotifications();
@@ -337,6 +342,7 @@ export function ToastContainer({
       ? (pinTop ? { top: pinnedTop, bottom: 'auto' } : {})
       : (top !== undefined ? { top } : {})),
     ...(right !== undefined && position.endsWith('right') ? { right } : {}),
+    ...(restTop !== undefined ? { ['--notification-rest-top' as string]: `${restTop}px` } : {}),
     // The open archive comes ALL THE WAY DOWN THE SCREEN (2026-11-02, "I
     // think we can come all the way down the screen"): its list may grow to
     // the bottom inset, less its 45px foot, and scrolls past that
@@ -345,7 +351,7 @@ export function ToastContainer({
         ? {
             // The frame's height; the stack pads 12px inside it top and
             // bottom, the open archive keeps 12px clear and its 45px foot
-            ['--notification-list-max' as string]: `${Math.max(0, maxHeight - 24 - 45)}px`,
+            ['--notification-list-max' as string]: `${Math.max(0, maxHeight - (restTop ?? 12) - 12 - 45)}px`,
             ['--notification-stack-max' as string]: `${Math.max(0, maxHeight)}px`,
           }
         : {

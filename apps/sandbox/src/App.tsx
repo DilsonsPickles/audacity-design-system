@@ -108,30 +108,30 @@ function CanvasDemoContent() {
   const [scrollY, setScrollY] = React.useState(0);
   const welcomeDialog = useWelcomeDialog();
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('home');
-  // THE NOTIFICATIONS ARE CUT BY THE TOOLBARS (2026-11-02, "notifications
-  // should look like they're being cut by tools toolbar and bottom
-  // toolbar"): their scroll frame runs FLUSH from the transport toolbar's
-  // bottom to the status bar's top, so a scrolled card slides under either;
-  // at rest the first card sits 12px under the toolbar and the last 12px
-  // above the status bar (the frame's own padding, ToastContainer.css), and
-  // the cards keep 12px from the window's right edge, over the vertical
-  // rulers ("notifications can overlay the ruler to the right"). Measured in px on a
-  // ResizeObserver and on window resize — never 100vh, which the Electron
-  // shell got wrong ("nope, it's off by 12px"). The window's top-right
-  // corner where there is no editor (the home screen).
-  const [toastAnchor, setToastAnchor] = React.useState<{ top: number; right: number; bottomInset: number; maxHeight?: number }>({ top: 0, right: 12, bottomInset: 0 });
+  // THE NOTIFICATIONS' FRAME IS THE WHOLE WINDOW'S HEIGHT (2026-11-02, "now
+  // try where it uses application window full height" — after a frame cut by
+  // the transport toolbar and the status bar): at rest the first card sits
+  // 12px under the transport toolbar (`restTop`), clear of the bell, and the
+  // stack runs down over the status bar to 12px above the window's foot;
+  // scrolled, the cards slide up over the toolbars to the window's top edge.
+  // 12px from the window's right edge, over the vertical rulers
+  // ("notifications can overlay the ruler to the right"). Measured in px on
+  // a ResizeObserver and on window resize — never 100vh, which the Electron
+  // shell got wrong ("nope, it's off by 12px"). At rest 12px from the top
+  // where there is no toolbar (the home screen).
+  const [toastAnchor, setToastAnchor] = React.useState<{ top: number; right: number; bottomInset: number; maxHeight?: number; restTop: number }>({ top: 0, right: 12, bottomInset: 0, restTop: 12 });
   React.useLayoutEffect(() => {
     const toolbar = document.querySelector<HTMLElement>('.transport-toolbar');
-    const statusBar = document.querySelector<HTMLElement>('.selection-toolbar');
-    const measure = () => {
-      if (!toolbar || !statusBar) { setToastAnchor({ top: 0, right: 12, bottomInset: 0 }); return; }
-      const top = Math.round(toolbar.getBoundingClientRect().bottom);
-      const foot = Math.round(statusBar.getBoundingClientRect().top);
-      setToastAnchor({ top, right: 12, bottomInset: Math.round(window.innerHeight) - foot, maxHeight: foot - top });
-    };
+    const measure = () => setToastAnchor({
+      top: 0,
+      right: 12,
+      bottomInset: 0,
+      maxHeight: Math.round(window.innerHeight),
+      restTop: toolbar ? Math.round(toolbar.getBoundingClientRect().bottom) + 12 : 12,
+    });
     measure();
-    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
-    for (const el of [toolbar, statusBar]) if (el) observer?.observe(el);
+    const observer = toolbar && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (toolbar) observer?.observe(toolbar);
     window.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, [activeMenuItem]);
@@ -1408,8 +1408,8 @@ function CanvasDemoContent() {
         onStop={timerRecord.stopNow}
         os={preferences.operatingSystem}
       />
-      {/* The frame between the transport toolbar and the status bar, flush — measured */}
-      <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} bottomInset={toastAnchor.bottomInset} maxHeight={toastAnchor.maxHeight} />
+      {/* The frame is the window's full height; cards rest under the toolbar — measured */}
+      <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} bottomInset={toastAnchor.bottomInset} maxHeight={toastAnchor.maxHeight} restTop={toastAnchor.restTop} />
 
       <Dialog
         isOpen={cloudLoadProgress !== null}
