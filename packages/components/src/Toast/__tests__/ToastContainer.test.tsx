@@ -110,4 +110,15 @@ describe('the notification centre (2026-11-02, after Cakewalk\'s single panel)',
     expect([...container.querySelectorAll('.notification-panel .toast__title')].map((t) => t.textContent)).toEqual(['Two', 'Three']);
     expect(container.querySelector('[data-notification-bell]')!.getAttribute('data-attention')).toBe('true');
   });
+
+  it('with no maxToasts there is no count cap — a top stack makes room by height alone (2026-11-02, "let them stack all the way down the page")', () => {
+    const { container } = render(
+      <ThemeProvider>
+        <ToastContainer position="top-right" top={100} bottomInset={48} />
+      </ThemeProvider>,
+    );
+    act(() => { for (let i = 0; i < 8; i++) toast.error(`Error ${i}`); });
+    // jsdom lays nothing out, so nothing passes the bottom: all eight stay up
+    expect(container.querySelectorAll('.notification-panel .toast')).toHaveLength(8);
+  });
 });

@@ -41,7 +41,10 @@ import { Toast, ToastProps } from './Toast';
 import './ToastContainer.css';
 
 export interface ToastContainerProps {
-  /** Maximum number of notifications popped out at once — older ones go to the archive */
+  /** Maximum number of notifications popped out at once — older ones go to
+   *  the archive. Unset: no count; a TOP stack runs all the way down the
+   *  page and pushes its oldest out only when the next would pass the
+   *  bottom inset (2026-11-02, "let them stack all the way down the page") */
   maxToasts?: number;
   /** Position of the container */
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
@@ -77,7 +80,7 @@ let toastId = 0;
 let state: NotificationState = { live: [], archive: [], panelOpen: false, muted: false };
 const listeners: Set<() => void> = new Set();
 /** The most notifications popped out at once (the host's `maxToasts`) */
-let maxLive = 5;
+let maxLive = Infinity;
 
 function setState(next: Partial<NotificationState>) {
   state = { ...state, ...next };
@@ -159,6 +162,17 @@ export const toast = {
         archive: archived(leaving, true),
       });
     }, 200);
+  },
+
+  /** Push the oldest popped-out notification into the archive — a full
+   *  stack making room (unseen if it needs you) */
+  overflowOldest() {
+    const oldest = state.live.find((t) => !t.exiting && !t.showProgress);
+    if (!oldest) return;
+    setState({
+      live: state.live.filter((t) => t !== oldest),
+      archive: [...state.archive, { ...oldest, seen: !needsYou(oldest) }],
+    });
   },
 
   /** Take the popped-out notifications away, without archiving them */
@@ -245,13 +259,13 @@ export function useNotifications() {
 const UNPIN_DELAY_MS = 400;
 
 export function ToastContainer({
-  maxToasts = 5,
+  maxToasts,
   position = 'bottom-right',
   top,
   right,
   bottomInset = 16,
 }: ToastContainerProps) {
-  maxLive = maxToasts;
+  maxLive = maxToasts ?? Infinity;
   const { live, archive, panelOpen, muted } = useNotifications();
   const containerRef = useRef<HTMLDivElement>(null);
   // A BOTTOM stack's top edge, held while the pointer (or the focus) is in
@@ -266,6 +280,16 @@ export function ToastContainer({
     if (empty && pinnedTop !== null) setPinnedTop(null);
   }, [empty, pinnedTop]);
   useEffect(() => () => { if (unpinTimer.current) clearTimeout(unpinTimer.current); }, []);
+
+  // A TOP stack runs ALL THE WAY DOWN THE PAGE (2026-11-02, "let them stack
+  // all the way down the page"): when its foot would pass the bottom inset,
+  // the oldest notification makes room, into the archive — one at a time,
+  // each render measuring again, and never the last one left
+  React.useLayoutEffect(() => {
+    if (bottomAnchored || panelOpen || !containerRef.current) return;
+    if (live.filter((t) => !t.exiting).length < 2) return;
+    if (containerRef.current.getBoundingClientRect().bottom > window.innerHeight - bottomInset) toast.overflowOldest();
+  }, [live, panelOpen, bottomAnchored, bottomInset]);
 
   // The open panel closes on Escape and on a press outside it (the bell
   // toggles it itself)
