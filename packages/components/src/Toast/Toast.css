@@ -1,27 +1,18 @@
 /**
- * Toast Component Styles
+ * Toast Component Styles — the Figma toast (14451:104384, 2026-11-02):
+ * header 32 + body + footer, two heights, 64 (compact) and 128 (tall).
  */
 
 .toast {
-  width: 360px;
+  width: 400px;
+  max-width: calc(100vw - 32px);
   background-color: var(--toast-bg);
   border-radius: 8px;
   box-shadow: var(--toast-shadow);
-  padding: 12px;
-  padding-right: 24px;
-  padding-bottom: 0;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  animation: toast-slide-in 0.3s ease-out;
   overflow: hidden;
-}
-
-.toast__body {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding-bottom: 12px;
+  animation: toast-slide-in 0.3s ease-out;
 }
 
 @keyframes toast-slide-in {
@@ -50,113 +41,136 @@
   }
 }
 
-/* Icon */
+/* HEADER — 32: 8 above, the 20px row, 4 below */
+.toast__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 8px 4px;
+}
+
+.toast__heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
 .toast__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: 'MusescoreIcon', sans-serif;
   font-size: 16px;
   line-height: 16px;
   color: var(--toast-icon-color);
-  flex-shrink: 0;
 }
 
-/* Content Container */
-.toast__content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-}
-
-/* Text Container */
-.toast__text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* Title */
 .toast__title {
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 600;
-  line-height: 16px;
+  /* Centred on the 20px row, as the icon is; a title that wraps grows the
+     header rather than clipping (the copy is written to fit) */
+  line-height: 20px;
   color: var(--toast-title-color);
+  overflow-wrap: anywhere;
 }
 
-/* Description */
+.toast__close {
+  flex-shrink: 0;
+}
+
+/* BODY */
+.toast__body {
+  padding: 0 12px;
+}
+
+/* Compact, persistent — 32: the line 4 below the header, 12 under it */
+.toast__body--compact {
+  padding-top: 4px;
+  padding-bottom: 12px;
+}
+
+/* Compact, timed — 26 over the 6px timer strip: the line against the
+   header, 10 under it */
+.toast__body--compact-timed {
+  padding-top: 0;
+  padding-bottom: 10px;
+}
+
+/* Tall message — 56: up to two lines, 8 above */
+.toast__body--message {
+  min-height: 56px;
+  box-sizing: border-box;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+/* Tall progress — 56: the bar over its row, 8 apart, centred */
+.toast__body--progress {
+  min-height: 56px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
 .toast__description {
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
   color: var(--toast-description-color);
-  /* Lines, for a toast that reports several things (the timed recording's
-     completion: saved to…, exported to…) — 2026-10-19 */
+  /* Lines, for a toast that reports several things (2026-10-19) */
   white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
-/* Actions Container */
-.toast__actions {
+.toast__progress-row {
   display: flex;
-  gap: 8px;
+  justify-content: space-between;
   align-items: center;
-}
-
-/* Action Button */
-.toast__action-button {
-  background-color: var(--toast-button-bg);
-  border: none;
-  border-radius: 2px;
-  padding: 6px 12px;
+  gap: 8px;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  color: var(--toast-button-text);
-  cursor: pointer;
-  transition: background-color 0.15s ease;
+  color: var(--toast-description-color);
   white-space: nowrap;
 }
 
-.toast__action-button:hover {
-  background-color: var(--toast-button-bg-hover);
+/* FOOTER — 40: 4 above the 28px buttons, 8 below, equal widths */
+.toast__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 8px;
 }
 
-.toast__action-button:active {
-  background-color: var(--toast-button-bg-active);
+.toast__footer .toast__button {
+  flex: 1 1 0;
+  min-width: 80px;
 }
 
-/* Type-specific styling (if needed for icons or colors) */
-.toast--success {
-  /* Can add success-specific styling here */
-}
-
-.toast--error {
-  /* Can add error-specific styling here */
-}
-
-.toast--warning {
-  /* Can add warning-specific styling here */
-}
-
-.toast--info {
-  /* Can add info-specific styling here */
-}
-
-/* Progress Bar */
-.toast__progress-bar {
-  width: calc(100% + 36px);
-  margin-left: -12px;
-  margin-right: -24px;
-  height: 3px;
-  background-color: rgba(20, 21, 26, 0.1);
+/* THE TIMER STRIP — 6px across the compact timed toast's foot, edge to
+   edge: the elevated surface's grey, the accent filling it */
+.toast__timer {
+  height: 6px;
+  background-color: var(--toast-timer-track);
   position: relative;
   overflow: hidden;
 }
 
-.toast__progress-fill {
-  height: 100%;
-  background-color: var(--toast-progress-fill);
-  transition: width 16ms linear;
+.toast__timer-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background-color: var(--toast-timer-fill);
 }

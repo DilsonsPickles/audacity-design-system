@@ -1,13 +1,44 @@
 /**
  * Toast Component
  *
- * Displays notification messages to the user in the bottom-right corner.
- * Supports different types: success, error, warning, info
+ * THE FIGMA TOAST (01 - Audacity Component library, 14451:104384;
+ * 2026-11-02, "the key is two heights, 64 and 128... look at the
+ * different variants too"): a 400px card, 8px corners, the Elevation 03
+ * shadow, in three bands —
+ *
+ *   HEADER (32): the type's icon, the title in semibold, and a close ×
+ *     (the small ghost icon button) on every toast.
+ *   BODY: one line of description on a COMPACT toast (64 in all), or on a
+ *     TALL toast (128 in all) a 56px band holding up to two lines of
+ *     description, or the progress bar over "… remaining" / "50%".
+ *   FOOTER (tall only, 40): two equal buttons — the toast's action(s),
+ *     then Dismiss.
+ *
+ * A toast is TALL when it has actions or shows progress, COMPACT
+ * otherwise; a compact toast that dismisses itself wears a 6px TIMER
+ * STRIP across its foot, edge to edge. A TALL TOAST NEVER DISMISSES
+ * ITSELF — the design draws no timer on one, and buttons that vanish
+ * before they can be reached are a trap; Dismiss and × close it (a
+ * progress toast is closed by its host when the work ends).
+ *
+ * THE HEIGHTS ARE TARGETS FOR THE COPY, NOT A CLIP (the same day: "how do
+ * they ever see the truncated text"): text is never cut off — a toast
+ * vanishes on its own, so hidden text could never be read. The copy is
+ * written to fit (one line ≈ 60 characters on a compact toast, two on a
+ * tall one); a description that runs past its lines logs a warning naming
+ * the toast, and the toast grows a line rather than hiding it.
+ *
+ * THE COUNTDOWN PAUSES while the pointer is over the toast or the
+ * keyboard focus is in it, so there is always time to read it and reach
+ * its buttons (WCAG 2.2.1, Timing Adjustable). The toast owns its timer
+ * and calls `onDismiss` when it runs out.
  */
 
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
 import { ProgressBar } from '../ProgressBar';
+import { GhostButton } from '../GhostButton';
+import { Button } from '../Button';
 import './Toast.css';
 
 export interface ToastAction {
@@ -24,30 +55,40 @@ export interface ToastProps {
   title: string;
   /** Toast description/message */
   description?: string;
-  /** Optional action buttons */
+  /** Optional action buttons — a toast with any is TALL (128), with Dismiss beside them */
   actions?: ToastAction[];
   /** Auto-dismiss duration in milliseconds (0 = no auto-dismiss) */
   duration?: number;
-  /** Callback when toast is dismissed */
+  /** Callback when toast is dismissed — the ×, Dismiss, or the timer running out */
   onDismiss?: () => void;
-  /** Show close button */
+  /** Show the header's close × (default true) */
   showCloseButton?: boolean;
   /** Progress value (0-100) for upload/process toasts */
   progress?: number;
-  /** Show progress bar instead of countdown timer */
+  /** Show the progress bar — a TALL toast */
   showProgress?: boolean;
-  /** Time remaining text (e.g., "7 seconds remaining") */
+  /** The progress row's left text (e.g. "7 seconds remaining") */
   timeRemaining?: string;
 }
 
+/** The MusescoreIcon glyph for each type (the Figma frames: \uEF31 the
+ *  check, \uF450 the cloud sync). Warning, error and info are the font's
+ *  outline triangle, crossed circle and circled i, the check's weight —
+ *  they were \uE801–\uE803 until 2026-11-02, code points the font does not
+ *  have, so those toasts drew no icon at all */
 const ICONS = {
-  success: '\uEF31', // checkmark icon from MusescoreIcon
-  error: '\uE801',   // error icon
-  warning: '\uE802', // warning icon
-  info: '\uE803',    // info icon
-  upload: '\uEF25',  // upload icon
-  syncing: '\uF450', // cloud-sync icon
+  success: '\uEF31',
+  error: '\uF3D0',
+  warning: '\uF3CE',
+  info: '\uF3CF',
+  upload: '\uEF25',
+  syncing: '\uF450',
 };
+
+/** Lines of description each height holds — the copy is written to fit */
+const COMPACT_LINES = 1;
+const TALL_LINES = 2;
+const LINE_HEIGHT_PX = 16;
 
 export function Toast({
   id,
@@ -63,120 +104,129 @@ export function Toast({
   timeRemaining,
 }: ToastProps) {
   const { theme } = useTheme();
-  const [timerProgress, setTimerProgress] = React.useState(0);
+  const tall = showProgress || (actions?.length ?? 0) > 0;
+  const timed = !tall && duration > 0;
+  const countdown = timed ? duration : 0;
+
+  // The countdown: elapsed time accrues only while nothing holds the toast
+  // (the pointer over it, or the focus in it)
+  const [elapsed, setElapsed] = React.useState(0);
+  const [hovered, setHovered] = React.useState(false);
+  const [focusWithin, setFocusWithin] = React.useState(false);
+  const paused = hovered || focusWithin;
+  const onDismissRef = React.useRef(onDismiss);
+  React.useEffect(() => { onDismissRef.current = onDismiss; }, [onDismiss]);
+  React.useEffect(() => {
+    if (countdown <= 0 || paused) return;
+    let last = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const step = now - last;
+      last = now;
+      let done = false;
+      setElapsed((prev) => {
+        const next = Math.min(countdown, prev + step);
+        done = next >= countdown;
+        return next;
+      });
+      if (done) { onDismissRef.current?.(); return; }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [countdown, paused]);
+  const timerPercent = countdown > 0 ? (elapsed / countdown) * 100 : 0;
+
+  // Copy that runs past its lines: say so, naming the toast — the toast
+  // grows to show it, never clips it
+  const descriptionRef = React.useRef<HTMLDivElement>(null);
+  React.useLayoutEffect(() => {
+    const el = descriptionRef.current;
+    if (!el) return;
+    const lines = Math.round(el.scrollHeight / LINE_HEIGHT_PX);
+    const allowed = tall ? TALL_LINES : COMPACT_LINES;
+    if (lines > allowed) {
+      console.warn(`Toast "${title}": the description runs to ${lines} lines; a ${tall ? 'tall (128px)' : 'compact (64px)'} toast is written for ${allowed}. Shorten the copy.`);
+    }
+  }, [description, tall, title]);
 
   const style = {
-    '--toast-bg': theme.background.surface.elevated,
+    '--toast-bg': theme.background.surface.default,
     '--toast-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)',
     '--toast-icon-color': theme.foreground.text.primary,
     '--toast-title-color': theme.foreground.text.primary,
     '--toast-description-color': theme.foreground.text.secondary,
-    '--toast-button-bg': theme.background.control.button.secondary.idle,
-    '--toast-button-bg-hover': theme.background.control.button.secondary.hover,
-    '--toast-button-bg-active': theme.background.control.button.secondary.active,
-    '--toast-button-text': theme.foreground.text.primary,
-    '--toast-progress-fill': theme.border.focus,
+    '--toast-timer-track': theme.background.surface.elevated,
+    '--toast-timer-fill': theme.accent.primary,
   } as React.CSSProperties;
 
-  React.useEffect(() => {
-    if (duration === 0 || showProgress) return;
-
-    const startTime = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(100, (elapsed / duration) * 100);
-      setTimerProgress(progress);
-
-      if (progress === 100) {
-        clearInterval(interval);
-      }
-    }, 16); // ~60fps
-
-    return () => clearInterval(interval);
-  }, [duration, showProgress]);
+  const variant = tall ? (showProgress ? 'progress' : 'message') : timed ? 'compact-timed' : 'compact';
+  const icon = type === 'syncing' ? ICONS.syncing : showProgress ? ICONS.upload : ICONS[type];
 
   return (
-    <div className={`toast toast--${type}`} role="alert" aria-live="polite" style={style}>
-      <div className="toast__body">
-        {/* Icon */}
-        <div className="toast__icon">
-          {type === 'syncing' ? ICONS.syncing : showProgress ? ICONS.upload : ICONS[type]}
+    <div
+      className={`toast toast--${type}`}
+      data-toast-id={id}
+      data-toast-variant={variant}
+      data-paused={paused && countdown > 0 ? 'true' : undefined}
+      role={type === 'error' ? 'alert' : 'status'}
+      aria-live={type === 'error' ? 'assertive' : 'polite'}
+      style={style}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocusWithin(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusWithin(false);
+      }}
+    >
+      <div className="toast__header">
+        <div className="toast__heading">
+          <span className="toast__icon" aria-hidden="true">{icon}</span>
+          <span className="toast__title">{title}</span>
         </div>
-
-        {/* Content */}
-        <div className="toast__content">
-          {showProgress ? (
-            /* Progress toast layout */
-            <>
-              <div className="toast__title">{title}</div>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                width: '100%'
-              }}>
-                <ProgressBar value={externalProgress || 0} width="100%" />
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  width: '100%',
-                  fontFamily: 'Inter, sans-serif',
-                  fontSize: '12px',
-                  fontWeight: 400,
-                  lineHeight: '16px',
-                  color: 'var(--text-txt-secondary, rgba(20, 21, 26, 0.75))'
-                }}>
-                  <span>{timeRemaining || ''}</span>
-                  <span>{externalProgress}%</span>
-                </div>
-              </div>
-            </>
-          ) : (
-            /* Regular toast layout */
-            <>
-              <div className="toast__text">
-                <div className="toast__title">{title}</div>
-                {description && (
-                  <div className="toast__description">{description}</div>
-                )}
-              </div>
-
-              {/* Actions */}
-              {actions && actions.length > 0 && (
-                <div className="toast__actions">
-                  {showCloseButton && (
-                    <button
-                      className="toast__action-button"
-                      onClick={onDismiss}
-                      aria-label="Dismiss"
-                    >
-                      Dismiss
-                    </button>
-                  )}
-                  {actions.map((action, index) => (
-                    <button
-                      key={index}
-                      className="toast__action-button"
-                      onClick={action.onClick}
-                    >
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        {showCloseButton && (
+          <GhostButton
+            icon="close"
+            size="small"
+            ariaLabel="Dismiss notification"
+            className="toast__close"
+            onClick={() => onDismiss?.()}
+          />
+        )}
       </div>
 
-      {/* Timer progress bar (for non-progress toasts) */}
-      {!showProgress && duration > 0 && (
-        <div className="toast__progress-bar">
-          <div
-            className="toast__progress-fill"
-            style={{ width: `${timerProgress}%` }}
-          />
+      {showProgress ? (
+        <div className="toast__body toast__body--progress">
+          <ProgressBar value={externalProgress || 0} width="100%" />
+          <div className="toast__progress-row">
+            <span>{timeRemaining || ''}</span>
+            <span>{Math.round(externalProgress || 0)}%</span>
+          </div>
+        </div>
+      ) : (
+        <div className={`toast__body toast__body--${variant}`}>
+          {description && (
+            <div ref={descriptionRef} className="toast__description">{description}</div>
+          )}
+        </div>
+      )}
+
+      {tall && (
+        <div className="toast__footer">
+          {actions?.map((action, index) => (
+            <Button key={index} variant="secondary" className="toast__button" onClick={action.onClick}>
+              {action.label}
+            </Button>
+          ))}
+          <Button variant="secondary" className="toast__button" onClick={() => onDismiss?.()}>
+            Dismiss
+          </Button>
+        </div>
+      )}
+
+      {timed && (
+        <div className="toast__timer" aria-hidden="true">
+          <div className="toast__timer-fill" style={{ width: `${timerPercent}%` }} />
         </div>
       )}
     </div>

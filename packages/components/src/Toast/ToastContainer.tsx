@@ -57,17 +57,13 @@ export const toast = {
     toasts = [...toasts, newToast];
     emitChange();
 
-    // Auto-dismiss if duration is set
-    if (props.duration && props.duration > 0) {
-      setTimeout(() => {
-        this.dismiss(id);
-      }, props.duration);
-    }
-
+    // The toast runs its own countdown (paused while hovered or focused)
+    // and calls onDismiss when it runs out — Toast.tsx
     return id;
   },
 
   dismiss(id: string) {
+    if (!toasts.some((t) => t.id === id && !t.exiting)) return;
     // Mark as exiting for animation
     toasts = toasts.map((t) =>
       t.id === id ? { ...t, exiting: true } : t
