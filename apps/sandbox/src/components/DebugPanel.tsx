@@ -107,7 +107,7 @@ function fireToastSet() {
     // COMPACT, title only — held at 64 (the app's own copy always has a
     // second line; these show the floor)
     () => toast.success('Project saved', undefined, undefined, TOAST_SET_TIMED_MS),
-    // COMPACT, persistent — 64, 80, a title-only one, and a wrapped title (80)
+    // COMPACT, persistent — 64, 80 and a title-only one
     () => toast.error('Save failed', 'Could not reach audio.com'),
     () => toast.error(
       'Export failed',
@@ -115,8 +115,8 @@ function fireToastSet() {
     ),
     () => toast.error('Download failed'),
     () => toast.warning(
-      'Some effects could not be loaded because their plug-ins are missing from this computer',
-      'Open the effect manager to find them',
+      'Effects not loaded',
+      '3 plug-ins are missing from this computer. Open the effect manager to find them, or reinstall them',
       undefined,
       TOAST_SET_TIMED_MS,
     ),
