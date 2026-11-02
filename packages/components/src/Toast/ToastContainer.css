@@ -123,6 +123,21 @@
   margin-bottom: -8px;
 }
 
+/* A full stack's close-spacer (ToastContainer.tsx): it grows on the closing
+   row's own curve, so the stack's height holds and its scroll is never
+   pulled back; it gives no gap of its own. Settling, it closes a little
+   slower and the stack slides back down to its foot. */
+.notification-panel__spacer {
+  flex: none;
+  margin-top: -8px;
+  pointer-events: none;
+  transition: height var(--toast-exit-ms, 120ms) cubic-bezier(0.2, 0, 0, 1);
+}
+
+.notification-panel__spacer[data-settling] {
+  transition-duration: var(--toast-enter-ms, 200ms);
+}
+
 @keyframes toast-fade-out {
   to {
     opacity: 0;

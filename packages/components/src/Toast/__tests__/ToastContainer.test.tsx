@@ -134,4 +134,25 @@ describe('the notification centre (2026-11-02, after Cakewalk\'s single panel)',
     fireEvent.click(bell);
     expect(container.querySelector('.toast-wrapper[data-entering]')).toBeNull();
   });
+
+  it('a close in a FULL stack holds its height with a spacer while the pointer is in it, then settles once it leaves', async () => {
+    const { container } = renderCentre();
+    act(() => { for (let i = 0; i < 3; i++) toast.error(`Error ${i}`); });
+    const panel = container.querySelector('.notification-panel') as HTMLElement;
+    // jsdom lays nothing out: make the stack full
+    Object.defineProperty(panel, 'scrollHeight', { configurable: true, get: () => 500 });
+    Object.defineProperty(panel, 'clientHeight', { configurable: true, get: () => 300 });
+    const stack = container.querySelector('.toast-container') as HTMLElement;
+    const spacer = () => container.querySelector('.notification-panel__spacer') as HTMLElement;
+    expect(spacer().style.height).toBe('0px');
+    fireEvent.mouseEnter(stack);
+    fireEvent.click(container.querySelectorAll<HTMLElement>('[aria-label="Dismiss notification"]')[0]);
+    // the row's height (0 in jsdom) and the 8px gap it gives back
+    expect(spacer().style.height).toBe('8px');
+    await act(() => wait(260));
+    expect(spacer().style.height).toBe('8px'); // held while the pointer stays
+    fireEvent.mouseLeave(stack);
+    await act(() => wait(500));
+    expect(spacer().style.height).toBe('0px');
+  });
 });

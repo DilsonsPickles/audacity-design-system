@@ -262,6 +262,9 @@ export function useNotifications() {
  *  or ride out a closing toast's EXIT_MS collapse */
 const UNPIN_DELAY_MS = 400;
 
+/** How long after the pointer leaves a full stack its close-spacer settles */
+const SETTLE_DELAY_MS = 400;
+
 export function ToastContainer({
   maxToasts,
   position = 'bottom-right',
@@ -297,6 +300,58 @@ export function ToastContainer({
   // stack, so it does not move under someone clearing it
   const hoveredRef = useRef(false);
   const lastLiveCount = useRef(0);
+
+  // A CLOSE IN A FULL STACK HOLDS THE SCROLL (2026-11-02, "when list is
+  // full, removing item from list feels clunky"): scrolled to its foot, a
+  // stack that shrinks has its scroll pulled back every frame of the
+  // collapse, so the cards ABOVE slid down into the gap — the × under the
+  // pointer went to the card above, in steps. While the pointer (or the
+  // focus) is in the stack, a SPACER at its foot grows by exactly what the
+  // closing row gives up, on the same curve, so the height never changes,
+  // nothing is clamped and the cards below slide up under the × as they do
+  // with room. The tabs' trick, again: the spacer closes SETTLE_DELAY_MS
+  // after the pointer leaves, and the stack settles back to its foot
+  const [spacer, setSpacer] = useState(0);
+  const [settling, setSettling] = useState(false);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exitingSeen = useRef(new Set<string>());
+  const holding = () =>
+    hoveredRef.current || !!containerRef.current?.contains(document.activeElement);
+  React.useLayoutEffect(() => {
+    const panel = panelRef.current;
+    let grow = 0;
+    for (const t of live) {
+      if (!t.exiting || exitingSeen.current.has(t.id)) continue;
+      exitingSeen.current.add(t.id);
+      if (panelOpen || !panel || !holding() || panel.scrollHeight <= panel.clientHeight + 1) continue;
+      const wrapper = panel.querySelector<HTMLElement>(`[data-toast-id="${t.id.replace(/["\\]/g, '\\$&')}"]`);
+      // The card's own height — its content's, which the collapse (already
+      // under way here) does not change — and the 8px gap it gives back
+      const card = wrapper?.firstElementChild as HTMLElement | null | undefined;
+      if (card) grow += card.scrollHeight + 8;
+    }
+    const ids = new Set(live.map((t) => t.id));
+    for (const id of exitingSeen.current) if (!ids.has(id)) exitingSeen.current.delete(id);
+    if (grow > 0) {
+      if (settleTimer.current) { clearTimeout(settleTimer.current); settleTimer.current = null; }
+      setSettling(false);
+      setSpacer((h) => h + grow);
+    }
+  }, [live, panelOpen]);
+  // The bell's card has no spacer
+  useEffect(() => { if (panelOpen) { setSpacer(0); setSettling(false); } }, [panelOpen]);
+  useEffect(() => () => { if (settleTimer.current) clearTimeout(settleTimer.current); }, []);
+  const holdSpacer = () => {
+    if (settleTimer.current) { clearTimeout(settleTimer.current); settleTimer.current = null; }
+  };
+  const settleSoon = () => {
+    holdSpacer();
+    settleTimer.current = setTimeout(() => {
+      settleTimer.current = null;
+      setSettling(true);
+      setSpacer(0);
+    }, SETTLE_DELAY_MS);
+  };
   // When each live row was first drawn, and how it arrived: an ARRIVAL into a
   // FULL stack opens its row and pushes the others up ('push'); one with room
   // below the last card just fades in ('fade') — (2026-11-02, "only do that
@@ -415,6 +470,7 @@ export function ToastContainer({
     <div
       key={t.id}
       className={t.exiting ? 'toast-wrapper toast-wrapper--exiting' : 'toast-wrapper'}
+      data-toast-id={t.id}
       data-archived={inArchive ? 'true' : undefined}
       data-entering={!inArchive && !t.exiting ? arriving(t.id) : undefined}
     >
@@ -448,11 +504,11 @@ export function ToastContainer({
       data-pinned={pinTop ? 'true' : undefined}
       data-panel-open={panelOpen ? 'true' : undefined}
       style={style}
-      onMouseEnter={() => { hoveredRef.current = true; pin(); }}
-      onMouseLeave={() => { hoveredRef.current = false; unpinSoon(); }}
-      onFocus={pin}
+      onMouseEnter={() => { hoveredRef.current = true; pin(); holdSpacer(); }}
+      onMouseLeave={() => { hoveredRef.current = false; unpinSoon(); settleSoon(); }}
+      onFocus={() => { pin(); holdSpacer(); }}
       onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) unpinSoon();
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) { unpinSoon(); settleSoon(); }
       }}
     >
       <div
@@ -471,6 +527,16 @@ export function ToastContainer({
           </div>
         )}
         {!panelOpen && live.map((t) => row(t, false))}
+        {/* Always there (at 0 when idle) so its growth transitions */}
+        {!panelOpen && live.length > 0 && (
+          <div
+            className="notification-panel__spacer"
+            data-settling={settling ? 'true' : undefined}
+            style={{ height: spacer }}
+            onTransitionEnd={() => { if (settling && spacer === 0) setSettling(false); }}
+            aria-hidden="true"
+          />
+        )}
         {panelOpen && (
           <div className="notification-panel__footer">
             <button
