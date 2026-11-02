@@ -59,9 +59,12 @@
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 600;
-  /* Centred on the 20px row, as the icon is; a title that wraps grows the
-     header rather than clipping (the copy is written to fit) */
-  line-height: 20px;
+  /* A TITLE THAT WRAPS GROWS BY 16 A LINE, NOT 20 (2026-11-02, "a nice set
+     that obey our 8px grid"): 16px lines with 2px above and below, so one
+     line still fills the 20px row beside the icon and the ×, and every
+     line after it adds 16 — on the grid, like the description's */
+  line-height: 16px;
+  padding: 2px 0;
   color: var(--toast-title-color);
   overflow-wrap: anywhere;
 }
@@ -75,15 +78,21 @@
   padding: 0 12px;
 }
 
-/* Compact, persistent — 32: the line 4 below the header, 12 under it */
+/* Compact, persistent — 32: the line 4 below the header, 12 under it. A
+   TITLE-ONLY toast keeps the line's room (2026-11-02, "we can't have that
+   48px one"): 64 is the smallest toast there is */
 .toast__body--compact {
+  min-height: 32px;
+  box-sizing: border-box;
   padding-top: 4px;
   padding-bottom: 12px;
 }
 
 /* Compact, timed — 26 over the 6px timer strip: the line against the
-   header, 10 under it */
+   header, 10 under it; a title-only one keeps the line's room, as above */
 .toast__body--compact-timed {
+  min-height: 26px;
+  box-sizing: border-box;
   padding-top: 0;
   padding-bottom: 10px;
 }

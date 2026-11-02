@@ -84,6 +84,62 @@ export interface DebugPanelProps {
   onLegacyAuthDialogsEnabledChange: (value: boolean) => void;
 }
 
+/**
+ * THE TOAST SET, ONE OF EACH SIZE (2026-11-02, "a nice set that obey our 8px
+ * grid… give me a button in debug that can test them all"): fired a beat
+ * apart so they arrive in order, top to bottom, smallest kinds first. The
+ * timed ones run 30s (and pause under the pointer) so the set can be looked
+ * over; every height is on the 8px grid — see Toast.tsx.
+ */
+const TOAST_SET_STAGGER_MS = 150;
+const TOAST_SET_TIMED_MS = 30000;
+function fireToastSet() {
+  const noop = () => {};
+  const steps: Array<() => void> = [
+    // COMPACT, timed — 64, 80
+    () => toast.success('Import complete', 'Kick.wav (0:12) added to Drums', undefined, TOAST_SET_TIMED_MS),
+    () => toast.info(
+      'Project saved locally',
+      'Changes are kept on this computer until you sign in to audio.com and save the project there',
+      undefined,
+      TOAST_SET_TIMED_MS,
+    ),
+    // COMPACT, title only — held at 64
+    () => toast.success('Saved to audio.com', undefined, undefined, TOAST_SET_TIMED_MS),
+    // COMPACT, persistent — 64, 80, a title-only one, and a wrapped title (80)
+    () => toast.error('Save failed', 'Could not reach audio.com'),
+    () => toast.error(
+      'Export failed',
+      'The disk is full. Free some space on the drive holding your project, then export again',
+    ),
+    () => toast.error('No project open'),
+    () => toast.warning(
+      'Some effects could not be loaded because their plug-ins are missing from this computer',
+      'Open the effect manager to find them',
+      undefined,
+      TOAST_SET_TIMED_MS,
+    ),
+    // TALL — 128 (one and two lines), 136 (three)
+    () => toast.info('Track deleted', 'Drums and its 3 clips were removed', [{ label: 'Undo', onClick: noop }]),
+    () => toast.warning(
+      'Recording device disconnected',
+      'The microphone was unplugged while recording. What was recorded up to that point is kept',
+      [{ label: 'Audio setup', onClick: noop }],
+    ),
+    () => toast.error(
+      'Upload failed',
+      'audio.com did not respond after several attempts. Your project is safe on this computer and nothing was lost. Try again now, or later from File › Save to cloud once you are back online',
+      [{ label: 'Try again', onClick: noop }],
+    ),
+    // PROGRESS — 128
+    () => {
+      const id = toast.progress('Uploading to audio.com', 'My show');
+      toast.updateProgress(id, 40, '1 min remaining');
+    },
+  ];
+  steps.forEach((step, i) => setTimeout(step, i * TOAST_SET_STAGGER_MS));
+}
+
 export function DebugPanel({
   isOpen,
   onClose,
@@ -670,11 +726,14 @@ export function DebugPanel({
               onClick={() => toast.info(
                 'Track deleted',
                 'Drums and its 3 clips were removed',
-                [{ label: 'Undo', onClick: () => toast.success('Track restored') }],
+                [{ label: 'Undo', onClick: () => toast.success('Track restored', 'Drums and its 3 clips are back') }],
                 8000,
               )}
             >
               With action (8s)
+            </Button>
+            <Button variant="secondary" size="default" onClick={fireToastSet}>
+              Test all sizes
             </Button>
             <Button variant="secondary" size="default" onClick={() => toast.dismissAll()}>
               Dismiss all

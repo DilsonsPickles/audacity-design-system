@@ -23,10 +23,21 @@
  *
  * THE HEIGHTS ARE TARGETS FOR THE COPY, NOT A CLIP (the same day: "how do
  * they ever see the truncated text"): text is never cut off — a toast
- * vanishes on its own, so hidden text could never be read. The copy is
- * written to fit (one line ≈ 60 characters on a compact toast, two on a
- * tall one); a description that runs past its lines logs a warning naming
- * the toast, and the toast grows a line rather than hiding it.
+ * vanishes on its own, so hidden text could never be read; a description
+ * that runs past its lines logs a warning naming the toast, and the toast
+ * grows rather than hiding it.
+ *
+ * THE SET, ON THE 8PX GRID (the same day, "we can't have that 48px one…
+ * we don't need to be ruthless on size now that they're showing from the
+ * top right… a nice set that obey our 8px grid"): every line of text —
+ * description or a wrapped title — is 16px, so a toast grows in 16s from
+ * its base:
+ *
+ *   COMPACT, persistent or timed: 64 (one line), 80 (two — the most the
+ *     copy is written for, ≈ 60 characters a line). A title-only toast
+ *     keeps its line's room: 64 is the floor, never 48.
+ *   TALL (buttons): 128 (up to two lines), 136 (three, the most).
+ *   PROGRESS: 128.
  *
  * THE COUNTDOWN PAUSES while the pointer is over the toast or the
  * keyboard focus is in it, so there is always time to read it and reach
@@ -92,8 +103,8 @@ const ICONS = {
 };
 
 /** Lines of description each height holds — the copy is written to fit */
-const COMPACT_LINES = 1;
-const TALL_LINES = 2;
+const COMPACT_LINES = 2;
+const TALL_LINES = 3;
 const LINE_HEIGHT_PX = 16;
 
 export function Toast({
@@ -154,7 +165,7 @@ export function Toast({
     const lines = Math.round(el.scrollHeight / LINE_HEIGHT_PX);
     const allowed = tall ? TALL_LINES : COMPACT_LINES;
     if (lines > allowed) {
-      console.warn(`Toast "${title}": the description runs to ${lines} lines; a ${tall ? 'tall (128px)' : 'compact (64px)'} toast is written for ${allowed}. Shorten the copy.`);
+      console.warn(`Toast "${title}": the description runs to ${lines} lines; a ${tall ? 'tall' : 'compact'} toast is written for up to ${allowed}. Shorten the copy.`);
     }
   }, [description, tall, title]);
 
