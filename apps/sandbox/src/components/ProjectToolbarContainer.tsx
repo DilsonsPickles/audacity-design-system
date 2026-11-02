@@ -1,5 +1,5 @@
 import React from 'react';
-import { NotificationBell, ProjectToolbar, type TransportToolbarProps } from '@audacity-ui/components';
+import { ProjectToolbar, type TransportToolbarProps } from '@audacity-ui/components';
 import { useDialogs } from '../contexts/DialogContext';
 import { useTracks } from '../contexts/useTracks';
 import { getProjects } from '../utils/projectDatabase';
@@ -83,9 +83,6 @@ export function ProjectToolbarContainer({
         }
       }}
       showDebugMenu={true}
-      // The notification centre's bell — top-right, where the card hangs
-      // (2026-11-02, "I think we have to go top right")
-      trailingContent={<NotificationBell />}
       centerActions={activeMenuItem !== 'export' ? [
         ...(showMixer ? [{
           icon: 'mixer' as const,
