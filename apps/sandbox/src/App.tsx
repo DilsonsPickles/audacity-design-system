@@ -117,15 +117,26 @@ function CanvasDemoContent() {
   // holds the bell until then, over the transport toolbar's right end.
   // Measured, since the toolbars wrap with the window's width and change
   // with the workspace; 12px from the top-right corner on the home screen
-  const [toastAnchor, setToastAnchor] = React.useState<{ top: number; right: number }>({ top: 12, right: 12 });
+  // BOTH EDGES ARE MEASURED: the bottom from the status bar's real top, not
+  // a guess at its height (the same day, "nope, it's miles off!" — in the
+  // Electron shell the status bar is not the window's last 40px, and a
+  // fixed inset ran the stack under it)
+  const [toastAnchor, setToastAnchor] = React.useState<{ top: number; right: number; bottomInset: number }>({ top: 12, right: 12, bottomInset: 12 });
   React.useLayoutEffect(() => {
     const toolbar = document.querySelector<HTMLElement>('.transport-toolbar')
       ?? document.querySelector<HTMLElement>('[data-notification-bell]')?.closest<HTMLElement>('.project-toolbar')
       ?? null;
-    const measure = () => setToastAnchor({ top: toolbar ? Math.round(toolbar.getBoundingClientRect().bottom) + 12 : 12, right: 12 });
+    const statusBar = document.querySelector<HTMLElement>('.selection-toolbar');
+    const measure = () => setToastAnchor({
+      top: toolbar ? Math.round(toolbar.getBoundingClientRect().bottom) + 12 : 12,
+      right: 12,
+      bottomInset: statusBar ? Math.round(window.innerHeight - statusBar.getBoundingClientRect().top) + 12 : 12,
+    });
     measure();
-    const observer = toolbar && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
     if (toolbar) observer?.observe(toolbar);
+    if (statusBar) observer?.observe(statusBar);
+    observer?.observe(document.documentElement);
     window.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, [activeMenuItem]);
@@ -1402,8 +1413,8 @@ function CanvasDemoContent() {
         onStop={timerRecord.stopNow}
         os={preferences.operatingSystem}
       />
-      {/* The frame stops 12px above the 40px status bar */}
-      <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} bottomInset={52} />
+      {/* The frame stops 12px above the status bar — both edges measured */}
+      <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} bottomInset={toastAnchor.bottomInset} />
 
       <Dialog
         isOpen={cloudLoadProgress !== null}
