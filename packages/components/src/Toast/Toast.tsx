@@ -24,7 +24,7 @@
  * THE HEIGHTS ARE TARGETS FOR THE COPY, NOT A CLIP (the same day: "how do
  * they ever see the truncated text"): text is never cut off — a toast
  * vanishes on its own, so hidden text could never be read. The copy is
- * written to fit (one line ≈ 50 characters at 14px on a compact toast, two on a
+ * written to fit (one line ≈ 60 characters on a compact toast, two on a
  * tall one); a description that runs past its lines logs a warning naming
  * the toast, and the toast grows a line rather than hiding it.
  *
@@ -94,7 +94,7 @@ const ICONS = {
 /** Lines of description each height holds — the copy is written to fit */
 const COMPACT_LINES = 1;
 const TALL_LINES = 2;
-const LINE_HEIGHT_PX = 20;
+const LINE_HEIGHT_PX = 16;
 
 export function Toast({
   id,
