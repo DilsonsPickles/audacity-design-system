@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksProvider';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@audacity-ui/components';
+import { ApplicationHeader, ToastContainer, NotificationBell, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@audacity-ui/components';
 import { ADIEU_BASE } from './lib/adieu-client';
 import { type EnvelopePointStyleKey, yToTrackIndex } from '@audacity-ui/core';
 import { createWheelTargetLock } from './utils/canvasWheelTarget';
@@ -1287,6 +1287,7 @@ function CanvasDemoContent() {
       {/* Selection Toolbar - Hidden in Home view */}
       {activeMenuItem !== 'home' && (
         <SelectionToolbar
+          trailing={<NotificationBell />}
           selectionStart={state.timeSelection?.startTime ?? null}
           selectionEnd={state.timeSelection?.endTime ?? null}
           format={selectionTimeCodeFormat}

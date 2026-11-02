@@ -73,6 +73,9 @@ export interface SelectionToolbarProps {
    * Whether to show the cloud project indicator
    */
   showCloudIndicator?: boolean;
+  /** At the bar's right end, after a divider — the notification bell
+   *  (2026-11-02) */
+  trailing?: React.ReactNode;
   /**
    * Whether the cloud project is currently uploading
    */
@@ -114,6 +117,7 @@ export function SelectionToolbar({
   onSelectionStartChange,
   onSelectionEndChange,
   showCloudIndicator = false,
+  trailing,
   isCloudUploading = false,
   showDuration = true,
   startTabIndex: _startTabIndexProp,
@@ -218,6 +222,12 @@ export function SelectionToolbar({
                 ariaLabel="Selection duration"
               />
             </div>
+          </>
+        )}
+        {trailing && (
+          <>
+            <div className="selection-toolbar__divider" />
+            {trailing}
           </>
         )}
       </div>

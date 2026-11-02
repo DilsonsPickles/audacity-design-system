@@ -69,6 +69,12 @@ export interface ToastProps {
   showProgress?: boolean;
   /** The progress row's left text (e.g. "7 seconds remaining") */
   timeRemaining?: string;
+  /** A ROW of the notification centre's one card: no card of its own (no
+   *  shadow, corners or width) — the panel draws those (2026-11-02) */
+  embedded?: boolean;
+  /** Announce it to screen readers (default true) — an archived row was
+   *  announced when it arrived */
+  announce?: boolean;
 }
 
 /** The MusescoreIcon glyph for each type (the Figma frames: \uEF31 the
@@ -102,6 +108,8 @@ export function Toast({
   progress: externalProgress,
   showProgress = false,
   timeRemaining,
+  embedded = false,
+  announce = true,
 }: ToastProps) {
   const { theme } = useTheme();
   const tall = showProgress || (actions?.length ?? 0) > 0;
@@ -165,12 +173,12 @@ export function Toast({
 
   return (
     <div
-      className={`toast toast--${type}`}
+      className={`toast toast--${type}${embedded ? ' toast--embedded' : ''}`}
       data-toast-id={id}
       data-toast-variant={variant}
       data-paused={paused && countdown > 0 ? 'true' : undefined}
-      role={type === 'error' ? 'alert' : 'status'}
-      aria-live={type === 'error' ? 'assertive' : 'polite'}
+      role={announce ? (type === 'error' ? 'alert' : 'status') : undefined}
+      aria-live={announce ? (type === 'error' ? 'assertive' : 'polite') : undefined}
       style={style}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}

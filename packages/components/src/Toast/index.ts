@@ -5,5 +5,5 @@
 export { Toast } from './Toast';
 export type { ToastProps, ToastAction } from './Toast';
 
-export { ToastContainer, toast } from './ToastContainer';
-export type { ToastContainerProps } from './ToastContainer';
+export { ToastContainer, toast, NotificationBell, useNotifications } from './ToastContainer';
+export type { ToastContainerProps, NotificationBellProps } from './ToastContainer';

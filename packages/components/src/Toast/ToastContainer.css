@@ -10,7 +10,6 @@
   z-index: 9400;
   display: flex;
   flex-direction: column;
-  gap: 12px;
   pointer-events: none;
 }
 
@@ -66,18 +65,156 @@
   }
 }
 
-/* Exit animation - fade and slide up out of view */
+/* Exit animation — a row fades and folds away inside the card, the rows
+   below sliding up into its place (no gap to collapse since the rows are
+   flush, 2026-11-02) */
 @keyframes toast-exit {
   from {
     opacity: 1;
-    transform: translateY(0);
     max-height: 200px;
-    margin-bottom: 12px;
   }
   to {
     opacity: 0;
-    transform: translateY(-12px);
     max-height: 0;
-    margin-bottom: 0;
   }
+}
+
+.toast-wrapper--exiting {
+  overflow: hidden;
+}
+
+/* THE NOTIFICATION CENTRE'S ONE CARD (2026-11-02, after Cakewalk's
+   single panel): the notifications are ROWS of one surface — one shadow,
+   one set of corners, dividers between rows — whether popped out or in
+   the open archive. The card takes the toast's own surface and shadow. */
+.notification-panel {
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  overflow: hidden;
+  pointer-events: auto;
+  background: var(--notification-panel-bg, #F8F8F9);
+  box-shadow: 0px 10px 30px 0px rgba(20, 21, 26, 0.3);
+}
+
+/* The rows sit flush; a 1px divider between neighbours */
+.notification-panel .toast-wrapper + .toast-wrapper {
+  border-top: 1px solid var(--notification-panel-divider, rgba(20, 21, 26, 0.1));
+}
+
+.notification-panel__list {
+  display: flex;
+  flex-direction: column;
+  max-height: min(60vh, 560px);
+  overflow-y: auto;
+}
+
+.notification-panel__empty {
+  padding: 20px 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: rgba(20, 21, 26, 0.75);
+  text-align: center;
+}
+
+/* The archive's foot: Mute and Clear all */
+.notification-panel__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px;
+  border-top: 1px solid var(--notification-panel-divider, rgba(20, 21, 26, 0.1));
+}
+
+.notification-panel__mute,
+.notification-panel__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: #14151A;
+  cursor: pointer;
+}
+
+.notification-panel__mute:hover,
+.notification-panel__clear:hover:not(:disabled) {
+  background: rgba(20, 21, 26, 0.08);
+}
+
+.notification-panel__clear:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.notification-panel__glyph,
+.notification-bell__glyph {
+  position: relative;
+  font-family: 'MusescoreIcon', sans-serif;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+/* Muted: the font has no crossed bell, so the slash is drawn over it */
+.notification-panel__mute[data-muted] .notification-panel__glyph::after,
+.notification-bell[data-muted] .notification-bell__glyph::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -1px;
+  width: 1.5px;
+  height: 18px;
+  background: currentColor;
+  transform: translateX(-50%) rotate(-45deg);
+}
+
+/* A row inside the card has no card of its own */
+.toast.toast--embedded {
+  width: 100%;
+  max-width: none;
+  border-radius: 0;
+  box-shadow: none;
+  animation: none;
+}
+
+/* THE BELL — the status bar's right end. Its dot: something that needs
+   you went into the archive unseen. */
+.notification-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.notification-bell:hover,
+.notification-bell[aria-expanded='true'] {
+  background: rgba(20, 21, 26, 0.08);
+}
+
+.notification-bell__dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #D73A3A;
+  box-shadow: 0 0 0 1.5px var(--selection-toolbar-bg, #F8F8F9);
 }
