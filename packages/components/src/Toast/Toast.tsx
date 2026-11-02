@@ -34,7 +34,7 @@
  * its base:
  *
  *   COMPACT, persistent or timed: 64 (one line), 80 (two — the most the
- *     copy is written for, ≈ 60 characters a line). A title-only toast
+ *     copy is written for, ≈ 55 characters a line in the 328px column). A title-only toast
  *     keeps its line's room: 64 is the floor, never 48.
  *   TALL (buttons): 128 (up to two lines), 136 (three, the most).
  *   PROGRESS: 128.

@@ -73,9 +73,18 @@
   flex-shrink: 0;
 }
 
+/* THE ICON AND THE × HAVE COLUMNS OF THEIR OWN (2026-11-02, "can we go
+   back to the icon being in it's own column?", against MuseScore's toast):
+   the body and the footer sit in the TITLE'S column — 8 of padding, the
+   20px icon or ×, 8 of gap, so 36 in from either edge — and nothing runs
+   under the icon or the × */
+.toast {
+  --toast-column-inset: 36px;
+}
+
 /* BODY */
 .toast__body {
-  padding: 0 12px;
+  padding: 0 var(--toast-column-inset);
 }
 
 /* Compact, persistent — 32: the line 4 below the header, 12 under it. A
@@ -146,7 +155,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 8px 8px;
+  padding: 4px var(--toast-column-inset) 8px;
 }
 
 .toast__footer .toast__button {

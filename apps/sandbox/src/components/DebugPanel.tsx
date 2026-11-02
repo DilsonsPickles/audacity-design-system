@@ -129,7 +129,7 @@ function fireToastSet() {
     ),
     () => toast.error(
       'Upload failed',
-      'audio.com did not respond after several attempts. Your project is safe on this computer and nothing was lost. Try again now, or later from File › Save to cloud once you are back online',
+      'audio.com did not respond. Your project is safe on this computer and nothing was lost. Try again now, or later from File › Save to cloud',
       [{ label: 'Try again', onClick: noop }],
     ),
     // PROGRESS — 128
