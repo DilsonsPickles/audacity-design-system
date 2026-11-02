@@ -1403,7 +1403,8 @@ function CanvasDemoContent() {
         onStop={timerRecord.stopNow}
         os={preferences.operatingSystem}
       />
-      <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} />
+      {/* The open archive comes down to 8px above the 40px status bar */}
+      <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} bottomInset={48} />
 
       <Dialog
         isOpen={cloudLoadProgress !== null}

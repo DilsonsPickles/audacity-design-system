@@ -51,6 +51,10 @@ export interface ToastContainerProps {
   /** For a RIGHT position: the stack's right edge in px from the
    *  viewport's right (default 16) — a host lines it up with its bell */
   right?: number;
+  /** For a TOP position: the room to keep clear under the open archive, in
+   *  px from the viewport's bottom (default 16) — a host keeps its status
+   *  bar clear */
+  bottomInset?: number;
 }
 
 interface ManagedToast extends ToastProps {
@@ -245,6 +249,7 @@ export function ToastContainer({
   position = 'bottom-right',
   top,
   right,
+  bottomInset = 16,
 }: ToastContainerProps) {
   maxLive = maxToasts;
   const { live, archive, panelOpen, muted } = useNotifications();
@@ -307,6 +312,12 @@ export function ToastContainer({
       ? (pinTop ? { top: pinnedTop, bottom: 'auto' } : {})
       : (top !== undefined ? { top } : {})),
     ...(right !== undefined && position.endsWith('right') ? { right } : {}),
+    // The open archive comes ALL THE WAY DOWN THE SCREEN (2026-11-02, "I
+    // think we can come all the way down the screen"): its list may grow to
+    // the bottom inset, less its 45px foot, and scrolls past that
+    ...(!bottomAnchored && top !== undefined
+      ? { ['--notification-list-max' as string]: `calc(100vh - ${top + bottomInset + 45}px)` }
+      : {}),
   };
 
   const row = (t: ManagedToast, inArchive: boolean) => (
