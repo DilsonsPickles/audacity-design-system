@@ -108,19 +108,24 @@ function CanvasDemoContent() {
   const [scrollY, setScrollY] = React.useState(0);
   const welcomeDialog = useWelcomeDialog();
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('home');
-  // The notification card hangs 12px UNDER THE BAR THAT HOLDS THE BELL, 12px
-  // from the window's right edge (2026-11-02, "12px from right edge please
-  // and 12px under bar which contains bell" — it hung 8px under the bell
-  // itself, its right edge on the bell's, until then). Measured, since the
-  // top bar re-lays itself out with the window's width; 12px from the
-  // top-right corner where there is no bell (the home screen)
+  // The notifications' FRAME FITS BETWEEN THE TOOLBAR AND THE STATUS BAR
+  // (2026-11-02, "I'd rather the frame fit between the toolbar and the
+  // bottom toolbar" — scrolled cards were being cut off over the transport
+  // toolbar): it starts 12px under the TRANSPORT toolbar and stops 12px
+  // above the status bar, 12px from the window's right edge, so a card is
+  // only ever cut off at those two edges. It hung 12px under the bar that
+  // holds the bell until then, over the transport toolbar's right end.
+  // Measured, since the toolbars wrap with the window's width and change
+  // with the workspace; 12px from the top-right corner on the home screen
   const [toastAnchor, setToastAnchor] = React.useState<{ top: number; right: number }>({ top: 12, right: 12 });
   React.useLayoutEffect(() => {
-    const bar = document.querySelector<HTMLElement>('[data-notification-bell]')?.closest<HTMLElement>('.project-toolbar') ?? null;
-    const measure = () => setToastAnchor({ top: bar ? Math.round(bar.getBoundingClientRect().bottom) + 12 : 12, right: 12 });
+    const toolbar = document.querySelector<HTMLElement>('.transport-toolbar')
+      ?? document.querySelector<HTMLElement>('[data-notification-bell]')?.closest<HTMLElement>('.project-toolbar')
+      ?? null;
+    const measure = () => setToastAnchor({ top: toolbar ? Math.round(toolbar.getBoundingClientRect().bottom) + 12 : 12, right: 12 });
     measure();
-    const observer = bar && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
-    if (bar) observer?.observe(bar);
+    const observer = toolbar && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (toolbar) observer?.observe(toolbar);
     window.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, [activeMenuItem]);
@@ -1397,8 +1402,8 @@ function CanvasDemoContent() {
         onStop={timerRecord.stopNow}
         os={preferences.operatingSystem}
       />
-      {/* The open archive comes down to 8px above the 40px status bar */}
-      <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} bottomInset={48} />
+      {/* The frame stops 12px above the 40px status bar */}
+      <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} bottomInset={52} />
 
       <Dialog
         isOpen={cloudLoadProgress !== null}
