@@ -42,9 +42,8 @@ import './ToastContainer.css';
 
 export interface ToastContainerProps {
   /** Maximum number of notifications popped out at once — older ones go to
-   *  the archive. Unset: no count; a TOP stack runs all the way down the
-   *  page and pushes its oldest out only when the next would pass the
-   *  bottom inset (2026-11-02, "let them stack all the way down the page") */
+   *  the archive. Unset: no count — a TOP stack runs all the way down the
+   *  page and scrolls past the bottom inset (2026-11-02) */
   maxToasts?: number;
   /** Position of the container */
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
@@ -164,17 +163,6 @@ export const toast = {
     }, 200);
   },
 
-  /** Push the oldest popped-out notification into the archive — a full
-   *  stack making room (unseen if it needs you) */
-  overflowOldest() {
-    const oldest = state.live.find((t) => !t.exiting && !t.showProgress);
-    if (!oldest) return;
-    setState({
-      live: state.live.filter((t) => t !== oldest),
-      archive: [...state.archive, { ...oldest, seen: !needsYou(oldest) }],
-    });
-  },
-
   /** Take the popped-out notifications away, without archiving them */
   dismissAll() {
     setState({ live: [] });
@@ -268,6 +256,7 @@ export function ToastContainer({
   maxLive = maxToasts ?? Infinity;
   const { live, archive, panelOpen, muted } = useNotifications();
   const containerRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   // A BOTTOM stack's top edge, held while the pointer (or the focus) is in
   // it — see the render below
   const [pinnedTop, setPinnedTop] = useState<number | null>(null);
@@ -281,15 +270,22 @@ export function ToastContainer({
   }, [empty, pinnedTop]);
   useEffect(() => () => { if (unpinTimer.current) clearTimeout(unpinTimer.current); }, []);
 
-  // A TOP stack runs ALL THE WAY DOWN THE PAGE (2026-11-02, "let them stack
-  // all the way down the page"): when its foot would pass the bottom inset,
-  // the oldest notification makes room, into the archive — one at a time,
-  // each render measuring again, and never the last one left
+  // A TOP stack runs ALL THE WAY DOWN THE PAGE AND SCROLLS PAST IT
+  // (2026-11-02, "let them stack all the way down the page", then "so can
+  // it overflow?" → "perhaps it should scroll?"): its height is held to the
+  // room above the bottom inset in CSS (so a resize keeps it there), and
+  // nothing is pushed out unseen. A new notification arriving below the
+  // fold is scrolled into view — but never while the pointer is in the
+  // stack, so it does not move under someone clearing it
+  const hoveredRef = useRef(false);
+  const lastLiveCount = useRef(0);
   React.useLayoutEffect(() => {
-    if (bottomAnchored || panelOpen || !containerRef.current) return;
-    if (live.filter((t) => !t.exiting).length < 2) return;
-    if (containerRef.current.getBoundingClientRect().bottom > window.innerHeight - bottomInset) toast.overflowOldest();
-  }, [live, panelOpen, bottomAnchored, bottomInset]);
+    const grew = live.length > lastLiveCount.current;
+    lastLiveCount.current = live.length;
+    const panel = panelRef.current;
+    if (!grew || panelOpen || hoveredRef.current || !panel) return;
+    panel.scrollTop = panel.scrollHeight;
+  }, [live, panelOpen]);
 
   // The open panel closes on Escape and on a press outside it (the bell
   // toggles it itself)
@@ -340,7 +336,10 @@ export function ToastContainer({
     // think we can come all the way down the screen"): its list may grow to
     // the bottom inset, less its 45px foot, and scrolls past that
     ...(!bottomAnchored && top !== undefined
-      ? { ['--notification-list-max' as string]: `calc(100vh - ${top + bottomInset + 45}px)` }
+      ? {
+          ['--notification-list-max' as string]: `calc(100vh - ${top + bottomInset + 45}px)`,
+          ['--notification-stack-max' as string]: `calc(100vh - ${top + bottomInset}px)`,
+        }
       : {}),
   };
 
@@ -380,14 +379,15 @@ export function ToastContainer({
       data-pinned={pinTop ? 'true' : undefined}
       data-panel-open={panelOpen ? 'true' : undefined}
       style={style}
-      onMouseEnter={pin}
-      onMouseLeave={unpinSoon}
+      onMouseEnter={() => { hoveredRef.current = true; pin(); }}
+      onMouseLeave={() => { hoveredRef.current = false; unpinSoon(); }}
       onFocus={pin}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) unpinSoon();
       }}
     >
       <div
+        ref={panelRef}
         className={`notification-panel${panelOpen ? ' notification-panel--open' : ''}`}
         role={panelOpen ? 'region' : undefined}
         aria-label={panelOpen ? 'Notifications' : undefined}
