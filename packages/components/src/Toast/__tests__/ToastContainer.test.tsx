@@ -57,7 +57,7 @@ describe('the notification centre (2026-11-02, after Cakewalk\'s single panel)',
   );
   const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-  it('every notification pops out as a ROW of one card; closing one sends it to the archive, which the bell opens', async () => {
+  it('every notification pops out as its own card in the one column; closing one sends it to the archive, which the bell opens', async () => {
     const { container } = renderCentre();
     act(() => { toast.error('Save failed', 'Could not reach audio.com'); toast.error('Export failed', 'The disk is full'); });
     expect(container.querySelectorAll('.notification-panel')).toHaveLength(1);

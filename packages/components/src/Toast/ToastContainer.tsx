@@ -3,9 +3,12 @@
  * Cakewalk's: "perhaps it's because they're tucked in a single panel, it
  * feels less intrusive").
  *
- * ONE SURFACE: the notifications showing are ROWS of one card in the
- * bottom-right corner (dividers between them, one shadow), not a pile of
- * separately shadowed cards.
+ * SEPARATE CARDS, 12PX APART (the same day, "re-add space between
+ * notifications" — for an hour they were rows of one card, dividers
+ * between them, after Cakewalk's single panel): each notification is its
+ * own card. THE OPEN ARCHIVE IS ONE CONSOLIDATED CARD (the same day, "when
+ * looking at notifications from the bell, they can be in [a] consolidated
+ * container view"): rows with dividers, Mute and Clear all at its foot.
  *
  * ARRIVAL ALWAYS SHOWS ("notifications can arrive silently... if there's a
  * red dot on the bell and a new notification arrives... it'll be
@@ -314,7 +317,8 @@ export function ToastContainer({
     >
       <Toast
         {...t}
-        embedded
+        // In the open archive a notification is a ROW of the one card
+        embedded={panelOpen}
         // An archived row has no countdown, was announced when it arrived,
         // and its × removes it from the archive
         duration={inArchive ? 0 : t.duration}
@@ -349,7 +353,7 @@ export function ToastContainer({
       }}
     >
       <div
-        className="notification-panel"
+        className={`notification-panel${panelOpen ? ' notification-panel--open' : ''}`}
         role={panelOpen ? 'region' : undefined}
         aria-label={panelOpen ? 'Notifications' : undefined}
       >

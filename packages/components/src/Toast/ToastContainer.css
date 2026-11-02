@@ -72,10 +72,12 @@
   from {
     opacity: 1;
     max-height: 200px;
+    margin-bottom: 0;
   }
   to {
     opacity: 0;
     max-height: 0;
+    margin-bottom: -12px;
   }
 }
 
@@ -83,32 +85,43 @@
   overflow: hidden;
 }
 
-/* THE NOTIFICATION CENTRE'S ONE CARD (2026-11-02, after Cakewalk's
-   single panel): the notifications are ROWS of one surface — one shadow,
-   one set of corners, dividers between rows — whether popped out or in
-   the open archive. The card takes the toast's own surface and shadow. */
+/* THE NOTIFICATION CENTRE: separate cards, 12px apart (2026-11-02, "re-add
+   space between notifications" — they were rows of one card for an hour).
+   The column holds the cards; the open archive scrolls inside it, padded so
+   the cards' shadows are not clipped. */
 .notification-panel {
   width: 400px;
   max-width: calc(100vw - 32px);
   display: flex;
   flex-direction: column;
-  border-radius: 8px;
-  overflow: hidden;
-  pointer-events: auto;
-  background: var(--notification-panel-bg, #F8F8F9);
-  box-shadow: 0px 10px 30px 0px rgba(20, 21, 26, 0.3);
+  gap: 12px;
 }
 
-/* The rows sit flush; a 1px divider between neighbours */
-.notification-panel .toast-wrapper + .toast-wrapper {
-  border-top: 1px solid var(--notification-panel-divider, rgba(20, 21, 26, 0.1));
+.notification-panel .toast-wrapper {
+  pointer-events: auto;
 }
 
 .notification-panel__list {
   display: flex;
   flex-direction: column;
+  gap: 12px;
   max-height: min(60vh, 560px);
   overflow-y: auto;
+  /* Room for the cards' 30px shadow inside the scroll box */
+  margin: 0 -24px;
+  padding: 0 24px 24px;
+}
+
+.notification-panel__empty,
+.notification-panel__footer {
+  pointer-events: auto;
+  background: var(--notification-panel-bg, #F8F8F9);
+  border-radius: 8px;
+  box-shadow: 0px 10px 30px 0px rgba(20, 21, 26, 0.3);
+}
+
+.notification-panel__list + .notification-panel__footer {
+  margin-top: -24px;
 }
 
 .notification-panel__empty {
@@ -120,14 +133,13 @@
   text-align: center;
 }
 
-/* The archive's foot: Mute and Clear all */
+/* The archive's foot: Mute and Clear all, on their own card */
 .notification-panel__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 8px;
-  border-top: 1px solid var(--notification-panel-divider, rgba(20, 21, 26, 0.1));
 }
 
 .notification-panel__mute,
@@ -176,6 +188,41 @@
   height: 18px;
   background: currentColor;
   transform: translateX(-50%) rotate(-45deg);
+}
+
+/* THE OPEN ARCHIVE IS ONE CARD (2026-11-02, "when looking at
+   notifications from the bell, they can be in [a] consolidated container
+   view"): the notifications are rows of it, a divider between neighbours,
+   Mute and Clear all at its foot — popped out, they stay separate cards. */
+.notification-panel.notification-panel--open {
+  gap: 0;
+  pointer-events: auto;
+  background: var(--notification-panel-bg, #F8F8F9);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0px 10px 30px 0px rgba(20, 21, 26, 0.3);
+}
+
+.notification-panel--open .notification-panel__list {
+  gap: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.notification-panel--open .toast-wrapper + .toast-wrapper {
+  border-top: 1px solid var(--notification-panel-divider, rgba(20, 21, 26, 0.1));
+}
+
+.notification-panel--open .notification-panel__empty,
+.notification-panel--open .notification-panel__footer {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.notification-panel--open .notification-panel__list + .notification-panel__footer {
+  margin-top: 0;
+  border-top: 1px solid var(--notification-panel-divider, rgba(20, 21, 26, 0.1));
 }
 
 /* A row inside the card has no card of its own */
