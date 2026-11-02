@@ -41,27 +41,48 @@
   pointer-events: auto;
   display: grid;
   grid-template-rows: 1fr;
-  animation: toast-enter 0.2s cubic-bezier(0.2, 0, 0.2, 1);
-  transform-origin: top right;
   transition:
     grid-template-rows var(--toast-exit-ms, 120ms) cubic-bezier(0.2, 0, 0, 1),
     margin-bottom var(--toast-exit-ms, 120ms) cubic-bezier(0.2, 0, 0, 1);
 }
 
-.toast-wrapper > * {
-  min-height: 0;
+/* A NEW CARD OPENS ITS ROW FROM NOTHING (2026-11-02, "when a new one comes
+   in, can the animation show that it's pushed the others up?"): the row
+   grows from closed to the card's height over ENTER_MS while the card fades
+   in, and the stack follows its foot (ToastContainer.tsx), so the cards
+   above are pushed up by exactly the room it takes. The row CLIPS the card
+   while it opens — an unclipped card would overflow the closed row, count
+   toward the stack's scroll height at once and jump the others up — so the
+   card's shadow comes in as the row finishes. A popped-out card's 8px gap
+   opens with it. */
+/* The gap is a VARIABLE, not a second set of keyframes: a selector that
+   swapped the animation's name by :first-child would restart it on the next
+   card whenever the top one closed (and on every card when the bell opens) */
+.toast-wrapper[data-entering] {
+  animation: toast-row-open var(--toast-enter-ms, 200ms) cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* Entrance animation - extremely subtle fade in with minimal movement */
-@keyframes toast-enter {
+.notification-panel:not(.notification-panel--open) .toast-wrapper:not(:first-child) {
+  --toast-open-gap: -8px;
+}
+
+@keyframes toast-row-open {
   from {
+    grid-template-rows: 0fr;
+    margin-top: var(--toast-open-gap, 0px);
+    overflow: clip;
     opacity: 0;
-    transform: translateY(2px);
   }
   to {
+    grid-template-rows: 1fr;
+    margin-top: 0;
+    overflow: clip;
     opacity: 1;
-    transform: translateY(0);
   }
+}
+
+.toast-wrapper > * {
+  min-height: 0;
 }
 
 /* A CLOSING NOTIFICATION GOES QUICKLY AND THE NEXT TAKES ITS PLACE AT ONCE
@@ -96,7 +117,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .toast-wrapper {
+  .toast-wrapper,
+  .toast-wrapper[data-entering] {
     animation: none;
     transition: none;
   }

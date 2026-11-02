@@ -121,4 +121,16 @@ describe('the notification centre (2026-11-02, after Cakewalk\'s single panel)',
     // jsdom lays nothing out, so nothing passes the bottom: all eight stay up
     expect(container.querySelectorAll('.notification-panel .toast')).toHaveLength(8);
   });
+
+  it('an arrival opens its row (the push-up); opening and closing the bell later does not replay it', async () => {
+    const { container } = renderCentre();
+    act(() => { toast.error('Save failed', 'Could not reach audio.com'); });
+    expect(container.querySelector('.toast-wrapper')!.getAttribute('data-entering')).toBe('true');
+    await act(() => wait(260));
+    const bell = container.querySelector('[data-notification-bell]') as HTMLElement;
+    fireEvent.click(bell); // remounts every row as rows of the one card
+    expect(container.querySelector('.toast-wrapper[data-entering]')).toBeNull();
+    fireEvent.click(bell);
+    expect(container.querySelector('.toast-wrapper[data-entering]')).toBeNull();
+  });
 });

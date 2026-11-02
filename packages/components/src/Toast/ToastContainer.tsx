@@ -105,6 +105,10 @@ const getSnapshot = () => state;
  *  ToastContainer.css's --toast-exit-ms default; keep the two in step */
 const EXIT_MS = 120;
 
+/** A new notification's row grows open over this long — ToastContainer.css's
+ *  --toast-enter-ms default; keep the two in step */
+const ENTER_MS = 200;
+
 /** Errors and notifications with buttons are the ones that need you */
 const needsYou = (t: ToastProps) => t.type === 'error' || (t.actions?.length ?? 0) > 0;
 
@@ -293,12 +297,31 @@ export function ToastContainer({
   // stack, so it does not move under someone clearing it
   const hoveredRef = useRef(false);
   const lastLiveCount = useRef(0);
+  // When each live row was first drawn — only an ARRIVAL opens its row
+  const firstSeen = useRef(new Map<string, number>());
   React.useLayoutEffect(() => {
     const grew = live.length > lastLiveCount.current;
     lastLiveCount.current = live.length;
     const panel = panelRef.current;
     if (!grew || panelOpen || hoveredRef.current || !panel) return;
     panel.scrollTop = panel.scrollHeight;
+    // THE ARRIVAL PUSHES THE OTHERS UP (2026-11-02, "when a new one comes
+    // in, can the animation show that it's pushed the others up?"): the new
+    // row grows open from nothing over ENTER_MS (ToastContainer.css), and
+    // the stack is held scrolled to its foot on every frame of it, so the
+    // cards above glide up by the room it takes rather than jumping. In a
+    // stack that does not fill its frame nothing above moves — it hangs from
+    // the top, and the new card opens below the last
+    if (typeof requestAnimationFrame !== 'function') return;
+    const until = performance.now() + ENTER_MS + 50;
+    let frame = 0;
+    const follow = () => {
+      if (hoveredRef.current) return;
+      panel.scrollTop = panel.scrollHeight;
+      if (performance.now() < until) frame = requestAnimationFrame(follow);
+    };
+    frame = requestAnimationFrame(follow);
+    return () => cancelAnimationFrame(frame);
   }, [live, panelOpen]);
 
   // The open panel closes on Escape and on a press outside it (the bell
@@ -365,11 +388,22 @@ export function ToastContainer({
       : {}),
   };
 
+  // Only an ARRIVAL opens its row (the push-up, ToastContainer.css): a row
+  // first drawn in the last ENTER_MS. Opening or closing the bell remounts
+  // every row, and they must not all grow open again
+  const arriving = (id: string) => {
+    const now = performance.now();
+    const seen = firstSeen.current.get(id);
+    if (seen === undefined) { firstSeen.current.set(id, now); return true; }
+    return now - seen < ENTER_MS;
+  };
+
   const row = (t: ManagedToast, inArchive: boolean) => (
     <div
       key={t.id}
       className={t.exiting ? 'toast-wrapper toast-wrapper--exiting' : 'toast-wrapper'}
       data-archived={inArchive ? 'true' : undefined}
+      data-entering={!inArchive && !t.exiting && arriving(t.id) ? 'true' : undefined}
     >
       <Toast
         {...t}
