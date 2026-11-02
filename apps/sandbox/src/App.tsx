@@ -108,23 +108,17 @@ function CanvasDemoContent() {
   const [scrollY, setScrollY] = React.useState(0);
   const welcomeDialog = useWelcomeDialog();
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('home');
-  // The notification card HANGS FROM THE BELL, 8px under it with its right
-  // edge on the bell's (2026-11-02, "why are the notifications so far from
-  // the bell?" → "hang it from the bell" — it hung 16px under the transport
-  // toolbar until then, the toolbar's height between it and the bell; while
-  // up it covers the toolbar's right end). Measured, since the top bar
-  // re-lays itself out with the window's width; 16px from the top-right
-  // corner where there is no bell (the home screen)
-  const [toastAnchor, setToastAnchor] = React.useState<{ top: number; right: number }>({ top: 16, right: 16 });
+  // The notification card hangs 12px UNDER THE BAR THAT HOLDS THE BELL, 12px
+  // from the window's right edge (2026-11-02, "12px from right edge please
+  // and 12px under bar which contains bell" — it hung 8px under the bell
+  // itself, its right edge on the bell's, until then). Measured, since the
+  // top bar re-lays itself out with the window's width; 12px from the
+  // top-right corner where there is no bell (the home screen)
+  const [toastAnchor, setToastAnchor] = React.useState<{ top: number; right: number }>({ top: 12, right: 12 });
   React.useLayoutEffect(() => {
-    const bell = document.querySelector<HTMLElement>('[data-notification-bell]');
-    const measure = () => {
-      if (!bell) { setToastAnchor({ top: 16, right: 16 }); return; }
-      const r = bell.getBoundingClientRect();
-      setToastAnchor({ top: Math.round(r.bottom) + 8, right: Math.max(8, Math.round(window.innerWidth - r.right)) });
-    };
+    const bar = document.querySelector<HTMLElement>('[data-notification-bell]')?.closest<HTMLElement>('.project-toolbar') ?? null;
+    const measure = () => setToastAnchor({ top: bar ? Math.round(bar.getBoundingClientRect().bottom) + 12 : 12, right: 12 });
     measure();
-    const bar = bell?.closest<HTMLElement>('.project-toolbar') ?? null;
     const observer = bar && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
     if (bar) observer?.observe(bar);
     window.addEventListener('resize', measure);
