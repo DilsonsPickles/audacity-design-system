@@ -196,12 +196,21 @@
    running off the screen. The padding keeps the cards' shadows inside the
    scroll box (less on the right, so the scrollbar stays on screen). */
 .notification-panel:not(.notification-panel--open) {
-  /* The 400px is the cards' width; the padding is extra, outside it */
+  /* The 400px is the cards' width; the padding is extra, outside it. The
+     frame is the WHOLE box, flush between the toolbars (2026-11-02, "cut by
+     tools toolbar and bottom toolbar"): 12px of padding top and bottom puts
+     the cards 12px inside it at rest, and a scrolled card slides under
+     either toolbar */
   box-sizing: content-box;
-  max-height: var(--notification-stack-max, none);
+  max-height: calc(var(--notification-stack-max, 100vh) - 24px);
   overflow-y: auto;
-  margin: 0 -12px -24px -24px;
-  padding: 0 12px 24px 24px;
+  margin: 0 -12px 0 -24px;
+  padding: 12px 12px 12px 24px;
+}
+
+/* The open archive sits 12px inside the same frame */
+.notification-panel.notification-panel--open {
+  margin-top: 12px;
 }
 
 /* THE OPEN ARCHIVE IS ONE CARD (2026-11-02, "when looking at

@@ -108,35 +108,31 @@ function CanvasDemoContent() {
   const [scrollY, setScrollY] = React.useState(0);
   const welcomeDialog = useWelcomeDialog();
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('home');
-  // The notifications SIT IN THE CANVAS AREA (2026-11-02, "I think the
-  // container just needs to sit in the canvas area" — after a frame between
-  // the transport toolbar and the status bar that still crossed the ruler
-  // and the vertical rulers): 12px in from the canvas's top, right and
-  // bottom edges, measured from `.canvas-scroll-container` (below the
-  // timeline ruler, left of the vertical rulers, above the status bar) on a
-  // ResizeObserver and on window resize. 12px from the window's top-right
-  // corner where there is no canvas (the home screen)
-  const [toastAnchor, setToastAnchor] = React.useState<{ top: number; right: number; bottomInset: number }>({ top: 12, right: 12, bottomInset: 12 });
+  // THE NOTIFICATIONS ARE CUT BY THE TOOLBARS (2026-11-02, "notifications
+  // should look like they're being cut by tools toolbar and bottom
+  // toolbar"): their scroll frame runs FLUSH from the transport toolbar's
+  // bottom to the status bar's top, so a scrolled card slides under either;
+  // at rest the first card sits 12px under the toolbar and the last 12px
+  // above the status bar (the frame's own padding, ToastContainer.css), and
+  // the cards keep 12px in from the canvas's right edge. Measured in px on a
+  // ResizeObserver and on window resize — never 100vh, which the Electron
+  // shell got wrong ("nope, it's off by 12px"). The window's top-right
+  // corner where there is no editor (the home screen).
+  const [toastAnchor, setToastAnchor] = React.useState<{ top: number; right: number; bottomInset: number; maxHeight?: number }>({ top: 0, right: 12, bottomInset: 0 });
   React.useLayoutEffect(() => {
-    const canvas = document.querySelector<HTMLElement>('.canvas-scroll-container');
+    const toolbar = document.querySelector<HTMLElement>('.transport-toolbar');
     const statusBar = document.querySelector<HTMLElement>('.selection-toolbar');
+    const canvas = document.querySelector<HTMLElement>('.canvas-scroll-container');
     const measure = () => {
-      if (!canvas) { setToastAnchor({ top: 12, right: 12, bottomInset: 12 }); return; }
-      const r = canvas.getBoundingClientRect();
-      // The canvas element can run on under the status bar (the Electron
-      // shell, "about 12px too far down"): the foot is whichever is higher,
-      // the canvas's bottom or the status bar's top
-      const foot = Math.min(r.bottom, statusBar ? statusBar.getBoundingClientRect().top : r.bottom);
-      setToastAnchor({
-        top: Math.round(r.top) + 12,
-        right: Math.round(window.innerWidth - r.right) + 12,
-        bottomInset: Math.round(window.innerHeight - foot) + 12,
-      });
+      if (!toolbar || !statusBar) { setToastAnchor({ top: 0, right: 12, bottomInset: 0 }); return; }
+      const top = Math.round(toolbar.getBoundingClientRect().bottom);
+      const foot = Math.round(statusBar.getBoundingClientRect().top);
+      const right = canvas ? Math.round(window.innerWidth - canvas.getBoundingClientRect().right) + 12 : 12;
+      setToastAnchor({ top, right, bottomInset: Math.round(window.innerHeight) - foot, maxHeight: foot - top });
     };
     measure();
-    const observer = canvas && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
-    if (canvas) observer?.observe(canvas);
-    if (statusBar) observer?.observe(statusBar);
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    for (const el of [toolbar, statusBar, canvas]) if (el) observer?.observe(el);
     window.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, [activeMenuItem]);
@@ -1413,8 +1409,8 @@ function CanvasDemoContent() {
         onStop={timerRecord.stopNow}
         os={preferences.operatingSystem}
       />
-      {/* Inside the canvas area, 12px from its edges — measured */}
-      <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} bottomInset={toastAnchor.bottomInset} />
+      {/* The frame between the transport toolbar and the status bar, flush — measured */}
+      <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} bottomInset={toastAnchor.bottomInset} maxHeight={toastAnchor.maxHeight} />
 
       <Dialog
         isOpen={cloudLoadProgress !== null}

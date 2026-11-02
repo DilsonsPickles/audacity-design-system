@@ -57,6 +57,10 @@ export interface ToastContainerProps {
    *  px from the viewport's bottom (default 16) — a host keeps its status
    *  bar clear */
   bottomInset?: number;
+  /** For a TOP position: the stack's whole height in px, measured by the
+   *  host — wins over `100vh - top - bottomInset`, which a shell whose 100vh
+   *  is not its window's height gets wrong (the Electron shell, 2026-11-02) */
+  maxHeight?: number;
 }
 
 interface ManagedToast extends ToastProps {
@@ -252,6 +256,7 @@ export function ToastContainer({
   top,
   right,
   bottomInset = 16,
+  maxHeight,
 }: ToastContainerProps) {
   maxLive = maxToasts ?? Infinity;
   const { live, archive, panelOpen, muted } = useNotifications();
@@ -336,10 +341,17 @@ export function ToastContainer({
     // think we can come all the way down the screen"): its list may grow to
     // the bottom inset, less its 45px foot, and scrolls past that
     ...(!bottomAnchored && top !== undefined
-      ? {
-          ['--notification-list-max' as string]: `calc(100vh - ${top + bottomInset + 45}px)`,
-          ['--notification-stack-max' as string]: `calc(100vh - ${top + bottomInset}px)`,
-        }
+      ? (maxHeight !== undefined
+        ? {
+            // The frame's height; the stack pads 12px inside it top and
+            // bottom, the open archive keeps 12px clear and its 45px foot
+            ['--notification-list-max' as string]: `${Math.max(0, maxHeight - 24 - 45)}px`,
+            ['--notification-stack-max' as string]: `${Math.max(0, maxHeight)}px`,
+          }
+        : {
+            ['--notification-list-max' as string]: `calc(100vh - ${top + bottomInset + 45}px)`,
+            ['--notification-stack-max' as string]: `calc(100vh - ${top + bottomInset}px)`,
+          })
       : {}),
   };
 
