@@ -5,7 +5,7 @@
  * Positioned 80px from bottom and 80px from right edge.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Toast, ToastProps } from './Toast';
 import './ToastContainer.css';
 
@@ -116,12 +116,23 @@ export const toast = {
   },
 };
 
+/** How long the pointer may be off the stack before a bottom stack lets
+ *  go of its pinned top — long enough to cross the gap between two toasts
+ *  or ride out a closing toast's 300ms collapse */
+const UNPIN_DELAY_MS = 400;
+
 export function ToastContainer({
   maxToasts = 5,
   position = 'bottom-right',
   top,
 }: ToastContainerProps) {
   const [currentToasts, setCurrentToasts] = useState<ManagedToast[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  // A BOTTOM stack's top edge, held while the pointer (or the focus) is in
+  // it — see the render below
+  const [pinnedTop, setPinnedTop] = useState<number | null>(null);
+  const unpinTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bottomAnchored = position.startsWith('bottom');
 
   useEffect(() => {
     listeners.add(setCurrentToasts);
@@ -133,21 +144,55 @@ export function ToastContainer({
   // Limit number of visible toasts
   const visibleToasts = currentToasts.slice(-maxToasts);
 
+  // An emptied stack lets go (its leave never fires once it unmounts)
+  useEffect(() => {
+    if (visibleToasts.length === 0 && pinnedTop !== null) setPinnedTop(null);
+  }, [visibleToasts.length, pinnedTop]);
+  useEffect(() => () => { if (unpinTimer.current) clearTimeout(unpinTimer.current); }, []);
+
   if (visibleToasts.length === 0) {
     return null;
   }
 
+  const pin = () => {
+    if (!bottomAnchored) return;
+    if (unpinTimer.current) { clearTimeout(unpinTimer.current); unpinTimer.current = null; }
+    if (pinnedTop === null && containerRef.current) setPinnedTop(containerRef.current.getBoundingClientRect().top);
+  };
+  const unpinSoon = () => {
+    if (!bottomAnchored) return;
+    if (unpinTimer.current) clearTimeout(unpinTimer.current);
+    unpinTimer.current = setTimeout(() => { unpinTimer.current = null; setPinnedTop(null); }, UNPIN_DELAY_MS);
+  };
+
+  const style: React.CSSProperties | undefined = bottomAnchored
+    ? (pinnedTop !== null ? { top: pinnedTop, bottom: 'auto' } : undefined)
+    : (top !== undefined ? { top } : undefined);
+
   return (
-    // PINNED AT THE TOP, NEWEST AT THE BOTTOM (2026-11-02, "the goal of
-    // the change was to make the 'X' button position a bit more consistent
-    // so it's easy to delete them all"): the × sits in each toast's header,
-    // so with the stack's TOP edge fixed, closing the top toast slides the
-    // next one up into the same place — the × lands under the pointer
-    // again, whatever the toasts' heights — and a toast arriving mid-clear
-    // joins at the bottom, never under the pointer unread.
+    // THE × STAYS UNDER THE POINTER (2026-11-02, "the goal of the change was
+    // to make the 'X' button position a bit more consistent so it's easy to
+    // delete them all"): the × sits in each toast's header, so with the
+    // stack's TOP edge held still, closing the top toast slides the next up
+    // into the same place, whatever the toasts' heights; NEWEST AT THE
+    // BOTTOM, so a toast arriving mid-clear never lands under the pointer
+    // unread. A TOP stack's top is fixed anyway; a BOTTOM stack rests in its
+    // corner and HOLDS ITS TOP EDGE ONLY WHILE THE POINTER (or the focus) IS
+    // IN IT — the tabs' trick — letting go UNPIN_DELAY_MS after the pointer
+    // leaves, when it settles back to the bottom ("the notifications cover
+    // the user's workspace… could we try bottom right again but have the
+    // notifications move upwards instead so that the X remains in place?").
     <div
+      ref={containerRef}
       className={`toast-container toast-container--${position}`}
-      style={top !== undefined && position.startsWith('top') ? { top } : undefined}
+      data-pinned={pinnedTop !== null ? 'true' : undefined}
+      style={style}
+      onMouseEnter={pin}
+      onMouseLeave={unpinSoon}
+      onFocus={pin}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) unpinSoon();
+      }}
     >
       {visibleToasts.map((toastProps) => (
         <div

@@ -108,20 +108,6 @@ function CanvasDemoContent() {
   const [scrollY, setScrollY] = React.useState(0);
   const welcomeDialog = useWelcomeDialog();
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('home');
-  // The toast stack is pinned 16px under the transport toolbar (2026-11-02,
-  // top-right so each toast's × lands in one place) — measured, since the
-  // toolbar wraps with the window's width and changes with the workspace;
-  // 16px from the top where there is no toolbar (the home screen)
-  const [toastTop, setToastTop] = React.useState(16);
-  React.useLayoutEffect(() => {
-    const toolbar = document.querySelector<HTMLElement>('.transport-toolbar');
-    const measure = () => setToastTop(toolbar ? Math.round(toolbar.getBoundingClientRect().bottom) + 16 : 16);
-    measure();
-    const observer = toolbar && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
-    if (toolbar) observer?.observe(toolbar);
-    window.addEventListener('resize', measure);
-    return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
-  }, [activeMenuItem]);
   const [homeTabKey, setHomeTabKey] = React.useState(0);
   const [currentProjectId, setCurrentProjectId] = React.useState<string | null>(null);
   const [indexedDBProjects, setIndexedDBProjects] = React.useState<StoredProject[]>([]);
@@ -1395,7 +1381,7 @@ function CanvasDemoContent() {
         onStop={timerRecord.stopNow}
         os={preferences.operatingSystem}
       />
-      <ToastContainer position="top-right" top={toastTop} />
+      <ToastContainer position="bottom-right" />
 
       <Dialog
         isOpen={cloudLoadProgress !== null}
