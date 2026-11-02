@@ -108,35 +108,29 @@ function CanvasDemoContent() {
   const [scrollY, setScrollY] = React.useState(0);
   const welcomeDialog = useWelcomeDialog();
   const [activeMenuItem, setActiveMenuItem] = React.useState<'home' | 'project' | 'export' | 'debug'>('home');
-  // The notifications' FRAME FITS BETWEEN THE TOOLBAR AND THE STATUS BAR
-  // (2026-11-02, "I'd rather the frame fit between the toolbar and the
-  // bottom toolbar" — scrolled cards were being cut off over the transport
-  // toolbar): it starts 12px under the TRANSPORT toolbar and stops 12px
-  // above the status bar, 12px from the window's right edge, so a card is
-  // only ever cut off at those two edges. It hung 12px under the bar that
-  // holds the bell until then, over the transport toolbar's right end.
-  // Measured, since the toolbars wrap with the window's width and change
-  // with the workspace; 12px from the top-right corner on the home screen
-  // BOTH EDGES ARE MEASURED: the bottom from the status bar's real top, not
-  // a guess at its height (the same day, "nope, it's miles off!" — in the
-  // Electron shell the status bar is not the window's last 40px, and a
-  // fixed inset ran the stack under it)
+  // The notifications SIT IN THE CANVAS AREA (2026-11-02, "I think the
+  // container just needs to sit in the canvas area" — after a frame between
+  // the transport toolbar and the status bar that still crossed the ruler
+  // and the vertical rulers): 12px in from the canvas's top, right and
+  // bottom edges, measured from `.canvas-scroll-container` (below the
+  // timeline ruler, left of the vertical rulers, above the status bar) on a
+  // ResizeObserver and on window resize. 12px from the window's top-right
+  // corner where there is no canvas (the home screen)
   const [toastAnchor, setToastAnchor] = React.useState<{ top: number; right: number; bottomInset: number }>({ top: 12, right: 12, bottomInset: 12 });
   React.useLayoutEffect(() => {
-    const toolbar = document.querySelector<HTMLElement>('.transport-toolbar')
-      ?? document.querySelector<HTMLElement>('[data-notification-bell]')?.closest<HTMLElement>('.project-toolbar')
-      ?? null;
-    const statusBar = document.querySelector<HTMLElement>('.selection-toolbar');
-    const measure = () => setToastAnchor({
-      top: toolbar ? Math.round(toolbar.getBoundingClientRect().bottom) + 12 : 12,
-      right: 12,
-      bottomInset: statusBar ? Math.round(window.innerHeight - statusBar.getBoundingClientRect().top) + 12 : 12,
-    });
+    const canvas = document.querySelector<HTMLElement>('.canvas-scroll-container');
+    const measure = () => {
+      if (!canvas) { setToastAnchor({ top: 12, right: 12, bottomInset: 12 }); return; }
+      const r = canvas.getBoundingClientRect();
+      setToastAnchor({
+        top: Math.round(r.top) + 12,
+        right: Math.round(window.innerWidth - r.right) + 12,
+        bottomInset: Math.round(window.innerHeight - r.bottom) + 12,
+      });
+    };
     measure();
-    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
-    if (toolbar) observer?.observe(toolbar);
-    if (statusBar) observer?.observe(statusBar);
-    observer?.observe(document.documentElement);
+    const observer = canvas && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    if (canvas) observer?.observe(canvas);
     window.addEventListener('resize', measure);
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   }, [activeMenuItem]);
@@ -1413,7 +1407,7 @@ function CanvasDemoContent() {
         onStop={timerRecord.stopNow}
         os={preferences.operatingSystem}
       />
-      {/* The frame stops 12px above the status bar — both edges measured */}
+      {/* Inside the canvas area, 12px from its edges — measured */}
       <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} bottomInset={toastAnchor.bottomInset} />
 
       <Dialog
