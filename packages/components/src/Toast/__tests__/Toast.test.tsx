@@ -89,7 +89,7 @@ describe('Toast — the Figma toast: two heights, 64 and 128 (2026-11-02)', () =
 
   it('text is never clipped: an over-long description is shown in full and a warning names the toast', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const scroll = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(48);
+    const scroll = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(60);
     const { container } = renderToast({ description: 'A very long description that runs to three lines.' });
     expect(container.querySelector('.toast__description')?.textContent).toBe('A very long description that runs to three lines.');
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('"Project saved"'));
