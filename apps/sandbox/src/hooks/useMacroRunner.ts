@@ -19,13 +19,13 @@ export function useMacroRunner() {
     if (!macro) return;
     const { applied, simulated } = runMacroSteps(macro, state, dispatch);
     if (applied.length === 0 && simulated.length === 0) {
-      toast.info(`"${macro.name}" has no steps`, 'Add commands in the macro editor first.');
+      toast.info('Nothing to run', `"${macro.name}" has no steps. Add commands in the macro editor first`);
       return;
     }
     const parts: string[] = [];
-    if (applied.length > 0) parts.push(`${applied.length} step${applied.length === 1 ? '' : 's'} applied`);
+    if (applied.length > 0) parts.push(`${applied.length} step${applied.length === 1 ? '' : 's'} done`);
     if (simulated.length > 0) parts.push(`${simulated.length} simulated (${simulated.join(', ')})`);
-    toast.success(`Ran "${macro.name}"`, `${parts.join('; ')}.`);
+    toast.success('Macro finished', `"${macro.name}": ${parts.join('; ')}`);
   };
 
   return { runOnProject };

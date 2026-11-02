@@ -111,7 +111,7 @@ describe('useTimerRecord (2026-10-19): armed → recording → idle, the bar tol
       await act(async () => { vi.advanceTimersByTime(10); });
       expect(success).toHaveBeenCalledTimes(1);
       expect(error).toHaveBeenCalledTimes(1);
-      expect(error.mock.calls[0]).toEqual(['Timed recording', 'No audio clips to mix down']);
+      expect(error.mock.calls[0]).toEqual(['Timed recording failed', 'No audio clips to mix down']);
     } finally {
       success.mockRestore();
       error.mockRestore();

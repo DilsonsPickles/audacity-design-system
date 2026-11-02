@@ -186,10 +186,10 @@ export function ClipPropertiesDockPanel({ placement = 'start', layout = 'stack' 
         downloadBlob(blob, fileName);
         names.push(fileName);
       }
-      const asWav = format === 'wav' ? '' : ` ${format.toUpperCase()} encoding is not in the prototype; rendered as WAV.`;
-      toast.success(names.length === 1 ? 'Clip exported' : `${names.length} clips exported`, `${names.join(', ')}.${asWav}`);
+      const asWav = format === 'wav' ? '' : `. ${format.toUpperCase()} encoding is not in the prototype, so it was rendered as WAV`;
+      toast.success(names.length === 1 ? 'Clip exported' : `${names.length} clips exported`, `${names.map((n) => `Downloads/${n}`).join(', ')}${asWav}`);
     } catch (err) {
-      toast.error('Export failed', err instanceof Error ? err.message : 'Unknown error');
+      toast.error('Export failed', err instanceof Error ? err.message : 'Try again');
     } finally {
       setExporting(false);
     }

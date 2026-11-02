@@ -104,7 +104,7 @@ export function useTimerRecord({ isRecording, onStartRecording, onStopRecording,
         toast.success('Timed recording complete', `Recorded ${formatDurationText(endedAt - s.startAt)}, ${clockTime(s.startAt)} to ${clockTime(endedAt)}`);
         if (completeRef.current) await completeRef.current(s);
       } catch (err) {
-        toast.error('Timed recording', err instanceof Error ? err.message : String(err));
+        toast.error('Timed recording failed', err instanceof Error ? err.message : String(err));
       }
     })();
   }, []);

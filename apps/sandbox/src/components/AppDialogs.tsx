@@ -339,7 +339,7 @@ export function AppDialogs(props: AppDialogsProps) {
             secondaryText="Cancel"
             onPrimaryClick={() => {
               if (!projectName.trim()) {
-                toast.error('Please enter a track title');
+                toast.error('Title needed', 'Give the track a title before sharing it');
                 return;
               }
               if (!adieuSignedIn) {
@@ -351,13 +351,13 @@ export function AppDialogs(props: AppDialogsProps) {
                 dialogs.setIsShareDialogOpen(false);
                 dialogs.setIsSyncingDialogOpen(true);
 
-                const mixdownToastId = toast.progress('Mixing down audio...');
+                const mixdownToastId = toast.progress('Mixing down audio…');
 
                 (async () => {
                   try {
                     const { blob, duration, waveformData } = await audioManagerRef.current.mixdown(tracks);
 
-                    toast.updateProgress(mixdownToastId, 50, 'Uploading to cloud...');
+                    toast.updateProgress(mixdownToastId, 50, 'Uploading to audio.com…');
 
                     await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -387,15 +387,15 @@ export function AppDialogs(props: AppDialogsProps) {
                     setTimeout(() => {
                       toast.dismiss(mixdownToastId);
                       toast.success(
-                        'Audio shared to cloud!',
-                        'Your mixdown is available in Cloud audio files.',
+                        'Audio shared',
+                        'The mixdown is in Cloud audio files on audio.com',
                         [{ label: 'View on audio.com', onClick: () => openAdieu('/projects') }],
                         0
                       );
                     }, 200);
                   } catch (err) {
                     toast.dismiss(mixdownToastId);
-                    toast.error(`Mixdown failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+                    toast.error('Share failed', err instanceof Error ? err.message : 'Try again');
                   }
                 })();
               }
@@ -441,7 +441,7 @@ export function AppDialogs(props: AppDialogsProps) {
             onPrimaryClick={async () => {
               const title = cloudProjectName.trim();
               if (!title) {
-                toast.error('Please enter a project name');
+                toast.error('Name needed', 'Give the project a name before saving it');
                 return;
               }
 
@@ -453,9 +453,7 @@ export function AppDialogs(props: AppDialogsProps) {
                   await adieuSignIn();
                 } catch (err) {
                   if (err instanceof SignInCancelledError) return;
-                  toast.error(
-                    `Sign-in failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
-                  );
+                  toast.error('Sign-in failed', err instanceof Error ? err.message : 'Try again');
                   return;
                 }
               }
@@ -549,8 +547,8 @@ export function AppDialogs(props: AppDialogsProps) {
                 dialogs.setIsSyncingDialogOpen(false);
 
                 toast.success(
-                  'Project saved to cloud!',
-                  'All saved changes will sync to audio.com. Access from any device.',
+                  'Project saved',
+                  'Saves now sync to audio.com, so you can open it on any device',
                   [{
                     label: 'View on audio.com',
                     onClick: () => openAdieu(`/projects/${encodeURIComponent(projectId)}`),
@@ -561,9 +559,7 @@ export function AppDialogs(props: AppDialogsProps) {
                 toast.dismiss(uploadToastId);
                 setIsCloudUploading(false);
                 dialogs.setIsSyncingDialogOpen(false); // F4 — error path too
-                toast.error(
-                  `Upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
-                );
+                toast.error('Upload failed', err instanceof Error ? err.message : 'Try again');
               }
             }}
             onSecondaryClick={() => {

@@ -133,7 +133,7 @@ export const MuseIdAccountsPage: React.FC = () => {
     try {
       const status = await museId.linkByEmailVerify(service, email.trim(), code.trim());
       if (status === 'linked') {
-        toast.success('Linked', `${SERVICE_LABELS[service]} is now connected to your Muse ID.`);
+        toast.success('Account linked', `${SERVICE_LABELS[service]} is connected to your Muse ID`);
         setEmailLinkFlow(null);
       } else {
         // 'no_account' — ownership of the email was proven but there's

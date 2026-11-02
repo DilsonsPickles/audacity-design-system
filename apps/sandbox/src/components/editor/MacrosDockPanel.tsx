@@ -58,15 +58,15 @@ export function MacrosDockPanel({ placement = 'start' }: MacrosDockPanelProps = 
         try {
           parsed = JSON.parse(text);
         } catch {
-          toast.error('Import failed', `${file.name} is not valid JSON.`);
+          toast.error('Import failed', `${file.name} is not valid JSON`);
           return;
         }
         if (!isImportedMacro(parsed)) {
-          toast.error('Import failed', `${file.name} does not look like an exported macro.`);
+          toast.error('Import failed', `${file.name} does not look like an exported macro`);
           return;
         }
         importMacro(parsed);
-        toast.success('Macro imported', `"${parsed.name}" was added to your macros.`);
+        toast.success('Macro imported', `"${parsed.name}" is in your macros`);
       });
     };
     input.click();

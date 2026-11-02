@@ -222,7 +222,7 @@ export const toast = {
     return id;
   },
 
-  syncing(title: string = 'Syncing to audio.com...', initialProgress = 0) {
+  syncing(title: string = 'Syncing to audio.com…', initialProgress = 0) {
     const id = this.show({
       type: 'syncing',
       title,

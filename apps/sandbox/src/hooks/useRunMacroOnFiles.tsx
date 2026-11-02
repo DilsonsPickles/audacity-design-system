@@ -25,7 +25,7 @@ export function useRunMacroOnFiles() {
     const macro = macros.find((m) => m.id === macroId);
     if (!macro) return;
     if (macro.steps.length === 0) {
-      toast.info(`"${macro.name}" has no steps`, 'Add commands in the macro editor first.');
+      toast.info('Nothing to run', `"${macro.name}" has no steps. Add commands in the macro editor first`);
       return;
     }
     // No accept filter: the real product would filter to project files
@@ -62,8 +62,8 @@ export function useRunMacroOnFiles() {
         // ONE batch-level toast — with 50 files, per-file toasts
         // would be noise; per-file feedback lives in the window.
         toast.success(
-          `Applied "${macro.name}"`,
-          `${macro.steps.length} step${macro.steps.length === 1 ? '' : 's'} applied to ${fileIds.length} file${fileIds.length === 1 ? '' : 's'} (simulated).`,
+          'Macro applied',
+          `"${macro.name}": ${macro.steps.length} step${macro.steps.length === 1 ? '' : 's'} on ${fileIds.length} file${fileIds.length === 1 ? '' : 's'} (simulated)`,
         );
       }}
       os={operatingSystem}

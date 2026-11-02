@@ -36,7 +36,7 @@ export async function saveCloudProject({
       await adieuSignIn();
     } catch (err) {
       if (err instanceof SignInCancelledError) return;
-      toast.error(`Sign-in failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      toast.error('Sign-in failed', err instanceof Error ? err.message : 'Try again');
       return;
     }
   }
@@ -107,9 +107,9 @@ export async function saveCloudProject({
 
     toast.updateProgress(syncToastId, 100, 'Done');
     setTimeout(() => toast.dismiss(syncToastId), 400);
-    toast.success('Saved to audio.com');
+    toast.success('Project saved', `${title} on audio.com`);
   } catch (err) {
     toast.dismiss(syncToastId);
-    toast.error(`Save failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    toast.error('Save failed', err instanceof Error ? err.message : 'Try again');
   }
 }

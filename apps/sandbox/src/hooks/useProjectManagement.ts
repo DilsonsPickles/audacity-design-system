@@ -78,14 +78,14 @@ export function useProjectManagement(options: UseProjectManagementOptions): UseP
   // stays current.
   const handleSaveToComputer = useCallback(async () => {
     if (!currentProjectId) {
-      toast.error('No project open');
+      toast.error('Download failed', 'There is no project open');
       return;
     }
 
     try {
       const project = await getProject(currentProjectId);
       if (!project) {
-        toast.error('Project not found');
+        toast.error('Download failed', 'The project could not be found on this computer');
         return;
       }
 
@@ -146,7 +146,7 @@ export function useProjectManagement(options: UseProjectManagementOptions): UseP
       toast.success('Project downloaded', `Downloads/${projectFileName(title)}`);
     } catch (error) {
       console.error('Error saving project:', error);
-      toast.error('Failed to save project');
+      toast.error('Download failed', 'The project file could not be written. Try again');
     }
   }, [currentProjectId, state.tracks, state.masterEffects, state.playheadPosition, scrollContainerRef, audioManagerRef]);
 
@@ -187,12 +187,12 @@ export function useProjectManagement(options: UseProjectManagementOptions): UseP
         dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: bundle.playheadPosition });
         if (audioManager) audioManager.loadClips(bundle.tracks as TracksState['tracks'], 0);
 
-        toast.success('Project opened');
+        toast.success('Project opened', bundle.title || file.name);
         return projectId;
       } catch (error) {
         console.error('Error opening project file:', error);
-        const message = error instanceof Error ? error.message : 'Could not open project file';
-        toast.error(message);
+        const message = error instanceof Error ? error.message : 'The file could not be read as a project';
+        toast.error('Open failed', message);
         return null;
       }
     },

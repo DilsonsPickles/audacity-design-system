@@ -18,22 +18,22 @@ export function importAudio({ state, dispatch, audioManagerRef }: ImportAudioDep
     const file = input.files?.[0];
     if (!file) return;
 
-    const toastId = toast.progress(`Importing ${file.name}...`);
+    const toastId = toast.progress(`Importing ${file.name}…`);
 
     try {
       const audioManager = audioManagerRef.current;
       await audioManager.initialize();
 
-      toast.updateProgress(toastId, 20, 'Reading file...');
+      toast.updateProgress(toastId, 20, 'Reading file…');
       const arrayBuffer = await file.arrayBuffer();
 
-      toast.updateProgress(toastId, 40, 'Decoding audio...');
+      toast.updateProgress(toastId, 40, 'Decoding audio…');
       // Use a fresh AudioContext for decoding to avoid issues with Tone.js context state
       const decodeCtx = new AudioContext();
       const audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
       await decodeCtx.close();
 
-      toast.updateProgress(toastId, 70, 'Building waveform...');
+      toast.updateProgress(toastId, 70, 'Building waveform…');
       const duration = audioBuffer.duration;
       const isStereo = audioBuffer.numberOfChannels >= 2;
 
@@ -46,7 +46,7 @@ export function importAudio({ state, dispatch, audioManagerRef }: ImportAudioDep
       }
       if (trackIndex === -1) {
         toast.dismiss(toastId);
-        toast.error('No audio track available');
+        toast.error('Import failed', 'There is no audio track to put it on. Add one, then import again');
         return;
       }
 
@@ -101,11 +101,11 @@ export function importAudio({ state, dispatch, audioManagerRef }: ImportAudioDep
         toast.dismiss(toastId);
         const mins = Math.floor(duration / 60);
         const secs = Math.floor(duration % 60);
-        toast.success('Import complete', `${clipName} (${mins}:${secs.toString().padStart(2, '0')}) added to track`);
+        toast.success('Audio imported', `${clipName} (${mins}:${secs.toString().padStart(2, '0')}) on ${state.tracks[trackIndex]?.name ?? 'the track'}`);
       }, 500);
     } catch (err) {
       toast.dismiss(toastId);
-      toast.error('Import failed', err instanceof Error ? err.message : 'Could not decode audio file');
+      toast.error('Import failed', err instanceof Error ? err.message : 'The file could not be read as audio');
     }
   };
   input.click();

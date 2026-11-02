@@ -644,7 +644,7 @@ export function notifyPendingServiceAdoptFailure(): void {
   const names = services.map((s) => SERVICE_LABELS[s]).join(', ');
   toast.warning(
     'Signed in to Muse ID',
-    `Couldn't connect: ${names} — try again from Accounts`,
+    `${names} did not connect. Try again from Accounts`,
   );
 }
 

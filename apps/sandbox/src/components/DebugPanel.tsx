@@ -97,22 +97,23 @@ function fireToastSet() {
   const noop = () => {};
   const steps: Array<() => void> = [
     // COMPACT, timed — 64, 80
-    () => toast.success('Import complete', 'Kick.wav (0:12) added to Drums', undefined, TOAST_SET_TIMED_MS),
+    () => toast.success('Audio imported', 'Kick.wav (0:12) on Drums', undefined, TOAST_SET_TIMED_MS),
     () => toast.info(
       'Project saved locally',
       'Changes are kept on this computer until you sign in to audio.com and save the project there',
       undefined,
       TOAST_SET_TIMED_MS,
     ),
-    // COMPACT, title only — held at 64
-    () => toast.success('Saved to audio.com', undefined, undefined, TOAST_SET_TIMED_MS),
+    // COMPACT, title only — held at 64 (the app's own copy always has a
+    // second line; these show the floor)
+    () => toast.success('Project saved', undefined, undefined, TOAST_SET_TIMED_MS),
     // COMPACT, persistent — 64, 80, a title-only one, and a wrapped title (80)
     () => toast.error('Save failed', 'Could not reach audio.com'),
     () => toast.error(
       'Export failed',
       'The disk is full. Free some space on the drive holding your project, then export again',
     ),
-    () => toast.error('No project open'),
+    () => toast.error('Download failed'),
     () => toast.warning(
       'Some effects could not be loaded because their plug-ins are missing from this computer',
       'Open the effect manager to find them',
@@ -695,7 +696,7 @@ export function DebugPanel({
             <Button
               variant="secondary"
               size="default"
-              onClick={() => toast.success('Import complete', 'Kick.wav (0:12) added to track')}
+              onClick={() => toast.success('Audio imported', 'Kick.wav (0:12) on Drums')}
             >
               Success (5s)
             </Button>
