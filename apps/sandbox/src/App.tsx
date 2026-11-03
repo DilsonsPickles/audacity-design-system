@@ -46,6 +46,7 @@ import { RecordingManager } from './utils/RecordingManager';
 import { computeFitTrackHeight, buildNewTrack } from './utils/trackManagement';
 import { handlePaste } from './hooks/handlers/clipboardHandlers';
 import type { TrackType } from '@audacity-ui/components';
+import { resolveTracksImOn as resolveTracksImOnRule } from './utils/tracksImOn';
 import { collapseTracks, expandTracks, resetTracks, type HeightMemory, type HeightUpdate } from './utils/trackHeightMemory';
 import { effectiveTrackStride } from './utils/trackFolders';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from './constants/canvas';
@@ -584,16 +585,15 @@ function CanvasDemoContent() {
   // wrong track with a clip focused, and nothing at all in a project
   // with no track focus: "I promise it doesn't work, expand all does"),
   // then the focused track, then the selected tracks, then every track.
+  // A focused track INSIDE the selection takes the whole selection
+  // (2026-11-04) — utils/tracksImOn.ts has the rule.
   const resolveTracksImOn = React.useCallback((): number[] => {
-    const all = state.tracks.map((_, i) => i);
     const active = document.activeElement as HTMLElement | null;
     const fromClip = active?.closest<HTMLElement>('[data-track-index]')?.getAttribute('data-track-index');
     const fromPanel = active?.closest<HTMLElement>('[data-track-panel-index]')?.getAttribute('data-track-panel-index');
     const fromDom = fromClip ?? fromPanel;
-    if (fromDom !== null && fromDom !== undefined && state.tracks[Number(fromDom)]) return [Number(fromDom)];
-    if (state.focusedTrackIndex !== null && state.focusedTrackIndex !== undefined && state.tracks[state.focusedTrackIndex]) return [state.focusedTrackIndex];
-    if (state.selectedTrackIndices.length > 0) return state.selectedTrackIndices;
-    return all;
+    const domIndex = fromDom !== null && fromDom !== undefined && state.tracks[Number(fromDom)] ? Number(fromDom) : null;
+    return resolveTracksImOnRule(state.tracks.length, domIndex ?? state.focusedTrackIndex, state.selectedTrackIndices);
   }, [state.tracks, state.focusedTrackIndex, state.selectedTrackIndices]);
   const handleTrackHeightStep = React.useCallback((delta: number, scope: 'focused' | 'all') => {
     const targets = scope === 'all' ? state.tracks.map((_, i) => i) : resolveTracksImOn();
