@@ -24,6 +24,34 @@ export class RecordingManager {
   private recorder: Tone.Recorder | null = null;
   private meter: Tone.Meter | null = null;
   private userMedia: Tone.UserMedia | null = null;
+  // THE INPUT GAIN (2026-11-04, the toolbar's Microphone level flyout —
+  // "Adjust the level of your OS configured microphone"): a browser cannot
+  // set the OS input level, so the mic runs through this gain before the
+  // meter, the waveform and the recorder — what the meter shows is what is
+  // recorded. One microphone, so one value for every manager (`static`),
+  // applied to any live one when it changes and to each new chain.
+  private inputGain: Tone.Gain | null = null;
+  private static inputGainValue = 1;
+  private static live = new Set<RecordingManager>();
+
+  /** Set the microphone's input gain (linear, 1 = as the OS delivers it) */
+  static setInputGain(value: number): void {
+    RecordingManager.inputGainValue = value;
+    for (const manager of RecordingManager.live) {
+      if (manager.inputGain) manager.inputGain.gain.value = value;
+    }
+  }
+
+  static getInputGain(): number {
+    return RecordingManager.inputGainValue;
+  }
+
+  /** The input's current level in dB after the gain, or null while the mic is closed */
+  getInputLevelDb(): number | null {
+    if (!this.meter) return null;
+    const value = this.meter.getValue() as number; // justified: Meter.getValue(): number | number[] — meter is constructed single-channel
+    return Number.isFinite(value) ? value : -Infinity;
+  }
   private waveform: Tone.Waveform | null = null;
   private meterUpdateInterval: number | null = null;
   private waveformUpdateInterval: number | null = null;
@@ -59,15 +87,20 @@ export class RecordingManager {
       // Wait for mic to be ready
       await new Promise(resolve => setTimeout(resolve, 100));
 
+      // The input gain sits first, so everything below hears it
+      this.inputGain = new Tone.Gain(RecordingManager.inputGainValue);
+      this.userMedia.connect(this.inputGain);
+
       // Create meter for level monitoring
       this.meter = new Tone.Meter({ normalRange: false, smoothing: 0.8 });
-      this.userMedia.connect(this.meter);
+      this.inputGain.connect(this.meter);
 
       // Create Tone.Waveform for waveform data (2048 samples)
       this.waveform = new Tone.Waveform(2048);
-      this.userMedia.connect(this.waveform);
+      this.inputGain.connect(this.waveform);
 
       this.isMonitoring = true;
+      RecordingManager.live.add(this);
 
       // Start meter updates
       this.meterUpdateInterval = window.setInterval(() => {
@@ -169,6 +202,12 @@ export class RecordingManager {
       this.userMedia = null;
     }
 
+    if (this.inputGain) {
+      this.inputGain.dispose();
+      this.inputGain = null;
+    }
+    RecordingManager.live.delete(this);
+
     if (this.meter) {
       this.meter.dispose();
       this.meter = null;
@@ -190,10 +229,10 @@ export class RecordingManager {
       this.recordedRms = [];
       this.lastDispatchAt = 0;
 
-      // Create recorder and connect to existing userMedia
+      // Create recorder and connect it after the input gain
       if (this.userMedia) {
         this.recorder = new Tone.Recorder();
-        this.userMedia.connect(this.recorder);
+        (this.inputGain ?? this.userMedia).connect(this.recorder);
 
         // Start recording
         this.recorder.start();

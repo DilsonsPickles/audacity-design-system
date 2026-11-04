@@ -466,6 +466,13 @@ function CanvasDemoContent() {
 
   // Playback controls
   const recordingManagerRef = React.useRef<RecordingManager | null>(null);
+  // The microphone button's flyout (2026-11-04): the input gain, one value
+  // for the one microphone — RecordingManager applies it to every chain
+  const [microphoneGain, setMicrophoneGain] = React.useState(() => RecordingManager.getInputGain());
+  const handleMicrophoneGainChange = React.useCallback((gain: number) => {
+    RecordingManager.setInputGain(gain);
+    setMicrophoneGain(gain);
+  }, []);
   const playback = usePlaybackControls({
     state, dispatch, recordingManagerRef, scrollContainerRef,
     pixelsPerSecond, updateDisplayWhilePlaying, pinnedPlayHead, isProgrammaticScrollRef,
@@ -989,6 +996,12 @@ function CanvasDemoContent() {
       onVarispeedChange: playback.setVarispeed,
       onVarispeedDial: playback.dialVarispeed,
       onVarispeedToggle: playback.setVarispeedOn,
+      getMicrophoneLevelDb: () => recordingManagerRef.current?.getInputLevelDb() ?? null,
+      microphoneGain,
+      onMicrophoneGainChange: handleMicrophoneGainChange,
+      // Opening the flyout opens the microphone if monitoring has not (a
+      // denied or never-asked permission is asked again, on a press)
+      onMicrophoneLevelsOpen: () => { void recordingManagerRef.current?.startMonitoring().catch(() => {}); },
       isPlaying,
       isRecording: state.isRecording,
       onPlay: handlePlay,

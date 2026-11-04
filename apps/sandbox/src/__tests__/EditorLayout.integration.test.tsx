@@ -49,6 +49,13 @@ vi.mock('../utils/RecordingManager', () => ({
       return false;
     }
     dispose(): void {}
+    getInputLevelDb(): number | null {
+      return null;
+    }
+    static setInputGain(): void {}
+    static getInputGain(): number {
+      return 1;
+    }
     static async getAudioInputDevices(): Promise<MediaDeviceInfo[]> {
       return [];
     }

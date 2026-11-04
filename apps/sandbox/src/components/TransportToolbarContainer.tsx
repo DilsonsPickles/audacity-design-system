@@ -17,6 +17,7 @@ export type TransportToolbarContainerTransport = Pick<TransportToolbarProps,
   | 'onZoomIn' | 'onZoomOut' | 'onZoomToSelection' | 'onZoomToFitProject' | 'onZoomToggle' | 'onCollapseTracks' | 'onExpandTracks' | 'onFitTracksToHeight'
   | 'onShareClick' | 'onExportAudioClick' | 'onExportLoopRegionClick'
   | 'varispeed' | 'varispeedOn' | 'onVarispeedChange' | 'onVarispeedDial' | 'onVarispeedToggle'
+  | 'getMicrophoneLevelDb' | 'microphoneGain' | 'onMicrophoneGainChange' | 'onMicrophoneLevelsOpen'
 >;
 
 export type TransportToolbarContainerSnap = Pick<TransportToolbarProps,

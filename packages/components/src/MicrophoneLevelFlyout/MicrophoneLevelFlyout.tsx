@@ -1,0 +1,105 @@
+/**
+ * MicrophoneLevelFlyout — the toolbar's microphone button opens it (the
+ * Figma "MicrophoneLevel", 04 - Main toolbar 2072:26892; 2026-11-04, "it's a
+ * flyout when you click on the microphone levels button in the toolbar"):
+ * "Microphone level", the input meter with its level knob in a bordered
+ * well, and "Adjust the level of your OS configured microphone" — a
+ * `Flyout` hung under the button, its arrow on the button's middle, 360
+ * wide. The meter is the toolbar's own `MasterMeter`, fixed width.
+ *
+ * The level is READ, not passed: `getLevelDb` is polled once a frame while
+ * the flyout is open, so a live meter re-renders the flyout alone, never
+ * the toolbar it hangs from. The mic is one channel, so both rows read it;
+ * the tick is the recent peak, held 1.5 s.
+ */
+import React from 'react';
+import { useTheme } from '../ThemeProvider';
+import { Flyout } from '../Flyout';
+import { MasterMeter } from '../MasterMeter';
+import './MicrophoneLevelFlyout.css';
+
+export interface MicrophoneLevelFlyoutProps {
+  isOpen: boolean;
+  onClose: () => void;
+  /** Anchor — the button's horizontal middle and its bottom edge, viewport px */
+  x: number;
+  y: number;
+  /** The button, for focus to return to on Escape */
+  triggerRef?: React.RefObject<HTMLElement>;
+  /** The input level in dB right now (null = no microphone open) — polled each frame */
+  getLevelDb?: () => number | null;
+  /** The input gain, linear (1 = as the OS delivers it) */
+  gain: number;
+  onGainChange: (gain: number) => void;
+}
+
+const PEAK_HOLD_MS = 1500;
+const DB_FLOOR = -60;
+
+export function MicrophoneLevelFlyout({
+  isOpen, onClose, x, y, triggerRef, getLevelDb, gain, onGainChange,
+}: MicrophoneLevelFlyoutProps) {
+  const { theme } = useTheme();
+  const [level, setLevel] = React.useState(DB_FLOOR);
+  const [peak, setPeak] = React.useState<number | undefined>(undefined);
+  const getLevelRef = React.useRef(getLevelDb);
+  getLevelRef.current = getLevelDb;
+
+  React.useEffect(() => {
+    if (!isOpen || typeof requestAnimationFrame !== 'function') return;
+    let frame = 0;
+    let held = DB_FLOOR;
+    let heldAt = 0;
+    const tick = (now: number) => {
+      const db = getLevelRef.current?.() ?? null;
+      const current = db === null ? DB_FLOOR : Math.max(DB_FLOOR, db);
+      if (current >= held || now - heldAt > PEAK_HOLD_MS) { held = current; heldAt = now; }
+      setLevel(current);
+      setPeak(held > DB_FLOOR ? held : undefined);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [isOpen]);
+
+  const style = {
+    '--mlf-text': theme.foreground.text.primary,
+    '--mlf-border': theme.border.default,
+  } as React.CSSProperties;
+
+  return (
+    <Flyout
+      isOpen={isOpen}
+      onClose={onClose}
+      x={x}
+      y={y}
+      direction="down"
+      triggerRef={triggerRef}
+      ariaLabel="Microphone level"
+      className="microphone-level-flyout"
+      style={style}
+    >
+      <div className="microphone-level-flyout__body">
+        <div className="microphone-level-flyout__title">Microphone level</div>
+        <div className="microphone-level-flyout__well">
+          <MasterMeter
+            levelLeft={level}
+            levelRight={level}
+            clippedLeft={level >= 0}
+            clippedRight={level >= 0}
+            recentPeakLeft={peak}
+            recentPeakRight={peak}
+            volume={gain}
+            onVolumeChange={onGainChange}
+            resizable={false}
+            ariaLabel="Microphone meter"
+            sliderAriaLabel="Microphone level"
+          />
+        </div>
+        <div className="microphone-level-flyout__hint">Adjust the level of your OS configured microphone</div>
+      </div>
+    </Flyout>
+  );
+}
+
+export default MicrophoneLevelFlyout;

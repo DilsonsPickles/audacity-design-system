@@ -1,0 +1,31 @@
+/* The Figma "MicrophoneLevel" (04 - Main toolbar 2072:26892): 360 × 116,
+   12 in, 8 between the title, the meter's well and the hint. Figma's
+   strokes are INSIDE the shape, so the card's 1px border is within the 12
+   (11 of padding) and the well's stroke takes no room (an inset shadow) */
+.flyout.microphone-level-flyout {
+  width: 360px;
+  box-sizing: border-box;
+}
+
+.microphone-level-flyout__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px;
+}
+
+.microphone-level-flyout__title,
+.microphone-level-flyout__hint {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--mlf-text, #14151a);
+}
+
+/* The meter's well: 8 above and below, 12 either side, its border at half
+   strength */
+.microphone-level-flyout__well {
+  padding: 8px 12px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--mlf-border, #d4d5d9) 50%, transparent);
+  border-radius: 2px;
+}

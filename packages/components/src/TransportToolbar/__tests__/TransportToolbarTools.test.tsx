@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, cleanup } from '@testing-library/react';
-import { describe, it, expect, afterEach } from 'vitest';
+import { render, cleanup, fireEvent } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { TransportToolbar, type TransportToolbarProps, type Workspace } from '../TransportToolbar';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 import { AccessibilityProfileProvider } from '../../contexts/AccessibilityProfileContext';
@@ -45,10 +45,10 @@ const propsFor = (workspace: Workspace, hiddenTools: string[]): TransportToolbar
   onExportLoopRegionClick: noop,
 });
 
-const renderToolbar = (workspace: Workspace, hiddenTools: string[]) => render(
+const renderToolbar = (workspace: Workspace, hiddenTools: string[], extra: Partial<TransportToolbarProps> = {}) => render(
   <ThemeProvider>
     <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
-      <TransportToolbar {...propsFor(workspace, hiddenTools)} />
+      <TransportToolbar {...propsFor(workspace, hiddenTools)} {...extra} />
     </AccessibilityProfileProvider>
   </ThemeProvider>,
 );
@@ -74,5 +74,18 @@ describe('time signature is a Customise-toolbar tool in every workspace (2026-11
   it('gone when its row is off', () => {
     const { container } = renderToolbar('music', ['time-signature']);
     expect(container.querySelector('[aria-label="Time signature"]')).toBeNull();
+  });
+});
+
+describe('the microphone button opens the Microphone level flyout (2026-11-04)', () => {
+  it('a press opens it and asks the host to open the mic; a second press closes it', () => {
+    const onMicrophoneLevelsOpen = vi.fn();
+    const { container } = renderToolbar('classic', [], { onMicrophoneLevelsOpen });
+    const button = container.querySelector('button[aria-label="Microphone level"]') as HTMLElement;
+    fireEvent.click(button);
+    expect(document.querySelector('.microphone-level-flyout')).toBeTruthy();
+    expect(onMicrophoneLevelsOpen).toHaveBeenCalledTimes(1);
+    fireEvent.click(button);
+    expect(document.querySelector('.microphone-level-flyout')).toBeNull();
   });
 });

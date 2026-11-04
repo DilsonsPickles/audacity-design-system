@@ -15,6 +15,7 @@ import { VarispeedControl } from '../VarispeedControl';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { Checkbox } from '../Checkbox';
 import { MasterMeter } from '../MasterMeter';
+import { MicrophoneLevelFlyout } from '../MicrophoneLevelFlyout';
 import { useTheme } from '../ThemeProvider';
 import type { SnapGrid } from '@audacity-ui/core';
 
@@ -131,6 +132,15 @@ export interface TransportToolbarProps {
   masterVolume?: number;
   onMasterVolumeChange?: (volume: number) => void;
 
+  /** The microphone button's flyout (2026-11-04): the input level in dB right
+   *  now, polled each frame while the flyout is open (null = no mic open) */
+  getMicrophoneLevelDb?: () => number | null;
+  /** The microphone's input gain, linear (1 = as the OS delivers it) */
+  microphoneGain?: number;
+  onMicrophoneGainChange?: (gain: number) => void;
+  /** The flyout opened — the host opens the microphone if it is not */
+  onMicrophoneLevelsOpen?: () => void;
+
   /**
    * Current orientation of the master meter. When 'vertical' the toolbar
    * hides the meter (the consumer renders it elsewhere, e.g. as a side
@@ -239,6 +249,7 @@ export function TransportToolbar({
   onShareClick, onExportAudioClick, onExportLoopRegionClick,
   masterLevelLeft = -60, masterLevelRight = -60, masterClippedLeft = false, masterClippedRight = false,
   masterRecentPeakLeft, masterRecentPeakRight, masterVolume = 1, onMasterVolumeChange,
+  getMicrophoneLevelDb, microphoneGain = 1, onMicrophoneGainChange, onMicrophoneLevelsOpen,
   meterOrientation: meterOrientationProp, onMeterOrientationChange,
 }: TransportToolbarProps) {
   const { theme } = useTheme();
@@ -254,6 +265,22 @@ export function TransportToolbar({
   const [volumeMenuOpen, setVolumeMenuOpen] = React.useState(false);
   const [volumeMenuPos, setVolumeMenuPos] = React.useState({ x: 0, y: 0 });
   const volumeButtonRef = React.useRef<HTMLDivElement>(null);
+  // The microphone button's flyout (2026-11-04) — anchored on the button's
+  // middle, just under it
+  const micButtonRef = React.useRef<HTMLSpanElement>(null);
+  const [micFlyout, setMicFlyout] = React.useState<{ x: number; y: number } | null>(null);
+  // A press on the button while the flyout is open closes it as an outside
+  // press first; the click that follows must not open it again
+  const micClosedAtRef = React.useRef(0);
+  const closeMicFlyout = () => { micClosedAtRef.current = performance.now(); setMicFlyout(null); };
+  const toggleMicFlyout = () => {
+    if (micFlyout) { setMicFlyout(null); return; }
+    if (performance.now() - micClosedAtRef.current < 300) return;
+    const rect = micButtonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setMicFlyout({ x: rect.left + rect.width / 2, y: rect.bottom + 4 });
+    onMicrophoneLevelsOpen?.();
+  };
   // The cog's Customise toolbar popover (2026-10-07) — hooks ABOVE the
   // Home-tab early return, with the rest
   const cogRef = React.useRef<HTMLSpanElement>(null);
@@ -785,7 +812,16 @@ export function TransportToolbar({
 
 
           <ToolbarButtonGroup gap={2}>
-            {show('microphone-levels') && <ToolButton icon="microphone" ariaLabel="Microphone settings" onClick={() => {}} />}
+            {show('microphone-levels') && (
+              <span ref={micButtonRef} style={{ display: 'inline-flex' }}>
+                <ToolButton
+                  icon="microphone"
+                  ariaLabel="Microphone level"
+                  state={micFlyout ? 'pressed' : undefined}
+                  onClick={toggleMicFlyout}
+                />
+              </span>
+            )}
           </ToolbarButtonGroup>
 
           {/* Playback meter cluster: the volume settings button hosts the
@@ -814,6 +850,17 @@ export function TransportToolbar({
             )}
           </ToolbarButtonGroup>
           )}
+
+          <MicrophoneLevelFlyout
+            isOpen={micFlyout !== null}
+            onClose={closeMicFlyout}
+            x={micFlyout?.x ?? 0}
+            y={micFlyout?.y ?? 0}
+            triggerRef={micButtonRef}
+            getLevelDb={getMicrophoneLevelDb}
+            gain={microphoneGain}
+            onGainChange={(next) => onMicrophoneGainChange?.(next)}
+          />
 
           <ContextMenu
             isOpen={volumeMenuOpen}

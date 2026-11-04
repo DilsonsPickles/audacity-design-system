@@ -40,6 +40,10 @@ export interface MasterMeterProps {
   onResizeMouseDown?: (event: React.MouseEvent) => void;
   /** Additional CSS class */
   className?: string;
+  /** Accessible name of the meter group. Default "Master playback meter" */
+  ariaLabel?: string;
+  /** Accessible name of the level slider. Default "Master volume" */
+  sliderAriaLabel?: string;
 }
 
 /** dB tick tiers, sparse → dense. The widest tier that fits without
@@ -86,6 +90,8 @@ export const MasterMeter: React.FC<MasterMeterProps> = ({
   resizable = true,
   onResizeMouseDown,
   className = '',
+  ariaLabel = 'Master playback meter',
+  sliderAriaLabel = 'Master volume',
 }) => {
   const { theme } = useTheme();
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -224,7 +230,7 @@ export const MasterMeter: React.FC<MasterMeterProps> = ({
       className={`master-meter ${className}`}
       style={style}
       role="group"
-      aria-label="Master playback meter"
+      aria-label={ariaLabel}
       tabIndex={0}
       onKeyDown={(e) => {
         // The toolbar's roving tab-index lands here on the component as a
@@ -281,7 +287,7 @@ export const MasterMeter: React.FC<MasterMeterProps> = ({
             className="master-meter__thumb"
             style={{ left: `${thumbPercent}%` }}
             role="slider"
-            aria-label="Master volume"
+            aria-label={sliderAriaLabel}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(volume * 100)}
