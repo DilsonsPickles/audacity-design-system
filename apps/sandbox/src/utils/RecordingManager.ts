@@ -1,4 +1,5 @@
 import * as Tone from 'tone';
+import { createMeterBallistics, dbToMeterPercent, type MeterBallistics } from './meterBallistics';
 
 // Window size used for the *live* recording RMS preview. Much smaller than
 // the offline 2048 window so we can recompute incrementally on each tick
@@ -13,7 +14,8 @@ const LIVE_DISPATCH_HZ = 15;
 const LIVE_DISPATCH_INTERVAL_MS = 1000 / LIVE_DISPATCH_HZ;
 
 export interface RecordingManagerCallbacks {
-  onMeterUpdate: (level: number, peak: number) => void;
+  /** level and the running max (0–100), and the recent peak the meters hold (0–100) */
+  onMeterUpdate: (level: number, peak: number, recentPeak: number) => void;
   onRecordingComplete: (audioBuffer: AudioBuffer) => void;
   onPlayheadUpdate: (position: number) => void;
   onWaveformUpdate?: (waveformData: number[]) => void;
@@ -31,6 +33,22 @@ export class RecordingManager {
   // recorded. One microphone, so one value for every manager (`static`),
   // applied to any live one when it changes and to each new chain.
   private inputGain: Tone.Gain | null = null;
+  // The meters' ballistics (utils/meterBallistics.ts): every reading of the
+  // mic's meter goes through it, so the track meter and the flyout fall at
+  // 60 dB/s and hold their peak instead of snapping frame to frame
+  private ballistics: MeterBallistics = createMeterBallistics();
+  private lastReading = { level: 0, peak: 0, recentPeak: 0 };
+
+  /** The meter's reading right now, after the ballistics (0–100 each) */
+  private readMeter(): { level: number; peak: number; recentPeak: number } {
+    if (!this.meter) return this.lastReading;
+    const dbLevel = this.meter.getValue() as number; // justified: Meter.getValue(): number | number[] — meter is constructed single-channel
+    const reading = this.ballistics.next(dbLevel, performance.now());
+    const level = dbToMeterPercent(reading.level);
+    this.peakLevel = Math.max(this.peakLevel, level);
+    this.lastReading = { level, peak: this.peakLevel, recentPeak: dbToMeterPercent(reading.peak) };
+    return this.lastReading;
+  }
   private static inputGainValue = 1;
   private static live = new Set<RecordingManager>();
   // THE CHOSEN INPUT DEVICE (2026-11-04, "make sure that the demo can
@@ -114,8 +132,9 @@ export class RecordingManager {
   getInputLevelDb(): number | null {
     if (!this.meter) return null;
     if (!this.recorder && !RecordingManager.idleMetering) return null;
-    const value = this.meter.getValue() as number; // justified: Meter.getValue(): number | number[] — meter is constructed single-channel
-    return Number.isFinite(value) ? value : -Infinity;
+    // The meter loop's own reading, so the flyout and the track meter agree
+    const { level } = this.readMeter();
+    return level <= 0 ? -Infinity : (level / 100) * 60 - 60;
   }
   private waveform: Tone.Waveform | null = null;
   private meterUpdateInterval: number | null = null;
@@ -179,13 +198,12 @@ export class RecordingManager {
           // Not recording, and the mic is not metered then: report silence
           if (!RecordingManager.idleMetering) {
             this.peakLevel = 0;
-            this.callbacks.onMeterUpdate(0, 0);
+            this.ballistics.reset();
+            this.callbacks.onMeterUpdate(0, 0, 0);
             return;
           }
-          const dbLevel = this.meter.getValue() as number; // justified: Meter.getValue(): number | number[] — meter is constructed single-channel
-          const normalized = Math.max(0, Math.min(100, ((dbLevel + 60) / 60) * 100));
-          this.peakLevel = Math.max(this.peakLevel, normalized);
-          this.callbacks.onMeterUpdate(normalized, this.peakLevel);
+          const { level, peak, recentPeak } = this.readMeter();
+          this.callbacks.onMeterUpdate(level, peak, recentPeak);
         }
       }, 1000 / 60);
 
@@ -362,21 +380,14 @@ export class RecordingManager {
 
       this.meterUpdateInterval = window.setInterval(() => {
         if (this.meter) {
-          // Get RMS level in dB
-          const dbLevel = this.meter.getValue() as number; // justified: Meter.getValue(): number | number[] — meter is constructed single-channel
-
-          // Convert dB to 0-100 range
-          const normalized = Math.max(0, Math.min(100, ((dbLevel + 60) / 60) * 100));
-
-          // Update peak
-          this.peakLevel = Math.max(this.peakLevel, normalized);
+          const { level, peak, recentPeak } = this.readMeter();
 
           // Calculate elapsed time and playhead position during recording
           const elapsedSeconds = (Date.now() - this.recordingStartTime) / 1000;
           const currentPosition = this.recordingStartPosition + elapsedSeconds;
 
           // Notify callbacks
-          this.callbacks.onMeterUpdate(normalized, this.peakLevel);
+          this.callbacks.onMeterUpdate(level, peak, recentPeak);
           this.callbacks.onPlayheadUpdate(currentPosition);
         }
       }, 1000 / 60);
@@ -441,13 +452,12 @@ export class RecordingManager {
           // Not recording, and the mic is not metered then: report silence
           if (!RecordingManager.idleMetering) {
             this.peakLevel = 0;
-            this.callbacks.onMeterUpdate(0, 0);
+            this.ballistics.reset();
+            this.callbacks.onMeterUpdate(0, 0, 0);
             return;
           }
-          const dbLevel = this.meter.getValue() as number; // justified: Meter.getValue(): number | number[] — meter is constructed single-channel
-          const normalized = Math.max(0, Math.min(100, ((dbLevel + 60) / 60) * 100));
-          this.peakLevel = Math.max(this.peakLevel, normalized);
-          this.callbacks.onMeterUpdate(normalized, this.peakLevel);
+          const { level, peak, recentPeak } = this.readMeter();
+          this.callbacks.onMeterUpdate(level, peak, recentPeak);
         }
       }, 1000 / 60);
 

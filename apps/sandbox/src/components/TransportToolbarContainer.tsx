@@ -110,6 +110,8 @@ export function TransportToolbarContainer({
       masterLevelRight={masterMeter.masterLevelRight}
       masterClippedLeft={masterMeter.masterLevelLeft >= 0}
       masterClippedRight={masterMeter.masterLevelRight >= 0}
+      masterRecentPeakLeft={masterMeter.masterRecentPeak}
+      masterRecentPeakRight={masterMeter.masterRecentPeak}
       masterVolume={masterMeter.masterVolume}
       onMasterVolumeChange={masterMeter.handleMasterVolumeChange}
       meterOrientation={masterMeter.meterOrientation}

@@ -4,6 +4,8 @@ import type { AudioPlaybackManager } from '@audacity-ui/audio';
 export interface UseMasterMeterOptions {
   /** Post-mix, post-master-volume level on a 0-100 scale from the audio engine. */
   masterMeterLevel: number;
+  /** The held recent peak, 0–100 (2026-11-04) */
+  masterMeterPeak?: number;
   audioManagerRef: React.MutableRefObject<AudioPlaybackManager>;
 }
 
@@ -12,6 +14,8 @@ export interface UseMasterMeterReturn {
   handleMasterVolumeChange: (vol: number) => void;
   masterLevelLeft: number;
   masterLevelRight: number;
+  /** The held recent peak in dB, undefined at silence (2026-11-04) */
+  masterRecentPeak: number | undefined;
 }
 
 /**
@@ -20,7 +24,7 @@ export interface UseMasterMeterReturn {
  * (post-mix, post-master-volume) and derives display-ready dB levels.
  */
 export function useMasterMeter(options: UseMasterMeterOptions): UseMasterMeterReturn {
-  const { masterMeterLevel, audioManagerRef } = options;
+  const { masterMeterLevel, masterMeterPeak = 0, audioManagerRef } = options;
 
   const [masterVolume, setMasterVolume] = useState(1);
   const handleMasterVolumeChange = useCallback((vol: number) => {
@@ -40,11 +44,17 @@ export function useMasterMeter(options: UseMasterMeterOptions): UseMasterMeterRe
   // Slight stereo simulation until the audio engine exposes per-channel
   // levels — same dB, 0.5 dB attenuated on the right.
   const masterLevelRight = useMemo(() => Math.max(-60, masterLevelLeft - 0.5), [masterLevelLeft]);
+  // The held recent peak in dB, for the meter's tick; none at silence
+  const masterRecentPeak = useMemo(
+    () => (masterMeterPeak <= 0 ? undefined : Math.max(-60, Math.min(0, (masterMeterPeak / 100) * 60 - 60))),
+    [masterMeterPeak],
+  );
 
   return {
     masterVolume,
     handleMasterVolumeChange,
     masterLevelLeft,
     masterLevelRight,
+    masterRecentPeak,
   };
 }

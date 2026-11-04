@@ -10,7 +10,7 @@
  * The level is READ, not passed: `getLevelDb` is polled once a frame while
  * the flyout is open, so a live meter re-renders the flyout alone, never
  * the toolbar it hangs from. The mic is one channel, so both rows read it;
- * the tick is the recent peak, held 1.5 s.
+ * the tick is the recent peak, held 3 s.
  *
  * UNDER IT, THE MIC'S TWO SETTINGS (the same day, "and now we have the
  * following options"): the hint reads "Note: this control is tied to your
@@ -48,7 +48,8 @@ export interface MicrophoneLevelFlyoutProps {
   onMicMeteringChange?: (on: boolean) => void;
 }
 
-const PEAK_HOLD_MS = 1500;
+// Audacity 3's peak hold (MeterPanel.cpp), the same as the track meters'
+const PEAK_HOLD_MS = 3000;
 const DB_FLOOR = -60;
 
 export function MicrophoneLevelFlyout({

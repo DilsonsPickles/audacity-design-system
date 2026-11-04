@@ -283,6 +283,7 @@ export interface TracksState {
   recordingStartTime: number; // Timestamp when recording started
   recordingMeterLevel: number; // 0-100, current meter level during recording
   recordingPeakLevel: number; // 0-100, peak level during recording
+  recordingRecentPeak: number; // 0-100, the meter's held recent peak (3 s)
   // Track last selected clip for shift-click range selection
   lastSelectedClip: { trackIndex: number; clipId: number } | null;
   // Master effects chain (applied to all tracks)
@@ -387,7 +388,7 @@ export type TracksAction =
   | { type: 'SET_CUT_MODE'; payload: CutMode }
   | { type: 'START_RECORDING'; payload: { trackIndex: number } }
   | { type: 'STOP_RECORDING' }
-  | { type: 'UPDATE_RECORDING_METERS'; payload: { level: number; peak: number } }
+  | { type: 'UPDATE_RECORDING_METERS'; payload: { level: number; peak: number; recentPeak?: number } }
   // Track effects actions
   | { type: 'ADD_TRACK_EFFECT'; payload: { trackIndex: number; effect: Effect } }
   | { type: 'UPDATE_TRACK_EFFECT'; payload: { trackIndex: number; effectIndex: number; updates: Partial<Effect> } }
@@ -460,6 +461,7 @@ export const initialState: TracksState = {
   recordingStartTime: 0,
   recordingMeterLevel: 0,
   recordingPeakLevel: 0,
+  recordingRecentPeak: 0,
   lastSelectedClip: null,
   masterEffects: [],
   masterEffectsEnabled: true,

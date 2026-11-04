@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createMeterBallistics, dbToMeterPercent, meterPercentToDb, type MeterBallistics } from '../utils/meterBallistics';
 import { effectiveTrackMuted } from '../utils/trackFolders';
 import { getAudioPlaybackManager, AudioPlaybackManager } from '@audacity-ui/audio';
 import { VARISPEED_DEFAULT_SPEED, VARISPEED_MIN, VARISPEED_MAX } from '@audacity-ui/components';
@@ -43,9 +44,13 @@ export interface UsePlaybackControlsReturn {
   handleStop: () => Promise<void>;
   audioManagerRef: React.MutableRefObject<AudioPlaybackManager>;
   trackMeterLevels: Map<number, number>;
+  /** The meters' held recent peaks (0–100), beside the levels (2026-11-04) */
+  trackMeterPeaks: Map<number, number>;
   setTrackMeterLevels: React.Dispatch<React.SetStateAction<Map<number, number>>>;
   /** Master output meter level on a 0-100 scale (post-mix, post-volume). */
   masterMeterLevel: number;
+  /** The master meter's held recent peak (0–100) */
+  masterMeterPeak: number;
   /** Where the current playback run started (seconds), or null when no
    *  marker is active. Drawn as a ghost line on the canvas; toggling
    *  playback off returns the playhead here (Audacity behavior). */
@@ -87,8 +92,16 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
 
   // Track meter levels during playback (trackIndex -> level 0-100)
   const [trackMeterLevels, setTrackMeterLevels] = useState<Map<number, number>>(new Map());
-  // Master output meter — single post-mix level 0-100.
+  // The meters' held recent peaks (trackIndex -> 0-100), beside the levels
+  const [trackMeterPeaks, setTrackMeterPeaks] = useState<Map<number, number>>(new Map());
+  // Master output meter — single post-mix level 0-100, and its held peak.
   const [masterMeterLevel, setMasterMeterLevel] = useState(0);
+  const [masterMeterPeak, setMasterMeterPeak] = useState(0);
+  // THE PLAYBACK METERS' BALLISTICS (2026-11-04): the engine hands each
+  // frame's reading; the meters rise at once, fall at 60 dB/s and hold their
+  // peak (utils/meterBallistics.ts), one instance per track and the master
+  const trackBallisticsRef = useRef(new Map<number, MeterBallistics>());
+  const masterBallisticsRef = useRef(createMeterBallistics());
 
   // Playback-start marker: set when playback begins, drawn as a ghost line
   // on the canvas; toggling playback off (Space / play button) returns the
@@ -145,9 +158,17 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
 
     // Set up meter update callback to display playback levels
     audioManager.setMeterUpdateCallback((trackIndex, level) => {
+      let ballistics = trackBallisticsRef.current.get(trackIndex);
+      if (!ballistics) { ballistics = createMeterBallistics(); trackBallisticsRef.current.set(trackIndex, ballistics); }
+      const reading = ballistics.next(level <= 0 ? -Infinity : meterPercentToDb(level), performance.now());
       setTrackMeterLevels(prev => {
         const next = new Map(prev);
-        next.set(trackIndex, level);
+        next.set(trackIndex, dbToMeterPercent(reading.level));
+        return next;
+      });
+      setTrackMeterPeaks(prev => {
+        const next = new Map(prev);
+        next.set(trackIndex, dbToMeterPercent(reading.peak));
         return next;
       });
     });
@@ -155,7 +176,9 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     // Master output meter — fires once per animation frame with the
     // post-mix level. Used by the master playback meter UI.
     audioManager.setMasterMeterUpdateCallback((level) => {
-      setMasterMeterLevel(level);
+      const reading = masterBallisticsRef.current.next(level <= 0 ? -Infinity : meterPercentToDb(level), performance.now());
+      setMasterMeterLevel(dbToMeterPercent(reading.level));
+      setMasterMeterPeak(dbToMeterPercent(reading.peak));
     });
 
     // Selection playback finished (the manager auto-stopped at the
@@ -357,6 +380,10 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     setPlaybackStartTime(null);
     rangeReturnRef.current = null;
     setTrackMeterLevels(new Map()); // Reset all meter levels to 0
+    setTrackMeterPeaks(new Map());
+    trackBallisticsRef.current.forEach((b) => b.reset());
+    masterBallisticsRef.current.reset();
+    setMasterMeterPeak(0);
   };
 
   // Auto-scroll to keep playhead in view during playback
@@ -413,8 +440,10 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     handleStop,
     audioManagerRef,
     trackMeterLevels,
+    trackMeterPeaks,
     setTrackMeterLevels,
     masterMeterLevel,
+    masterMeterPeak,
     playbackStartTime,
     varispeed,
     varispeedOn,

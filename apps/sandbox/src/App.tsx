@@ -481,8 +481,9 @@ function CanvasDemoContent() {
   });
   const {
     isPlaying, setIsPlaying, handlePlay, handleStop,
-    audioManagerRef, trackMeterLevels, setTrackMeterLevels: _setTrackMeterLevels,
+    audioManagerRef, trackMeterLevels, trackMeterPeaks, setTrackMeterLevels: _setTrackMeterLevels,
     masterMeterLevel,
+    masterMeterPeak,
   } = playback;
 
   // Recording
@@ -536,8 +537,8 @@ function CanvasDemoContent() {
 
   // Master meter: compute combined level from all track meters
   const {
-    masterVolume, handleMasterVolumeChange, masterLevelLeft, masterLevelRight,
-  } = useMasterMeter({ masterMeterLevel, audioManagerRef });
+    masterVolume, handleMasterVolumeChange, masterLevelLeft, masterLevelRight, masterRecentPeak,
+  } = useMasterMeter({ masterMeterLevel, masterMeterPeak, audioManagerRef });
 
   // Loop region
   // Audio setup's device lists and picks — after usePlaybackControls, since
@@ -1090,6 +1091,7 @@ function CanvasDemoContent() {
       handleMasterVolumeChange,
       masterLevelLeft,
       masterLevelRight,
+      masterRecentPeak,
       meterOrientation,
       onMeterOrientationChange: setMeterOrientation,
     },
@@ -1288,6 +1290,7 @@ function CanvasDemoContent() {
           isPlaying={isPlaying}
           setIsPlaying={setIsPlaying}
           trackMeterLevels={trackMeterLevels}
+          trackMeterPeaks={trackMeterPeaks}
           isMicMonitoring={isMicMonitoring}
           recordingClipId={recordingClipId}
           punchPointPosition={punchPointPosition}

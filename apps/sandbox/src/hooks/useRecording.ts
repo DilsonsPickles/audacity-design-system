@@ -59,12 +59,12 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
       try {
         // Create recording manager for monitoring
         recordingManagerRef.current = new RecordingManager({
-          onMeterUpdate: (level, peak) => {
+          onMeterUpdate: (level, peak, recentPeak) => {
             // Only update if we have a focused track
             if (focusedTrackRef.current !== null) {
               dispatch({
                 type: 'UPDATE_RECORDING_METERS',
-                payload: { level, peak }
+                payload: { level, peak, recentPeak }
               });
             }
           },
@@ -108,10 +108,10 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
 
     // Create a new recording manager with proper callbacks
     recordingManagerRef.current = new RecordingManager({
-      onMeterUpdate: (level, peak) => {
+      onMeterUpdate: (level, peak, recentPeak) => {
         dispatch({
           type: 'UPDATE_RECORDING_METERS',
-          payload: { level, peak }
+          payload: { level, peak, recentPeak }
         });
       },
       onPlayheadUpdate: (position) => {
@@ -179,11 +179,11 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
           setTimeout(() => { if (old && old !== recordingManagerRef.current) old.dispose(); }, 0);
           try {
             recordingManagerRef.current = new RecordingManager({
-              onMeterUpdate: (level, peak) => {
+              onMeterUpdate: (level, peak, recentPeak) => {
                 if (focusedTrackRef.current !== null) {
                   dispatch({
                     type: 'UPDATE_RECORDING_METERS',
-                    payload: { level, peak }
+                    payload: { level, peak, recentPeak }
                   });
                 }
               },

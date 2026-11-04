@@ -106,6 +106,8 @@ export interface EditorLayoutProps {
   isPlaying: boolean;
   setIsPlaying: React.Dispatch<React.SetStateAction<boolean>>;
   trackMeterLevels: Map<number, number>;
+  /** The meters' held recent peaks (0–100), beside the levels (2026-11-04) */
+  trackMeterPeaks: Map<number, number>;
   isMicMonitoring: boolean;
   recordingClipId: number | null;
 
@@ -198,7 +200,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     scrollContainerRef, trackHeaderScrollRef,
     pixelsPerSecond, timelineWidth, timelineDuration, timelineFormat, bpm, beatsPerMeasure, noteValue,
     showRmsInWaveform, showQuickFadeHandles, controlPointStyle, spectrogramScale, showVerticalRulers, setShowVerticalRulers,
-    isPlaying, setIsPlaying, trackMeterLevels, isMicMonitoring, recordingClipId,
+    isPlaying, setIsPlaying, trackMeterLevels, trackMeterPeaks, isMicMonitoring, recordingClipId,
     selectionAnchor, setSelectionAnchor, setControlPanelHasFocus,
     containerFocusedTrack, setContainerFocusedTrack,
     mouseCursorPosition, setMouseCursorPosition, mouseCursorY, setMouseCursorY, isOverTrack, setIsOverTrack,
@@ -1047,6 +1049,15 @@ export function EditorLayout(props: EditorLayoutProps) {
                       : isPlaying
                         ? trackMeterLevels.get(index) || 0
                         : 0
+                }
+                meterRecentPeak={
+                  state.isRecording && state.recordingTrackIndex === index
+                    ? state.recordingRecentPeak
+                    : isMicMonitoring && state.focusedTrackIndex === index
+                      ? state.recordingRecentPeak
+                      : isPlaying
+                        ? trackMeterPeaks.get(index)
+                        : undefined
                 }
                 meterClipped={state.recordingPeakLevel > 100}
                 meterStyle="default"

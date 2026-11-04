@@ -10,6 +10,7 @@ export function recordingReducer(state: TracksState, action: TracksAction): Trac
         recordingStartTime: Date.now(),
         recordingMeterLevel: 0,
         recordingPeakLevel: 0,
+        recordingRecentPeak: 0,
       };
 
     case 'STOP_RECORDING':
@@ -20,6 +21,7 @@ export function recordingReducer(state: TracksState, action: TracksAction): Trac
         recordingStartTime: 0,
         recordingMeterLevel: 0,
         recordingPeakLevel: 0,
+        recordingRecentPeak: 0,
       };
 
     case 'UPDATE_RECORDING_METERS':
@@ -27,6 +29,7 @@ export function recordingReducer(state: TracksState, action: TracksAction): Trac
         ...state,
         recordingMeterLevel: action.payload.level,
         recordingPeakLevel: Math.max(state.recordingPeakLevel, action.payload.peak),
+        recordingRecentPeak: action.payload.recentPeak ?? state.recordingRecentPeak,
       };
 
     default:
