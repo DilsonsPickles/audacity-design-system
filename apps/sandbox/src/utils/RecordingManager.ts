@@ -33,6 +33,43 @@ export class RecordingManager {
   private inputGain: Tone.Gain | null = null;
   private static inputGainValue = 1;
   private static live = new Set<RecordingManager>();
+  // THE CHOSEN INPUT DEVICE (2026-11-04, "make sure that the demo can
+  // actually pick up machine's input/outputs"): Audio setup's pick was a
+  // label the menu showed and nothing read — `open()` took no device, so
+  // the OS default always recorded. Null = the system default. A change
+  // reopens every live chain that is not recording.
+  private static inputDeviceId: string | null = null;
+
+  static setInputDevice(deviceId: string | null): void {
+    RecordingManager.inputDeviceId = deviceId;
+    for (const manager of RecordingManager.live) {
+      if (manager.recorder) continue; // a recording keeps the device it started on
+      manager.stopMonitoring();
+      void manager.startMonitoring().catch(() => {});
+    }
+  }
+
+  static getInputDevice(): string | null {
+    return RecordingManager.inputDeviceId;
+  }
+
+  /** What to tell the user when the microphone could not be opened */
+  static describeMicError(error: unknown): string {
+    const name = error instanceof Error ? error.name : '';
+    const message = error instanceof Error ? error.message : String(error ?? '');
+    if (name === 'NotAllowedError' || name === 'SecurityError' || /denied|not allowed/i.test(message)) {
+      return 'Microphone access was denied. Allow it for this app in System Settings › Privacy & Security › Microphone';
+    }
+    if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+      return RecordingManager.inputDeviceId
+        ? 'The chosen microphone is not connected. Pick another in Audio setup'
+        : 'No microphone was found. Connect one, then try again';
+    }
+    if (name === 'NotReadableError' || name === 'AbortError') {
+      return 'The microphone is in use by another app';
+    }
+    return message || 'The microphone could not be opened';
+  }
   // THE MIC'S TWO SETTINGS (2026-11-04, the Microphone level flyout's
   // checkboxes — the preferences `enableInputMonitoring` / `showMicMetering`):
   // INPUT MONITORING sends the mic, after the gain, to the speakers WHILE
@@ -110,7 +147,13 @@ export class RecordingManager {
     try {
       // Request microphone access
       this.userMedia = new Tone.UserMedia();
-      await this.userMedia.open();
+      try {
+        await this.userMedia.open(RecordingManager.inputDeviceId ?? undefined);
+      } catch (error) {
+        this.userMedia.dispose();
+        this.userMedia = null;
+        throw error;
+      }
 
       // Wait for mic to be ready
       await new Promise(resolve => setTimeout(resolve, 100));

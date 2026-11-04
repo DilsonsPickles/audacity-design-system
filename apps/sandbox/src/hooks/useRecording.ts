@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RecordingManager } from '../utils/RecordingManager';
+import { toast } from '@audacity-ui/components';
 import { buildClipWaveforms } from '../utils/clipWaveforms';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
@@ -44,6 +45,12 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
   const rollInTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isRollingInRef = useRef(false);
   const preRecordPlayheadRef = useRef<number | null>(null);
+  // The monitoring managers' meter callbacks read the focused track LIVE
+  // through this ref (2026-11-04): the mount-time manager closed over the
+  // mount-time value — null in a fresh project — so the track meter stayed
+  // empty until the first recording made a new manager.
+  const focusedTrackRef = useRef(state.focusedTrackIndex);
+  focusedTrackRef.current = state.focusedTrackIndex;
 
   // Start mic monitoring automatically when component mounts
   useEffect(() => {
@@ -54,7 +61,7 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
         recordingManagerRef.current = new RecordingManager({
           onMeterUpdate: (level, peak) => {
             // Only update if we have a focused track
-            if (state.focusedTrackIndex !== null) {
+            if (focusedTrackRef.current !== null) {
               dispatch({
                 type: 'UPDATE_RECORDING_METERS',
                 payload: { level, peak }
@@ -91,24 +98,8 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
 
   // Start the actual recording process (shared between direct and roll-in paths)
   const startRecordingAtPosition = useCallback(async (recordingTrackIndex: number, recordingStartPosition: number) => {
-    // Create an empty clip immediately for recording
     const clipId = Date.now();
     setRecordingClipId(clipId);
-    dispatch({
-      type: 'ADD_CLIP',
-      payload: {
-        trackIndex: recordingTrackIndex,
-        clip: {
-          id: clipId,
-          name: 'Recording',
-          start: recordingStartPosition,
-          duration: 0,
-          waveform: [],
-          envelopePoints: [],
-          color: state.tracks[recordingTrackIndex]?.color || 'cyan',
-        },
-      },
-    });
 
     // If monitoring manager exists, dispose it first
     if (recordingManagerRef.current) {
@@ -180,10 +171,13 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
         // Restart monitoring after recording completes
         const restartMonitoring = async () => {
           if (micAutoRequestBlocked) return;
+          // The recording's manager went back to monitoring when it
+          // stopped; let it go, or two meter loops feed the same meter
+          recordingManagerRef.current?.dispose();
           try {
             recordingManagerRef.current = new RecordingManager({
               onMeterUpdate: (level, peak) => {
-                if (state.focusedTrackIndex !== null) {
+                if (focusedTrackRef.current !== null) {
                   dispatch({
                     type: 'UPDATE_RECORDING_METERS',
                     payload: { level, peak }
@@ -237,8 +231,55 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
       },
     });
 
-    await recordingManagerRef.current.startRecording(recordingStartPosition);
-  }, [state.tracks, state.focusedTrackIndex, dispatch, audioManagerRef]);
+    // RECORDING THAT CANNOT START SAYS SO (2026-11-04, "nothing is being
+    // recorded"): the clip was added before the mic was asked for, and a
+    // refusal was a console line — the user saw an empty "Recording" clip
+    // and nothing else. The mic opens FIRST; only then is the clip added.
+    const manager = recordingManagerRef.current;
+    const fail = async (error: unknown, clipAdded: boolean) => {
+      micAutoRequestBlocked = true;
+      dispatch({ type: 'STOP_RECORDING' });
+      if (clipAdded) dispatch({ type: 'DELETE_CLIP', payload: { trackIndex: recordingTrackIndex, clipId } });
+      setRecordingClipId(null);
+      const shell = window.electronShell;
+      const osStatus = await shell?.microphoneAccessStatus?.().catch(() => null);
+      const reason = osStatus === 'denied' || osStatus === 'restricted'
+        ? 'Microphone access is off for this app. Turn it on in System Settings › Privacy & Security › Microphone'
+        : RecordingManager.describeMicError(error);
+      const actions = shell?.openMicrophoneSettings && (osStatus === 'denied' || osStatus === 'restricted')
+        ? [{ label: 'Open settings', onClick: () => { void shell.openMicrophoneSettings?.(); } }]
+        : undefined;
+      toast.error('Recording failed', reason, actions);
+    };
+    try {
+      await manager.startMonitoring();
+    } catch (error) {
+      await fail(error, false);
+      return;
+    }
+    dispatch({
+      type: 'ADD_CLIP',
+      payload: {
+        trackIndex: recordingTrackIndex,
+        clip: {
+          id: clipId,
+          name: 'Recording',
+          start: recordingStartPosition,
+          duration: 0,
+          waveform: [],
+          envelopePoints: [],
+          color: state.tracks[recordingTrackIndex]?.color || 'cyan',
+        },
+      },
+    });
+
+
+    try {
+      await manager.startRecording(recordingStartPosition);
+    } catch (error) {
+      await fail(error, true);
+    }
+  }, [state.tracks, dispatch, audioManagerRef]);
 
   // Handle recording (with optional punch-and-roll)
   const handleRecord = useCallback(async () => {

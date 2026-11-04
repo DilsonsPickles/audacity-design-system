@@ -18,7 +18,7 @@
 //     cross-origin fetch the sandbox makes.
 // A loopback http server sidesteps all three with no allowlist changes.
 
-const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, shell, Menu, ipcMain, systemPreferences } = require('electron');
 const path = require('node:path');
 const net = require('node:net');
 
@@ -339,8 +339,31 @@ function setApplicationMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
+// THE MICROPHONE'S OS PERMISSION (2026-11-04, "nothing is being recorded"):
+// macOS keys the grant to the app, and a denied one never prompts again —
+// the renderer's getUserMedia just fails. Ask once at launch while the
+// answer is undetermined, and let the renderer read the status and open
+// the Privacy pane, so a refusal can be explained instead of swallowed.
+const microphoneAccessStatus = () => (
+  process.platform === 'darwin' || process.platform === 'win32'
+    ? systemPreferences.getMediaAccessStatus('microphone')
+    : 'granted'
+);
+ipcMain.handle('mic:access-status', () => microphoneAccessStatus());
+ipcMain.handle('mic:request-access', async () => (
+  process.platform === 'darwin' ? systemPreferences.askForMediaAccess('microphone') : true
+));
+ipcMain.handle('mic:open-settings', () => shell.openExternal(
+  process.platform === 'darwin'
+    ? 'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone'
+    : 'ms-settings:privacy-microphone',
+));
+
 app.whenReady().then(async () => {
   setApplicationMenu();
+  if (process.platform === 'darwin' && microphoneAccessStatus() === 'not-determined') {
+    await systemPreferences.askForMediaAccess('microphone');
+  }
 
   // Dev mode: ELECTRON_START_URL is set by the `dev` script (which waits
   // for the Vite server before launching electron). Anything else is

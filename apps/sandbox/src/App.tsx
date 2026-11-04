@@ -320,12 +320,6 @@ function CanvasDemoContent() {
   const { mixerPanelOpen, setMixerPanelOpen } = useMixerPanelListener();
   const { setIsMacrosPanelOpen } = useMacros();
 
-  const {
-    audioSetupMenuAnchor, setAudioSetupMenuAnchor,
-    selectedRecordingDevice, setSelectedRecordingDevice,
-    selectedPlaybackDevice, setSelectedPlaybackDevice,
-    availableAudioInputs, availableAudioOutputs,
-  } = useAudioDeviceMenu();
   // View options
   const [showRmsInWaveform, setShowRmsInWaveform] = React.useState(false);
   const [showVerticalRulers, setShowVerticalRulers] = React.useState(true);
@@ -546,6 +540,15 @@ function CanvasDemoContent() {
   } = useMasterMeter({ masterMeterLevel, audioManagerRef });
 
   // Loop region
+  // Audio setup's device lists and picks — after usePlaybackControls, since
+  // a playback pick re-routes the audio manager's output (2026-11-04)
+  const {
+    audioSetupMenuAnchor, setAudioSetupMenuAnchor,
+    selectedRecordingDevice, selectedPlaybackDevice,
+    selectedRecordingDeviceId, selectedPlaybackDeviceId,
+    selectRecordingDevice, selectPlaybackDevice, rescanAudioDevices,
+    availableAudioInputs, availableAudioOutputs,
+  } = useAudioDeviceMenu(audioManagerRef);
   const loopRegion = useLoopRegion({
     audioManagerRef,
     timeSelection: state.timeSelection,
@@ -1482,9 +1485,12 @@ function CanvasDemoContent() {
         audioSetupMenuAnchor={audioSetupMenuAnchor}
         setAudioSetupMenuAnchor={setAudioSetupMenuAnchor}
         selectedRecordingDevice={selectedRecordingDevice}
-        setSelectedRecordingDevice={setSelectedRecordingDevice}
         selectedPlaybackDevice={selectedPlaybackDevice}
-        setSelectedPlaybackDevice={setSelectedPlaybackDevice}
+        selectedRecordingDeviceId={selectedRecordingDeviceId}
+        selectedPlaybackDeviceId={selectedPlaybackDeviceId}
+        selectRecordingDevice={selectRecordingDevice}
+        selectPlaybackDevice={selectPlaybackDevice}
+        rescanAudioDevices={rescanAudioDevices}
         availableAudioInputs={availableAudioInputs}
         availableAudioOutputs={availableAudioOutputs}
         plugins={allPlugins}

@@ -72,9 +72,12 @@ export interface AppDialogsProps {
   audioSetupMenuAnchor: { x: number; y: number } | null;
   setAudioSetupMenuAnchor: React.Dispatch<React.SetStateAction<{ x: number; y: number } | null>>;
   selectedRecordingDevice: string;
-  setSelectedRecordingDevice: React.Dispatch<React.SetStateAction<string>>;
   selectedPlaybackDevice: string;
-  setSelectedPlaybackDevice: React.Dispatch<React.SetStateAction<string>>;
+  selectedRecordingDeviceId: string | null;
+  selectedPlaybackDeviceId: string | null;
+  selectRecordingDevice: (device: MediaDeviceInfo) => void;
+  selectPlaybackDevice: (device: MediaDeviceInfo) => Promise<void>;
+  rescanAudioDevices: () => Promise<void>;
   availableAudioInputs: MediaDeviceInfo[];
   availableAudioOutputs: MediaDeviceInfo[];
 
@@ -166,8 +169,9 @@ export function AppDialogs(props: AppDialogsProps) {
     cloudAudioFiles: _cloudAudioFiles, setCloudAudioFiles,
     showVendorUI, setShowVendorUI,
     audioSetupMenuAnchor, setAudioSetupMenuAnchor,
-    selectedRecordingDevice, setSelectedRecordingDevice,
-    selectedPlaybackDevice, setSelectedPlaybackDevice,
+    selectedRecordingDevice, selectedPlaybackDevice,
+    selectedRecordingDeviceId, selectedPlaybackDeviceId,
+    selectRecordingDevice, selectPlaybackDevice, rescanAudioDevices,
     availableAudioInputs, availableAudioOutputs,
     plugins, setPlugins,
     initialExportType,
@@ -793,17 +797,11 @@ export function AppDialogs(props: AppDialogsProps) {
               {availableAudioOutputs.map((device) => (
                 <ContextMenuItem
                   key={device.deviceId}
-                  label={device.label || 'Unknown Device'}
-                  checked={selectedPlaybackDevice === device.label}
-                  onClick={async () => {
-                    setSelectedPlaybackDevice(device.label || 'Unknown Device');
+                  label={device.label || 'Unknown device'}
+                  checked={(selectedPlaybackDeviceId ?? 'default') === device.deviceId}
+                  onClick={() => {
                     setAudioSetupMenuAnchor(null);
-
-                    try {
-                      const audioManager = audioManagerRef.current;
-                      await audioManager.setAudioOutputDevice(device.deviceId);
-                    } catch (error) {
-                    }
+                    void selectPlaybackDevice(device);
                   }}
                 />
               ))}
@@ -816,11 +814,11 @@ export function AppDialogs(props: AppDialogsProps) {
               {availableAudioInputs.map((device) => (
                 <ContextMenuItem
                   key={device.deviceId}
-                  label={device.label || 'Unknown Device'}
-                  checked={selectedRecordingDevice === device.label}
+                  label={device.label || 'Unknown device'}
+                  checked={(selectedRecordingDeviceId ?? 'default') === device.deviceId}
                   onClick={() => {
-                    setSelectedRecordingDevice(device.label || 'Unknown Device');
                     setAudioSetupMenuAnchor(null);
+                    selectRecordingDevice(device);
                   }}
                 />
               ))}
@@ -834,7 +832,7 @@ export function AppDialogs(props: AppDialogsProps) {
             <ContextMenuItem
               label="Rescan audio devices"
               onClick={() => {
-                setAudioSetupMenuAnchor(null);
+                void rescanAudioDevices();
               }}
             />
             <ContextMenuItem

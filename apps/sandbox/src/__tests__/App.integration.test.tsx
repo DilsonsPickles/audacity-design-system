@@ -49,6 +49,13 @@ vi.mock('../utils/RecordingManager', () => ({
       return null;
     }
     static setInputGain(): void {}
+    static setInputDevice(): void {}
+    static getInputDevice(): string | null {
+      return null;
+    }
+    static describeMicError(): string {
+      return '';
+    }
     static setInputMonitoring(): void {}
     static setIdleMetering(): void {}
     static getInputGain(): number {

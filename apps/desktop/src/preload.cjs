@@ -17,6 +17,12 @@ contextBridge.exposeInMainWorld('electronMenu', {
 // Kept narrow on purpose — only what the UI explicitly needs.
 contextBridge.exposeInMainWorld('electronShell', {
   openNewWindow: () => ipcRenderer.send('window:open-new'),
+  // The microphone's OS permission (2026-11-04): 'granted' | 'denied' |
+  // 'restricted' | 'not-determined' | 'unknown'; a request prompts while
+  // undetermined; the settings call opens the OS's microphone privacy pane
+  microphoneAccessStatus: () => ipcRenderer.invoke('mic:access-status'),
+  requestMicrophoneAccess: () => ipcRenderer.invoke('mic:request-access'),
+  openMicrophoneSettings: () => ipcRenderer.invoke('mic:open-settings'),
 });
 
 // Browser-first sign-in (RFC 8252 loopback). The renderer opens muse-id's
