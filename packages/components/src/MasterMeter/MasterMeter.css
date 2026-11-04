@@ -154,3 +154,27 @@
   color: var(--mm-text);
   white-space: nowrap;
 }
+
+/* THE LOOK (2026-11-04, the Playback meter flyout). GRADIENT: the bar
+   itself wears green → yellow → red and a COVER in the bar's own colour
+   hides what is above the level, so the fill is the gradient's own span.
+   RMS: the held peak's span beyond the level, in the fill's tone at a
+   third — the level is the RMS, the lighter run is the peak. */
+.master-meter__bar--gradient {
+  background: linear-gradient(to right, #3fb950 0%, #d4c13a 70%, #d9534f 100%);
+}
+
+.master-meter__cover {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--mm-bg);
+}
+
+.master-meter__rms-peak {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: color-mix(in srgb, var(--mm-fill) 35%, transparent);
+}

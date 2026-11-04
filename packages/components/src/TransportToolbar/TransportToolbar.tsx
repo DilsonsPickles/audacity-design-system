@@ -16,6 +16,8 @@ import { ContextMenuItem } from '../ContextMenuItem';
 import { Checkbox } from '../Checkbox';
 import { MasterMeter } from '../MasterMeter';
 import { MicrophoneLevelFlyout } from '../MicrophoneLevelFlyout';
+import { PlaybackMeterFlyout } from '../PlaybackMeterFlyout';
+import { DEFAULT_PLAYBACK_METER_LOOK, type PlaybackMeterLook } from '../utils/meterLook';
 import { useTheme } from '../ThemeProvider';
 import type { SnapGrid } from '@audacity-ui/core';
 
@@ -156,6 +158,10 @@ export interface TransportToolbarProps {
   meterOrientation?: 'horizontal' | 'vertical';
   /** Called when the user picks a new orientation from the volume menu. */
   onMeterOrientationChange?: (orientation: 'horizontal' | 'vertical') => void;
+  /** The playback meter's LOOK (2026-11-04, the Playback meter flyout):
+   *  style, type, dB range — uncontrolled when absent */
+  meterLook?: PlaybackMeterLook;
+  onMeterLookChange?: (look: PlaybackMeterLook) => void;
 
   /**
    * Where the RECORDING meter shows (2026-11-04, "dock recording meter to
@@ -270,6 +276,7 @@ export function TransportToolbar({
   getMicrophoneLevelDb, microphoneGain = 1, onMicrophoneGainChange, onMicrophoneLevelsOpen,
   microphoneInputMonitoring, onMicrophoneInputMonitoringChange, microphoneMetering, onMicrophoneMeteringChange,
   meterOrientation: meterOrientationProp, onMeterOrientationChange,
+  meterLook: meterLookProp, onMeterLookChange,
   recordingMeterOrientation = 'flyout', onRecordingMeterOrientationChange,
 }: TransportToolbarProps) {
   const { theme } = useTheme();
@@ -280,11 +287,12 @@ export function TransportToolbar({
   const [snapMenuPos, setSnapMenuPos] = React.useState({ x: 0, y: 0 });
   const snapButtonRef = React.useRef<HTMLButtonElement>(null);
 
-  // Volume settings menu — drives meter orientation choice. Kept as internal
-  // state since the orientation is a presentation concern of this toolbar.
-  const [volumeMenuOpen, setVolumeMenuOpen] = React.useState(false);
-  const [volumeMenuPos, setVolumeMenuPos] = React.useState({ x: 0, y: 0 });
+  // The volume button's flyout (2026-11-04, the Figma "Playback meter"
+  // flyout, replacing its two-item menu): position, style, type, dB range
+  const [volumeFlyout, setVolumeFlyout] = React.useState<{ x: number; y: number } | null>(null);
   const volumeButtonRef = React.useRef<HTMLDivElement>(null);
+  const volumeClosedAtRef = React.useRef(0);
+  const closeVolumeFlyout = () => { volumeClosedAtRef.current = performance.now(); setVolumeFlyout(null); };
   // The microphone button's flyout (2026-11-04) — anchored on the button's
   // middle, just under it
   const micButtonRef = React.useRef<HTMLSpanElement>(null);
@@ -327,11 +335,18 @@ export function TransportToolbar({
   };
 
   const handleVolumeButtonClick = () => {
-    if (volumeButtonRef.current) {
-      const rect = volumeButtonRef.current.getBoundingClientRect();
-      setVolumeMenuPos({ x: rect.left, y: rect.bottom + 2 });
-    }
-    setVolumeMenuOpen(true);
+    if (volumeFlyout) { setVolumeFlyout(null); return; }
+    if (performance.now() - volumeClosedAtRef.current < 300) return;
+    const rect = volumeButtonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setVolumeFlyout({ x: rect.left + rect.width / 2, y: rect.bottom + 4 });
+  };
+  // Uncontrolled fallback for the look, as for the orientation
+  const [internalLook, setInternalLook] = React.useState<PlaybackMeterLook>(DEFAULT_PLAYBACK_METER_LOOK);
+  const meterLook = meterLookProp ?? internalLook;
+  const setMeterLook = (next: PlaybackMeterLook) => {
+    if (onMeterLookChange) onMeterLookChange(next);
+    else setInternalLook(next);
   };
 
 
@@ -861,6 +876,7 @@ export function TransportToolbar({
               <ToolButton
                 icon="volume"
                 ariaLabel="Playback volume settings"
+                state={volumeFlyout ? 'pressed' : undefined}
                 onClick={handleVolumeButtonClick}
               />
             </div>
@@ -874,6 +890,7 @@ export function TransportToolbar({
                 recentPeakRight={masterRecentPeakRight}
                 volume={masterVolume}
                 onVolumeChange={onMasterVolumeChange}
+                look={meterLook}
               />
             )}
           </ToolbarButtonGroup>
@@ -912,29 +929,18 @@ export function TransportToolbar({
             />
           </ContextMenu>
 
-          <ContextMenu
-            isOpen={volumeMenuOpen}
-            onClose={() => setVolumeMenuOpen(false)}
-            x={volumeMenuPos.x}
-            y={volumeMenuPos.y}
-          >
-            <ContextMenuItem
-              label="Horizontal meter"
-              checked={meterOrientation === 'horizontal'}
-              onClick={() => {
-                setMeterOrientation('horizontal');
-                setVolumeMenuOpen(false);
-              }}
-            />
-            <ContextMenuItem
-              label="Vertical meter"
-              checked={meterOrientation === 'vertical'}
-              onClick={() => {
-                setMeterOrientation('vertical');
-                setVolumeMenuOpen(false);
-              }}
-            />
-          </ContextMenu>
+          <PlaybackMeterFlyout
+            isOpen={volumeFlyout !== null}
+            onClose={closeVolumeFlyout}
+            x={volumeFlyout?.x ?? 0}
+            y={volumeFlyout?.y ?? 0}
+            direction="down"
+            triggerRef={volumeButtonRef}
+            position={meterOrientation}
+            onPositionChange={setMeterOrientation}
+            look={meterLook}
+            onLookChange={setMeterLook}
+          />
 
         </>
       )}

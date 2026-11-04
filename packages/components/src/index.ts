@@ -46,6 +46,8 @@ export * from './AddTrackFlyout';
 export * from './Flyout';
 export * from './MicrophoneLevelFlyout';
 export * from './RecordingMeterVertical';
+export * from './PlaybackMeterFlyout';
+export * from './utils/meterLook';
 export * from './RulerFlyout';
 export * from './Toast';
 export * from './Dialog';

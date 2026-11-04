@@ -106,3 +106,19 @@ describe('a right-click on the microphone button is the recording meter\'s dock 
     expect(onRecordingMeterOrientationChange).toHaveBeenCalledWith('vertical');
   });
 });
+
+describe('the volume button opens the Playback meter flyout (2026-11-04)', () => {
+  it('a press opens it in place of the old two-item menu; a position pick reports through onMeterOrientationChange', () => {
+    const onMeterOrientationChange = vi.fn();
+    const { container } = renderToolbar('classic', [], { meterOrientation: 'horizontal', onMeterOrientationChange });
+    const button = container.querySelector('button[aria-label="Playback volume settings"]') as HTMLElement;
+    fireEvent.click(button);
+    const flyout = document.querySelector('.playback-meter-flyout') as HTMLElement;
+    expect(flyout).toBeTruthy();
+    expect(flyout.textContent).toContain('Meter style');
+    const vertical = Array.from(flyout.querySelectorAll('input[type="radio"]'))
+      .find((el) => el.closest('.labeled-radio')?.textContent?.includes('Side bar (vertical)')) as HTMLElement;
+    fireEvent.click(vertical);
+    expect(onMeterOrientationChange).toHaveBeenCalledWith('vertical');
+  });
+});

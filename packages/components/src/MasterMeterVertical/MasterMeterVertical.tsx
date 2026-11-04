@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
 import { ToolButton } from '../ToolButton';
+import { meterPercent, meterDbFromPercent, meterTicks, DEFAULT_PLAYBACK_METER_LOOK, type PlaybackMeterLook } from '../utils/meterLook';
 import './MasterMeterVertical.css';
 
 export interface MasterMeterVerticalProps {
@@ -31,40 +32,16 @@ export interface MasterMeterVerticalProps {
   settingsAriaLabel?: string;
   /** The knob's name (the master volume, or the input gain) */
   sliderAriaLabel?: string;
-  /** The button's MENU (the recording dock's orientation menu): a click
-   *  opens it under the button, a right-click at the pointer */
-  onSettingsMenu?: (x: number, y: number) => void;
+  /** The button's MENU (the recording dock's orientation menu, the playback
+   *  dock's flyout): a click opens it under the button — with the button's
+   *  rect, for a flyout to hang off — a right-click at the pointer */
+  onSettingsMenu?: (x: number, y: number, buttonRect?: DOMRect) => void;
+  /** The meter's LOOK (2026-11-04): style, type and dB range */
+  look?: PlaybackMeterLook;
 }
 
-/** Major numeric tick values, top → bottom. */
-const DB_LABELS = [0, -6, -12, -18, -24, -30, -36, -42, -48, -54, -60];
-const DB_MIN = -60;
-const DB_MAX = 0;
 /** Two unlabelled minor ticks between each pair of numeric ticks. */
 const MINOR_TICKS_BETWEEN = 2;
-
-/** Returns vertical position 0–100 from the TOP for a given dB value
- *  (0 dB → 0%, −60 dB → 100%). */
-function dbToYPercent(db: number): number {
-  const clamped = Math.max(DB_MIN, Math.min(DB_MAX, db));
-  return ((DB_MAX - clamped) / (DB_MAX - DB_MIN)) * 100;
-}
-
-/** Returns the bar fill HEIGHT as a percent (0 dB → 100%, −60 dB → 0%). */
-function dbToFillPercent(db: number): number {
-  const clamped = Math.max(DB_MIN, Math.min(DB_MAX, db));
-  return ((clamped - DB_MIN) / (DB_MAX - DB_MIN)) * 100;
-}
-
-function volumeToDb(volume: number): number {
-  if (volume <= 0) return DB_MIN;
-  return Math.max(DB_MIN, 20 * Math.log10(volume));
-}
-
-function dbToVolume(db: number): number {
-  if (db <= DB_MIN) return 0;
-  return Math.pow(10, db / 20);
-}
 
 export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
   levelLeft = -60,
@@ -81,28 +58,37 @@ export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
   settingsAriaLabel = 'Playback volume settings',
   sliderAriaLabel = 'Master volume',
   onSettingsMenu,
+  look = DEFAULT_PLAYBACK_METER_LOOK,
 }) => {
   const { theme } = useTheme();
+  const lookRef = React.useRef(look);
+  lookRef.current = look;
   const trackRef = React.useRef<HTMLDivElement>(null);
   const settingsRef = React.useRef<HTMLSpanElement>(null);
   const draggingRef = React.useRef(false);
   const onVolumeChangeRef = React.useRef(onVolumeChange);
   onVolumeChangeRef.current = onVolumeChange;
 
-  const leftFill = dbToFillPercent(levelLeft);
-  const rightFill = dbToFillPercent(levelRight);
-  const thumbY = dbToYPercent(volumeToDb(volume));
-  const peakLeftY = recentPeakLeft !== undefined ? dbToYPercent(recentPeakLeft) : undefined;
-  const peakRightY = recentPeakRight !== undefined ? dbToYPercent(recentPeakRight) : undefined;
+  const floor = -look.dbRange;
+  const leftFill = meterPercent(levelLeft, look);
+  const rightFill = meterPercent(levelRight, look);
+  const thumbDb = volume <= 0 ? floor : Math.max(floor, 20 * Math.log10(volume));
+  const thumbY = 100 - meterPercent(thumbDb, look);
+  const peakLeftY = recentPeakLeft !== undefined ? 100 - meterPercent(recentPeakLeft, look) : undefined;
+  const peakRightY = recentPeakRight !== undefined ? 100 - meterPercent(recentPeakRight, look) : undefined;
+  const gradient = look.style === 'gradient';
+  const rms = look.style === 'rms';
+  // The dense scale, top → bottom
+  const ticks = meterTicks(look, 2).slice().reverse();
 
   const updateVolumeFromY = React.useCallback((clientY: number) => {
     if (!trackRef.current || !onVolumeChangeRef.current) return;
     const rect = trackRef.current.getBoundingClientRect();
     const yFromTop = clientY - rect.top;
     const percentFromTop = Math.max(0, Math.min(100, (yFromTop / rect.height) * 100));
-    // Top of track = 0 dB, bottom = DB_MIN.
-    const db = DB_MAX - (percentFromTop / 100) * (DB_MAX - DB_MIN);
-    onVolumeChangeRef.current(dbToVolume(db));
+    // Top of track = 0 dB, bottom = the floor, on the look's scale
+    const db = meterDbFromPercent(100 - percentFromTop, lookRef.current);
+    onVolumeChangeRef.current(db <= -lookRef.current.dbRange ? 0 : Math.pow(10, db / 20));
   }, []);
 
   React.useEffect(() => {
@@ -157,7 +143,7 @@ export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
             onSettingsClick?.();
             if (onSettingsMenu && settingsRef.current) {
               const r = settingsRef.current.getBoundingClientRect();
-              onSettingsMenu(r.left, r.bottom + 2);
+              onSettingsMenu(r.left, r.bottom + 2, r);
             }
           }}
         />
@@ -184,11 +170,18 @@ export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
                }
              }}
         >
-          <div className="master-meter-vertical__bar">
-            <div
-              className="master-meter-vertical__bar-fill"
-              style={{ height: `${leftFill}%` }}
-            />
+          <div className={`master-meter-vertical__bar${gradient ? ' master-meter-vertical__bar--gradient' : ''}`}>
+            {gradient ? (
+              <div className="master-meter-vertical__cover" style={{ height: `${100 - leftFill}%` }} />
+            ) : (
+              <div
+                className="master-meter-vertical__bar-fill"
+                style={{ height: `${leftFill}%` }}
+              />
+            )}
+            {rms && peakLeftY !== undefined && peakLeftY < 100 - leftFill && (
+              <div className="master-meter-vertical__rms-peak" style={{ top: `${peakLeftY}%`, height: `${100 - leftFill - peakLeftY}%` }} />
+            )}
             {peakLeftY !== undefined && peakLeftY < 100 && (
               <div
                 className="master-meter-vertical__peak-line"
@@ -197,11 +190,18 @@ export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
             )}
             {clippedLeft && <div className="master-meter-vertical__clip-cap" />}
           </div>
-          <div className="master-meter-vertical__bar">
-            <div
-              className="master-meter-vertical__bar-fill"
-              style={{ height: `${rightFill}%` }}
-            />
+          <div className={`master-meter-vertical__bar${gradient ? ' master-meter-vertical__bar--gradient' : ''}`}>
+            {gradient ? (
+              <div className="master-meter-vertical__cover" style={{ height: `${100 - rightFill}%` }} />
+            ) : (
+              <div
+                className="master-meter-vertical__bar-fill"
+                style={{ height: `${rightFill}%` }}
+              />
+            )}
+            {rms && peakRightY !== undefined && peakRightY < 100 - rightFill && (
+              <div className="master-meter-vertical__rms-peak" style={{ top: `${peakRightY}%`, height: `${100 - rightFill - peakRightY}%` }} />
+            )}
             {peakRightY !== undefined && peakRightY < 100 && (
               <div
                 className="master-meter-vertical__peak-line"
@@ -219,10 +219,10 @@ export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
         </div>
 
         <div className="master-meter-vertical__scale" aria-hidden="true">
-          {DB_LABELS.map((db, idx) => (
-            <React.Fragment key={db}>
-              <span className="master-meter-vertical__label">{db}</span>
-              {idx < DB_LABELS.length - 1 && (
+          {ticks.map((tick, idx) => (
+            <React.Fragment key={tick.label}>
+              <span className="master-meter-vertical__label">{tick.label}</span>
+              {idx < ticks.length - 1 && (
                 <>
                   {Array.from({ length: MINOR_TICKS_BETWEEN }).map((_, t) => (
                     <span key={t} className="master-meter-vertical__tick" />

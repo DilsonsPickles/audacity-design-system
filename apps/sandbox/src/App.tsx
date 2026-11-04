@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksProvider';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, RecordingMeterVertical, type StoredProject } from '@audacity-ui/components';
+import { ApplicationHeader, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, RecordingMeterVertical, PlaybackMeterFlyout, DEFAULT_PLAYBACK_METER_LOOK, type PlaybackMeterLook, type StoredProject } from '@audacity-ui/components';
 import { ADIEU_BASE } from './lib/adieu-client';
 import { type EnvelopePointStyleKey, yToTrackIndex } from '@audacity-ui/core';
 import { createWheelTargetLock } from './utils/canvasWheelTarget';
@@ -333,6 +333,11 @@ function CanvasDemoContent() {
 
   const { toolbarPosition, handleToolbarGripperMouseDown } = useDraggableToolbar();
   const [meterOrientation, setMeterOrientation] = React.useState<'horizontal' | 'vertical'>('horizontal');
+  // The playback meter's LOOK (2026-11-04, the Playback meter flyout):
+  // style, type, dB range — session state, as the orientation is
+  const [meterLook, setMeterLook] = React.useState<PlaybackMeterLook>(DEFAULT_PLAYBACK_METER_LOOK);
+  // The docked playback meter's volume button opens the same flyout, to its left
+  const [playbackDockFlyout, setPlaybackDockFlyout] = React.useState<{ x: number; y: number } | null>(null);
   // The RECORDING meter's dock (2026-11-04): 'vertical' renders
   // RecordingMeterVertical at the right, beside the playback meter's
   const [recordingMeterOrientation, setRecordingMeterOrientation] = React.useState<'flyout' | 'vertical'>('flyout');
@@ -1126,6 +1131,8 @@ function CanvasDemoContent() {
       masterRecentPeak,
       meterOrientation,
       onMeterOrientationChange: setMeterOrientation,
+      meterLook,
+      onMeterLookChange: setMeterLook,
     },
     gripper: {
       onGripperMouseDown: handleToolbarGripperMouseDown,
@@ -1366,8 +1373,12 @@ function CanvasDemoContent() {
               levelRight={masterLevelRight}
               clippedLeft={masterLevelLeft >= 0}
               clippedRight={masterLevelRight >= 0}
+              recentPeakLeft={masterRecentPeak}
+              recentPeakRight={masterRecentPeak}
               volume={masterVolume}
               onVolumeChange={handleMasterVolumeChange}
+              look={meterLook}
+              onSettingsMenu={(x, y, rect) => setPlaybackDockFlyout(rect ? { x: rect.left - 4, y: rect.top + rect.height / 2 } : { x, y })}
             />
           </div>
         )}
@@ -1602,6 +1613,22 @@ function CanvasDemoContent() {
         onFitTrackToHeight={handleFitTrackToHeight}
         onResetTrackHeight={handleResetTrackHeight}
       />
+
+      {/* The docked playback meter's flyout (2026-11-04): its volume button,
+          the toolbar's flyout hung to the left (the design's vertical variant) */}
+      {playbackDockFlyout && (
+        <PlaybackMeterFlyout
+          isOpen
+          onClose={() => setPlaybackDockFlyout(null)}
+          x={playbackDockFlyout.x}
+          y={playbackDockFlyout.y}
+          direction="left"
+          position={meterOrientation}
+          onPositionChange={(next) => { setMeterOrientation(next); if (next === 'horizontal') setPlaybackDockFlyout(null); }}
+          look={meterLook}
+          onLookChange={setMeterLook}
+        />
+      )}
 
       {/* The docked recording meter's menu (2026-11-04): its mic button,
           click or right-click — the toolbar mic button's right-click pair */}

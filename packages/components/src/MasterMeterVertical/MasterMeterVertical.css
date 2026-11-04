@@ -131,3 +131,23 @@
   background: var(--mmv-text);
   opacity: 0.5;
 }
+
+/* THE LOOK (2026-11-04) — the horizontal meter's gradient and RMS, stood up */
+.master-meter-vertical__bar--gradient {
+  background: linear-gradient(to top, #3fb950 0%, #d4c13a 70%, #d9534f 100%);
+}
+
+.master-meter-vertical__cover {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  background: var(--mmv-bar-bg);
+}
+
+.master-meter-vertical__rms-peak {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: color-mix(in srgb, var(--mmv-bar-fill) 35%, transparent);
+}

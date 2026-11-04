@@ -1,0 +1,56 @@
+/* The Figma "Playback meter" flyout (5128:18161): 360 wide, 12 in, 12
+   between the groups; a group is its 12px label over a form WELL — the
+   inset surface, a 1px border, radius 3, 12 in, 8 between the radios; the
+   style and type wells sit side by side, 162 each, 12 apart. Figma's
+   strokes are inside the shape: the card's 1px border is within the 12
+   (11 of padding), as the mic flyout's. */
+.flyout.playback-meter-flyout {
+  width: 360px;
+  box-sizing: border-box;
+}
+
+.playback-meter-flyout__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 11px;
+}
+
+.playback-meter-flyout__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.playback-meter-flyout__label {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--pmf-text, #14151a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playback-meter-flyout__well {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--pmf-well, #ebedf0);
+  border: 1px solid var(--pmf-border, #d4d5d9);
+  border-radius: 3px;
+  box-sizing: border-box;
+  flex: 1 0 auto;
+}
+
+.playback-meter-flyout__columns {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.playback-meter-flyout__columns > .playback-meter-flyout__group {
+  flex: 1 1 0;
+}

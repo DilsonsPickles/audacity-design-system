@@ -41,6 +41,8 @@ export type TransportToolbarContainerTimecode = Pick<TransportToolbarProps,
 export type TransportToolbarContainerMasterMeter = UseMasterMeterReturn & {
   meterOrientation: NonNullable<TransportToolbarProps['meterOrientation']>;
   onMeterOrientationChange: NonNullable<TransportToolbarProps['onMeterOrientationChange']>;
+  meterLook: NonNullable<TransportToolbarProps['meterLook']>;
+  onMeterLookChange: NonNullable<TransportToolbarProps['onMeterLookChange']>;
 };
 
 export interface TransportToolbarContainerGripper {
@@ -117,6 +119,8 @@ export function TransportToolbarContainer({
       onMasterVolumeChange={masterMeter.handleMasterVolumeChange}
       meterOrientation={masterMeter.meterOrientation}
       onMeterOrientationChange={masterMeter.onMeterOrientationChange}
+      meterLook={masterMeter.meterLook}
+      onMeterLookChange={masterMeter.onMeterLookChange}
       onGripperMouseDown={gripper.onGripperMouseDown}
     />
   );

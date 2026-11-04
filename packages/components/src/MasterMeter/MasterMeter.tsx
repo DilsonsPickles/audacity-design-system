@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
 import '../assets/fonts/musescore-icon.css';
+import { meterPercent, meterDbFromPercent, meterTicks, DEFAULT_PLAYBACK_METER_LOOK, type PlaybackMeterLook } from '../utils/meterLook';
 import './MasterMeter.css';
 
 export interface MasterMeterProps {
@@ -44,37 +45,14 @@ export interface MasterMeterProps {
   ariaLabel?: string;
   /** Accessible name of the level slider. Default "Master volume" */
   sliderAriaLabel?: string;
+  /** The meter's LOOK (2026-11-04, the Playback meter flyout): style,
+   *  type and dB range — `utils/meterLook.ts` */
+  look?: PlaybackMeterLook;
 }
 
-/** dB tick tiers, sparse → dense. The widest tier that fits without
- *  crowding gets rendered; the 6-label tier matches Figma at default width. */
-const DB_TICKS_TIERS: readonly (readonly number[])[] = [
-  [-60, -30, 0],
-  [-60, -48, -36, -24, -12, 0],
-  [-60, -54, -48, -42, -36, -30, -24, -18, -12, -6, 0],
-];
-/** Minimum scale width (px) per tier index — keep labels from butting up. */
+/** Minimum scale width (px) per label density — keep labels from butting
+ *  up: three, six-ish, a dozen (`meterTicks`) */
 const DB_TICKS_MIN_WIDTHS = [0, 220, 440];
-const DB_MIN = -60;
-const DB_MAX = 0;
-
-/** Convert a dB value to a percentage position (0–100) */
-function dbToPercent(db: number): number {
-  const clamped = Math.max(DB_MIN, Math.min(DB_MAX, db));
-  return ((clamped - DB_MIN) / (DB_MAX - DB_MIN)) * 100;
-}
-
-/** Convert a linear volume (0–1) to dB for thumb position */
-function volumeToDb(volume: number): number {
-  if (volume <= 0) return DB_MIN;
-  return Math.max(DB_MIN, 20 * Math.log10(volume));
-}
-
-/** Convert dB to linear volume (0–1) */
-function dbToVolume(db: number): number {
-  if (db <= DB_MIN) return 0;
-  return Math.pow(10, db / 20);
-}
 
 export const MasterMeter: React.FC<MasterMeterProps> = ({
   levelLeft = -60,
@@ -92,8 +70,11 @@ export const MasterMeter: React.FC<MasterMeterProps> = ({
   className = '',
   ariaLabel = 'Master playback meter',
   sliderAriaLabel = 'Master volume',
+  look = DEFAULT_PLAYBACK_METER_LOOK,
 }) => {
   const { theme } = useTheme();
+  const lookRef = React.useRef(look);
+  lookRef.current = look;
   const rootRef = React.useRef<HTMLDivElement>(null);
   const trackRef = React.useRef<HTMLDivElement>(null);
   const thumbRef = React.useRef<HTMLDivElement>(null);
@@ -168,23 +149,27 @@ export const MasterMeter: React.FC<MasterMeterProps> = ({
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
-  const ticks = DB_TICKS_TIERS[tierIndex];
+  const ticks = meterTicks(look, tierIndex as 0 | 1 | 2);
 
-  const leftPercent = dbToPercent(levelLeft);
-  const rightPercent = dbToPercent(levelRight);
-  const thumbDb = volumeToDb(volume);
-  const thumbPercent = dbToPercent(thumbDb);
+  const floor = -look.dbRange;
+  const leftPercent = meterPercent(levelLeft, look);
+  const rightPercent = meterPercent(levelRight, look);
+  // The knob: linear volume → dB on this scale (0 at the floor)
+  const thumbDb = volume <= 0 ? floor : Math.max(floor, 20 * Math.log10(volume));
+  const thumbPercent = meterPercent(thumbDb, look);
 
-  const peakLeftPercent = recentPeakLeft !== undefined ? dbToPercent(recentPeakLeft) : undefined;
-  const peakRightPercent = recentPeakRight !== undefined ? dbToPercent(recentPeakRight) : undefined;
+  const peakLeftPercent = recentPeakLeft !== undefined ? meterPercent(recentPeakLeft, look) : undefined;
+  const peakRightPercent = recentPeakRight !== undefined ? meterPercent(recentPeakRight, look) : undefined;
+  const gradient = look.style === 'gradient';
+  const rms = look.style === 'rms';
 
   const updateVolumeFromX = React.useCallback((clientX: number) => {
     if (!trackRef.current || !onVolumeChangeRef.current) return;
     const rect = trackRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
     const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
-    const db = DB_MIN + (percent / 100) * (DB_MAX - DB_MIN);
-    onVolumeChangeRef.current(dbToVolume(db));
+    const db = meterDbFromPercent(percent, lookRef.current);
+    onVolumeChangeRef.current(db <= -lookRef.current.dbRange ? 0 : Math.pow(10, db / 20));
   }, []);
 
   React.useEffect(() => {
@@ -252,11 +237,18 @@ export const MasterMeter: React.FC<MasterMeterProps> = ({
           className="master-meter__track"
         >
           {/* Left channel meter */}
-          <div className="master-meter__bar">
-            <div
-              className="master-meter__fill"
-              style={{ width: `${leftPercent}%` }}
-            />
+          <div className={`master-meter__bar${gradient ? ' master-meter__bar--gradient' : ''}`}>
+            {gradient ? (
+              <div className="master-meter__cover" style={{ width: `${100 - leftPercent}%` }} />
+            ) : (
+              <div
+                className="master-meter__fill"
+                style={{ width: `${leftPercent}%` }}
+              />
+            )}
+            {rms && peakLeftPercent !== undefined && peakLeftPercent > leftPercent && (
+              <div className="master-meter__rms-peak" style={{ left: `${leftPercent}%`, width: `${peakLeftPercent - leftPercent}%` }} />
+            )}
             {peakLeftPercent !== undefined && peakLeftPercent > 0 && (
               <div
                 className="master-meter__peak-line"
@@ -266,11 +258,18 @@ export const MasterMeter: React.FC<MasterMeterProps> = ({
           </div>
 
           {/* Right channel meter */}
-          <div className="master-meter__bar">
-            <div
-              className="master-meter__fill"
-              style={{ width: `${rightPercent}%` }}
-            />
+          <div className={`master-meter__bar${gradient ? ' master-meter__bar--gradient' : ''}`}>
+            {gradient ? (
+              <div className="master-meter__cover" style={{ width: `${100 - rightPercent}%` }} />
+            ) : (
+              <div
+                className="master-meter__fill"
+                style={{ width: `${rightPercent}%` }}
+              />
+            )}
+            {rms && peakRightPercent !== undefined && peakRightPercent > rightPercent && (
+              <div className="master-meter__rms-peak" style={{ left: `${rightPercent}%`, width: `${peakRightPercent - rightPercent}%` }} />
+            )}
             {peakRightPercent !== undefined && peakRightPercent > 0 && (
               <div
                 className="master-meter__peak-line"
@@ -324,8 +323,8 @@ export const MasterMeter: React.FC<MasterMeterProps> = ({
           at the left edge and the last flush at the right, matching the bar
           coordinate system above. */}
       <div ref={scaleRef} className="master-meter__scale">
-        {ticks.map((db) => (
-          <span key={db} className="master-meter__tick-label">{db}</span>
+        {ticks.map((tick) => (
+          <span key={tick.label} className="master-meter__tick-label">{tick.label}</span>
         ))}
       </div>
       </div>
