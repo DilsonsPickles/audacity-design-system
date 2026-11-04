@@ -55,9 +55,9 @@ export const CUSTOMISE_TOOLBAR_ENTRIES: ReadonlyArray<CustomiseToolbarEntry> = [
   tool('fit-tracks-height', 'Fit tracks to height', '\uF439', undefined, 'track-fit-height'),
   tool('zoom-toggle', 'Zoom toggle', ''),
   DIVIDER,
+  // Spectral box select and Spectral brush went (2026-11-04, "remove spectral
+  // box select and brush") — listed for the design's sake with no tool behind
   tool('spectral-editing', 'Spectral editing', ''),
-  tool('spectral-box-select', 'Spectral box select', ''),
-  tool('spectral-brush', 'Spectral brush', ''),
   DIVIDER,
   tool('cut', 'Cut', ''),
   tool('copy', 'Copy', ''),
