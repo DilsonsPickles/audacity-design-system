@@ -24,7 +24,6 @@ export interface RecordingManagerCallbacks {
 
 export class RecordingManager {
   private recorder: Tone.Recorder | null = null;
-  private meter: Tone.Meter | null = null;
   private userMedia: Tone.UserMedia | null = null;
   // THE INPUT GAIN (2026-11-04, the toolbar's Microphone level flyout —
   // "Adjust the level of your OS configured microphone"): a browser cannot
@@ -41,8 +40,12 @@ export class RecordingManager {
 
   /** The meter's reading right now, after the ballistics (0–100 each) */
   private readMeter(): { level: number; peak: number; recentPeak: number } {
-    if (!this.meter) return this.lastReading;
-    const dbLevel = this.meter.getValue() as number; // justified: Meter.getValue(): number | number[] — meter is constructed single-channel
+    if (!this.waveform) return this.lastReading;
+    const samples = this.waveform.getValue();
+    let total = 0;
+    for (let i = 0; i < samples.length; i++) total += samples[i] * samples[i];
+    const rms = samples.length ? Math.sqrt(total / samples.length) : 0;
+    const dbLevel = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
     const reading = this.ballistics.next(dbLevel, performance.now());
     const level = dbToMeterPercent(reading.level);
     this.peakLevel = Math.max(this.peakLevel, level);
@@ -130,7 +133,7 @@ export class RecordingManager {
 
   /** The input's current level in dB after the gain, or null while the mic is closed */
   getInputLevelDb(): number | null {
-    if (!this.meter) return null;
+    if (!this.waveform) return null;
     if (!this.recorder && !RecordingManager.idleMetering) return null;
     // The meter loop's own reading, so the flyout and the track meter agree
     const { level } = this.readMeter();
@@ -181,11 +184,9 @@ export class RecordingManager {
       this.inputGain = new Tone.Gain(RecordingManager.inputGainValue);
       this.userMedia.connect(this.inputGain);
 
-      // Create meter for level monitoring
-      this.meter = new Tone.Meter({ normalRange: false, smoothing: 0.8 });
-      this.inputGain.connect(this.meter);
-
-      // Create Tone.Waveform for waveform data (2048 samples)
+      // One 2048-sample waveform node (43 ms at 48 kHz) feeds BOTH the live
+      // waveform and the level: Tone.Meter's 256-sample RMS twitched with
+      // every frame of speech (2026-11-04, "it's SO jittery")
       this.waveform = new Tone.Waveform(2048);
       this.inputGain.connect(this.waveform);
 
@@ -194,7 +195,7 @@ export class RecordingManager {
 
       // Start meter updates
       this.meterUpdateInterval = window.setInterval(() => {
-        if (this.meter) {
+        if (this.waveform) {
           // Not recording, and the mic is not metered then: report silence
           if (!RecordingManager.idleMetering) {
             this.peakLevel = 0;
@@ -304,11 +305,6 @@ export class RecordingManager {
     }
     RecordingManager.live.delete(this);
 
-    if (this.meter) {
-      this.meter.dispose();
-      this.meter = null;
-    }
-
     this.isMonitoring = false;
     this.peakLevel = 0;
   }
@@ -379,7 +375,7 @@ export class RecordingManager {
       }
 
       this.meterUpdateInterval = window.setInterval(() => {
-        if (this.meter) {
+        if (this.waveform) {
           const { level, peak, recentPeak } = this.readMeter();
 
           // Calculate elapsed time and playhead position during recording
@@ -448,7 +444,7 @@ export class RecordingManager {
       }
 
       this.meterUpdateInterval = window.setInterval(() => {
-        if (this.meter) {
+        if (this.waveform) {
           // Not recording, and the mic is not metered then: report silence
           if (!RecordingManager.idleMetering) {
             this.peakLevel = 0;

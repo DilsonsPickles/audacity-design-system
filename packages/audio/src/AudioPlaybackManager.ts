@@ -1,4 +1,29 @@
 import * as Tone from 'tone';
+
+/**
+ * A LEVEL METER OVER A STEADY WINDOW (2026-11-04, "it's SO jittery"):
+ * Tone.Meter analyses 256 samples — 5 ms at 48 kHz — so its RMS swung
+ * with every frame of speech and the bars twitched. This one reads the
+ * RMS of a 2048-sample window (43 ms), the smoothing and the fall left to
+ * the host's ballistics. Chains inline like Tone.Meter (input → output),
+ * `getValue()` is the level in dB (−Infinity for silence).
+ */
+export const LEVEL_METER_WINDOW = 2048;
+export class LevelMeter extends Tone.Analyser {
+  constructor() {
+    super('waveform', LEVEL_METER_WINDOW);
+  }
+
+  getValue(): number { // justified: Analyser.getValue is typed Float32Array | Float32Array[]; this meter narrows it to one dB number
+    const raw = super.getValue() as unknown as Float32Array | Float32Array[]; // justified: Tone's types — the analyser is single-channel here
+    const samples = Array.isArray(raw) ? raw[0] : raw;
+    if (!samples || samples.length === 0) return -Infinity;
+    let total = 0;
+    for (let i = 0; i < samples.length; i++) total += samples[i] * samples[i];
+    const rms = Math.sqrt(total / samples.length);
+    return rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+  }
+}
 import { applyEnvelopeToChannel, type EnvelopeGainPoint } from './envelopeGain';
 import { applyGainSegmentsToChannel, computeClipGainSegments } from './crossfadeGain';
 import audioBufferToWav from 'audiobuffer-to-wav';
@@ -11,7 +36,7 @@ export class AudioPlaybackManager {
   private players: Map<string, Tone.Player | Tone.GrainPlayer> = new Map();
   private volumes: Map<string, Tone.Volume> = new Map();
   private audioBuffers: Map<string, AudioBuffer> = new Map();
-  private meters: Map<number, Tone.Meter> = new Map(); // Track index -> Meter
+  private meters: Map<number, LevelMeter> = new Map(); // Track index -> Meter
   private trackGains: Map<number, Tone.Gain> = new Map(); // Track index -> Gain node
   private trackEffectChains: Map<number, Tone.ToneAudioNode[]> = new Map(); // Track index -> Effect chain
   private masterEffectChain: Tone.ToneAudioNode[] = []; // Master effects applied to all tracks
@@ -29,7 +54,7 @@ export class AudioPlaybackManager {
   // track on its way to the destination. Per-track meters historically
   // dropped to silence after the first audio buffer; this gives the
   // playback UI a reliable post-mix level reading.
-  private masterMeter: Tone.Meter | null = null;
+  private masterMeter: LevelMeter | null = null;
   private onMasterMeterUpdate?: (level: number) => void;
   private loopEnabled: boolean = false;
   private loopStart: number | null = null;
@@ -361,14 +386,14 @@ export class AudioPlaybackManager {
     // Rebuild a single master meter that all tracks pass through on the
     // way to the destination, so the playback UI can read a reliable
     // post-mix level. Default smoothing keeps it readable at 60 fps.
-    this.masterMeter = new Tone.Meter({ smoothing: 0.8 });
+    this.masterMeter = new LevelMeter();
     this.masterMeter.toDestination();
 
     // Create gain nodes and meters for each track
     tracks.forEach((track, trackIndex) => {
       if (track.type !== 'label' && track.type !== 'folder') {
         const gain = new Tone.Gain(1);
-        const meter = new Tone.Meter();
+        const meter = new LevelMeter();
 
         // Connect through effect chain
         let lastNode: Tone.ToneAudioNode = gain;
