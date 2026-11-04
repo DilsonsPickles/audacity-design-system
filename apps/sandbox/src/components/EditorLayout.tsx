@@ -71,6 +71,12 @@ export interface EditorLayoutProps {
   onTrackHeaderScroll: (e: React.UIEvent<HTMLDivElement>) => void;
   // The row menu's single-track height items (App's memory + fit rules, by index)
   onCollapseTrack?: (trackIndex: number) => void;
+  /** The track menu's Meters & monitoring ▸ — the mic's two settings, the
+   *  preferences `showMicMetering` / `enableInputMonitoring` (2026-11-04) */
+  micMetering?: boolean;
+  onToggleMicMetering?: () => void;
+  inputMonitoring?: boolean;
+  onToggleInputMonitoring?: () => void;
   onExpandTrack?: (trackIndex: number) => void;
   onFitTrackToHeight?: (trackIndex: number) => void;
   onResetTrackHeight?: (trackIndex: number) => void;
@@ -188,6 +194,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     trackMenuTriggerRef,
     scrollX, scrollY, onScroll, onTrackHeaderScroll,
     onCollapseTrack, onExpandTrack, onFitTrackToHeight, onResetTrackHeight,
+    micMetering, onToggleMicMetering, inputMonitoring, onToggleInputMonitoring,
     scrollContainerRef, trackHeaderScrollRef,
     pixelsPerSecond, timelineWidth, timelineDuration, timelineFormat, bpm, beatsPerMeasure, noteValue,
     showRmsInWaveform, showQuickFadeHandles, controlPointStyle, spectrogramScale, showVerticalRulers, setShowVerticalRulers,
@@ -827,6 +834,10 @@ export function EditorLayout(props: EditorLayoutProps) {
           onScroll={onTrackHeaderScroll}
           onPanelContextMenu={(x, y) => setTrackPanelContextMenu({ isOpen: true, x, y })}
           onCollapseTrack={onCollapseTrack}
+          micMetering={micMetering}
+          onToggleMicMetering={onToggleMicMetering ? () => onToggleMicMetering() : undefined}
+          inputMonitoring={inputMonitoring}
+          onToggleInputMonitoring={onToggleInputMonitoring ? () => onToggleInputMonitoring() : undefined}
           onExpandTrack={onExpandTrack}
           onFitTrackToHeight={onFitTrackToHeight}
           onResetTrackHeight={onResetTrackHeight}

@@ -11,11 +11,20 @@
  * the flyout is open, so a live meter re-renders the flyout alone, never
  * the toolbar it hangs from. The mic is one channel, so both rows read it;
  * the tick is the recent peak, held 1.5 s.
+ *
+ * UNDER IT, THE MIC'S TWO SETTINGS (the same day, "and now we have the
+ * following options"): the hint reads "Note: this control is tied to your
+ * computer's main mic volume", then a divider and two checkboxes — "Turn on
+ * input monitoring (hear yourself while recording)" and "Show mic metering
+ * when not recording" — the preferences `enableInputMonitoring` and
+ * `showMicMetering`, the same two the track menu's Meters & monitoring and
+ * Preferences › Playback & recording show.
  */
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
 import { Flyout } from '../Flyout';
 import { MasterMeter } from '../MasterMeter';
+import { LabeledCheckbox } from '../LabeledCheckbox';
 import './MicrophoneLevelFlyout.css';
 
 export interface MicrophoneLevelFlyoutProps {
@@ -31,6 +40,12 @@ export interface MicrophoneLevelFlyoutProps {
   /** The input gain, linear (1 = as the OS delivers it) */
   gain: number;
   onGainChange: (gain: number) => void;
+  /** Hear yourself while recording */
+  inputMonitoring?: boolean;
+  onInputMonitoringChange?: (on: boolean) => void;
+  /** Meter the mic when not recording */
+  micMetering?: boolean;
+  onMicMeteringChange?: (on: boolean) => void;
 }
 
 const PEAK_HOLD_MS = 1500;
@@ -38,6 +53,7 @@ const DB_FLOOR = -60;
 
 export function MicrophoneLevelFlyout({
   isOpen, onClose, x, y, triggerRef, getLevelDb, gain, onGainChange,
+  inputMonitoring = false, onInputMonitoringChange, micMetering = true, onMicMeteringChange,
 }: MicrophoneLevelFlyoutProps) {
   const { theme } = useTheme();
   const [level, setLevel] = React.useState(DB_FLOOR);
@@ -96,7 +112,20 @@ export function MicrophoneLevelFlyout({
             sliderAriaLabel="Microphone level"
           />
         </div>
-        <div className="microphone-level-flyout__hint">Adjust the level of your OS configured microphone</div>
+        <div className="microphone-level-flyout__hint">Note: this control is tied to your computer’s main mic volume</div>
+        <div className="microphone-level-flyout__divider" role="separator" />
+        <div className="microphone-level-flyout__options">
+          <LabeledCheckbox
+            label="Turn on input monitoring (hear yourself while recording)"
+            checked={inputMonitoring}
+            onChange={(checked) => onInputMonitoringChange?.(checked)}
+          />
+          <LabeledCheckbox
+            label="Show mic metering when not recording"
+            checked={micMetering}
+            onChange={(checked) => onMicMeteringChange?.(checked)}
+          />
+        </div>
       </div>
     </Flyout>
   );

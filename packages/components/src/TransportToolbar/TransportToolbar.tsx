@@ -140,6 +140,12 @@ export interface TransportToolbarProps {
   onMicrophoneGainChange?: (gain: number) => void;
   /** The flyout opened — the host opens the microphone if it is not */
   onMicrophoneLevelsOpen?: () => void;
+  /** The flyout's two settings (2026-11-04): hear yourself while recording,
+   *  and meter the mic when not recording */
+  microphoneInputMonitoring?: boolean;
+  onMicrophoneInputMonitoringChange?: (on: boolean) => void;
+  microphoneMetering?: boolean;
+  onMicrophoneMeteringChange?: (on: boolean) => void;
 
   /**
    * Current orientation of the master meter. When 'vertical' the toolbar
@@ -250,6 +256,7 @@ export function TransportToolbar({
   masterLevelLeft = -60, masterLevelRight = -60, masterClippedLeft = false, masterClippedRight = false,
   masterRecentPeakLeft, masterRecentPeakRight, masterVolume = 1, onMasterVolumeChange,
   getMicrophoneLevelDb, microphoneGain = 1, onMicrophoneGainChange, onMicrophoneLevelsOpen,
+  microphoneInputMonitoring, onMicrophoneInputMonitoringChange, microphoneMetering, onMicrophoneMeteringChange,
   meterOrientation: meterOrientationProp, onMeterOrientationChange,
 }: TransportToolbarProps) {
   const { theme } = useTheme();
@@ -860,6 +867,10 @@ export function TransportToolbar({
             getLevelDb={getMicrophoneLevelDb}
             gain={microphoneGain}
             onGainChange={(next) => onMicrophoneGainChange?.(next)}
+            inputMonitoring={microphoneInputMonitoring}
+            onInputMonitoringChange={onMicrophoneInputMonitoringChange}
+            micMetering={microphoneMetering}
+            onMicMeteringChange={onMicrophoneMeteringChange}
           />
 
           <ContextMenu

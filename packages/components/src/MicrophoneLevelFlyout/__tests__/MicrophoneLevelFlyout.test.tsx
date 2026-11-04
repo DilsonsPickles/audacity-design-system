@@ -17,7 +17,7 @@ describe('MicrophoneLevelFlyout (2026-11-04, the toolbar mic button\'s flyout)',
     );
     const flyout = document.querySelector('.microphone-level-flyout') as HTMLElement;
     expect(flyout.textContent).toContain('Microphone level');
-    expect(flyout.textContent).toContain('Adjust the level of your OS configured microphone');
+    expect(flyout.textContent).toContain('Note: this control is tied to your computer’s main mic volume');
     expect(flyout.querySelector('[aria-label="Microphone meter"]')).toBeTruthy();
   });
 
@@ -45,5 +45,27 @@ describe('MicrophoneLevelFlyout (2026-11-04, the toolbar mic button\'s flyout)',
     fireEvent.keyDown(slider, { key: 'ArrowLeft' });
     expect(onGainChange).toHaveBeenCalled();
     expect(onGainChange.mock.calls[0][0]).toBeLessThan(1);
+  });
+
+  it('its two settings report their changes: input monitoring and mic metering', () => {
+    const onInputMonitoringChange = vi.fn();
+    const onMicMeteringChange = vi.fn();
+    render(
+      <ThemeProvider>
+        <MicrophoneLevelFlyout
+          isOpen onClose={() => {}} x={200} y={40} gain={1} onGainChange={() => {}}
+          inputMonitoring={false} onInputMonitoringChange={onInputMonitoringChange}
+          micMetering onMicMeteringChange={onMicMeteringChange}
+        />
+      </ThemeProvider>,
+    );
+    const flyout = document.querySelector('.microphone-level-flyout') as HTMLElement;
+    expect(flyout.textContent).toContain('Note: this control is tied to your computer’s main mic volume');
+    const boxes = [...flyout.querySelectorAll<HTMLElement>('[role="checkbox"], input[type="checkbox"]')];
+    expect(boxes).toHaveLength(2);
+    fireEvent.click(boxes[0]);
+    expect(onInputMonitoringChange).toHaveBeenCalledWith(true);
+    fireEvent.click(boxes[1]);
+    expect(onMicMeteringChange).toHaveBeenCalledWith(false);
   });
 });

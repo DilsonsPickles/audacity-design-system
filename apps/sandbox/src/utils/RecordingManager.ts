@@ -33,6 +33,33 @@ export class RecordingManager {
   private inputGain: Tone.Gain | null = null;
   private static inputGainValue = 1;
   private static live = new Set<RecordingManager>();
+  // THE MIC'S TWO SETTINGS (2026-11-04, the Microphone level flyout's
+  // checkboxes — the preferences `enableInputMonitoring` / `showMicMetering`):
+  // INPUT MONITORING sends the mic, after the gain, to the speakers WHILE
+  // RECORDING; with IDLE METERING off the mic reads as silence whenever it is
+  // not recording (the track meter and the flyout alike). One microphone, so
+  // static, like the gain.
+  private static inputMonitoring = false;
+  private static idleMetering = true;
+  private monitoringToSpeakers = false;
+
+  static setInputMonitoring(on: boolean): void {
+    RecordingManager.inputMonitoring = on;
+    for (const manager of RecordingManager.live) manager.syncSpeakerMonitoring();
+  }
+
+  static setIdleMetering(on: boolean): void {
+    RecordingManager.idleMetering = on;
+  }
+
+  /** Mic → speakers exactly while recording with input monitoring on */
+  private syncSpeakerMonitoring(): void {
+    const want = RecordingManager.inputMonitoring && this.recorder !== null && this.inputGain !== null;
+    if (want === this.monitoringToSpeakers || !this.inputGain) return;
+    if (want) this.inputGain.connect(Tone.getDestination());
+    else this.inputGain.disconnect(Tone.getDestination());
+    this.monitoringToSpeakers = want;
+  }
 
   /** Set the microphone's input gain (linear, 1 = as the OS delivers it) */
   static setInputGain(value: number): void {
@@ -49,6 +76,7 @@ export class RecordingManager {
   /** The input's current level in dB after the gain, or null while the mic is closed */
   getInputLevelDb(): number | null {
     if (!this.meter) return null;
+    if (!this.recorder && !RecordingManager.idleMetering) return null;
     const value = this.meter.getValue() as number; // justified: Meter.getValue(): number | number[] — meter is constructed single-channel
     return Number.isFinite(value) ? value : -Infinity;
   }
@@ -105,6 +133,12 @@ export class RecordingManager {
       // Start meter updates
       this.meterUpdateInterval = window.setInterval(() => {
         if (this.meter) {
+          // Not recording, and the mic is not metered then: report silence
+          if (!RecordingManager.idleMetering) {
+            this.peakLevel = 0;
+            this.callbacks.onMeterUpdate(0, 0);
+            return;
+          }
           const dbLevel = this.meter.getValue() as number; // justified: Meter.getValue(): number | number[] — meter is constructed single-channel
           const normalized = Math.max(0, Math.min(100, ((dbLevel + 60) / 60) * 100));
           this.peakLevel = Math.max(this.peakLevel, normalized);
@@ -203,6 +237,7 @@ export class RecordingManager {
     }
 
     if (this.inputGain) {
+      this.monitoringToSpeakers = false;
       this.inputGain.dispose();
       this.inputGain = null;
     }
@@ -236,6 +271,7 @@ export class RecordingManager {
 
         // Start recording
         this.recorder.start();
+        this.syncSpeakerMonitoring();
 
         // Live preview tick: pulls the latest Waveform-node snapshot,
         // appends it to the running buffer, and incrementally extends
@@ -334,6 +370,7 @@ export class RecordingManager {
         this.recorder.dispose();
         this.recorder = null;
       }
+      this.syncSpeakerMonitoring();
 
       // Clear recorded buffers + dispatch throttle.
       this.recordedSamples = [];
@@ -348,6 +385,12 @@ export class RecordingManager {
 
       this.meterUpdateInterval = window.setInterval(() => {
         if (this.meter) {
+          // Not recording, and the mic is not metered then: report silence
+          if (!RecordingManager.idleMetering) {
+            this.peakLevel = 0;
+            this.callbacks.onMeterUpdate(0, 0);
+            return;
+          }
           const dbLevel = this.meter.getValue() as number; // justified: Meter.getValue(): number | number[] — meter is constructed single-channel
           const normalized = Math.max(0, Math.min(100, ((dbLevel + 60) / 60) * 100));
           this.peakLevel = Math.max(this.peakLevel, normalized);

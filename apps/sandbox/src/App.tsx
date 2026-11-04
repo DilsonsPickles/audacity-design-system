@@ -473,6 +473,14 @@ function CanvasDemoContent() {
     RecordingManager.setInputGain(gain);
     setMicrophoneGain(gain);
   }, []);
+  // ...and its two settings, the preferences (2026-11-04): hear yourself
+  // while recording; meter the mic when not recording
+  React.useEffect(() => {
+    RecordingManager.setInputMonitoring(preferences.enableInputMonitoring);
+  }, [preferences.enableInputMonitoring]);
+  React.useEffect(() => {
+    RecordingManager.setIdleMetering(preferences.showMicMetering);
+  }, [preferences.showMicMetering]);
   const playback = usePlaybackControls({
     state, dispatch, recordingManagerRef, scrollContainerRef,
     pixelsPerSecond, updateDisplayWhilePlaying, pinnedPlayHead, isProgrammaticScrollRef,
@@ -1255,6 +1263,10 @@ function CanvasDemoContent() {
           onExpandTrack={handleExpandTrack}
           onFitTrackToHeight={handleFitTrackToHeight}
           onResetTrackHeight={handleResetTrackHeight}
+          micMetering={preferences.showMicMetering}
+          onToggleMicMetering={() => updatePreference('showMicMetering', !preferences.showMicMetering)}
+          inputMonitoring={preferences.enableInputMonitoring}
+          onToggleInputMonitoring={() => updatePreference('enableInputMonitoring', !preferences.enableInputMonitoring)}
           scrollContainerRef={scrollContainerRef}
           trackHeaderScrollRef={trackHeaderScrollRef}
           pixelsPerSecond={pixelsPerSecond}

@@ -91,6 +91,12 @@ export function TransportToolbarContainer({
     <TransportToolbar
       hiddenTools={hiddenTools}
       onToggleToolVisibility={toggleTool}
+      // The mic flyout's two settings ARE the preferences (2026-11-04) — the
+      // same two as Preferences › Playback & recording and the track menu
+      microphoneInputMonitoring={preferences.enableInputMonitoring}
+      onMicrophoneInputMonitoringChange={(on) => updatePreference('enableInputMonitoring', on)}
+      microphoneMetering={preferences.showMicMetering}
+      onMicrophoneMeteringChange={(on) => updatePreference('showMicMetering', on)}
       {...transport}
       {...snap}
       {...timecode}
