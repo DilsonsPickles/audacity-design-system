@@ -156,6 +156,18 @@ export interface TransportToolbarProps {
   meterOrientation?: 'horizontal' | 'vertical';
   /** Called when the user picks a new orientation from the volume menu. */
   onMeterOrientationChange?: (orientation: 'horizontal' | 'vertical') => void;
+
+  /**
+   * Where the RECORDING meter shows (2026-11-04, "dock recording meter to
+   * the right, like the playback meter"): 'flyout' = the microphone
+   * button's flyout alone; 'vertical' = docked at the right too, the host
+   * rendering `RecordingMeterVertical` beside the playback meter's dock.
+   * Picked from a RIGHT-CLICK menu on the microphone button (its press is
+   * the flyout).
+   * @default 'flyout'
+   */
+  recordingMeterOrientation?: 'flyout' | 'vertical';
+  onRecordingMeterOrientationChange?: (orientation: 'flyout' | 'vertical') => void;
 }
 
 function SplitRecordButton({
@@ -258,6 +270,7 @@ export function TransportToolbar({
   getMicrophoneLevelDb, microphoneGain = 1, onMicrophoneGainChange, onMicrophoneLevelsOpen,
   microphoneInputMonitoring, onMicrophoneInputMonitoringChange, microphoneMetering, onMicrophoneMeteringChange,
   meterOrientation: meterOrientationProp, onMeterOrientationChange,
+  recordingMeterOrientation = 'flyout', onRecordingMeterOrientationChange,
 }: TransportToolbarProps) {
   const { theme } = useTheme();
   const [recordMenuOpen, setRecordMenuOpen] = React.useState(false);
@@ -280,6 +293,10 @@ export function TransportToolbar({
   // press first; the click that follows must not open it again
   const micClosedAtRef = React.useRef(0);
   const closeMicFlyout = () => { micClosedAtRef.current = performance.now(); setMicFlyout(null); };
+  // A RIGHT-CLICK on the mic button: the recording meter's orientation
+  // menu — the volume button's pair for the input
+  const [micMenu, setMicMenu] = React.useState<{ x: number; y: number } | null>(null);
+  const closeMicMenu = React.useCallback(() => setMicMenu(null), []);
   const toggleMicFlyout = () => {
     if (micFlyout) { setMicFlyout(null); return; }
     if (performance.now() - micClosedAtRef.current < 300) return;
@@ -820,7 +837,11 @@ export function TransportToolbar({
 
           <ToolbarButtonGroup gap={2}>
             {show('microphone-levels') && (
-              <span ref={micButtonRef} style={{ display: 'inline-flex' }}>
+              <span
+                ref={micButtonRef}
+                style={{ display: 'inline-flex' }}
+                onContextMenu={(e) => { e.preventDefault(); setMicFlyout(null); setMicMenu({ x: e.clientX, y: e.clientY }); }}
+              >
                 <ToolButton
                   icon="microphone"
                   ariaLabel="Microphone level"
@@ -872,6 +893,24 @@ export function TransportToolbar({
             micMetering={microphoneMetering}
             onMicMeteringChange={onMicrophoneMeteringChange}
           />
+
+          <ContextMenu
+            isOpen={micMenu !== null}
+            onClose={closeMicMenu}
+            x={micMenu?.x ?? 0}
+            y={micMenu?.y ?? 0}
+          >
+            <ContextMenuItem
+              label="Meter in flyout"
+              checked={recordingMeterOrientation === 'flyout'}
+              onClick={() => { onRecordingMeterOrientationChange?.('flyout'); setMicMenu(null); }}
+            />
+            <ContextMenuItem
+              label="Vertical meter"
+              checked={recordingMeterOrientation === 'vertical'}
+              onClick={() => { onRecordingMeterOrientationChange?.('vertical'); setMicMenu(null); }}
+            />
+          </ContextMenu>
 
           <ContextMenu
             isOpen={volumeMenuOpen}

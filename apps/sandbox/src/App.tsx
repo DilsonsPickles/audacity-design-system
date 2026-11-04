@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksProvider';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, type StoredProject } from '@audacity-ui/components';
+import { ApplicationHeader, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, RecordingMeterVertical, type StoredProject } from '@audacity-ui/components';
 import { ADIEU_BASE } from './lib/adieu-client';
 import { type EnvelopePointStyleKey, yToTrackIndex } from '@audacity-ui/core';
 import { createWheelTargetLock } from './utils/canvasWheelTarget';
@@ -333,6 +333,11 @@ function CanvasDemoContent() {
 
   const { toolbarPosition, handleToolbarGripperMouseDown } = useDraggableToolbar();
   const [meterOrientation, setMeterOrientation] = React.useState<'horizontal' | 'vertical'>('horizontal');
+  // The RECORDING meter's dock (2026-11-04): 'vertical' renders
+  // RecordingMeterVertical at the right, beside the playback meter's
+  const [recordingMeterOrientation, setRecordingMeterOrientation] = React.useState<'flyout' | 'vertical'>('flyout');
+  // The dock's own mic button opens the orientation menu, the way back
+  const [recordingDockMenu, setRecordingDockMenu] = React.useState<{ x: number; y: number } | null>(null);
 
   // Project-toolbar responsiveness (compact icon swap + label drop) is
   // now handled inside ProjectToolbar itself. We just provide the
@@ -1014,6 +1019,12 @@ function CanvasDemoContent() {
       // Opening the flyout opens the microphone if monitoring has not (a
       // denied or never-asked permission is asked again, on a press)
       onMicrophoneLevelsOpen: () => { void recordingManagerRef.current?.startMonitoring().catch(() => {}); },
+      recordingMeterOrientation,
+      onRecordingMeterOrientationChange: (next) => {
+        setRecordingMeterOrientation(next);
+        // A docked meter opens the microphone as the flyout does
+        if (next === 'vertical') void recordingManagerRef.current?.startMonitoring().catch(() => {});
+      },
       isPlaying,
       isRecording: state.isRecording,
       onPlay: handlePlay,
@@ -1317,6 +1328,16 @@ function CanvasDemoContent() {
           setMarketplaceModal={setMarketplaceModal}
         />
         </div>
+        {recordingMeterOrientation === 'vertical' && (
+          <div style={{ width: 64, flexShrink: 0 }} data-recording-meter-dock>
+            <RecordingMeterVertical
+              getLevelDb={() => recordingManagerRef.current?.getInputLevelDb() ?? null}
+              gain={microphoneGain}
+              onGainChange={handleMicrophoneGainChange}
+              onSettingsMenu={(x, y) => setRecordingDockMenu({ x, y })}
+            />
+          </div>
+        )}
         {meterOrientation === 'vertical' && (
           <div style={{ width: 64, flexShrink: 0 }}>
             <MasterMeterVertical
@@ -1560,6 +1581,28 @@ function CanvasDemoContent() {
         onFitTrackToHeight={handleFitTrackToHeight}
         onResetTrackHeight={handleResetTrackHeight}
       />
+
+      {/* The docked recording meter's menu (2026-11-04): its mic button,
+          click or right-click — the toolbar mic button's right-click pair */}
+      {recordingDockMenu && (
+        <ContextMenu
+          isOpen
+          x={recordingDockMenu.x}
+          y={recordingDockMenu.y}
+          onClose={() => setRecordingDockMenu(null)}
+        >
+          <ContextMenuItem
+            label="Meter in flyout"
+            checked={recordingMeterOrientation === 'flyout'}
+            onClick={() => { setRecordingMeterOrientation('flyout'); setRecordingDockMenu(null); }}
+          />
+          <ContextMenuItem
+            label="Vertical meter"
+            checked={recordingMeterOrientation === 'vertical'}
+            onClick={() => { setRecordingDockMenu(null); }}
+          />
+        </ContextMenu>
+      )}
 
       {/* Time Selection Context Menu */}
       {timeSelectionContextMenu && timeSelectionContextMenu.isOpen && (

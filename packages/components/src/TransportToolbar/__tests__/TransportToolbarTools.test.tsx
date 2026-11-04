@@ -89,3 +89,20 @@ describe('the microphone button opens the Microphone level flyout (2026-11-04)',
     expect(document.querySelector('.microphone-level-flyout')).toBeNull();
   });
 });
+
+describe('a right-click on the microphone button is the recording meter\'s dock menu (2026-11-04)', () => {
+  it('offers "Meter in flyout" / "Vertical meter", the current one checked, and reports the pick', () => {
+    const onRecordingMeterOrientationChange = vi.fn();
+    const { container } = renderToolbar('classic', [], { recordingMeterOrientation: 'flyout', onRecordingMeterOrientationChange });
+    const button = container.querySelector('button[aria-label="Microphone level"]') as HTMLElement;
+    fireEvent.contextMenu(button, { clientX: 300, clientY: 40 });
+    // The press's flyout is not what opened
+    expect(document.querySelector('.microphone-level-flyout')).toBeNull();
+    const items = Array.from(document.querySelectorAll('[role="menuitem"], .context-menu-item'))
+      .filter((el) => /Meter in flyout|Vertical meter/.test(el.textContent ?? ''));
+    expect(items.length).toBe(2);
+    const vertical = items.find((el) => el.textContent?.includes('Vertical meter')) as HTMLElement;
+    fireEvent.click(vertical);
+    expect(onRecordingMeterOrientationChange).toHaveBeenCalledWith('vertical');
+  });
+});

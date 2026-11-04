@@ -18,6 +18,7 @@ export type TransportToolbarContainerTransport = Pick<TransportToolbarProps,
   | 'onShareClick' | 'onExportAudioClick' | 'onExportLoopRegionClick'
   | 'varispeed' | 'varispeedOn' | 'onVarispeedChange' | 'onVarispeedDial' | 'onVarispeedToggle'
   | 'getMicrophoneLevelDb' | 'microphoneGain' | 'onMicrophoneGainChange' | 'onMicrophoneLevelsOpen'
+  | 'recordingMeterOrientation' | 'onRecordingMeterOrientationChange'
 >;
 
 export type TransportToolbarContainerSnap = Pick<TransportToolbarProps,

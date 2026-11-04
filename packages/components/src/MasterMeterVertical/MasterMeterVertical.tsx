@@ -24,6 +24,16 @@ export interface MasterMeterVerticalProps {
   onSettingsClick?: () => void;
   /** Additional CSS class */
   className?: string;
+  /** The button's glyph and name — 'volume' / "Playback volume settings"
+   *  for the master, 'microphone' / "Microphone level" for the docked
+   *  recording meter (2026-11-04) */
+  icon?: 'volume' | 'microphone';
+  settingsAriaLabel?: string;
+  /** The knob's name (the master volume, or the input gain) */
+  sliderAriaLabel?: string;
+  /** The button's MENU (the recording dock's orientation menu): a click
+   *  opens it under the button, a right-click at the pointer */
+  onSettingsMenu?: (x: number, y: number) => void;
 }
 
 /** Major numeric tick values, top → bottom. */
@@ -67,9 +77,14 @@ export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
   onVolumeChange,
   onSettingsClick,
   className = '',
+  icon = 'volume',
+  settingsAriaLabel = 'Playback volume settings',
+  sliderAriaLabel = 'Master volume',
+  onSettingsMenu,
 }) => {
   const { theme } = useTheme();
   const trackRef = React.useRef<HTMLDivElement>(null);
+  const settingsRef = React.useRef<HTMLSpanElement>(null);
   const draggingRef = React.useRef(false);
   const onVolumeChangeRef = React.useRef(onVolumeChange);
   onVolumeChangeRef.current = onVolumeChange;
@@ -130,15 +145,27 @@ export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
 
   return (
     <div className={`master-meter-vertical ${className}`} style={style}>
-      <ToolButton
-        icon="volume"
-        ariaLabel="Playback volume settings"
-        onClick={onSettingsClick}
-      />
+      <span
+        ref={settingsRef}
+        style={{ display: 'inline-flex' }}
+        onContextMenu={onSettingsMenu ? (e) => { e.preventDefault(); onSettingsMenu(e.clientX, e.clientY); } : undefined}
+      >
+        <ToolButton
+          icon={icon}
+          ariaLabel={settingsAriaLabel}
+          onClick={() => {
+            onSettingsClick?.();
+            if (onSettingsMenu && settingsRef.current) {
+              const r = settingsRef.current.getBoundingClientRect();
+              onSettingsMenu(r.left, r.bottom + 2);
+            }
+          }}
+        />
+      </span>
 
       <div className="master-meter-vertical__meter-row">
         <div ref={trackRef} className="master-meter-vertical__bars" role="slider"
-             aria-label="Master volume"
+             aria-label={sliderAriaLabel}
              aria-valuemin={0}
              aria-valuemax={100}
              aria-valuenow={Math.round(volume * 100)}

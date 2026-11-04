@@ -25,6 +25,7 @@ import { useTheme } from '../ThemeProvider';
 import { Flyout } from '../Flyout';
 import { MasterMeter } from '../MasterMeter';
 import { LabeledCheckbox } from '../LabeledCheckbox';
+import { useInputLevel } from './useInputLevel';
 import './MicrophoneLevelFlyout.css';
 
 export interface MicrophoneLevelFlyoutProps {
@@ -48,36 +49,13 @@ export interface MicrophoneLevelFlyoutProps {
   onMicMeteringChange?: (on: boolean) => void;
 }
 
-// Audacity 3's peak hold (MeterPanel.cpp), the same as the track meters'
-const PEAK_HOLD_MS = 3000;
-const DB_FLOOR = -60;
-
 export function MicrophoneLevelFlyout({
   isOpen, onClose, x, y, triggerRef, getLevelDb, gain, onGainChange,
   inputMonitoring = false, onInputMonitoringChange, micMetering = true, onMicMeteringChange,
 }: MicrophoneLevelFlyoutProps) {
   const { theme } = useTheme();
-  const [level, setLevel] = React.useState(DB_FLOOR);
-  const [peak, setPeak] = React.useState<number | undefined>(undefined);
-  const getLevelRef = React.useRef(getLevelDb);
-  getLevelRef.current = getLevelDb;
-
-  React.useEffect(() => {
-    if (!isOpen || typeof requestAnimationFrame !== 'function') return;
-    let frame = 0;
-    let held = DB_FLOOR;
-    let heldAt = 0;
-    const tick = (now: number) => {
-      const db = getLevelRef.current?.() ?? null;
-      const current = db === null ? DB_FLOOR : Math.max(DB_FLOOR, db);
-      if (current >= held || now - heldAt > PEAK_HOLD_MS) { held = current; heldAt = now; }
-      setLevel(current);
-      setPeak(held > DB_FLOOR ? held : undefined);
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [isOpen]);
+  // Polled while open — the docked recording meter shares the hook
+  const { level, peak } = useInputLevel(getLevelDb, isOpen);
 
   const style = {
     '--mlf-text': theme.foreground.text.primary,
