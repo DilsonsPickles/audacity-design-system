@@ -359,11 +359,19 @@ ipcMain.handle('mic:open-settings', () => shell.openExternal(
     : 'ms-settings:privacy-microphone',
 ));
 
+// A renderer console for diagnosis: ELECTRON_REMOTE_DEBUG_PORT=9222 pnpm dev
+// opens Chromium's remote-debugging port (http://localhost:9222/json)
+if (process.env.ELECTRON_REMOTE_DEBUG_PORT) {
+  app.commandLine.appendSwitch('remote-debugging-port', process.env.ELECTRON_REMOTE_DEBUG_PORT);
+}
+
 app.whenReady().then(async () => {
   setApplicationMenu();
   if (process.platform === 'darwin' && microphoneAccessStatus() === 'not-determined') {
-    await systemPreferences.askForMediaAccess('microphone');
+    const granted = await systemPreferences.askForMediaAccess('microphone');
+    console.log(`[mic] asked macOS for the microphone: ${granted ? 'granted' : 'denied'}`);
   }
+  console.log(`[mic] OS access: ${microphoneAccessStatus()}`);
 
   // Dev mode: ELECTRON_START_URL is set by the `dev` script (which waits
   // for the Vite server before launching electron). Anything else is

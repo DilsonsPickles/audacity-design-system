@@ -172,8 +172,11 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
         const restartMonitoring = async () => {
           if (micAutoRequestBlocked) return;
           // The recording's manager went back to monitoring when it
-          // stopped; let it go, or two meter loops feed the same meter
-          recordingManagerRef.current?.dispose();
+          // stopped; let it go, or two meter loops feed the same meter — but
+          // AFTER its stopRecording has returned: this runs from inside it
+          // (onRecordingComplete), and disposing it here broke that stop
+          const old = recordingManagerRef.current;
+          setTimeout(() => { if (old && old !== recordingManagerRef.current) old.dispose(); }, 0);
           try {
             recordingManagerRef.current = new RecordingManager({
               onMeterUpdate: (level, peak) => {
@@ -379,10 +382,12 @@ export function useRecording(options: UseRecordingOptions): UseRecordingReturn {
   const handleStopRecording = useCallback(async () => {
     if (!state.isRecording) return;
 
-    if (recordingManagerRef.current) {
-      await recordingManagerRef.current.stopRecording();
+    // Whatever the stop throws, the app is no longer recording
+    try {
+      if (recordingManagerRef.current) await recordingManagerRef.current.stopRecording();
+    } finally {
+      dispatch({ type: 'STOP_RECORDING' });
     }
-    dispatch({ type: 'STOP_RECORDING' });
     setPunchPointPosition(null);
     preRecordPlayheadRef.current = null;
 

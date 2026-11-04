@@ -342,8 +342,12 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
   const handleStop = async () => {
     // Stop recording if active
     if (state.isRecording && recordingManagerRef.current) {
-      await recordingManagerRef.current.stopRecording();
-      dispatch({ type: 'STOP_RECORDING' });
+      // Whatever the stop throws, the app is no longer recording
+      try {
+        await recordingManagerRef.current.stopRecording();
+      } finally {
+        dispatch({ type: 'STOP_RECORDING' });
+      }
     }
 
     // Stop playback

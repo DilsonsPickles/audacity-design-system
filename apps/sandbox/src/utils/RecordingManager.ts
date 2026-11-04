@@ -394,10 +394,16 @@ export class RecordingManager {
         this.waveformUpdateInterval = null;
       }
 
-      // Stop recording and get audio blob
-      if (this.recorder) {
+      // Stop recording and get audio blob. The recorder is taken into a
+      // LOCAL: onRecordingComplete may hand this manager to its host, which
+      // disposes it (the post-recording restart) before this returns —
+      // disposing `this.recorder` a second time threw, Stop's STOP_RECORDING
+      // never ran, and the app stayed "recording" (2026-11-04, "nothing is
+      // being recorded")
+      const recorder = this.recorder;
+      if (recorder) {
         try {
-          const recording = await this.recorder.stop();
+          const recording = await recorder.stop();
 
           // Convert blob to AudioBuffer
           const arrayBuffer = await recording.arrayBuffer();
@@ -410,9 +416,13 @@ export class RecordingManager {
           console.warn('Recorder stop failed (may not have been started):', recorderError);
         }
 
-        this.recorder.dispose();
-        this.recorder = null;
+        if (this.recorder === recorder) {
+          recorder.dispose();
+          this.recorder = null;
+        }
       }
+      // Disposed while the recording was being read back: nothing to return to
+      if (!this.isMonitoring) return;
       this.syncSpeakerMonitoring();
 
       // Clear recorded buffers + dispatch throttle.
