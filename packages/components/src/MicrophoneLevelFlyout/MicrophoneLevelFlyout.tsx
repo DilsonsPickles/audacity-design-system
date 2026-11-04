@@ -95,7 +95,7 @@ export function MicrophoneLevelFlyout({
         <div className="microphone-level-flyout__divider" role="separator" />
         <div className="microphone-level-flyout__options">
           <LabeledCheckbox
-            label="Turn on input monitoring (hear yourself while recording)"
+            label="Turn on input monitoring (hear yourself while recording — use headphones)"
             checked={inputMonitoring}
             onChange={(checked) => onInputMonitoringChange?.(checked)}
           />

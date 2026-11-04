@@ -62,6 +62,8 @@ vi.mock('../utils/RecordingManager', () => ({
     }
     static setInputMonitoring(): void {}
     static setIdleMetering(): void {}
+    static setMonitoringCutHandler(): void {}
+    static async outputIsSpeakers(): Promise<boolean> { return false; }
     static getInputGain(): number {
       return 1;
     }

@@ -474,9 +474,30 @@ function CanvasDemoContent() {
   }, []);
   // ...and its two settings, the preferences (2026-11-04): hear yourself
   // while recording; meter the mic when not recording
+  const inputMonitoringWasRef = React.useRef(preferences.enableInputMonitoring);
   React.useEffect(() => {
     RecordingManager.setInputMonitoring(preferences.enableInputMonitoring);
+    // Turning it ON warns (2026-11-04, after a feedback scream): the mic
+    // through a laptop's own speakers is a loop
+    if (preferences.enableInputMonitoring && !inputMonitoringWasRef.current) {
+      toast.warning('Input monitoring on', 'Use headphones: through speakers the microphone hears itself');
+    }
+    inputMonitoringWasRef.current = preferences.enableInputMonitoring;
   }, [preferences.enableInputMonitoring]);
+  // RecordingManager CUTS the route and turns the setting off when the
+  // playback device is a speaker, or when the level reads as feedback
+  React.useEffect(() => {
+    RecordingManager.setMonitoringCutHandler((reason) => {
+      updatePreference('enableInputMonitoring', false);
+      toast.error(
+        'Input monitoring turned off',
+        reason === 'speakers'
+          ? 'The playback device is a speaker, and the microphone would hear it. Use headphones to monitor'
+          : 'The microphone was hearing the speakers (feedback). Use headphones to monitor',
+      );
+    });
+    return () => RecordingManager.setMonitoringCutHandler(null);
+  }, [updatePreference]);
   React.useEffect(() => {
     RecordingManager.setIdleMetering(preferences.showMicMetering);
   }, [preferences.showMicMetering]);

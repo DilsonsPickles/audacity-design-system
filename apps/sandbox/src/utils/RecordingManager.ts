@@ -46,7 +46,9 @@ export class RecordingManager {
     for (let i = 0; i < samples.length; i++) total += samples[i] * samples[i];
     const rms = samples.length ? Math.sqrt(total / samples.length) : 0;
     const dbLevel = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+    this.lastRawDb = dbLevel;
     const reading = this.ballistics.next(dbLevel, performance.now());
+    this.watchForFeedback(performance.now());
     const level = dbToMeterPercent(reading.level);
     this.peakLevel = Math.max(this.peakLevel, level);
     this.lastReading = { level, peak: this.peakLevel, recentPeak: dbToMeterPercent(reading.peak) };
@@ -110,13 +112,88 @@ export class RecordingManager {
     RecordingManager.idleMetering = on;
   }
 
-  /** Mic → speakers exactly while recording with input monitoring on */
+  // INPUT MONITORING IS GUARDED (2026-11-04, "you almost just blew my ear
+  // drums… It SCREAMED white noise distortion"): the mic routed to a
+  // laptop's own speakers is a feedback loop that saturates in a fraction
+  // of a second. Two guards, both CUT the route, turn the setting OFF and
+  // tell the host (`onMonitoringCut`), so it cannot recur on the next
+  // Record: (1) the route is REFUSED when the playback device is a
+  // speaker — the output's label (the context's sinkId, or the default
+  // output) matching /speaker/i; (2) while routed, a post-gain level at
+  // or above FEEDBACK_DB for FEEDBACK_HOLD_MS is taken as feedback.
+  private static onMonitoringCut: ((reason: 'speakers' | 'feedback') => void) | null = null;
+  static setMonitoringCutHandler(handler: ((reason: 'speakers' | 'feedback') => void) | null): void {
+    RecordingManager.onMonitoringCut = handler;
+  }
+  private static readonly FEEDBACK_DB = -3;
+  private static readonly FEEDBACK_HOLD_MS = 150;
+  private hotSince: number | null = null;
+  private lastRawDb = -Infinity;
+
+  private static cutMonitoring(reason: 'speakers' | 'feedback'): void {
+    RecordingManager.inputMonitoring = false;
+    for (const manager of RecordingManager.live) manager.disconnectSpeakers();
+    RecordingManager.onMonitoringCut?.(reason);
+  }
+
+  private disconnectSpeakers(): void {
+    if (!this.monitoringToSpeakers) return;
+    this.monitoringToSpeakers = false;
+    this.hotSince = null;
+    try { this.inputGain?.disconnect(Tone.getDestination()); } catch { /* already gone */ }
+  }
+
+  /** Is the current playback device a speaker? Unknown (no labels, no
+   *  enumerate) reads as "no" — headphones are the common case. */
+  static async outputIsSpeakers(): Promise<boolean> {
+    try {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) return false;
+      const outputs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'audiooutput');
+      const sinkId = (Tone.getContext().rawContext as unknown as { sinkId?: string }).sinkId ?? ''; // justified: AudioContext.sinkId is Chromium-only and not in lib.dom
+      const chosen = outputs.find((d) => d.deviceId === sinkId)
+        ?? outputs.find((d) => d.deviceId === 'default')
+        ?? outputs[0];
+      return /speaker/i.test(chosen?.label ?? '');
+    } catch {
+      return false;
+    }
+  }
+
+  /** Mic → speakers exactly while recording with input monitoring on —
+   *  never to a speaker (the loop), see the guard above */
   private syncSpeakerMonitoring(): void {
     const want = RecordingManager.inputMonitoring && this.recorder !== null && this.inputGain !== null;
-    if (want === this.monitoringToSpeakers || !this.inputGain) return;
-    if (want) this.inputGain.connect(Tone.getDestination());
-    else this.inputGain.disconnect(Tone.getDestination());
-    this.monitoringToSpeakers = want;
+    if (!want) { this.disconnectSpeakers(); return; }
+    if (this.monitoringToSpeakers) return;
+    void RecordingManager.outputIsSpeakers().then((speakers) => {
+      // The recording may have ended, or the setting gone, while we asked
+      if (!RecordingManager.inputMonitoring || this.recorder === null || !this.inputGain) return;
+      if (speakers) { RecordingManager.cutMonitoring('speakers'); return; }
+      this.inputGain.connect(Tone.getDestination());
+      this.monitoringToSpeakers = true;
+      this.hotSince = null;
+    });
+  }
+
+  /** A look inside every live manager — the dev shell's debugging door
+   *  (`window.__RecordingManager.inspect()` in DEV), nothing in the app
+   *  reads it */
+  static inspect(): Array<{ monitoring: boolean; recording: boolean; routed: boolean; lastRawDb: number; hotSince: number | null; gain: number | null }> {
+    return [...RecordingManager.live].map((m) => ({
+      monitoring: m.isMonitoring, recording: m.recorder !== null, routed: m.monitoringToSpeakers,
+      lastRawDb: m.lastRawDb, hotSince: m.hotSince, gain: m.inputGain ? m.inputGain.gain.value : null,
+    }));
+  }
+
+  /** Guard (2): called with every meter reading while routed */
+  private watchForFeedback(now: number): void {
+    if (!this.monitoringToSpeakers) return;
+    if (this.lastRawDb >= RecordingManager.FEEDBACK_DB) {
+      if (this.hotSince === null) this.hotSince = now;
+      else if (now - this.hotSince >= RecordingManager.FEEDBACK_HOLD_MS) RecordingManager.cutMonitoring('feedback');
+    } else {
+      this.hotSince = null;
+    }
   }
 
   /** Set the microphone's input gain (linear, 1 = as the OS delivers it) */
@@ -299,7 +376,7 @@ export class RecordingManager {
     }
 
     if (this.inputGain) {
-      this.monitoringToSpeakers = false;
+      this.disconnectSpeakers();
       this.inputGain.dispose();
       this.inputGain = null;
     }
@@ -520,4 +597,9 @@ export class RecordingManager {
       this.recorder = null;
     }
   }
+}
+
+// The dev shell's debugging door — see RecordingManager.inspect
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  (window as unknown as { __RecordingManager?: typeof RecordingManager }).__RecordingManager = RecordingManager; // justified: a DEV-only global for CDP / console inspection
 }

@@ -252,7 +252,7 @@ export function PlaybackRecordingPage() {
           resetKey="playback-recording"
         >
           <LabeledCheckbox
-            label="Enable input monitoring"
+            label="Enable input monitoring (use headphones)"
             checked={preferences.enableInputMonitoring}
             onChange={(checked) => updatePreference('enableInputMonitoring', checked)}
           />
