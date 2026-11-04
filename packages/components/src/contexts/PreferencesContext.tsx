@@ -146,9 +146,10 @@ const defaultPreferences: PreferencesState = {
   // The track-height trio is OPT-IN, off by default (2026-10-22, the
   // "Track expand/collapse" design brief: Martin's "I'd definitely not
   // have track height zoom buttons in the top bar… keep them closer to
-  // the tracks"); Customise toolbar turns them on. A stored preference
+  // the tracks"); Customise toolbar turns them on. So is BPM (2026-11-04,
+  // the real build's default: "playback-bpm" off). A stored preference
   // keeps whatever it has — this is the default for a fresh profile.
-  toolbarHiddenTools: ['collapse-tracks', 'expand-tracks', 'fit-tracks-height'],
+  toolbarHiddenTools: ['collapse-tracks', 'expand-tracks', 'fit-tracks-height', 'bpm'],
 
   // Spectral Display
   enableSpectralSelection: true,

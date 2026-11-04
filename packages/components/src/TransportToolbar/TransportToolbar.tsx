@@ -649,19 +649,26 @@ export function TransportToolbar({
           </ToolbarButtonGroup>
           )}
 
+          {/* BPM IS A TOOL OF ITS OWN, IN EVERY WORKSPACE (2026-11-04, "we're
+              missing a few tools that can be turned on by toolbar config.
+              Let's do BPM"): Customise toolbar's row puts it after the
+              timecode wherever you are — it was drawn in the Music workspace
+              alone, so the row did nothing anywhere else. Off by default, as
+              the real build's playback toolbar has it ("playback-bpm" false
+              in defaultPlaybackToolBarConfig) */}
+          {show('bpm') && (
+          <ToolbarButtonGroup gap={2}>
+            <BpmStepper
+              value={bpm}
+              onChange={(next) => onBpmChange?.(next)}
+              min={20}
+              max={300}
+            />
+          </ToolbarButtonGroup>
+          )}
+
           {workspace === 'music' && (
             <>
-              {show('bpm') && (
-              <ToolbarButtonGroup gap={2}>
-                <BpmStepper
-                  value={bpm}
-                  onChange={(next) => onBpmChange?.(next)}
-                  min={20}
-                  max={300}
-                />
-              </ToolbarButtonGroup>
-              )}
-
               {show('time-signature') && (
               <ToolbarButtonGroup gap={2}>
                 <TimeSignatureSelector
