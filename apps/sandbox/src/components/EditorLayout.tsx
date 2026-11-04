@@ -84,6 +84,8 @@ export interface EditorLayoutProps {
   timelineFormat: 'minutes-seconds' | 'beats-measures';
   bpm: number;
   beatsPerMeasure: number;
+  /** The time signature's lower number — the beat's note */
+  noteValue: number;
 
   // Canvas options
   showRmsInWaveform: boolean;
@@ -187,7 +189,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     scrollX, scrollY, onScroll, onTrackHeaderScroll,
     onCollapseTrack, onExpandTrack, onFitTrackToHeight, onResetTrackHeight,
     scrollContainerRef, trackHeaderScrollRef,
-    pixelsPerSecond, timelineWidth, timelineDuration, timelineFormat, bpm, beatsPerMeasure,
+    pixelsPerSecond, timelineWidth, timelineDuration, timelineFormat, bpm, beatsPerMeasure, noteValue,
     showRmsInWaveform, showQuickFadeHandles, controlPointStyle, spectrogramScale, showVerticalRulers, setShowVerticalRulers,
     isPlaying, setIsPlaying, trackMeterLevels, isMicMonitoring, recordingClipId,
     selectionAnchor, setSelectionAnchor, setControlPanelHasFocus,
@@ -491,6 +493,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     timelineFormat,
     bpm,
     beatsPerMeasure,
+    noteValue,
     pixelsPerSecond,
     scrollX,
     clickRulerToStartPlayback,
@@ -1104,6 +1107,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 timeFormat={timelineFormat}
                 bpm={bpm}
                 beatsPerMeasure={beatsPerMeasure}
+                noteValue={noteValue}
                 loopRegionEnabled={loopRegionEnabled}
                 loopRegionStart={loopRegionStart}
                 loopRegionEnd={loopRegionEnd}
@@ -1149,6 +1153,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                       timeFormat: timelineFormat,
                       bpm,
                       beatsPerMeasure,
+                      noteValue,
                       snap: state.canvasSnap,
                       pixelsPerSecond,
                     });
@@ -1261,6 +1266,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     setSelectionAnchor={setSelectionAnchor}
                     bpm={bpm}
                     beatsPerMeasure={beatsPerMeasure}
+                    noteValue={noteValue}
                     timeFormat={timelineFormat}
                     onClipMenuClick={handleClipMenuClick}
                     onFadeContextMenu={handleFadeContextMenu}
@@ -1738,6 +1744,7 @@ export function EditorLayout(props: EditorLayoutProps) {
       setEffectSelectorMenu={setEffectSelectorMenu}
       bpm={bpm}
       beatsPerMeasure={beatsPerMeasure}
+      noteValue={noteValue}
       playMidiNote={playMidiNote}
       midiInstrument={midiInstrument}
       skipPianoRollScrollRef={skipPianoRollScrollRef}

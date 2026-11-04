@@ -143,6 +143,11 @@ export interface CanvasProps {
    */
   beatsPerMeasure?: number;
   /**
+   * The time signature's lower number — the beat's note
+   * @default 4
+   */
+  noteValue?: number;
+  /**
    * Time format — controls whether grid lines use beats/measures or minutes/seconds
    * @default 'beats-measures'
    */
@@ -223,6 +228,7 @@ export function Canvas({
   setSelectionAnchor,
   bpm = 120,
   beatsPerMeasure = 4,
+  noteValue = 4,
   timeFormat = 'beats-measures',
   snap = { subdivision: 1 },
   snapEnabled = false,
@@ -350,6 +356,7 @@ export function Canvas({
     timeFormat,
     bpm,
     beatsPerMeasure,
+    noteValue,
     snap,
     pixelsPerSecond,
   };
@@ -473,8 +480,8 @@ export function Canvas({
   // drag reads the switch separately (snapEnabled) because Shift
   // inverts it, as a clip drag's Shift does (2026-10-01)
   const snapTime = useMemo(
-    () => (time: number) => snapToGrid(time, { timeFormat, bpm, beatsPerMeasure, snap, pixelsPerSecond }),
-    [timeFormat, bpm, beatsPerMeasure, snap, pixelsPerSecond],
+    () => (time: number) => snapToGrid(time, { timeFormat, bpm, beatsPerMeasure, noteValue, snap, pixelsPerSecond }),
+    [timeFormat, bpm, beatsPerMeasure, noteValue, snap, pixelsPerSecond],
   );
 
   // Whichever drag is active reports its snap target; we render at
@@ -849,6 +856,7 @@ export function Canvas({
       <GridOverlay
         bpm={bpm}
         beatsPerMeasure={beatsPerMeasure}
+        noteValue={noteValue}
         timeFormat={timeFormat}
         pixelsPerSecond={pixelsPerSecond}
         width={width}

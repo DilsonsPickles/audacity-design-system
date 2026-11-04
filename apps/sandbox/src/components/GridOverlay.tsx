@@ -1,9 +1,11 @@
 import React from 'react';
-import { CLIP_CONTENT_OFFSET, useTheme } from '@audacity-ui/components';
+import { CLIP_CONTENT_OFFSET, useTheme, barSeconds, beatSeconds } from '@audacity-ui/components';
 
 export interface GridArgs {
   bpm: number;
   beatsPerMeasure: number;
+  /** The time signature's lower number — the beat's note (default a quarter) */
+  noteValue?: number;
   timeFormat: 'beats-measures' | 'minutes-seconds';
   pixelsPerSecond: number;
   width: number;
@@ -14,14 +16,15 @@ export function computeGrid(args: GridArgs): {
   gridLines: Array<{ x: number; tier: 'measure' | 'beat' | 'subdivision' }>;
   measureBands: Array<{ x: number; w: number }>;
 } {
-  const { bpm, beatsPerMeasure, timeFormat, pixelsPerSecond, width, clipContentOffset } = args;
+  const { bpm, beatsPerMeasure, noteValue = 4, timeFormat, pixelsPerSecond, width, clipContentOffset } = args;
   const lines: Array<{ x: number; tier: 'measure' | 'beat' | 'subdivision' }> = [];
   const bands: Array<{ x: number; w: number }> = [];
   const totalSeconds = width / pixelsPerSecond;
 
   if (timeFormat === 'beats-measures') {
-    const secondsPerBeat = 60 / bpm;
-    const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+    // A beat is the time signature's lower note (the ruler's rule)
+    const secondsPerBeat = beatSeconds(bpm, noteValue);
+    const secondsPerMeasure = barSeconds(bpm, beatsPerMeasure, noteValue);
     // Grid step: determined by zoom level, not snap subdivision
     // At low zoom show only measures, at high zoom show finer subdivisions
     const pixelsPerBeat = secondsPerBeat * pixelsPerSecond;
@@ -95,6 +98,7 @@ export function computeGrid(args: GridArgs): {
 export interface GridOverlayProps {
   bpm: number;
   beatsPerMeasure: number;
+  noteValue?: number;
   timeFormat: 'beats-measures' | 'minutes-seconds';
   pixelsPerSecond: number;
   width: number;
@@ -110,7 +114,7 @@ export function GridOverlay(props: GridOverlayProps) {
     // affect the SVG height (computed below), not computeGrid's output, so
     // recomputing the grid when they change would be wasted work.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [props.bpm, props.beatsPerMeasure, props.timeFormat, props.pixelsPerSecond, props.width],
+    [props.bpm, props.beatsPerMeasure, props.noteValue, props.timeFormat, props.pixelsPerSecond, props.width],
   );
 
   if (gridLines.length === 0 && measureBands.length === 0) return null;

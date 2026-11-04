@@ -23,7 +23,7 @@ describe('useLoopRegion', () => {
     const stub = makeAudioManagerStub();
     const audioManagerRef = makeAudioManagerRef(stub);
     const { result } = renderHook(() =>
-      useLoopRegion({ audioManagerRef, timeSelection: null, bpm: 120, beatsPerMeasure: 4 })
+      useLoopRegion({ audioManagerRef, timeSelection: null, bpm: 120, beatsPerMeasure: 4, noteValue: 4 })
     );
 
     act(() => {
@@ -45,6 +45,7 @@ describe('useLoopRegion', () => {
         timeSelection: { startTime: 2, endTime: 5 },
         bpm: 120,
         beatsPerMeasure: 4,
+        noteValue: 4,
       })
     );
 
@@ -61,7 +62,7 @@ describe('useLoopRegion', () => {
     const stub = makeAudioManagerStub();
     const audioManagerRef = makeAudioManagerRef(stub);
     const { result } = renderHook(() =>
-      useLoopRegion({ audioManagerRef, timeSelection: null, bpm: 120, beatsPerMeasure: 4 })
+      useLoopRegion({ audioManagerRef, timeSelection: null, bpm: 120, beatsPerMeasure: 4, noteValue: 4 })
     );
 
     act(() => {
@@ -80,7 +81,7 @@ describe('useLoopRegion', () => {
     const stub = makeAudioManagerStub();
     const audioManagerRef = makeAudioManagerRef(stub);
     const { result } = renderHook(() =>
-      useLoopRegion({ audioManagerRef, timeSelection: null, bpm: 120, beatsPerMeasure: 4 })
+      useLoopRegion({ audioManagerRef, timeSelection: null, bpm: 120, beatsPerMeasure: 4, noteValue: 4 })
     );
 
     // Initial mount sync: disabled, no region yet.

@@ -536,6 +536,7 @@ function CanvasDemoContent() {
     timeSelection: state.timeSelection,
     bpm,
     beatsPerMeasure,
+    noteValue,
   });
   const {
     loopRegionEnabled,
@@ -1249,6 +1250,7 @@ function CanvasDemoContent() {
           timelineFormat={timelineFormat}
           bpm={bpm}
           beatsPerMeasure={beatsPerMeasure}
+          noteValue={noteValue}
           showRmsInWaveform={showRmsInWaveform}
           controlPointStyle={controlPointStyle}
           spectrogramScale={spectrogramScale}
@@ -1512,6 +1514,7 @@ function CanvasDemoContent() {
         timeSelection={state.timeSelection}
         bpm={bpm}
         beatsPerMeasure={beatsPerMeasure}
+        noteValue={noteValue}
         onClipboardSet={setClipboard}
         os={preferences.operatingSystem}
         onCollapseAllTracks={handleCollapseAllTracks}

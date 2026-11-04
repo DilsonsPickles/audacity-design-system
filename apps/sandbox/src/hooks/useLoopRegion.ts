@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
+import { barSeconds } from '@audacity-ui/components';
 
 export interface UseLoopRegionOptions {
   audioManagerRef: React.RefObject<AudioPlaybackManager>;
   timeSelection?: { startTime: number; endTime: number } | null;
   bpm: number;
   beatsPerMeasure: number;
+  /** The time signature's lower number */
+  noteValue: number;
 }
 
 export interface UseLoopRegionReturn {
@@ -28,7 +31,7 @@ export interface UseLoopRegionReturn {
  * toggle logic from App.tsx into a single reusable hook.
  */
 export function useLoopRegion(options: UseLoopRegionOptions): UseLoopRegionReturn {
-  const { audioManagerRef, timeSelection, bpm, beatsPerMeasure } = options;
+  const { audioManagerRef, timeSelection, bpm, beatsPerMeasure, noteValue } = options;
 
   // Loop region state - defines looping boundaries for playback
   const [loopRegionEnabled, setLoopRegionEnabled] = useState(false);
@@ -61,9 +64,7 @@ export function useLoopRegion(options: UseLoopRegionOptions): UseLoopRegionRetur
           setLoopRegionEnd(timeSelection.endTime);
         } else {
           // Create default 4-measure loop region
-          const secondsPerBeat = 60 / bpm;
-          const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
-          const loopDuration = secondsPerMeasure * 4; // 4 measures
+          const loopDuration = barSeconds(bpm, beatsPerMeasure, noteValue) * 4; // 4 measures
           setLoopRegionStart(0);
           setLoopRegionEnd(loopDuration);
         }
@@ -72,7 +73,7 @@ export function useLoopRegion(options: UseLoopRegionOptions): UseLoopRegionRetur
     }
     // Toggle enabled state (doesn't clear the loop region)
     setLoopRegionEnabled(!loopRegionEnabled);
-  }, [loopRegionEnabled, loopRegionStart, loopRegionEnd, timeSelection, bpm, beatsPerMeasure]);
+  }, [loopRegionEnabled, loopRegionStart, loopRegionEnd, timeSelection, bpm, beatsPerMeasure, noteValue]);
 
   return {
     loopRegionEnabled,

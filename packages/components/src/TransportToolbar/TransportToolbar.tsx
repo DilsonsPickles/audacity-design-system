@@ -5,6 +5,7 @@ import { ToolButton } from '../ToolButton';
 import { ToggleToolButton } from '../ToggleToolButton';
 import { TimeCode, type TimeCodeFormat } from '../TimeCode';
 import { BpmStepper } from '../BpmStepper';
+import { barSeconds } from '../utils/musicalTime';
 import { TimeSignatureSelector, type TimeSignature } from '../TimeSignatureSelector';
 import { Button } from '../Button';
 import { Icon } from '../Icon';
@@ -298,9 +299,7 @@ export function TransportToolbar({
           setLoopRegionStart(timeSelection.startTime);
           setLoopRegionEnd(timeSelection.endTime);
         } else {
-          const secondsPerBeat = 60 / bpm;
-          const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
-          const loopDuration = secondsPerMeasure * 4;
+          const loopDuration = barSeconds(bpm, beatsPerMeasure, noteValue) * 4;
           setLoopRegionStart(0);
           setLoopRegionEnd(loopDuration);
         }
@@ -667,17 +666,16 @@ export function TransportToolbar({
           </ToolbarButtonGroup>
           )}
 
-          {workspace === 'music' && (
-            <>
-              {show('time-signature') && (
-              <ToolbarButtonGroup gap={2}>
-                <TimeSignatureSelector
-                  value={{ numerator: beatsPerMeasure, denominator: noteValue }}
-                  onChange={(next) => onTimeSignatureChange?.(next)}
-                />
-              </ToolbarButtonGroup>
-              )}
-            </>
+          {/* So is TIME SIGNATURE (2026-11-04, the component library's
+              3347:89565), after BPM; off by default, as the real build has
+              "playback-time-signature" */}
+          {show('time-signature') && (
+          <ToolbarButtonGroup gap={2}>
+            <TimeSignatureSelector
+              value={{ numerator: beatsPerMeasure, denominator: noteValue }}
+              onChange={(next) => onTimeSignatureChange?.(next)}
+            />
+          </ToolbarButtonGroup>
           )}
 
 

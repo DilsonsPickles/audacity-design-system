@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipContextMenu, type GapMode, FadeMenuItems, TrackContextMenu, TimelineRulerContextMenu, ContextMenu, ContextMenuItem, Dialog, DialogFooter, Button, formatPaletteShortcut } from '@audacity-ui/components';
+import { ClipContextMenu, type GapMode, FadeMenuItems, TrackContextMenu, TimelineRulerContextMenu, ContextMenu, ContextMenuItem, Dialog, DialogFooter, Button, formatPaletteShortcut, barSeconds } from '@audacity-ui/components';
 import type { SpectrogramScale } from '@audacity-ui/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { Effect } from '@audacity-ui/components';
@@ -41,6 +41,8 @@ export interface AppContextMenusProps {
   timeSelection: { startTime: number; endTime: number } | null;
   bpm: number;
   beatsPerMeasure: number;
+  /** The time signature's lower number */
+  noteValue: number;
 
   // Clipboard
   onClipboardSet: (clipboard: ClipboardState | null) => void;
@@ -72,7 +74,7 @@ export function AppContextMenus({
   pinnedPlayHead, setPinnedPlayHead,
   clickRulerToStartPlayback, setClickRulerToStartPlayback,
   showVerticalRulers, setShowVerticalRulers,
-  timeSelection, bpm, beatsPerMeasure,
+  timeSelection, bpm, beatsPerMeasure, noteValue,
   onClipboardSet,
   os,
   trackMenuTriggerRef,
@@ -495,9 +497,7 @@ export function AppContextMenus({
                   setLoopRegionStart(timeSelection.startTime);
                   setLoopRegionEnd(timeSelection.endTime);
                 } else {
-                  const secondsPerBeat = 60 / bpm;
-                  const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
-                  const loopDuration = secondsPerMeasure * 4;
+                  const loopDuration = barSeconds(bpm, beatsPerMeasure, noteValue) * 4;
                   setLoopRegionStart(0);
                   setLoopRegionEnd(loopDuration);
                 }

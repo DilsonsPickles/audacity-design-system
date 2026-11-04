@@ -64,3 +64,15 @@ describe('BPM is a Customise-toolbar tool in every workspace (2026-11-04)', () =
     expect(container.querySelector('[aria-label="Increase BPM"]')).toBeNull();
   });
 });
+
+describe('time signature is a Customise-toolbar tool in every workspace (2026-11-04)', () => {
+  it.each(['classic', 'spectral-editing', 'modern', 'music'] as Workspace[])('%s: shown when its row is on', (workspace) => {
+    const { container } = renderToolbar(workspace, []);
+    expect(container.querySelector('[aria-label="Time signature"]')).toBeTruthy();
+  });
+
+  it('gone when its row is off', () => {
+    const { container } = renderToolbar('music', ['time-signature']);
+    expect(container.querySelector('[aria-label="Time signature"]')).toBeNull();
+  });
+});

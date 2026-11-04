@@ -1,6 +1,6 @@
 import React from 'react';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
-import { MixerPanel, PianoRollPanel, PanelHeader, ContextMenu, ContextMenuItem, type MixerPanelChannel, type PanelHeaderTab, type ThemeTokens } from '@audacity-ui/components';
+import { MixerPanel, PianoRollPanel, PanelHeader, ContextMenu, ContextMenuItem, barSeconds, type MixerPanelChannel, type PanelHeaderTab, type ThemeTokens } from '@audacity-ui/components';
 import { type TracksState } from '../../contexts/TracksContext';
 import { useTracksDispatch } from '../../contexts/useTracks';
 import { MIDI_INSTRUMENTS } from '../../contexts/AudioEngineContext';
@@ -23,6 +23,8 @@ export interface EditorBottomDrawerProps {
   setEffectSelectorMenu: React.Dispatch<React.SetStateAction<EffectSelectorMenuState | null>>;
   bpm: number;
   beatsPerMeasure: number;
+  /** The time signature's lower number */
+  noteValue: number;
   playMidiNote: (pitch: number, duration?: number, instrumentId?: string) => void;
   midiInstrument: string;
   /** Written by this drawer's onAddNote when a note creates a brand-new MIDI
@@ -71,6 +73,7 @@ export function EditorBottomDrawer({
   setEffectSelectorMenu,
   bpm,
   beatsPerMeasure,
+  noteValue,
   playMidiNote,
   midiInstrument,
   skipPianoRollScrollRef,
@@ -307,7 +310,10 @@ export function EditorBottomDrawer({
             height={contentHeight}
             clip={prClip}
             allClips={prClip ? [prClip] : (prTrack.midiClips ?? [])}
-            bpm={bpm}
+            // The piano roll counts its beats as 60 / bpm: hand it the tempo in
+            // the time signature's BEAT, so its beats and bars are the
+            // timeline's (2026-11-04 — utils/musicalTime.ts in components)
+            bpm={bpm * noteValue / 4}
             beatsPerMeasure={beatsPerMeasure}
             pixelsPerSecond={state.pianoRollPixelsPerSecond}
             scrollX={state.pianoRollScrollX}
@@ -338,7 +344,7 @@ export function EditorBottomDrawer({
                 dispatch({ type: 'ADD_MIDI_NOTE', payload: { trackIndex, clipIndex: selectedClipIndex, note } });
               } else {
                 // No selected clip — create one starting at beat 0
-                const measureDuration = (60 / bpm) * beatsPerMeasure;
+                const measureDuration = barSeconds(bpm, beatsPerMeasure, noteValue);
                 const newClipId = Date.now();
                 const newClip = {
                   id: newClipId,

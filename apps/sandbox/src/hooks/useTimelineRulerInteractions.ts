@@ -19,6 +19,8 @@ export interface UseTimelineRulerInteractionsDeps {
   timelineFormat: 'minutes-seconds' | 'beats-measures';
   bpm: number;
   beatsPerMeasure: number;
+  /** The time signature's lower number */
+  noteValue: number;
   pixelsPerSecond: number;
   scrollX: number;
   clickRulerToStartPlayback: boolean;
@@ -56,7 +58,7 @@ export function useTimelineRulerInteractions(
   deps: UseTimelineRulerInteractionsDeps
 ): UseTimelineRulerInteractionsResult {
   const {
-    timelineRulerRef, playheadPosition, canvasSnap, snapEnabled, timelineFormat, bpm, beatsPerMeasure,
+    timelineRulerRef, playheadPosition, canvasSnap, snapEnabled, timelineFormat, bpm, beatsPerMeasure, noteValue,
     pixelsPerSecond, scrollX, clickRulerToStartPlayback, tracks, timeSelection, setPlaybackStartTime, audioManagerRef, setIsPlaying,
     setMouseCursorPosition, setTimelineRulerContextMenu, dispatch,
   } = deps;
@@ -102,6 +104,7 @@ export function useTimelineRulerInteractions(
           timeFormat: timelineFormat,
           bpm,
           beatsPerMeasure,
+          noteValue,
           snap: canvasSnap,
           pixelsPerSecond,
         });
@@ -109,6 +112,7 @@ export function useTimelineRulerInteractions(
           timeFormat: timelineFormat,
           bpm,
           beatsPerMeasure,
+          noteValue,
           snap: canvasSnap,
           pixelsPerSecond,
         });
@@ -120,7 +124,7 @@ export function useTimelineRulerInteractions(
       }
       dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: next });
     }
-  }, [snapEnabled, playheadPosition, timelineFormat, bpm, beatsPerMeasure, canvasSnap, pixelsPerSecond, dispatch, setTimelineRulerContextMenu]);
+  }, [snapEnabled, playheadPosition, timelineFormat, bpm, beatsPerMeasure, noteValue, canvasSnap, pixelsPerSecond, dispatch, setTimelineRulerContextMenu]);
 
   const onMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (timelineRulerRef.current) {
@@ -147,6 +151,7 @@ export function useTimelineRulerInteractions(
         timeFormat: timelineFormat,
         bpm,
         beatsPerMeasure,
+        noteValue,
         snap: canvasSnap,
         pixelsPerSecond,
       });
@@ -178,7 +183,7 @@ export function useTimelineRulerInteractions(
     }
   }, [
     clickRulerToStartPlayback, timelineRulerRef, scrollX, pixelsPerSecond, snapEnabled, timelineFormat,
-    bpm, beatsPerMeasure, canvasSnap, dispatch, audioManagerRef, setIsPlaying, tracks, timeSelection, setPlaybackStartTime,
+    bpm, beatsPerMeasure, noteValue, canvasSnap, dispatch, audioManagerRef, setIsPlaying, tracks, timeSelection, setPlaybackStartTime,
   ]);
 
   const onContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {

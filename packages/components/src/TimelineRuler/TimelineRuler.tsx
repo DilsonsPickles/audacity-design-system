@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { TimeSelection, SpectralSelection } from '@audacity-ui/core';
 import { useTheme } from '../ThemeProvider';
 import { CLIP_CONTENT_OFFSET } from '../constants';
+import { barSeconds, beatSeconds } from '../utils/musicalTime';
 import './TimelineRuler.css';
 
 export interface TimelineRulerProps {
@@ -95,6 +96,11 @@ export interface TimelineRulerProps {
    */
   beatsPerMeasure?: number;
   /**
+   * Time signature denominator — the note that is one beat (4 = a quarter,
+   * 8 = an eighth); `bpm` counts quarter notes whatever it is (2026-11-04)
+   */
+  noteValue?: number;
+  /**
    * Whether loop region is enabled
    */
   loopRegionEnabled?: boolean;
@@ -145,6 +151,7 @@ export function TimelineRuler({
   timeFormat = 'minutes-seconds',
   bpm = 120,
   beatsPerMeasure = 4,
+  noteValue = 4,
   loopRegionEnabled = false,
   loopRegionStart = null,
   loopRegionEnd = null,
@@ -265,7 +272,8 @@ export function TimelineRuler({
       tckColor,
       timeFormat,
       bpm,
-      beatsPerMeasure
+      beatsPerMeasure,
+      noteValue
     );
 
     // Draw cursor position line (using text color)
@@ -282,7 +290,7 @@ export function TimelineRuler({
         ctx.stroke();
       }
     }
-  }, [pixelsPerSecond, scrollX, totalDuration, width, viewportWidth, height, timeSelection, spectralSelection, bgColor, txtColor, lnColor, tckColor, selColor, specColor, cursorPosition, timeFormat, bpm, beatsPerMeasure, loopRegionEnabled, loopRegionStart, loopRegionEnd]);
+  }, [pixelsPerSecond, scrollX, totalDuration, width, viewportWidth, height, timeSelection, spectralSelection, bgColor, txtColor, lnColor, tckColor, selColor, specColor, cursorPosition, timeFormat, bpm, beatsPerMeasure, noteValue, loopRegionEnabled, loopRegionStart, loopRegionEnd]);
 
   // Mouse event handlers for loop region interaction
   const EDGE_THRESHOLD = 5; // pixels from edge for resize cursor
@@ -522,10 +530,11 @@ function drawTimeMarkers(
   bottomTickColor: string,
   timeFormat: 'minutes-seconds' | 'beats-measures',
   bpm: number,
-  beatsPerMeasure: number
+  beatsPerMeasure: number,
+  noteValue: number
 ) {
   if (timeFormat === 'beats-measures') {
-    drawBeatsAndMeasures(ctx, pixelsPerSecond, scrollX, totalDuration, width, height, textColor, topTickColor, bottomTickColor, bpm, beatsPerMeasure);
+    drawBeatsAndMeasures(ctx, pixelsPerSecond, scrollX, totalDuration, width, height, textColor, topTickColor, bottomTickColor, bpm, beatsPerMeasure, noteValue);
   } else {
     drawMinutesAndSeconds(ctx, pixelsPerSecond, scrollX, totalDuration, width, height, textColor, topTickColor, bottomTickColor);
   }
@@ -631,13 +640,15 @@ function drawBeatsAndMeasures(
   topTickColor: string,
   bottomTickColor: string,
   bpm: number,
-  beatsPerMeasure: number
+  beatsPerMeasure: number,
+  noteValue: number
 ) {
   const midHeight = height / 2;
 
-  // Calculate seconds per beat and seconds per measure
-  const secondsPerBeat = 60 / bpm;
-  const secondsPerMeasure = secondsPerBeat * beatsPerMeasure;
+  // A beat is the time signature's lower note, a bar `beatsPerMeasure` of
+  // them (utils/musicalTime.ts — the real build's rule)
+  const secondsPerBeat = beatSeconds(bpm, noteValue);
+  const secondsPerMeasure = barSeconds(bpm, beatsPerMeasure, noteValue);
 
   // Determine finest subdivision to show based on zoom level
   // Each subdivision level doubles: beat, eighth, sixteenth, thirty-second
