@@ -1670,6 +1670,40 @@ describe('Selection playback', () => {
     await waitFor(() => expect(container.querySelector('.panel-header')).toBeNull());
   });
 
+  it('− / = step the playback speed a tenth and 0 swaps 100% with the last speed (2026-11-05)', async () => {
+    const rendered = renderApp();
+    const { container, audioSpies } = rendered;
+    await gotoProject(rendered);
+    const readout = () => (container.querySelector('[data-varispeed-display]') as HTMLElement).textContent;
+    expect(readout()).toBe('100%');
+    // − slower: a tenth per press, and the engine hears each
+    fireEvent.keyDown(document.body, { key: '-', code: 'Minus' });
+    await waitFor(() => expect(readout()).toBe('90%'));
+    expect(audioSpies.setVarispeed).toHaveBeenLastCalledWith(0.9);
+    // Two presses before a render step from where the last one landed
+    fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
+    fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
+    await waitFor(() => expect(readout()).toBe('110%'));
+    // 0: back to 100%, and again to the speed it left
+    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });
+    await waitFor(() => expect(readout()).toBe('100%'));
+    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });
+    await waitFor(() => expect(readout()).toBe('110%'));
+    // The zoom chords are not the speed keys
+    fireEvent.keyDown(document.body, { key: '=', code: 'Equal', metaKey: true });
+    fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
+    expect(readout()).toBe('110%');
+    // A text field keeps its own − = 0
+    const field = document.createElement('input');
+    field.type = 'text';
+    container.appendChild(field);
+    fireEvent.keyDown(field, { key: '-', code: 'Minus' });
+    expect(readout()).toBe('110%');
+    field.remove();
+    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });
+    await waitFor(() => expect(readout()).toBe('100%'));
+  });
+
   it('Skip to start / Skip to end move the playhead to 0 and to the project end', async () => {
     const rendered = renderApp();
     const { container } = rendered;

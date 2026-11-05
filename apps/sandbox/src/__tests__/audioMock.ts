@@ -39,10 +39,16 @@ interface AudioManagerMock {
 //   - exportBuffersAsWav: iterated with `for (const [id, wav] of exported)`
 //     (useProjectManagement, saveCloudProject, AppDialogs)
 //   - mixdown / generateTone: destructured (`const { blob, ... } = await ...`)
+//   - setVarispeed / getVarispeed: the speed set is read straight back
 //   - importBuffersFromWav / setAudioOutputDevice: awaited (fine to resolve
 //     undefined, but explicit for clarity)
 function requiredReturns(): Record<string, (...args: unknown[]) => unknown> {
+  // The playback speed is read back after it is set (usePlaybackControls
+  // stores what the engine APPLIED), so the pair keeps one value
+  let varispeed = 1;
   return {
+    setVarispeed: (speed) => { varispeed = speed as number; },
+    getVarispeed: () => varispeed,
     getIsPlaying: () => false,
     getIsPaused: () => false,
     getClipBuffer: () => undefined,

@@ -129,6 +129,8 @@ export const SHORTCUT_ROWS: ReadonlyArray<ShortcutRow> = [
     { id: '56', action: 'Open project', shortcut: '⌘O' },
     { id: '57', action: 'Paste', shortcut: '⌘V' },
     { id: '58', action: 'Play / Pause (the cursor stays where playback paused)', shortcut: 'P' },
+    { id: '58a', action: 'Playback speed slower / faster (a tenth per press; works while playing)', shortcut: '− / =' },
+    { id: '58b', action: 'Playback speed: 100% / the last speed', shortcut: '0' },
     { id: '59', action: 'Phaser', shortcut: '' },
     { id: '60', action: 'Play / Stop', shortcut: 'Space' },
     { id: '61a', action: 'Go to… (move the playhead to a typed position; Edit menu or the command palette)', shortcut: '' },

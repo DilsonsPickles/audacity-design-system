@@ -734,6 +734,8 @@ function CanvasDemoContent() {
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
     onCommandPalette: () => setIsCommandPaletteOpen(true),
     onToggleMixer: () => setMixerPanelOpen((prev) => !prev),
+    onSpeedStep: playback.stepPlaybackSpeed,
+    onSpeedToggle: playback.togglePlaybackSpeed,
     onFitTracksToHeight: handleFitTracksToHeight,
     onExpandAllTracks: handleExpandAllTracks,
     onCollapseAllTracks: handleCollapseAllTracks,
@@ -1453,7 +1455,7 @@ function CanvasDemoContent() {
       <KeyboardMap isOpen={isKeyboardMapOpen} onClose={() => setIsKeyboardMapOpen(false)} rows={SHORTCUT_ROWS} timeSelected={!!state.timeSelection} clipsSelected={countSelectedClips(state.tracks) > 0} os={preferences.operatingSystem} />
       {/* The command palette (⌘P, 2026-10-13): the menus' items and the
           keyboard-only commands by name, with their chords */}
-      <CommandPaletteHost menuDefinitions={menuDefinitions} os={preferences.operatingSystem} />
+      <CommandPaletteHost menuDefinitions={menuDefinitions} os={preferences.operatingSystem} onSpeedStep={playback.stepPlaybackSpeed} onSpeedToggle={playback.togglePlaybackSpeed} />
       {/* Go to… (Edit › Go to…, or the palette): the playhead to a typed position (2026-10-13) */}
       <GoToDialog
         isOpen={isGoToOpen}

@@ -77,6 +77,10 @@ export interface UseKeyboardShortcutsOptions {
   onCommandPalette?: () => void;
   /** M: the mixer panel on / off (2026-10-13) */
   onToggleMixer?: () => void;
+  /** − / = : playback speed a tenth slower (−1) or faster (+1) */
+  onSpeedStep?: (notches: number) => void;
+  /** 0 : playback speed 100% ↔ the last speed that was not 100% */
+  onSpeedToggle?: () => void;
   onZoomIn?: () => void;
   onZoomOut?: () => void;
 }
@@ -118,6 +122,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onFitSelectedTracksToHeight,
     onCommandPalette,
     onToggleMixer,
+    onSpeedStep,
+    onSpeedToggle,
     onZoomIn,
     onZoomOut,
   } = options;
@@ -522,6 +528,32 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           e.preventDefault();
           onToggleMixer();
           return;
+        }
+      }
+
+      // --- − / = / 0: PLAYBACK SPEED (2026-11-05, "add the three keys") —
+      //     − slower, = faster (a tenth per press), 0 the A/B between 100%
+      //     and the last speed. The unmodified forms of zoom's ⌘− / ⌘=,
+      //     with 0 as "back to normal" the way ⌥⌘0 is fit; matched on the
+      //     code so a non-US layout keeps the three keys side by side.
+      //     Comma / period (YouTube's < >) are the playhead jumps and the
+      //     brackets (VLC's) the clip edges; the real build's
+      //     play-speed-inc / play-speed-dec ship unbound. A focused fade
+      //     handle stops its own 0 (reset the curve) before it gets here.
+      if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && (onSpeedStep || onSpeedToggle)) {
+        const slower = e.code === 'Minus' || e.code === 'NumpadSubtract' || (!e.code && e.key === '-');
+        const faster = e.code === 'Equal' || e.code === 'NumpadAdd' || (!e.code && e.key === '=');
+        const toggle = e.code === 'Digit0' || e.code === 'Numpad0' || (!e.code && e.key === '0');
+        if (slower || faster || toggle) {
+          const target = e.target as HTMLElement;
+          const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
+            target.getAttribute('role') === 'textbox' || target.getAttribute('contenteditable') === 'true';
+          if (!isTextInput) {
+            e.preventDefault();
+            if (toggle) onSpeedToggle?.();
+            else onSpeedStep?.(faster ? 1 : -1);
+            return;
+          }
         }
       }
 

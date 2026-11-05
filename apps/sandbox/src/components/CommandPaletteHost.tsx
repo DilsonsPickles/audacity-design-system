@@ -41,7 +41,14 @@ export const CURATED_COMMAND_IDS: ReadonlyArray<string> = [
 ];
 export const SUGGESTED_MAX = 6;
 
-export function CommandPaletteHost({ menuDefinitions, os }: { menuDefinitions: Record<string, MenuItem[]>; os?: 'macos' | 'windows' }) {
+export function CommandPaletteHost({ menuDefinitions, os, onSpeedStep, onSpeedToggle }: {
+  menuDefinitions: Record<string, MenuItem[]>;
+  os?: 'macos' | 'windows';
+  /** The speed keys' handlers (− / = / 0), listed here because the in-app
+   *  menu bar has no Transport menu to carry them */
+  onSpeedStep?: (notches: number) => void;
+  onSpeedToggle?: () => void;
+}) {
   const { isCommandPaletteOpen, setIsCommandPaletteOpen } = useDialogs();
   const { setFadeDialog } = useContextMenus();
   // Recently run, most recent first — this session's
@@ -64,8 +71,19 @@ export function CommandPaletteHost({ menuDefinitions, os }: { menuDefinitions: R
         },
       },
     ];
+    // PLAYBACK SPEED (2026-11-05): the three keys by name, so a search
+    // for "speed" finds them and shows the key beside each
+    if (onSpeedStep) {
+      extras.push(
+        { id: 'transport:speed-slower', label: 'Playback speed: slower', shortcut: '-', group: 'Transport', run: () => onSpeedStep(-1) },
+        { id: 'transport:speed-faster', label: 'Playback speed: faster', shortcut: '=', group: 'Transport', run: () => onSpeedStep(1) },
+      );
+    }
+    if (onSpeedToggle) {
+      extras.push({ id: 'transport:speed-toggle', label: 'Playback speed: 100% / last speed', shortcut: '0', group: 'Transport', run: onSpeedToggle });
+    }
     return [...fromMenus, ...extras];
-  }, [menuDefinitions, setFadeDialog]);
+  }, [menuDefinitions, setFadeDialog, onSpeedStep, onSpeedToggle]);
   const run = React.useCallback((id: string) => {
     setRecentIds((prev) => [id, ...prev.filter((p) => p !== id)].slice(0, SUGGESTED_MAX));
     commands.find((c) => c.id === id)?.run?.();

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { createMeterBallistics, dbToMeterPercent, meterPercentToDb, type MeterBallistics } from '../utils/meterBallistics';
 import { effectiveTrackMuted } from '../utils/trackFolders';
 import { getAudioPlaybackManager, AudioPlaybackManager } from '@audacity-ui/audio';
-import { VARISPEED_DEFAULT_SPEED, VARISPEED_MIN, VARISPEED_MAX } from '@audacity-ui/components';
+import { VARISPEED_DEFAULT_SPEED, VARISPEED_MIN, VARISPEED_MAX, stepVarispeed, formatVarispeedPercent, announce } from '@audacity-ui/components';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import type { RecordingManager } from '../utils/RecordingManager';
 
@@ -67,6 +67,10 @@ export interface UsePlaybackControlsReturn {
   dialVarispeed: (speed: number) => void;
   /** The A/B: on → 1×; off → the last speed that was not 1× */
   setVarispeedOn: (on: boolean) => void;
+  /** − / = : the speed a tenth slower (−1) or faster (+1) */
+  stepPlaybackSpeed: (notches: number) => void;
+  /** 0 : 100% ↔ the last speed that was not 100% */
+  togglePlaybackSpeed: () => void;
 }
 
 /**
@@ -124,12 +128,29 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     audioManagerRef.current.setVarispeed(clamped);
     const applied = audioManagerRef.current.getVarispeed();
     setVarispeedState(applied);
+    // Mirrored at once, not only in the effect: a held key steps again
+    // before the next render, and must step from where the last one landed
+    varispeedRef.current = applied;
     if (Math.abs(applied - 1) >= 0.0005) lastVarispeedRef.current = applied;
   }, []);
   const varispeedOn = Math.abs(varispeed - 1) >= 0.0005;
   /** The wheel and the arrows turn the same value now — kept as a name for the host's wiring */
   const dialVarispeed = setVarispeed;
   const setVarispeedOn = useCallback((on: boolean) => setVarispeed(on ? lastVarispeedRef.current : 1), [setVarispeed]);
+  // THE SPEED KEYS (2026-11-05, "add the three keys"): − slower, = faster,
+  // a tenth per press on the tenths grid (the readout's own arrow step),
+  // and 0 the A/B — off 100% it goes back to 100%, at 100% it brings back
+  // the last speed that was not (half speed before any was set). They
+  // work mid-play, as the slider does, and say the new speed to a screen
+  // reader, since the keys can be pressed with the focus anywhere.
+  const stepPlaybackSpeed = useCallback((notches: number) => {
+    setVarispeed(stepVarispeed(varispeedRef.current, notches));
+    announce(`Speed ${formatVarispeedPercent(varispeedRef.current)}`);
+  }, [setVarispeed]);
+  const togglePlaybackSpeed = useCallback(() => {
+    setVarispeedOn(Math.abs(varispeedRef.current - 1) < 0.0005);
+    announce(`Speed ${formatVarispeedPercent(varispeedRef.current)}`);
+  }, [setVarispeedOn]);
 
   // Ref-mirror (see CLAUDE.md): the playback-complete callback below is
   // registered once in the init effect but must read the live time
@@ -450,6 +471,8 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     setVarispeed,
     dialVarispeed,
     setVarispeedOn,
+    stepPlaybackSpeed,
+    togglePlaybackSpeed,
     setPlaybackStartTime,
   };
 }
