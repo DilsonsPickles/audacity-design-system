@@ -159,6 +159,16 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         const n = raw != null ? Number(raw) : NaN;
         return Number.isFinite(n) ? n : (state.focusedTrackIndex ?? null);
       },
+      // An edge jump made while playing seeks the audio (2026-11-05)
+      playback: {
+        position: () => {
+          const manager = audioManagerRef.current;
+          if (state.isRecording || !manager?.getIsPlaying?.()) return null;
+          const live = manager.getCurrentPosition?.();
+          return typeof live === 'number' && Number.isFinite(live) ? live : null;
+        },
+        seek: (time: number) => { audioManagerRef.current?.seek?.(time); },
+      },
     };
     const clipboardDeps = { state, dispatch, clipboard, setClipboard, audioManagerRef };
 
@@ -815,7 +825,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       //   - clips a time selection overlaps on the selected tracks
       //   - otherwise no-op so the gesture never silently turns into
       //     a playhead jump. , / . own the 1 s playhead jump.
-      // Cmd+Shift + arrow → extend the time selection by 1 s.
+      // Option + arrow → the playhead to the previous / next clip edge;
+      //                  with Shift, the selection grows to it.
+      // Cmd+Shift + arrow → shrink the time selection.
       //
       // Fires when nothing else has claimed the arrow:
       //   - Element-level handlers that own arrows (clip nav in non-
@@ -826,11 +838,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       //     playhead.
       if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         if (e.defaultPrevented) return;
-        // Alt+Shift+Arrow on a focused clip is the time-stretch chord
-        // — the clip's own onKeyDown handles it and calls
-        // preventDefault, which the defaultPrevented check above
-        // catches. Outside a focused clip, Alt+Shift+Arrow is the
-        // large-step selection extend (Alt = fast, Shift = extend).
         const target = e.target as HTMLElement;
         const tag = target.tagName;
         // Skip when the focused element owns arrow keys for its own
@@ -847,6 +854,22 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
 
         const isLeftward = e.key === 'ArrowLeft';
         const cmdHeld = e.metaKey || e.ctrlKey;
+
+        // OPTION+ARROW IS THE CLIP EDGE, AS IT IS THE WORD IN TEXT
+        // (user decision 2026-11-05, "option arrow might be a good
+        // shortcut to jump cursor between clip edges, like with text
+        // edit"): ⌥← / ⌥→ park the playhead on the previous / next clip
+        // edge of the track you are on and ⌥⇧← / ⌥⇧→ grow the time
+        // selection to it — the brackets' [ ] and ⇧[ ], a second
+        // binding for the same command, on keys that sit in one place
+        // on every layout. Option was the 1 s step here until then, an
+        // unlisted double of comma / period, which keep it. With Cmd
+        // the chord is still the clip move's 1 s (below).
+        if (e.altKey && !cmdHeld) {
+          e.preventDefault();
+          handleBracketEdge(e, isLeftward, playheadDeps);
+          return;
+        }
 
         // Cmd+Arrow on a time selection that overlaps any clips:
         // move the clips together with the selection. Mirrors the
@@ -927,8 +950,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         // Cmd+Arrow is "move the thing under the gesture" — focused
         // clip, time-selection clips, or the current clip selection
         // (which is what a first-press-with-time-selection promoted
-        // itself to). No fallback playhead jump; , / . and Alt+Arrow
-        // own that. Skipped when Shift is also held so
+        // itself to). No fallback playhead jump; , / . own that. Skipped when Shift is also held so
         // Cmd+Shift+Arrow can reach the selection-reduce path in
         // handlePlayheadMove below.
         if (cmdHeld && !e.shiftKey) {
@@ -949,7 +971,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           return;
         }
         e.preventDefault();
-        // Alt = fast playhead (1 s); plain = fine playhead (0.1 s).
+        // Plain = the 0.1 s playhead step. Option reaches here only
+        // with Cmd+Shift (the selection shrink), where it is the 1 s
+        // step; Option alone is the clip-edge jump above.
         const nudgeAmount = e.altKey ? 1.0 : 0.1;
         handlePlayheadMove(e, isLeftward, nudgeAmount, playheadDeps);
         return;

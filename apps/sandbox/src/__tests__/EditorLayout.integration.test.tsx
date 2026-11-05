@@ -1714,6 +1714,55 @@ describe('Selection playback', () => {
     audioSpies.getCurrentPosition.mockReset();
   });
 
+  it('Option+← / → jump the playhead between clip edges as [ ] do, Option+Shift selects to the edge, and while playing the jump seeks (2026-11-05)', async () => {
+    const rendered = renderApp();
+    const { container, getByText, audioSpies } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+    const ruler = container.querySelector('[aria-label="Timeline ruler"]') as HTMLElement;
+    const leftPx = () => parseFloat((ruler.querySelector('.playhead-cursor') as HTMLElement).style.left);
+    const start = leftPx();
+    // The bracket's landing is the reference: ] from the start, then back
+    fireEvent.keyDown(document.body, { key: ']', code: 'BracketRight' });
+    const firstEdge = leftPx();
+    expect(firstEdge).toBeGreaterThan(start);
+    fireEvent.keyDown(document.body, { key: 'Home', code: 'Home' });
+    expect(leftPx()).toBeCloseTo(start);
+    // Option+→ lands where ] did — not a 1 s step — and the engine is not seeked
+    audioSpies.seek.mockClear();
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', code: 'ArrowRight', altKey: true });
+    expect(leftPx()).toBeCloseTo(firstEdge);
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', code: 'ArrowRight', altKey: true });
+    const secondEdge = leftPx();
+    expect(secondEdge).toBeGreaterThan(firstEdge);
+    fireEvent.keyDown(document.body, { key: 'ArrowLeft', code: 'ArrowLeft', altKey: true });
+    expect(leftPx()).toBeCloseTo(firstEdge);
+    expect(audioSpies.seek).not.toHaveBeenCalled();
+    // From the focused timeline ruler too: the chord bubbles past its own arrows
+    act(() => { ruler.focus(); });
+    fireEvent.keyDown(ruler, { key: 'ArrowRight', code: 'ArrowRight', altKey: true });
+    expect(leftPx()).toBeCloseTo(secondEdge);
+    fireEvent.keyDown(ruler, { key: 'ArrowLeft', code: 'ArrowLeft', altKey: true });
+    act(() => { ruler.blur(); });
+    // Option+Shift+→ selects from the playhead to the next edge: play is bounded to it
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', code: 'ArrowRight', altKey: true, shiftKey: true });
+    audioSpies.play.mockClear();
+    fireEvent.keyDown(document.body, { key: ' ' });
+    await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
+    const [from, to] = audioSpies.play.mock.calls.at(-1) as [number, number];
+    expect((to - from) * 100).toBeCloseTo(secondEdge - firstEdge, 3);
+    fireEvent.keyDown(document.body, { key: ' ' }); // stop
+    // While playing the jump is a seek, from where the audio is
+    audioSpies.getIsPlaying.mockReturnValue(true);
+    audioSpies.getCurrentPosition.mockReturnValue(0);
+    audioSpies.seek.mockClear();
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', code: 'ArrowRight', altKey: true });
+    expect(audioSpies.seek).toHaveBeenCalledTimes(1);
+    expect((audioSpies.seek.mock.calls[0][0] as number)).toBeGreaterThan(0);
+    audioSpies.getIsPlaying.mockReturnValue(false);
+    audioSpies.getCurrentPosition.mockReset();
+  });
+
   it('− / = step the playback speed a tenth and 0 swaps 100% with the last speed (2026-11-05)', async () => {
     const rendered = renderApp();
     const { container, audioSpies } = rendered;

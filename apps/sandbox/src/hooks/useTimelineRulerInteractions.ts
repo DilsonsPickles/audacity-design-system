@@ -91,6 +91,9 @@ export function useTimelineRulerInteractions(
     // the next/previous grid division; with snap off, step
     // is 0.1s (Shift accelerates to 1s).
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      // Option+Arrow is the app's clip-edge jump (2026-11-05): let it
+      // bubble to the one handler, as the bracket keys do from here
+      if (e.altKey && !e.metaKey && !e.ctrlKey) return;
       e.preventDefault();
       e.stopPropagation();
       const direction = e.key === 'ArrowLeft' ? -1 : 1;

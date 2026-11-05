@@ -125,6 +125,51 @@ describe('handleBracketEdge — [ ] walk the clip edges, Shift grows the selecti
   });
 });
 
+describe('an edge jump WHILE PLAYING seeks the audio (2026-11-05)', () => {
+  const tracks = [
+    { id: 1, name: 't1', clips: [{ id: 1, start: 1, duration: 2 }, { id: 2, start: 4, duration: 1 }] }, // 1..3, 4..5
+  ] as unknown as TracksState['tracks'];
+  const playheadOf = (dispatch: ReturnType<typeof vi.fn>) =>
+    dispatch.mock.calls.filter((c) => c[0].type === 'SET_PLAYHEAD_POSITION').map((c) => c[0].payload);
+  const playing = (state: TracksState, at: number | null) => {
+    const seek = vi.fn();
+    return { ...makeDeps(state), playback: { position: () => at, seek }, seek };
+  };
+
+  it('starts from where the audio is, not the state\'s playhead, and seeks to the edge', () => {
+    // The state last heard 0.2 s; the audio is at 3.4 s
+    const deps = playing(makeState({ tracks, playheadPosition: 0.2, focusedTrackIndex: 0 }), 3.4);
+    handleBracketEdge(keyEvent({ shiftKey: false }), false, deps);
+    expect(deps.seek).toHaveBeenCalledWith(4);
+    expect(playheadOf(deps.dispatch as ReturnType<typeof vi.fn>)).toEqual([4]);
+  });
+
+  it('backwards, an edge the audio has only just passed is stepped over — a second press gets past it', () => {
+    // 0.2 s after landing on 4: the previous edge is 3, not 4 again
+    const deps = playing(makeState({ tracks, playheadPosition: 4, focusedTrackIndex: 0 }), 4.2);
+    handleBracketEdge(keyEvent({ shiftKey: false }), true, deps);
+    expect(deps.seek).toHaveBeenCalledWith(3);
+    // Well past it, the edge is the target
+    const later = playing(makeState({ tracks, playheadPosition: 4, focusedTrackIndex: 0 }), 4.8);
+    handleBracketEdge(keyEvent({ shiftKey: false }), true, later);
+    expect(later.seek).toHaveBeenCalledWith(4);
+    // Just past the FIRST edge there is nothing earlier: back to that edge
+    const first = playing(makeState({ tracks, playheadPosition: 1, focusedTrackIndex: 0 }), 1.2);
+    handleBracketEdge(keyEvent({ shiftKey: false }), true, first);
+    expect(first.seek).toHaveBeenCalledWith(1);
+  });
+
+  it('stopped (no live position) the jump parks the playhead and seeks nothing; Shift never seeks', () => {
+    const stopped = playing(makeState({ tracks, playheadPosition: 4.2, focusedTrackIndex: 0 }), null);
+    handleBracketEdge(keyEvent({ shiftKey: false }), true, stopped);
+    expect(stopped.seek).not.toHaveBeenCalled();
+    expect(playheadOf(stopped.dispatch as ReturnType<typeof vi.fn>)).toEqual([4]); // no grace when stopped
+    const shift = playing(makeState({ tracks, playheadPosition: 2, focusedTrackIndex: 0 }), 2);
+    handleBracketEdge(keyEvent({ shiftKey: true }), false, shift);
+    expect(shift.seek).not.toHaveBeenCalled();
+  });
+});
+
 describe('Shift+[ ] — the range follows the track you are on (2026-10-13)', () => {
   const tracks = [
     { id: 1, name: 't1', clips: [{ id: 1, start: 1, duration: 2 }] }, // 1..3

@@ -12,7 +12,21 @@ export interface PlayheadSelectionHandlerDeps {
    *  resolveTracksImOn order — clip focus and track focus are separate
    *  state, and a clip focused on another track must count) */
   trackImOn?: () => number | null;
+  /** The transport, for an edge jump made WHILE PLAYING (2026-11-05):
+   *  `position` is where the audio is, or null when the project is not
+   *  playing (or is recording); `seek` moves the audio. Absent, a jump
+   *  only parks the playhead. */
+  playback?: {
+    position: () => number | null;
+    seek: (time: number) => void;
+  };
 }
+
+/** While playing, a BACKWARD edge jump looks this far behind the audio:
+ *  playback has run on past the edge the last press landed on, so
+ *  without it a second press could never get past that edge (the media
+ *  players' "previous" rule). */
+export const PLAYING_BACK_GRACE_SECONDS = 0.5;
 
 /** The track a keyboard range or edge walk belongs to */
 function trackImOnOf(deps: PlayheadSelectionHandlerDeps): number | null {
@@ -161,6 +175,10 @@ export function handleDeleteTimeRange(deps: PlayheadSelectionHandlerDeps): void 
  * and again on every press; ⌘⇧[ / ⌘⇧] SHRINK the range edge by edge
  * instead, as ⌘⇧Arrow does. Nothing beyond the last edge: the key does
  * nothing.
+ * OPTION+← / → and OPTION+SHIFT+← / → are a second binding for the
+ * jump and the grow (2026-11-05, the word jump of a text field).
+ * WHILE PLAYING the jump is a seek: it starts from where the audio is
+ * and moves the audio (`deps.playback`).
  * (Bare [ ] were Audacity 3's selection-boundary setters until
  * 2026-10-12; J / K did this jump for the focused track alone until
  * the same day the brackets took it — J and K are unbound for now.)
@@ -175,10 +193,18 @@ export function handleBracketEdge(
   const fti = trackImOnOf(deps);
   const scope = fti != null && state.tracks[fti] ? [state.tracks[fti]] : state.tracks;
   if (!e.shiftKey) {
-    const target = isLeftward ? prevClipEdge(scope, state.playheadPosition) : nextClipEdge(scope, state.playheadPosition);
+    // WHILE PLAYING the jump is a SEEK (2026-11-05): it starts from
+    // where the audio is and moves the audio, or the transport's next
+    // position update would put the playhead straight back
+    const live = deps.playback?.position() ?? null;
+    const from = live ?? state.playheadPosition;
+    const target = isLeftward
+      ? (live != null ? prevClipEdge(scope, from - PLAYING_BACK_GRACE_SECONDS) : null) ?? prevClipEdge(scope, from)
+      : nextClipEdge(scope, from);
     if (target === null) return;
     selectionAnchorRef.current = null;
     selectionEdgesRef.current = null;
+    if (live != null) deps.playback?.seek(target);
     dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: target });
     scrollPlayheadIntoView();
     return;
