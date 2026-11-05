@@ -1670,6 +1670,50 @@ describe('Selection playback', () => {
     await waitFor(() => expect(container.querySelector('.panel-header')).toBeNull());
   });
 
+  it('while playing, ← / → seek a second and Shift fifteen — Audacity 3\'s arrows; stopped, they nudge the playhead (2026-11-05)', async () => {
+    const rendered = renderApp();
+    const { container, getByText, audioSpies } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+    // Stopped: the arrow is the playhead nudge, and the engine is not seeked
+    audioSpies.seek.mockClear();
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', code: 'ArrowRight' });
+    expect(audioSpies.seek).not.toHaveBeenCalled();
+    // Playing, 3 s in (the generated project is about 6 s long)
+    audioSpies.getIsPlaying.mockReturnValue(true);
+    audioSpies.getCurrentPosition.mockReturnValue(3);
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', code: 'ArrowRight' });
+    expect(audioSpies.seek).toHaveBeenLastCalledWith(4);
+    fireEvent.keyDown(document.body, { key: 'ArrowLeft', code: 'ArrowLeft' });
+    expect(audioSpies.seek).toHaveBeenLastCalledWith(2);
+    // Shift: the long seek, held at the project's start and at its end
+    fireEvent.keyDown(document.body, { key: 'ArrowLeft', code: 'ArrowLeft', shiftKey: true });
+    expect(audioSpies.seek).toHaveBeenLastCalledWith(0);
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', code: 'ArrowRight', shiftKey: true });
+    const heldAt = audioSpies.seek.mock.calls.at(-1)![0] as number;
+    expect(heldAt).toBeGreaterThan(4);
+    expect(heldAt).toBeLessThan(18);
+    // Comma / period are the same pair
+    fireEvent.keyDown(document.body, { key: ',', code: 'Comma' });
+    expect(audioSpies.seek).toHaveBeenLastCalledWith(2);
+    // From a focused clip too: the seek comes before the clip's own arrows
+    const clip = container.querySelector('[data-clip-id]') as HTMLElement;
+    act(() => { clip.focus(); });
+    fireEvent.keyDown(clip, { key: 'ArrowRight', code: 'ArrowRight' });
+    expect(audioSpies.seek).toHaveBeenLastCalledWith(4);
+    // A Cmd chord is not a seek, and a text field keeps its arrows
+    const calls = audioSpies.seek.mock.calls.length;
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', code: 'ArrowRight', metaKey: true });
+    const field = document.createElement('input');
+    field.type = 'text';
+    container.appendChild(field);
+    fireEvent.keyDown(field, { key: 'ArrowRight', code: 'ArrowRight' });
+    field.remove();
+    expect(audioSpies.seek.mock.calls.length).toBe(calls);
+    audioSpies.getIsPlaying.mockReturnValue(false);
+    audioSpies.getCurrentPosition.mockReset();
+  });
+
   it('− / = step the playback speed a tenth and 0 swaps 100% with the last speed (2026-11-05)', async () => {
     const rendered = renderApp();
     const { container, audioSpies } = rendered;

@@ -190,6 +190,7 @@ export * from './utils/spectrogram';
 export * from './utils/projectStorage';
 export * from './utils/scrollIntoViewIfNeeded';
 export * from './utils/announce';
+export { getInputMode } from './utils/inputMode';
 export * from './utils/musicalTime';
 // Note: envelope utilities are available via direct import from '@audacity-ui/components/utils/envelope'
 // Not re-exported here to avoid naming conflicts with EnvelopePoint component

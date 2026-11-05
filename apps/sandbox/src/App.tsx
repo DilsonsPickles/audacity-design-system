@@ -64,6 +64,7 @@ import { useCanvasScrollSync } from './hooks/useCanvasScrollSync';
 import { usePlaybackControls } from './hooks/usePlaybackControls';
 import { useRecording } from './hooks/useRecording';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { usePlaybackSeekKeys } from './hooks/usePlaybackSeekKeys';
 import type { ClipboardState } from './hooks/useKeyboardShortcuts';
 import { useGrabToPan } from './hooks/useGrabToPan';
 import { useProjectManagement } from './hooks/useProjectManagement';
@@ -720,6 +721,10 @@ function CanvasDemoContent() {
   const handleResetTrackHeight = React.useCallback((index: number) => {
     applyHeightUpdates(resetTracks(state.tracks, [index], heightMemoryRef.current));
   }, [state.tracks, applyHeightUpdates]);
+
+  // Seek while playing (Audacity 3's arrows): ← / → a second, Shift
+  // fifteen — a capture listener of its own, ahead of the chain below
+  usePlaybackSeekKeys({ audioManagerRef, state, dispatch });
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
