@@ -1745,13 +1745,16 @@ describe('Selection playback', () => {
     await waitFor(() => expect(readout()).toBe('50%'));
     fireEvent.keyDown(document.body, { key: '_', code: 'Minus', shiftKey: true });
     await waitFor(() => expect(readout()).toBe('25%'));
-    // Nothing below the last stop: it stays
+    // …and down to the slider's floor, 1%, where it stays
     fireEvent.keyDown(document.body, { key: '_', code: 'Minus', shiftKey: true });
-    expect(readout()).toBe('25%');
+    await waitFor(() => expect(readout()).toBe('1%'));
+    fireEvent.keyDown(document.body, { key: '_', code: 'Minus', shiftKey: true });
+    expect(readout()).toBe('1%');
     // Shift+0 is not the toggle
     fireEvent.keyDown(document.body, { key: ')', code: 'Digit0', shiftKey: true });
-    expect(readout()).toBe('25%');
+    expect(readout()).toBe('1%');
     // Back to where the rest of the test expects it
+    fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
     fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
     fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
     fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });

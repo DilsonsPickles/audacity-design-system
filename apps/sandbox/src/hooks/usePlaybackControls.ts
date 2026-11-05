@@ -144,7 +144,7 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
   // the last speed that was not (half speed before any was set). They
   // work mid-play, as the slider does, and say the new speed to a screen
   // reader, since the keys can be pressed with the focus anywhere.
-  // With Shift the step is COARSE: to the next round stop that way (25,
+  // With Shift the step is COARSE: to the next round stop that way (1, 25,
   // 50, 100, 150 … 300%) instead of a tenth
   const stepPlaybackSpeed = useCallback((notches: number, coarse = false) => {
     setVarispeed(coarse

@@ -92,7 +92,9 @@ export const stepVarispeedFine = (speed: number, notches: number) => clampSpeed(
  *  jumps?"): the round speeds a big step lands on — every half from 50%
  *  to the top, and a quarter at the slow end, where transcription lives.
  *  100% is one of them, so a big step always passes through "off". */
-export const VARISPEED_COARSE_STOPS: ReadonlyArray<number> = [0.25, 0.5, 1, 1.5, 2, 2.5, 3];
+// The slider's floor is the LAST stop down ("it should let me get down to
+// 1%", the same day): the big step reaches everything the slider does.
+export const VARISPEED_COARSE_STOPS: ReadonlyArray<number> = [VARISPEED_MIN, 0.25, 0.5, 1, 1.5, 2, 2.5, 3];
 /** The next coarse stop above (direction 1) or below (−1) the speed; a
  *  speed already past the last stop that way stays where it is */
 export const stepVarispeedCoarse = (speed: number, direction: 1 | -1): number => {

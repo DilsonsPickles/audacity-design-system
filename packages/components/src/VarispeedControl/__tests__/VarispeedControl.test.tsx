@@ -142,7 +142,13 @@ describe('stepVarispeedCoarse — the big step (2026-11-05)', () => {
   it('stays put past the last stop', async () => {
     const { stepVarispeedCoarse } = await import('../VarispeedControl');
     expect(stepVarispeedCoarse(3, 1)).toBe(3);
-    expect(stepVarispeedCoarse(0.25, -1)).toBe(0.25);
-    expect(stepVarispeedCoarse(0.1, -1)).toBe(0.1);
+    expect(stepVarispeedCoarse(0.01, -1)).toBe(0.01);
+  });
+
+  it('reaches the slider\'s floor, 1%, and comes back up from it', async () => {
+    const { stepVarispeedCoarse } = await import('../VarispeedControl');
+    expect(stepVarispeedCoarse(0.25, -1)).toBe(0.01);
+    expect(stepVarispeedCoarse(0.1, -1)).toBe(0.01);
+    expect(stepVarispeedCoarse(0.01, 1)).toBe(0.25);
   });
 });

@@ -543,7 +543,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       //     handle stops its own 0 (reset the curve) before it gets here.
       //     SHIFT makes the step a BIG one (the same day, "perhaps shift +
       //     - and = can make bigger jumps?"): to the next round stop that
-      //     way — 25, 50, 100, 150 … 300% — as Shift is the bigger step on
+      //     way — 1, 25, 50, 100, 150 … 300% — as Shift is the bigger step on
       //     the handles' arrows and the seek. Shift+0 is nothing.
       if (!e.metaKey && !e.ctrlKey && !e.altKey && (onSpeedStep || onSpeedToggle)) {
         const slower = e.code === 'Minus' || e.code === 'NumpadSubtract' || (!e.code && (e.key === '-' || e.key === '_'));
