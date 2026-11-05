@@ -1714,6 +1714,35 @@ describe('Selection playback', () => {
     audioSpies.getCurrentPosition.mockReset();
   });
 
+  it('with Play-at-Speed hidden in Customise toolbar, the status bar shows the speed while it is off 100% (2026-11-05)', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+    const state = () => container.querySelector('[data-status-state]')?.textContent ?? null;
+    // The toolbar's own readout is up: a speed is not said twice
+    fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
+    expect((container.querySelector('[data-varispeed-display]') as HTMLElement).textContent).toBe('110%');
+    expect(state()).toBeNull();
+    // Hide Play-at-Speed from the cog's menu
+    fireEvent.click(container.querySelector('[data-customise-toolbar-cog] button') as HTMLElement);
+    const row = await waitFor(() => {
+      const r = document.body.querySelector<HTMLElement>('[data-customise-tool="varispeed"]');
+      if (!r) throw new Error('not yet');
+      return r;
+    });
+    fireEvent.click(row);
+    await waitFor(() => expect(container.querySelector('[data-varispeed-display]')).toBeNull());
+    // …and the status bar takes over, following the keys
+    expect(state()).toBe('Speed 110%');
+    fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
+    expect(state()).toBe('Speed 120%');
+    // 100% is off: nothing to show; the A/B brings it back
+    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });
+    expect(state()).toBeNull();
+    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });
+    expect(state()).toBe('Speed 120%');
+  });
+
   it('Option+← / → jump the playhead between clip edges as [ ] do, Option+Shift selects to the edge, and while playing the jump seeks (2026-11-05)', async () => {
     const rendered = renderApp();
     const { container, getByText, audioSpies } = rendered;

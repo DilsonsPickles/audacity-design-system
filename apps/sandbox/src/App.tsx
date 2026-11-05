@@ -24,7 +24,7 @@ import { TimerRecordWaitDialog } from './components/TimerRecordWaitDialog';
 import { useTimerRecord } from './hooks/useTimerRecord';
 import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
-import { KeyboardMap, SHORTCUT_ROWS } from '@audacity-ui/components';
+import { KeyboardMap, SHORTCUT_ROWS, formatVarispeedPercent } from '@audacity-ui/components';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
 import { computeProjectEnd } from './hooks/handlers/navigationHandlers';
 import { TransportToolbarContainer, type TransportToolbarContainerProps } from './components/TransportToolbarContainer';
@@ -1403,6 +1403,15 @@ function CanvasDemoContent() {
           isCloudUploading={isCloudUploading}
           showDuration={true}
           status={showFocusDebug && !handleHint ? 'Focused element' : undefined}
+          // THE SPEED SHOWS HERE WHEN THE TOOLBAR DOES NOT SHOW IT (user
+          // decision 2026-11-05, "start with the status bar first"): the
+          // keys change the speed with Play-at-Speed hidden in Customise
+          // toolbar, and a speed that is on must be visible somewhere —
+          // only while it is off 100%, and only while the toolbar's own
+          // readout is hidden (two readouts would say the same thing)
+          stateText={playback.varispeedOn && preferences.toolbarHiddenTools.includes('varispeed')
+            ? `Speed ${formatVarispeedPercent(playback.varispeed)}`
+            : undefined}
           // The handle under the pointer names its gestures here (user
           // decision 2026-10-01); otherwise the focus debugger, if on,
           // or the component's own "Click and drag to select audio"
