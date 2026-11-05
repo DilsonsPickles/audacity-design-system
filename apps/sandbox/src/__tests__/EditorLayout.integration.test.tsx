@@ -1732,7 +1732,7 @@ describe('Selection playback', () => {
     audioSpies.getIsPlaying.mockReturnValue(false);
   });
 
-  it('the status bar says the speed in its two slots: the cue while it is on, the info line for a moment after a change (2026-11-05)', async () => {
+  it('the status bar says a speed that is on ONCE, in the cue; the info line keeps to the pointer (2026-11-05)', async () => {
     const rendered = renderApp();
     const { container, getByText, audioSpies } = rendered;
     await gotoProject(rendered);
@@ -1741,26 +1741,24 @@ describe('Selection playback', () => {
     const info = () => container.querySelector('.selection-toolbar__instruction-text')?.textContent;
     expect(cue()).toBe('Stopped');
     expect(info()).toBe('Click and drag to select audio');
-    // A speed key: the cue takes the speed, the info line names the change
+    // A speed key: the cue takes the speed, and the info line does not repeat it
     fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
     await waitFor(() => expect(cue()).toBe('Stopped · 110%'));
-    expect(info()).toBe('Playback speed: 110%');
+    expect(info()).toBe('Click and drag to select audio');
     // Playing at speed
     audioSpies.play.mockClear();
     fireEvent.keyDown(document.body, { key: ' ' });
     await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
     await waitFor(() => expect(cue()).toBe('Playing at 110%'));
+    expect(info()).toBe('Click and drag to select audio');
     audioSpies.getIsPlaying.mockReturnValue(true);
     fireEvent.keyDown(document.body, { key: ' ' });
     await waitFor(() => expect(cue()).toBe('Stopped · 110%'));
     audioSpies.getIsPlaying.mockReturnValue(false);
-    // The info line lets go after a moment; the cue stays
-    await waitFor(() => expect(info()).toBe('Click and drag to select audio'), { timeout: 4000 });
-    expect(cue()).toBe('Stopped · 110%');
-    // Hovering the Play-at-Speed control names its value, as the spec's sliders do
+    // Hovering the Play-at-Speed control names it and its keys, not its value
     const control = container.querySelector('[data-varispeed]') as HTMLElement;
     fireEvent.mouseOver(control);
-    expect(info()).toBe('Playback speed: 110%');
+    expect(info()).toBe('Playback speed (− / =)');
     fireEvent.mouseOver(document.body);
     expect(info()).toBe('Click and drag to select audio');
     // Hidden in Customise toolbar, the cue still carries the speed
@@ -1776,8 +1774,7 @@ describe('Selection playback', () => {
     // 100% is off: the cue is bare again
     fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });
     await waitFor(() => expect(cue()).toBe('Stopped'));
-    expect(container.querySelector('[data-status-state]')).toBeNull();
-  }, 15000);
+  });
 
   it('the status bar\'s info line names what the pointer is over, and its cue reads Seeking while a seek key is held (2026-11-05)', async () => {
     const rendered = renderApp();

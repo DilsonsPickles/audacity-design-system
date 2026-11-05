@@ -56,7 +56,7 @@ describe('resolveStatusInfo — the status bar\'s info line (2026-11-05, the Fig
     expect(resolveStatusInfo(at(root, '[aria-label="Redo"]'), win)).toBe('Redo (Ctrl+Shift+Z)');
   });
 
-  it('a slider reads its VALUE: volume and pan in percent, the levels, the speed', () => {
+  it('a slider reads its VALUE: volume and pan in percent, the levels; the speed is said by the cue alone', () => {
     const root = dom(`
       <div class="track-control-panel">
         <div data-tcp-slot="pan"><button class="knob" role="slider" aria-valuenow="0"><i id="dial"></i></button></div>
@@ -74,7 +74,8 @@ describe('resolveStatusInfo — the status bar\'s info line (2026-11-05, the Fig
     expect(resolveStatusInfo(at(root, '[aria-label="Master volume"]'), mac)).toBe('Playback level (20%)');
     expect(resolveStatusInfo(at(root, '#bars'), mac)).toBe('Playback meter');
     expect(resolveStatusInfo(at(root, '[aria-label="Microphone level"]'), mac)).toBe('Recording level (17%)');
-    expect(resolveStatusInfo(at(root, '#track'), mac)).toBe('Playback speed: 110%');
+    // The speed's value is the cue's; the control reads its name and keys
+    expect(resolveStatusInfo(at(root, '#track'), mac)).toBe('Playback speed (− / =)');
   });
 
   it('the track header: its controls name themselves, its surface gives the select gesture, its edge the resize', () => {

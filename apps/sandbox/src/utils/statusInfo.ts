@@ -118,10 +118,9 @@ export const STATUS_INFO_RULES: ReadonlyArray<StatusInfoRule> = [
 
   // --- Toolbars ---
   { selector: '.project-toolbar .tab', line: (el) => el.textContent?.trim() || null },
-  { selector: '[data-varispeed]', line: (el) => {
-    const speed = el.querySelector('[data-varispeed-display]')?.textContent?.trim();
-    return speed ? `Playback speed: ${speed}` : 'Playback speed';
-  } },
+  // The speed's VALUE is the cue's ("Playing at 110%"): said once, so
+  // the control reads its name and keys, as a button does
+  { selector: '[data-varispeed]', line: 'Playback speed (− / =)' },
   { selector: '.bpm-stepper', line: (el) => {
     const bpm = el.querySelector('.bpm-stepper__digits')?.textContent?.trim();
     return bpm ? `Tempo: ${bpm} bpm` : 'Tempo';

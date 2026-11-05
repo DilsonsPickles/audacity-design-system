@@ -17,7 +17,9 @@ import { formatVarispeedPercent } from '@audacity-ui/components';
  * user and I ONLY want to see what speed I'm at…"): "Playing at 110%",
  * and "Stopped · 110%" while stopped — the standing state, visible
  * whatever the toolbar shows. Nothing at 100%, which is off. A recording
- * is not played at speed, so its cue stays bare.
+ * is not played at speed, so its cue stays bare. THE CUE IS THE ONLY
+ * PLACE THE BAR SAYS THE SPEED ("I don't like the duplicate" — the info
+ * line read "Playback speed: 180%" beside "Playing at 180%" for an hour).
  */
 export function transportStatusText(transport: { isRecording: boolean; isPlaying: boolean; isSeeking?: boolean; speed?: number }): string {
   if (transport.isRecording) return 'Recording';
@@ -27,10 +29,4 @@ export function transportStatusText(transport: { isRecording: boolean; isPlaying
   const atSpeed = Math.abs(speed - 1) >= 0.0005;
   if (transport.isPlaying) return atSpeed ? `Playing at ${formatVarispeedPercent(speed)}` : 'Playing';
   return atSpeed ? `Stopped · ${formatVarispeedPercent(speed)}` : 'Stopped';
-}
-
-/** Slot two's line for the speed, the spec's slider pattern
- *  ("Volume: +0.0 dB") */
-export function speedInfoText(speed: number): string {
-  return `Playback speed: ${formatVarispeedPercent(speed)}`;
 }
