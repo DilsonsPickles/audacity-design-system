@@ -1714,6 +1714,24 @@ describe('Selection playback', () => {
     audioSpies.getCurrentPosition.mockReset();
   });
 
+  it('the status bar\'s first slot follows the transport: Stopped, Playing, Stopped (2026-11-05)', async () => {
+    const rendered = renderApp();
+    const { container, getByText, audioSpies } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+    const status = () => container.querySelector('.selection-toolbar__status-text')?.textContent;
+    expect(status()).toBe('Stopped');
+    audioSpies.play.mockClear();
+    fireEvent.keyDown(document.body, { key: ' ' });
+    await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
+    await waitFor(() => expect(status()).toBe('Playing'));
+    // (the engine is the source of truth for the toggle: the mock says it is running)
+    audioSpies.getIsPlaying.mockReturnValue(true);
+    fireEvent.keyDown(document.body, { key: ' ' });
+    await waitFor(() => expect(status()).toBe('Stopped'));
+    audioSpies.getIsPlaying.mockReturnValue(false);
+  });
+
   it('with Play-at-Speed hidden in Customise toolbar, the status bar shows the speed while it is off 100% (2026-11-05)', async () => {
     const rendered = renderApp();
     const { container } = rendered;

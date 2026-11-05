@@ -25,6 +25,7 @@ import { useTimerRecord } from './hooks/useTimerRecord';
 import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
 import { KeyboardMap, SHORTCUT_ROWS, formatVarispeedPercent } from '@audacity-ui/components';
+import { transportStatusText } from './utils/transportStatus';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
 import { computeProjectEnd } from './hooks/handlers/navigationHandlers';
 import { TransportToolbarContainer, type TransportToolbarContainerProps } from './components/TransportToolbarContainer';
@@ -1402,7 +1403,12 @@ function CanvasDemoContent() {
           showCloudIndicator={isCloudProject || isCloudUploading}
           isCloudUploading={isCloudUploading}
           showDuration={true}
-          status={showFocusDebug && !handleHint ? 'Focused element' : undefined}
+          // The first slot follows the transport (2026-11-05, "always
+          // says stopped" — it was the component's default, whatever
+          // the transport was doing)
+          status={showFocusDebug && !handleHint
+            ? 'Focused element'
+            : transportStatusText({ isRecording: state.isRecording, isPlaying })}
           // THE SPEED SHOWS HERE WHEN THE TOOLBAR DOES NOT SHOW IT (user
           // decision 2026-11-05, "start with the status bar first"): the
           // keys change the speed with Play-at-Speed hidden in Customise
