@@ -127,3 +127,22 @@ describe('the caption is not a state (2026-10-15)', () => {
     expect(a.getAttributeNames().sort()).toEqual(b.getAttributeNames().sort());
   });
 });
+
+describe('stepVarispeedCoarse — the big step (2026-11-05)', () => {
+  it('goes to the next round stop that way, from any speed', async () => {
+    const { stepVarispeedCoarse } = await import('../VarispeedControl');
+    expect(stepVarispeedCoarse(1, 1)).toBe(1.5);
+    expect(stepVarispeedCoarse(1.1, 1)).toBe(1.5);
+    expect(stepVarispeedCoarse(1.1, -1)).toBe(1);
+    expect(stepVarispeedCoarse(1, -1)).toBe(0.5);
+    expect(stepVarispeedCoarse(0.5, -1)).toBe(0.25);
+    expect(stepVarispeedCoarse(0.87, 1)).toBe(1);
+  });
+
+  it('stays put past the last stop', async () => {
+    const { stepVarispeedCoarse } = await import('../VarispeedControl');
+    expect(stepVarispeedCoarse(3, 1)).toBe(3);
+    expect(stepVarispeedCoarse(0.25, -1)).toBe(0.25);
+    expect(stepVarispeedCoarse(0.1, -1)).toBe(0.1);
+  });
+});

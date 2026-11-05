@@ -77,8 +77,9 @@ export interface UseKeyboardShortcutsOptions {
   onCommandPalette?: () => void;
   /** M: the mixer panel on / off (2026-10-13) */
   onToggleMixer?: () => void;
-  /** − / = : playback speed a tenth slower (−1) or faster (+1) */
-  onSpeedStep?: (notches: number) => void;
+  /** − / = : playback speed a tenth slower (−1) or faster (+1); with
+   *  Shift (coarse) to the next round stop that way */
+  onSpeedStep?: (notches: number, coarse?: boolean) => void;
   /** 0 : playback speed 100% ↔ the last speed that was not 100% */
   onSpeedToggle?: () => void;
   onZoomIn?: () => void;
@@ -540,10 +541,14 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       //     brackets (VLC's) the clip edges; the real build's
       //     play-speed-inc / play-speed-dec ship unbound. A focused fade
       //     handle stops its own 0 (reset the curve) before it gets here.
-      if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && (onSpeedStep || onSpeedToggle)) {
-        const slower = e.code === 'Minus' || e.code === 'NumpadSubtract' || (!e.code && e.key === '-');
-        const faster = e.code === 'Equal' || e.code === 'NumpadAdd' || (!e.code && e.key === '=');
-        const toggle = e.code === 'Digit0' || e.code === 'Numpad0' || (!e.code && e.key === '0');
+      //     SHIFT makes the step a BIG one (the same day, "perhaps shift +
+      //     - and = can make bigger jumps?"): to the next round stop that
+      //     way — 25, 50, 100, 150 … 300% — as Shift is the bigger step on
+      //     the handles' arrows and the seek. Shift+0 is nothing.
+      if (!e.metaKey && !e.ctrlKey && !e.altKey && (onSpeedStep || onSpeedToggle)) {
+        const slower = e.code === 'Minus' || e.code === 'NumpadSubtract' || (!e.code && (e.key === '-' || e.key === '_'));
+        const faster = e.code === 'Equal' || e.code === 'NumpadAdd' || (!e.code && (e.key === '=' || e.key === '+'));
+        const toggle = !e.shiftKey && (e.code === 'Digit0' || e.code === 'Numpad0' || (!e.code && e.key === '0'));
         if (slower || faster || toggle) {
           const target = e.target as HTMLElement;
           const isTextInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' ||
@@ -551,7 +556,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
           if (!isTextInput) {
             e.preventDefault();
             if (toggle) onSpeedToggle?.();
-            else onSpeedStep?.(faster ? 1 : -1);
+            else onSpeedStep?.(faster ? 1 : -1, e.shiftKey);
             return;
           }
         }

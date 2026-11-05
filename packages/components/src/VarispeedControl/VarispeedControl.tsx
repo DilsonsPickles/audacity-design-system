@@ -88,6 +88,18 @@ export const parseVarispeed = (text: string): number | null => {
 export const stepVarispeed = (speed: number, notches: number) => clampSpeed((Math.round(speed * 10) + notches) / 10);
 /** The fine step (Shift+arrow): a hundredth of a speed per step, on the hundredths grid */
 export const stepVarispeedFine = (speed: number, notches: number) => clampSpeed((Math.round(speed * 100) + notches) / 100);
+/** THE COARSE STOPS (2026-11-05, "perhaps shift + - and = can make bigger
+ *  jumps?"): the round speeds a big step lands on — every half from 50%
+ *  to the top, and a quarter at the slow end, where transcription lives.
+ *  100% is one of them, so a big step always passes through "off". */
+export const VARISPEED_COARSE_STOPS: ReadonlyArray<number> = [0.25, 0.5, 1, 1.5, 2, 2.5, 3];
+/** The next coarse stop above (direction 1) or below (−1) the speed; a
+ *  speed already past the last stop that way stays where it is */
+export const stepVarispeedCoarse = (speed: number, direction: 1 | -1): number => {
+  const EPS = 0.0005;
+  if (direction > 0) return VARISPEED_COARSE_STOPS.find((stop) => stop > speed + EPS) ?? speed;
+  return [...VARISPEED_COARSE_STOPS].reverse().find((stop) => stop < speed - EPS) ?? speed;
+};
 /** The detent: a mouse drag this close to 1× lands on 1× (the 0.9–1.1 band) */
 export const DETENT_SPEED = 0.1;
 

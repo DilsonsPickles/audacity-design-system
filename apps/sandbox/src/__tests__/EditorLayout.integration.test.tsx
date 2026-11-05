@@ -1733,10 +1733,29 @@ describe('Selection playback', () => {
     await waitFor(() => expect(readout()).toBe('100%'));
     fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });
     await waitFor(() => expect(readout()).toBe('110%'));
-    // The zoom chords are not the speed keys
+    // The zoom chord is not a speed key
     fireEvent.keyDown(document.body, { key: '=', code: 'Equal', metaKey: true });
-    fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
     expect(readout()).toBe('110%');
+    // Shift: the big step, to the next round stop that way — and through 100%
+    fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
+    await waitFor(() => expect(readout()).toBe('150%'));
+    fireEvent.keyDown(document.body, { key: '_', code: 'Minus', shiftKey: true });
+    await waitFor(() => expect(readout()).toBe('100%'));
+    fireEvent.keyDown(document.body, { key: '_', code: 'Minus', shiftKey: true });
+    await waitFor(() => expect(readout()).toBe('50%'));
+    fireEvent.keyDown(document.body, { key: '_', code: 'Minus', shiftKey: true });
+    await waitFor(() => expect(readout()).toBe('25%'));
+    // Nothing below the last stop: it stays
+    fireEvent.keyDown(document.body, { key: '_', code: 'Minus', shiftKey: true });
+    expect(readout()).toBe('25%');
+    // Shift+0 is not the toggle
+    fireEvent.keyDown(document.body, { key: ')', code: 'Digit0', shiftKey: true });
+    expect(readout()).toBe('25%');
+    // Back to where the rest of the test expects it
+    fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
+    fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
+    fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
+    await waitFor(() => expect(readout()).toBe('110%'));
     // A text field keeps its own − = 0
     const field = document.createElement('input');
     field.type = 'text';

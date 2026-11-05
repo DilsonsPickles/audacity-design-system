@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { createMeterBallistics, dbToMeterPercent, meterPercentToDb, type MeterBallistics } from '../utils/meterBallistics';
 import { effectiveTrackMuted } from '../utils/trackFolders';
 import { getAudioPlaybackManager, AudioPlaybackManager } from '@audacity-ui/audio';
-import { VARISPEED_DEFAULT_SPEED, VARISPEED_MIN, VARISPEED_MAX, stepVarispeed, formatVarispeedPercent, announce } from '@audacity-ui/components';
+import { VARISPEED_DEFAULT_SPEED, VARISPEED_MIN, VARISPEED_MAX, stepVarispeed, stepVarispeedCoarse, formatVarispeedPercent, announce } from '@audacity-ui/components';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import type { RecordingManager } from '../utils/RecordingManager';
 
@@ -67,8 +67,9 @@ export interface UsePlaybackControlsReturn {
   dialVarispeed: (speed: number) => void;
   /** The A/B: on → 1×; off → the last speed that was not 1× */
   setVarispeedOn: (on: boolean) => void;
-  /** − / = : the speed a tenth slower (−1) or faster (+1) */
-  stepPlaybackSpeed: (notches: number) => void;
+  /** − / = : the speed a tenth slower (−1) or faster (+1); coarse (Shift):
+   *  to the next round stop that way */
+  stepPlaybackSpeed: (notches: number, coarse?: boolean) => void;
   /** 0 : 100% ↔ the last speed that was not 100% */
   togglePlaybackSpeed: () => void;
 }
@@ -143,8 +144,12 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
   // the last speed that was not (half speed before any was set). They
   // work mid-play, as the slider does, and say the new speed to a screen
   // reader, since the keys can be pressed with the focus anywhere.
-  const stepPlaybackSpeed = useCallback((notches: number) => {
-    setVarispeed(stepVarispeed(varispeedRef.current, notches));
+  // With Shift the step is COARSE: to the next round stop that way (25,
+  // 50, 100, 150 … 300%) instead of a tenth
+  const stepPlaybackSpeed = useCallback((notches: number, coarse = false) => {
+    setVarispeed(coarse
+      ? stepVarispeedCoarse(varispeedRef.current, notches > 0 ? 1 : -1)
+      : stepVarispeed(varispeedRef.current, notches));
     announce(`Speed ${formatVarispeedPercent(varispeedRef.current)}`);
   }, [setVarispeed]);
   const togglePlaybackSpeed = useCallback(() => {

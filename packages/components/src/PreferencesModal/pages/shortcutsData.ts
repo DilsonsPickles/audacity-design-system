@@ -131,6 +131,7 @@ export const SHORTCUT_ROWS: ReadonlyArray<ShortcutRow> = [
     { id: '58', action: 'Play / Pause (the cursor stays where playback paused)', shortcut: 'P' },
     { id: '58c', action: 'While playing: seek back / forward 1 s (Shift 15 s)', shortcut: '← / → · , / .' },
     { id: '58a', action: 'Playback speed slower / faster (a tenth per press; works while playing)', shortcut: '− / =' },
+    { id: '58d', action: 'Playback speed to the next stop down / up (25, 50, 100, 150, 200, 250, 300%)', shortcut: '⇧− / ⇧=' },
     { id: '58b', action: 'Playback speed: 100% / the last speed', shortcut: '0' },
     { id: '59', action: 'Phaser', shortcut: '' },
     { id: '60', action: 'Play / Stop', shortcut: 'Space' },
