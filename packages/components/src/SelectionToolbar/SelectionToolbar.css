@@ -101,10 +101,3 @@
 .selection-toolbar .timecode {
   min-width: fit-content;
 }
-
-/* A live state (the playback speed off 100% with its toolbar readout
-   hidden, 2026-11-05): the bar's own text, tabular so the number holds
-   its width as it steps */
-.selection-toolbar__state {
-  font-variant-numeric: tabular-nums;
-}

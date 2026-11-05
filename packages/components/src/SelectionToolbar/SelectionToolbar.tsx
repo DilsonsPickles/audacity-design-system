@@ -34,14 +34,6 @@ export interface SelectionToolbarProps {
    */
   instructionText?: string;
   /**
-   * A LIVE STATE the bar must show while it holds (2026-11-05, the
-   * playback speed while it is off 100% and its toolbar readout is
-   * hidden: "Speed 110%"). Drawn at the START of the right-hand group,
-   * which is right-aligned — so it appears and goes without moving the
-   * status, the instruction text or the timecodes.
-   */
-  stateText?: string;
-  /**
    * Timecode format to display for selection start/end
    * @default 'hh:mm:ss+milliseconds'
    */
@@ -116,7 +108,6 @@ export function SelectionToolbar({
   selectionEnd,
   status = 'Stopped',
   instructionText = 'Click and drag to select audio',
-  stateText,
   format = 'hh:mm:ss+milliseconds',
   durationFormat = 'hh:mm:ss+milliseconds',
   sampleRate = 44100,
@@ -188,12 +179,6 @@ export function SelectionToolbar({
 
       {/* Right side - Selection timecodes and duration */}
       <div className="selection-toolbar__right">
-        {stateText && (
-          <>
-            <span className="selection-toolbar__label selection-toolbar__state" data-status-state>{stateText}</span>
-            <div className="selection-toolbar__divider" />
-          </>
-        )}
         {showCloudIndicator && (
           <>
             <CloudProjectIndicator isUploading={isCloudUploading} />

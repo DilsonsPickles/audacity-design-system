@@ -24,8 +24,9 @@ import { TimerRecordWaitDialog } from './components/TimerRecordWaitDialog';
 import { useTimerRecord } from './hooks/useTimerRecord';
 import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
-import { KeyboardMap, SHORTCUT_ROWS, formatVarispeedPercent } from '@audacity-ui/components';
-import { transportStatusText } from './utils/transportStatus';
+import { KeyboardMap, SHORTCUT_ROWS } from '@audacity-ui/components';
+import { speedInfoText, transportStatusText } from './utils/transportStatus';
+import { useSpeedInfo } from './hooks/useSpeedInfo';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
 import { computeProjectEnd } from './hooks/handlers/navigationHandlers';
 import { TransportToolbarContainer, type TransportToolbarContainerProps } from './components/TransportToolbarContainer';
@@ -725,6 +726,9 @@ function CanvasDemoContent() {
 
   // Seek while playing (Audacity 3's arrows): ← / → a second, Shift
   // fifteen — a capture listener of its own, ahead of the chain below
+  // The status bar's second slot says the speed while its control is
+  // hovered and for a moment after it changes (2026-11-05)
+  const speedInfo = useSpeedInfo(playback.varispeed);
   usePlaybackSeekKeys({ audioManagerRef, state, dispatch });
 
   // Keyboard shortcuts
@@ -1403,25 +1407,22 @@ function CanvasDemoContent() {
           showCloudIndicator={isCloudProject || isCloudUploading}
           isCloudUploading={isCloudUploading}
           showDuration={true}
-          // The first slot follows the transport (2026-11-05, "always
-          // says stopped" — it was the component's default, whatever
-          // the transport was doing)
-          status={showFocusDebug && !handleHint
+          // The two slots of the Figma Status/Info bar spec (2026-11-05):
+          // the first is the PLAYBACK CUE — Stopped, Playing, Recording
+          // ("always says stopped": it was the component's default) —
+          // with a speed that is on as part of it ("Playing at 110%");
+          status={showFocusDebug && !handleHint && !speedInfo
             ? 'Focused element'
-            : transportStatusText({ isRecording: state.isRecording, isPlaying })}
-          // THE SPEED SHOWS HERE WHEN THE TOOLBAR DOES NOT SHOW IT (user
-          // decision 2026-11-05, "start with the status bar first"): the
-          // keys change the speed with Play-at-Speed hidden in Customise
-          // toolbar, and a speed that is on must be visible somewhere —
-          // only while it is off 100%, and only while the toolbar's own
-          // readout is hidden (two readouts would say the same thing)
-          stateText={playback.varispeedOn && preferences.toolbarHiddenTools.includes('varispeed')
-            ? `Speed ${formatVarispeedPercent(playback.varispeed)}`
-            : undefined}
-          // The handle under the pointer names its gestures here (user
-          // decision 2026-10-01); otherwise the focus debugger, if on,
-          // or the component's own "Click and drag to select audio"
-          instructionText={handleHint ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled }) : (showFocusDebug ? focusedElement : undefined)}
+            : transportStatusText({ isRecording: state.isRecording, isPlaying, speed: playback.varispeed })}
+          // the second says what is under the pointer or just changed:
+          // the speed while its control is hovered and for a moment
+          // after any change (the spec's "Volume: -8.0 dB"), else the
+          // handle under the pointer (user decision 2026-10-01), else
+          // the focus debugger, if on, or the component's own
+          // "Click and drag to select audio"
+          instructionText={speedInfo
+            ? speedInfoText(playback.varispeed)
+            : handleHint ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled }) : (showFocusDebug ? focusedElement : undefined)}
           onFormatChange={setSelectionTimeCodeFormat}
           onDurationFormatChange={setDurationTimeCodeFormat}
           onSelectionStartChange={(newStart) => {
