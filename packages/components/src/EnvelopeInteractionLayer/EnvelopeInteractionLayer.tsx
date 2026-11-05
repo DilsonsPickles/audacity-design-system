@@ -626,6 +626,8 @@ const EnvelopeInteractionLayerComponent: React.FC<EnvelopeInteractionLayerProps>
             }
           }
         }}
+        // What the pointer is on, for hosts that name it (the status bar)
+        data-envelope-hover={isHoveringPoint ? 'point' : (isNearEnvelope ? 'curve' : undefined)}
         style={{
           position: 'absolute',
           left: x,

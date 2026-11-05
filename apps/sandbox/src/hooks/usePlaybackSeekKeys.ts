@@ -10,6 +10,9 @@ export interface UsePlaybackSeekKeysDeps {
   audioManagerRef: React.RefObject<AudioPlaybackManager>;
   state: TracksState;
   dispatch: React.Dispatch<TracksAction>;
+  /** A seek key went down while playing (true) and came up (false) —
+   *  the status bar's "Seeking" cue */
+  onSeekingChange?: (seeking: boolean) => void;
 }
 
 /**
@@ -26,9 +29,11 @@ export interface UsePlaybackSeekKeysDeps {
  * wherever the focus is. `keepsItsArrowsWhilePlaying` names what is
  * left alone. State is read through a ref (the ref-mirror convention).
  */
-export function usePlaybackSeekKeys({ audioManagerRef, state, dispatch }: UsePlaybackSeekKeysDeps): void {
+export function usePlaybackSeekKeys({ audioManagerRef, state, dispatch, onSeekingChange }: UsePlaybackSeekKeysDeps): void {
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
+  const onSeekingChangeRef = useRef(onSeekingChange);
+  useEffect(() => { onSeekingChangeRef.current = onSeekingChange; }, [onSeekingChange]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -50,8 +55,22 @@ export function usePlaybackSeekKeys({ audioManagerRef, state, dispatch }: UsePla
       const to = playbackSeekTarget(from, seek, getProjectEnd(current));
       manager.seek(to);
       dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: to });
+      seeking = true;
+      onSeekingChangeRef.current?.(true);
+    };
+    let seeking = false;
+    const endSeeking = () => {
+      if (!seeking) return;
+      seeking = false;
+      onSeekingChangeRef.current?.(false);
     };
     document.addEventListener('keydown', onKeyDown, true);
-    return () => document.removeEventListener('keydown', onKeyDown, true);
+    document.addEventListener('keyup', endSeeking, true);
+    window.addEventListener('blur', endSeeking);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('keyup', endSeeking, true);
+      window.removeEventListener('blur', endSeeking);
+    };
   }, [audioManagerRef, dispatch]);
 }

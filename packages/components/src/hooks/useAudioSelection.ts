@@ -84,6 +84,8 @@ export interface UseAudioSelectionReturn {
     isDragging: boolean;
     /** Current cursor style */
     cursorStyle: string;
+    /** The time selection's edge under a resting pointer, or null */
+    hoverEdge: 'start' | 'end' | null;
     /** Check if we just finished dragging (for custom logic) */
     wasJustDragging: () => boolean;
     /** Check if position is on a spectral-enabled clip */
@@ -460,6 +462,7 @@ export function useAudioSelection(
     selection: {
       isDragging: timeSelection.isDragging || spectralSelection.isDragging,
       cursorStyle: currentCursor,
+      hoverEdge: timeSelection.hoverEdge,
       wasJustDragging: wasJustDraggingStable,
       isPositionOnSpectralClip: spectralSelection.isPositionOnSpectralClip,
       isCreating: spectralSelection.isCreating,

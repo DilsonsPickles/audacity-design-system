@@ -34,6 +34,11 @@ export interface SelectionToolbarProps {
    */
   instructionText?: string;
   /**
+   * The app's window is in the background (the Figma Status/Info bar
+   * spec's "Backgrounded" state): the two texts dim.
+   */
+  backgrounded?: boolean;
+  /**
    * Timecode format to display for selection start/end
    * @default 'hh:mm:ss+milliseconds'
    */
@@ -108,6 +113,7 @@ export function SelectionToolbar({
   selectionEnd,
   status = 'Stopped',
   instructionText = 'Click and drag to select audio',
+  backgrounded = false,
   format = 'hh:mm:ss+milliseconds',
   durationFormat = 'hh:mm:ss+milliseconds',
   sampleRate = 44100,
@@ -160,6 +166,7 @@ export function SelectionToolbar({
     <div
       ref={toolbarRef}
       className={`selection-toolbar ${className}`}
+      data-backgrounded={backgrounded ? 'true' : undefined}
       style={style}
       role={containerProps.role}
       aria-label={containerProps['aria-label']}

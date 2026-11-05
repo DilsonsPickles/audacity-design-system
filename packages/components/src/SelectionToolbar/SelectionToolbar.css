@@ -101,3 +101,10 @@
 .selection-toolbar .timecode {
   min-width: fit-content;
 }
+
+/* Backgrounded (the Figma Status/Info bar spec): the app's window is
+   not the active one, and the cue and the info line dim */
+.selection-toolbar[data-backgrounded] .selection-toolbar__status-text,
+.selection-toolbar[data-backgrounded] .selection-toolbar__instruction-text {
+  opacity: 0.4;
+}

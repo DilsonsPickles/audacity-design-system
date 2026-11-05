@@ -17,6 +17,12 @@ describe('transportStatusText — the status bar follows the transport (2026-11-
     expect(transportStatusText({ isRecording: true, isPlaying: true, speed: 2 })).toBe('Recording');
   });
 
+  it('Seeking shows while a seek key is held during playback, under Recording and never while stopped', () => {
+    expect(transportStatusText({ isRecording: false, isPlaying: true, isSeeking: true, speed: 1.1 })).toBe('Seeking');
+    expect(transportStatusText({ isRecording: false, isPlaying: false, isSeeking: true })).toBe('Stopped');
+    expect(transportStatusText({ isRecording: true, isPlaying: true, isSeeking: true })).toBe('Recording');
+  });
+
   it('slot two names the speed as the spec names a slider\'s value', () => {
     expect(speedInfoText(1.1)).toBe('Playback speed: 110%');
     expect(speedInfoText(0.01)).toBe('Playback speed: 1%');

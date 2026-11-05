@@ -27,6 +27,7 @@ import { CommandPaletteHost } from './components/CommandPaletteHost';
 import { KeyboardMap, SHORTCUT_ROWS } from '@audacity-ui/components';
 import { speedInfoText, transportStatusText } from './utils/transportStatus';
 import { useSpeedInfo } from './hooks/useSpeedInfo';
+import { useStatusInfo } from './hooks/useStatusInfo';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
 import { computeProjectEnd } from './hooks/handlers/navigationHandlers';
 import { TransportToolbarContainer, type TransportToolbarContainerProps } from './components/TransportToolbarContainer';
@@ -726,10 +727,14 @@ function CanvasDemoContent() {
 
   // Seek while playing (Audacity 3's arrows): ← / → a second, Shift
   // fifteen — a capture listener of its own, ahead of the chain below
-  // The status bar's second slot says the speed while its control is
-  // hovered and for a moment after it changes (2026-11-05)
+  // The status bar (2026-11-05, the Figma Status/Info bar spec): its
+  // second slot says the speed for a moment after it changes, else
+  // what the pointer is over; its cue reads Seeking while a seek key
+  // is held
   const speedInfo = useSpeedInfo(playback.varispeed);
-  usePlaybackSeekKeys({ audioManagerRef, state, dispatch });
+  const statusInfo = useStatusInfo(preferences.operatingSystem);
+  const [isSeeking, setIsSeeking] = React.useState(false);
+  usePlaybackSeekKeys({ audioManagerRef, state, dispatch, onSeekingChange: setIsSeeking });
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
@@ -1413,16 +1418,20 @@ function CanvasDemoContent() {
           // with a speed that is on as part of it ("Playing at 110%");
           status={showFocusDebug && !handleHint && !speedInfo
             ? 'Focused element'
-            : transportStatusText({ isRecording: state.isRecording, isPlaying, speed: playback.varispeed })}
-          // the second says what is under the pointer or just changed:
-          // the speed while its control is hovered and for a moment
-          // after any change (the spec's "Volume: -8.0 dB"), else the
-          // handle under the pointer (user decision 2026-10-01), else
-          // the focus debugger, if on, or the component's own
+            : transportStatusText({ isRecording: state.isRecording, isPlaying, isSeeking, speed: playback.varispeed })}
+          backgrounded={statusInfo.backgrounded}
+          // the second says what just changed or what is under the
+          // pointer: the speed for a moment after any change, else the
+          // clip handle under the pointer (user decision 2026-10-01),
+          // else the control or surface under it (`utils/statusInfo.ts`
+          // — a button's name and shortcut, a slider's value), else the
+          // focus debugger, if on, or the component's own
           // "Click and drag to select audio"
           instructionText={speedInfo
             ? speedInfoText(playback.varispeed)
-            : handleHint ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled }) : (showFocusDebug ? focusedElement : undefined)}
+            : handleHint
+              ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled })
+              : (statusInfo.text ?? (showFocusDebug ? focusedElement : undefined))}
           onFormatChange={setSelectionTimeCodeFormat}
           onDurationFormatChange={setDurationTimeCodeFormat}
           onSelectionStartChange={(newStart) => {

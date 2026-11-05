@@ -873,6 +873,10 @@ export function Canvas({
         // the outer .canvas-container instead of this div, so
         // useAudioSelection never sees the event and the "drag from
         // below to select every track" flow can't start.
+        // For the status bar's info line (2026-11-05): this is the canvas,
+        // and which edge of the time selection the pointer rests on
+        data-canvas-pointer
+        data-selection-edge={selection.selection.hoverEdge ?? undefined}
         style={{ ...containerProps.style, height: `${Math.max(containerHeight, viewportHeight)}px`, userSelect: 'none', cursor: 'text' } as React.CSSProperties}
       >
         <CanvasTrackList

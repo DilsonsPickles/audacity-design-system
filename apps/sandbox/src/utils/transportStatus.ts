@@ -10,7 +10,8 @@ import { formatVarispeedPercent } from '@audacity-ui/components';
  * was the component's default until then). Recording wins — a recording
  * may run with playback under it. There is no paused state in the
  * prototype (the spec's "Stopped paused"): P and X stop with the cursor
- * left where playback was; nor scrubbing.
+ * left where playback was; nor scrubbing. SEEKING shows while a seek
+ * key is held during playback (`usePlaybackSeekKeys`).
  *
  * A PLAYBACK SPEED THAT IS ON IS PART OF THE CUE ("if I'm a shortcut
  * user and I ONLY want to see what speed I'm at…"): "Playing at 110%",
@@ -18,8 +19,10 @@ import { formatVarispeedPercent } from '@audacity-ui/components';
  * whatever the toolbar shows. Nothing at 100%, which is off. A recording
  * is not played at speed, so its cue stays bare.
  */
-export function transportStatusText(transport: { isRecording: boolean; isPlaying: boolean; speed?: number }): string {
+export function transportStatusText(transport: { isRecording: boolean; isPlaying: boolean; isSeeking?: boolean; speed?: number }): string {
   if (transport.isRecording) return 'Recording';
+  // The spec's "Seeking" cue: a seek key is down while the project plays
+  if (transport.isPlaying && transport.isSeeking) return 'Seeking';
   const speed = transport.speed ?? 1;
   const atSpeed = Math.abs(speed - 1) >= 0.0005;
   if (transport.isPlaying) return atSpeed ? `Playing at ${formatVarispeedPercent(speed)}` : 'Playing';

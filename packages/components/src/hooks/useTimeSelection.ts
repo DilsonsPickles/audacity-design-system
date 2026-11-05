@@ -86,6 +86,8 @@ export interface UseTimeSelectionReturn {
   isDragging: boolean;
   /** Cursor style to apply to the container */
   cursorStyle: string;
+  /** The selection edge under a resting pointer, or null */
+  hoverEdge: 'start' | 'end' | null;
   /** Function to start a time selection drag - call from container's onMouseDown */
   startDrag: (x: number, y: number, allowConversionToSpectral?: boolean, fixedTimeBounds?: { startTime: number; endTime: number }) => void;
   /** Function to handle mouse move for cursor updates - call from container's onMouseMove */
@@ -128,6 +130,9 @@ export function useTimeSelection({
   const dragStateRef = useRef<ExtendedDragState | null>(null);
   const wasDraggingRef = useRef<boolean>(false);
   const [cursorStyle, setCursorStyle] = useState<string>('default');
+  // Which edge of the selection the pointer is resting on, for hosts
+  // that name it (the status bar, 2026-11-05)
+  const [hoverEdge, setHoverEdge] = useState<'start' | 'end' | null>(null);
 
   /**
    * Check if mouse is near an edge of the time selection
@@ -193,6 +198,7 @@ export function useTimeSelection({
 
     // Check edge proximity for cursor style
     const edge = getEdgeProximity(x);
+    setHoverEdge(edge === 'start' || edge === 'end' ? edge : null);
     if (edge) {
       setCursorStyle('ew-resize');
     } else {
@@ -209,6 +215,7 @@ export function useTimeSelection({
   const resetCursor = useCallback(() => {
     if (dragStateRef.current) return; // Preserve cursor mid-drag
     setCursorStyle('default');
+    setHoverEdge(null);
   }, []);
 
   useEffect(() => {
@@ -566,6 +573,7 @@ export function useTimeSelection({
   return {
     isDragging: dragStateRef.current !== null,
     cursorStyle,
+    hoverEdge,
     startDrag,
     handleMouseMove,
     resetCursor,

@@ -1779,6 +1779,53 @@ describe('Selection playback', () => {
     expect(container.querySelector('[data-status-state]')).toBeNull();
   }, 15000);
 
+  it('the status bar\'s info line names what the pointer is over, and its cue reads Seeking while a seek key is held (2026-11-05)', async () => {
+    const rendered = renderApp();
+    const { container, getByText, audioSpies } = rendered;
+    await gotoProject(rendered);
+    await generateTracks(container, getByText);
+    const cue = () => container.querySelector('.selection-toolbar__status-text')?.textContent;
+    const info = () => container.querySelector('.selection-toolbar__instruction-text')?.textContent;
+    const over = (el: Element | null) => { fireEvent.mouseOver(el as Element); return info(); };
+    // A transport button: its name and shortcut (the test profile's OS decides the glyphs)
+    expect(over(container.querySelector('.transport-toolbar [aria-label="Play"]'))).toBe('Play (Space)');
+    expect(over(container.querySelector('.transport-toolbar [aria-label="Stop"]'))).toBe('Stop');
+    expect(over(container.querySelector('.transport-toolbar [aria-label="Record"]'))).toBe('Record (R)');
+    // A track header: its controls, and a slider's value
+    const panel = container.querySelector('.track-control-panel') as HTMLElement;
+    expect(over(panel.querySelector('[aria-label="Mute"]'))).toMatch(/^Mute \(/);
+    expect(over(panel.querySelector('[data-tcp-slot="volume"] input'))).toMatch(/^Volume: \d+%$/);
+    expect(over(panel.querySelector('[data-tcp-slot="pan"] [role="slider"]'))).toBe('Pan: Centre');
+    expect(over(panel)).toMatch(/Click to select or deselect track\.$/);
+    // A clip's header and its menu button
+    expect(over(container.querySelector('.clip-header__menu-button'))).toBe('Click to open clip context menu.');
+    expect(over(container.querySelector('.clip-header'))).toMatch(/^Drag clips to reposition them/);
+    // The rulers
+    expect(over(container.querySelector('[aria-label="Timeline ruler"]'))).toBe('Right-click for timeline options.');
+    // Off everything: the bar's own line
+    expect(over(document.body)).toBe('Click and drag to select audio');
+    // The window in the background dims the bar; back in front it is plain
+    const bar = container.querySelector('.selection-toolbar') as HTMLElement;
+    act(() => { window.dispatchEvent(new Event('blur')); });
+    expect(bar.getAttribute('data-backgrounded')).toBe('true');
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    expect(bar.hasAttribute('data-backgrounded')).toBe(false);
+    // Seeking: a seek key held while playing
+    audioSpies.play.mockClear();
+    fireEvent.keyDown(document.body, { key: ' ' });
+    await waitFor(() => expect(cue()).toBe('Playing'));
+    audioSpies.getIsPlaying.mockReturnValue(true);
+    audioSpies.getCurrentPosition.mockReturnValue(2);
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', code: 'ArrowRight' });
+    expect(cue()).toBe('Seeking');
+    fireEvent.keyUp(document.body, { key: 'ArrowRight', code: 'ArrowRight' });
+    expect(cue()).toBe('Playing');
+    fireEvent.keyDown(document.body, { key: ' ' });
+    await waitFor(() => expect(cue()).toBe('Stopped'));
+    audioSpies.getIsPlaying.mockReturnValue(false);
+    audioSpies.getCurrentPosition.mockReset();
+  });
+
   it('Option+← / → jump the playhead between clip edges as [ ] do, Option+Shift selects to the edge, and while playing the jump seeks (2026-11-05)', async () => {
     const rendered = renderApp();
     const { container, getByText, audioSpies } = rendered;
