@@ -99,15 +99,48 @@
 /* The cog, at the end of the last row */
 .toolbar-dock__trailing { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
-/* Where a dragged bar would land */
+/* WHERE A CONTAINER WOULD LAND — a whole bar dragged by its grip, or a
+   NEW bar made for a tool pulled beside another (2026-11-10, "put a line
+   … to show that a new container will be created"): the accent line runs
+   the row's FULL HEIGHT, as the dividers that bound a container do */
 .toolbar-dock__insert {
   width: 2px;
-  height: 28px;
-  border-radius: 1px;
+  align-self: stretch;
+  margin: -14px 0;
   background-color: var(--toolbar-dock-accent);
   flex-shrink: 0;
 }
 .toolbar-dock__insert--refused { background-color: var(--toolbar-dock-refuse); }
+
+/* WHERE A TOOL WOULD JOIN A BAR: a short caret among the bar's tools —
+   the tools' own height, so it never reads as a container's edge */
+.toolbar-dock__caret {
+  width: 2px;
+  height: 28px;
+  border-radius: 1px;
+  margin: 0 -5px;
+  background-color: var(--toolbar-dock-accent);
+  flex-shrink: 0;
+}
+
+/* A tool in its bar */
+.toolbar-dock__tool { display: flex; align-items: center; min-width: 0; }
+.toolbar-dock__tool-body { display: flex; align-items: center; min-width: 0; }
+.toolbar-dock__tool--grow,
+.toolbar-dock__tool--grow > .toolbar-dock__tool-body { flex: 1 1 auto; }
+.toolbar-dock__tool--dragging { opacity: 0.3; }
+
+/* EDIT MODE: every tool can be picked up, and says so */
+.toolbar-dock--editing .toolbar-dock__tool {
+  cursor: grab;
+  border-radius: 3px;
+  outline: 1px dashed color-mix(in srgb, var(--toolbar-dock-accent) 60%, transparent);
+  outline-offset: 2px;
+}
+.toolbar-dock--editing .toolbar-dock__tool:hover {
+  outline-style: solid;
+  outline-color: var(--toolbar-dock-accent);
+}
 
 /* VERTICAL docks: a column of bars, each bar a column of tools */
 .toolbar-dock--vertical { width: 48px; align-items: stretch; }
@@ -123,5 +156,8 @@
 .toolbar-dock--vertical .toolbar-dock__tools .toolbar__button-group { flex-direction: column; }
 .toolbar-dock--vertical .toolbar-dock__grip { width: 28px; height: 18px; transform: rotate(90deg); }
 .toolbar-dock--vertical .toolbar-dock__divider { width: auto; height: 1px; margin: 0; }
-.toolbar-dock--vertical .toolbar-dock__insert { width: 28px; height: 2px; }
+.toolbar-dock--vertical .toolbar-dock__insert { width: auto; height: 2px; margin: 0; }
+.toolbar-dock--vertical .toolbar-dock__caret { width: 28px; height: 2px; margin: -4px 0; }
+.toolbar-dock--vertical .toolbar-dock__tool,
+.toolbar-dock--vertical .toolbar-dock__tool-body { flex-direction: column; }
 .toolbar-dock--vertical .toolbar-dock__trailing { margin-left: 0; margin-top: auto; }

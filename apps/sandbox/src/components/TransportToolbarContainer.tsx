@@ -11,6 +11,7 @@ import type { UseMasterMeterReturn } from '../hooks/useMasterMeter';
  */
 export type TransportToolbarContainerTransport = Pick<TransportToolbarProps,
   | 'activeMenuItem' | 'workspace'
+  | 'layoutEditing' | 'onLayoutEditingChange' | 'onResetLayout' | 'layoutCustomised'
   | 'isPlaying' | 'isRecording' | 'onPlay' | 'onStop' | 'onRecord' | 'onSkipToStart' | 'onSkipToEnd'
   | 'useSplitRecordButton' | 'rollInTimeEnabled' | 'onToggleRollInTime'
   | 'timeSelection' | 'bpm' | 'onBpmChange' | 'beatsPerMeasure' | 'noteValue' | 'onTimeSignatureChange'

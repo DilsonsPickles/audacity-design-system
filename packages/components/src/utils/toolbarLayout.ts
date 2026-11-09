@@ -140,6 +140,79 @@ export function moveBar(layout: ToolbarLayout, barId: string, region: ToolbarReg
   return next;
 }
 
+const cloneLayout = (layout: ToolbarLayout): ToolbarLayout => {
+  const next = {} as ToolbarLayout;
+  for (const r of TOOLBAR_REGIONS) next[r] = layout[r].map((b) => ({ ...b, tools: [...b.tools] }));
+  return next;
+};
+
+const sameLayout = (a: ToolbarLayout, b: ToolbarLayout): boolean => TOOLBAR_REGIONS.every((r) =>
+  a[r].length === b[r].length && a[r].every((bar, i) =>
+    bar.id === b[r][i].id && bar.tools.length === b[r][i].tools.length && bar.tools.every((t, j) => t === b[r][i].tools[j])));
+
+/** The bar holding a tool, or null */
+export function findTool(layout: ToolbarLayout, toolId: string): { region: ToolbarRegion; bar: ToolbarBar; index: number } | null {
+  for (const region of TOOLBAR_REGIONS) {
+    for (const b of layout[region]) {
+      const index = b.tools.indexOf(toolId);
+      if (index >= 0) return { region, bar: b, index };
+    }
+  }
+  return null;
+}
+
+/** A bar id no bar has yet: "bar-1", "bar-2", … */
+export function nextBarId(layout: ToolbarLayout): string {
+  const taken = new Set(TOOLBAR_REGIONS.flatMap((r) => layout[r].map((b) => b.id)));
+  let n = 1;
+  while (taken.has(`bar-${n}`)) n++;
+  return `bar-${n}`;
+}
+
+/**
+ * Move ONE TOOL into a bar, before `beforeToolId` (null = the bar's end).
+ * The bar it leaves is dropped when that was its last tool. Addressed by
+ * ids, so a bar vanishing never shifts the target. The same layout comes
+ * back when nothing would change.
+ */
+export function moveTool(layout: ToolbarLayout, toolId: string, barId: string, beforeToolId: string | null): ToolbarLayout {
+  if (!findTool(layout, toolId) || !findBar(layout, barId) || beforeToolId === toolId) return layout;
+  const next = cloneLayout(layout);
+  for (const r of TOOLBAR_REGIONS) for (const b of next[r]) b.tools = b.tools.filter((t) => t !== toolId);
+  const target = findBar(next, barId)!.bar;
+  const at = beforeToolId === null ? -1 : target.tools.indexOf(beforeToolId);
+  if (at < 0) target.tools.push(toolId);
+  else target.tools.splice(at, 0, toolId);
+  const result = normaliseLayout(next);
+  return sameLayout(result, layout) ? layout : result;
+}
+
+/**
+ * Pull ONE TOOL out into a NEW BAR of its own, in `region` before the bar
+ * `beforeBarId` (null = the dock's end) — "create a whole new toolbar
+ * container just to put one tool in it" (2026-11-10). A tool that is
+ * already alone in its bar, dropped beside that bar, changes nothing.
+ */
+export function moveToolToNewBar(layout: ToolbarLayout, toolId: string, region: ToolbarRegion, beforeBarId: string | null): ToolbarLayout {
+  const from = findTool(layout, toolId);
+  if (!from) return layout;
+  // A tool ALONE in its bar is that bar: the bar itself moves, keeping its
+  // id (beside itself, nothing changes)
+  if (from.bar.tools.length === 1) {
+    const bars = layout[region];
+    const index = beforeBarId === null ? -1 : bars.findIndex((b) => b.id === beforeBarId);
+    return moveBar(layout, from.bar.id, region, index < 0 ? bars.length : index);
+  }
+  const next = cloneLayout(layout);
+  findBar(next, from.bar.id)!.bar.tools.splice(from.index, 1);
+  const bars = next[region];
+  const at = beforeBarId === null ? -1 : bars.findIndex((b) => b.id === beforeBarId);
+  const fresh: ToolbarBar = { id: nextBarId(layout), tools: [toolId] };
+  if (at < 0) bars.push(fresh);
+  else bars.splice(at, 0, fresh);
+  return next;
+}
+
 /** Bars with no tools are dropped; empty docks stay */
 export function normaliseLayout(layout: ToolbarLayout): ToolbarLayout {
   const next: ToolbarLayout = { ...layout };

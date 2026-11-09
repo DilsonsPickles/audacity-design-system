@@ -7,9 +7,12 @@ layout model, the tool registry, `ToolbarDock` (wrapping rows with dividers
 between bars and between rows, vertical side docks), persistent grips with
 the bar-level drag, the status bar as the bottom dock, one layout per
 workspace in the preferences. See the CLAUDE.md rule "THE TOOLBARS ARE DOCKS
-OF BARS WITH PERSISTENT GRIPS". NOT YET: the edit mode (tool-level drags,
-the tray, "Customise toolbars…", the keyboard Move-to menu), the Flexible
-space tool, floating bars, user-named workspaces. Questions 4–8 below are
+OF BARS WITH PERSISTENT GRIPS". Increment 2, FIRST PASS, BUILT 2026-11-10:
+the edit mode from the cog's "Rearrange tools…" — tools inert and
+draggable, a tool JOINS a bar (short caret) or gets a NEW bar beside one
+(full-height line), Reset layout, Done / Escape. NOT YET: the tray of
+hidden tools, hold-to-enter, the keyboard Move-to menu, the Flexible space
+tool, floating bars, user-named workspaces. Questions 4–8 below are
 still the assistant's positions; increment 1 took 4 and 5 as stated.
 **Next step when resuming:** the mockup exists — a WORKING mock at
 https://claude.ai/code/artifact/da61130f-76fc-4337-907a-16002b1e0496 (wrap,
@@ -250,6 +253,13 @@ not yet accepted or rejected:
 - 2026-11-09 (second session) — The status bar is the bottom dock and its
   items are tools; a Flexible space tool handles right-alignment. Author ("I
   want the bottom toolbar items to also be customisable").
+- 2026-11-10 — Any number of containers, one tool each if wanted; a tool
+  pulled BESIDE a bar shows a line for the new container, distinct from the
+  caret for joining a bar. Author ("Let me create as many containers as I
+  want right?", "put a line horizontally to show that a new container will
+  be created"). OPEN: whether "horizontally" meant a new ROW in the top
+  dock — built as the boundary line (vertical on a row, horizontal in a
+  side dock); row breaks are not in the model.
 - 2026-11-10 — An empty dock shows nothing of its own during a drag; the
   side docks' drop zones are the dockable panels' overlay (a subtle band,
   the hovered one previewing the 48px footprint). Author ("don't show side

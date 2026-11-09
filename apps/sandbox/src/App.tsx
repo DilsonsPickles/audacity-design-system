@@ -79,7 +79,8 @@ import { useLoopRegion } from './hooks/useLoopRegion';
 import { useMasterMeter } from './hooks/useMasterMeter';
 import { useToolbarLayout } from './hooks/useToolbarLayout';
 import { useToolbarBarDrag } from './hooks/useToolbarBarDrag';
-import { AppToolbarDock } from './components/AppToolbarDock';
+import { AppToolbarDock, type ToolbarDockDrag } from './components/AppToolbarDock';
+import { useToolbarToolDrag } from './hooks/useToolbarToolDrag';
 import { DockZoneOverlay, sideBand } from './components/editor/DockZoneOverlay';
 import { renderStatusTool, statusToolMeta, type StatusBarToolsDeps } from './components/StatusBarTools';
 import { transportToolMeta } from '@audacity-ui/components';
@@ -351,6 +352,50 @@ function CanvasDemoContent() {
     },
     onDrop: toolbarLayout.moveBarTo,
   });
+  // THE LAYOUT'S EDIT MODE (2026-11-10): from the cog's "Rearrange tools…";
+  // the tools go inert and each can be dragged — onto a bar to join it,
+  // BESIDE one for a toolbar of its own. Done or Escape leaves it; it
+  // ends with the Project tab
+  const [toolbarEditing, setToolbarEditing] = React.useState(false);
+  const toolFitsVertical = (id: string) =>
+    (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
+  const toolDrag = useToolbarToolDrag({
+    layout: toolbarLayout.layout,
+    toolFitsVertical,
+    onMoveInto: toolbarLayout.moveToolInto,
+    onMoveToNewBar: toolbarLayout.moveToolToNewBar,
+  });
+  React.useEffect(() => {
+    if (activeMenuItem !== 'project') setToolbarEditing(false);
+  }, [activeMenuItem]);
+  React.useEffect(() => {
+    if (!toolbarEditing) return;
+    // Escape leaves the mode, and nothing else (taken before the app's
+    // Escape chain, which would clear the selection)
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      setToolbarEditing(false);
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [toolbarEditing]);
+  const dockDrag: ToolbarDockDrag = {
+    draggingBarId: barDrag.draggingBarId,
+    barTarget: barDrag.dropTarget,
+    onGripMouseDown: barDrag.onGripMouseDown,
+    editing: toolbarEditing,
+    draggingToolId: toolDrag.draggingToolId,
+    toolTarget: toolDrag.target,
+    onToolMouseDown: toolDrag.onToolMouseDown,
+  };
+  // The side docks' bands, for whichever drag is in flight
+  const sideDrag = barDrag.draggingBarId
+    ? { rowRect: barDrag.rowRect, fits: barDrag.fitsVertical, region: barDrag.dropTarget?.region ?? null, ghost: barDrag.ghost }
+    : toolDrag.draggingToolId
+      ? { rowRect: toolDrag.rowRect, fits: toolDrag.fitsVertical, region: toolDrag.target?.region ?? null, ghost: toolDrag.ghost }
+      : null;
   const [meterOrientation, setMeterOrientation] = React.useState<'flyout' | 'horizontal' | 'vertical'>('horizontal');
   // The playback meter's LOOK (2026-11-04, the Playback meter flyout):
   // style, type, dB range — session state, as the orientation is
@@ -1074,9 +1119,16 @@ function CanvasDemoContent() {
     status: showFocusDebug && !handleHint
       ? 'Focused element'
       : transportStatusText({ isRecording: state.isRecording, isPlaying, isSeeking, speed: playback.varispeed }),
-    infoText: handleHint
-      ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled })
-      : (statusInfo.text ?? (showFocusDebug ? focusedElement : 'Click and drag to select audio')),
+    // While the toolbars are being rearranged the line says what a drag
+    // will do — and, with a tool in hand, what this release will do
+    infoText: toolbarEditing
+      ? (toolDrag.target?.refused ? 'This tool has no vertical form'
+        : toolDrag.target?.kind === 'new' ? 'Release to give it a toolbar of its own'
+        : toolDrag.target?.kind === 'into' ? 'Release to add it to this toolbar'
+        : 'Drag a tool onto a toolbar to add it, or beside one for a toolbar of its own. Escape when done')
+      : handleHint
+        ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled })
+        : (statusInfo.text ?? (showFocusDebug ? focusedElement : 'Click and drag to select audio')),
     selectionStart: state.timeSelection?.startTime ?? null,
     selectionEnd: state.timeSelection?.endTime ?? null,
     format: selectionTimeCodeFormat,
@@ -1099,6 +1151,10 @@ function CanvasDemoContent() {
     transport: {
       activeMenuItem,
       workspace,
+      layoutEditing: toolbarEditing,
+      onLayoutEditingChange: setToolbarEditing,
+      onResetLayout: toolbarLayout.resetLayout,
+      layoutCustomised: toolbarLayout.customised,
       varispeed: playback.varispeed,
       varispeedOn: playback.varispeedOn,
       onVarispeedChange: playback.setVarispeed,
@@ -1234,10 +1290,8 @@ function CanvasDemoContent() {
           bars={toolbarLayout.layout.top}
           renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
           extraToolMeta={statusToolMeta}
-          draggingBarId={barDrag.draggingBarId}
-          dropTarget={barDrag.dropTarget}
-          onGripMouseDown={barDrag.onGripMouseDown}
-          showSettingsCog
+          drag={dockDrag}
+          showSettingsCog={activeMenuItem !== 'export'}
           className="transport-toolbar"
           tabGroupId="tool-toolbar"
           ariaLabel="Tool toolbar"
@@ -1380,9 +1434,7 @@ function CanvasDemoContent() {
           bars={toolbarLayout.layout.left}
           renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
           extraToolMeta={statusToolMeta}
-          draggingBarId={barDrag.draggingBarId}
-          dropTarget={barDrag.dropTarget}
-          onGripMouseDown={barDrag.onGripMouseDown}
+          drag={dockDrag}
           tabGroupId="tool-dock-left"
           ariaLabel="Left toolbar dock"
           style={selectionToolbarStyle}
@@ -1454,9 +1506,7 @@ function CanvasDemoContent() {
           bars={toolbarLayout.layout.right}
           renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
           extraToolMeta={statusToolMeta}
-          draggingBarId={barDrag.draggingBarId}
-          dropTarget={barDrag.dropTarget}
-          onGripMouseDown={barDrag.onGripMouseDown}
+          drag={dockDrag}
           tabGroupId="tool-dock-right"
           ariaLabel="Right toolbar dock"
           style={selectionToolbarStyle}
@@ -1499,9 +1549,7 @@ function CanvasDemoContent() {
           bars={toolbarLayout.layout.bottom}
           renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
           extraToolMeta={statusToolMeta}
-          draggingBarId={barDrag.draggingBarId}
-          dropTarget={barDrag.dropTarget}
-          onGripMouseDown={barDrag.onGripMouseDown}
+          drag={dockDrag}
           className="selection-toolbar"
           tabGroupId="selection-toolbar"
           ariaLabel="Selection toolbar"
@@ -1515,23 +1563,24 @@ function CanvasDemoContent() {
           hover over that area"): a subtle band along the editor row's
           edges, and the hovered one previews the dock's 48px footprint;
           none for a bar with no vertical form */}
-      {barDrag.draggingBarId && barDrag.rowRect && barDrag.fitsVertical && (
+      {sideDrag?.rowRect && sideDrag.fits && (
         <DockZoneOverlay bands={(['left', 'right'] as const).map((side) => ({
           zone: side,
-          band: sideBand(barDrag.rowRect!, side),
+          band: sideBand(sideDrag.rowRect!, side),
           preview: side === 'left'
-            ? { left: barDrag.rowRect!.left, top: barDrag.rowRect!.top, width: 48, height: barDrag.rowRect!.height }
-            : { left: barDrag.rowRect!.right - 48, top: barDrag.rowRect!.top, width: 48, height: barDrag.rowRect!.height },
-          active: barDrag.dropTarget?.region === side && toolbarLayout.layout[side].length === 0,
+            ? { left: sideDrag.rowRect!.left, top: sideDrag.rowRect!.top, width: 48, height: sideDrag.rowRect!.height }
+            : { left: sideDrag.rowRect!.right - 48, top: sideDrag.rowRect!.top, width: 48, height: sideDrag.rowRect!.height },
+          active: sideDrag.region === side && toolbarLayout.layout[side].length === 0,
         })).filter((b) => toolbarLayout.layout[b.zone].length === 0)} />
       )}
 
-      {/* The bar in hand: a ghost of its size follows the pointer */}
-      {barDrag.ghost && (
+      {/* The bar or tool in hand: a ghost of its size follows the pointer */}
+      {sideDrag?.ghost && (
         <div
           aria-hidden="true"
+          data-toolbar-drag-ghost
           style={{
-            position: 'fixed', left: barDrag.ghost.x, top: barDrag.ghost.y, width: barDrag.ghost.width, height: barDrag.ghost.height,
+            position: 'fixed', left: sideDrag.ghost.x, top: sideDrag.ghost.y, width: sideDrag.ghost.width, height: sideDrag.ghost.height,
             zIndex: 9000, pointerEvents: 'none', borderRadius: 4,
             background: 'rgba(103, 124, 228, 0.12)', boxShadow: '0 0 0 1px rgba(103, 124, 228, 0.6), 0 10px 30px rgba(0, 0, 0, 0.25)',
           }}

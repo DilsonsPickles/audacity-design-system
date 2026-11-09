@@ -30,6 +30,16 @@ export interface ToolbarDockProps {
   insertAt?: number | null;
   /** The drop would be refused (a bar with no vertical form over a side dock) */
   insertRefused?: boolean;
+  /** EDIT MODE (2026-11-10): the tools are inert and each can be picked
+   *  up — a press on one reports here instead of acting */
+  editing?: boolean;
+  onToolMouseDown?: (toolId: string, barId: string, event: React.MouseEvent, toolRect: DOMRect) => void;
+  /** The tool in hand, drawn faint in place */
+  draggingToolId?: string | null;
+  /** Where a dragged tool would JOIN a bar: before this tool (null = the
+   *  bar's end) — the short caret among the bar's tools. A drop that
+   *  makes a NEW bar shows `insertAt`'s full-height line instead. */
+  toolInsert?: { barId: string; beforeToolId: string | null } | null;
   /** Drawn at the end of the last row, right-aligned (the top bar's cog) */
   trailing?: React.ReactNode;
   className?: string;
@@ -61,6 +71,7 @@ const GROW_BAR_PACK_WIDTH = 160;
 export function ToolbarDock({
   region, bars, renderTool, toolMeta,
   onGripMouseDown, draggingBarId = null, insertAt = null, insertRefused = false,
+  editing = false, onToolMouseDown, draggingToolId = null, toolInsert = null,
   trailing, className = '', tabGroupId, ariaLabel, dataAttrs, style: styleProp,
 }: ToolbarDockProps) {
   const { theme } = useTheme();
@@ -132,6 +143,9 @@ export function ToolbarDock({
     '--toolbar-dock-refuse': theme.semantic.error.border,
   } as React.CSSProperties;
 
+  // Where a dragged tool would JOIN a bar: a short caret among its tools
+  const caret = <div className="toolbar-dock__caret" aria-hidden="true" />;
+
   const renderBar = (d: (typeof visible)[number]) => (
     <div
       key={d.bar.id}
@@ -156,7 +170,28 @@ export function ToolbarDock({
         {GRIP_GLYPH}
       </span>
       <div className="toolbar-dock__tools">
-        {d.nodes.map((t) => <React.Fragment key={t.id}>{t.node}</React.Fragment>)}
+        {d.nodes.map((t) => (
+          <React.Fragment key={t.id}>
+            {toolInsert?.barId === d.bar.id && toolInsert.beforeToolId === t.id && caret}
+            <div
+              className={`toolbar-dock__tool${toolMeta?.(t.id)?.grow ? ' toolbar-dock__tool--grow' : ''}${draggingToolId === t.id ? ' toolbar-dock__tool--dragging' : ''}`}
+              data-toolbar-tool={t.id}
+              onMouseDown={editing ? (e) => {
+                if (e.button !== 0 || !onToolMouseDown) return;
+                e.preventDefault();
+                e.stopPropagation();
+                onToolMouseDown(t.id, d.bar.id, e, e.currentTarget.getBoundingClientRect());
+              } : undefined}
+            >
+              {/* INERT while editing: the tool cannot be pressed, focused
+                  or typed into, and the press lands on the wrapper. Set
+                  on the element itself — React 18 drops a boolean `inert`
+                  and React 19 reads an empty string as false */}
+              <div className="toolbar-dock__tool-body" ref={(el) => { el?.toggleAttribute('inert', editing); }}>{t.node}</div>
+            </div>
+          </React.Fragment>
+        ))}
+        {toolInsert?.barId === d.bar.id && toolInsert.beforeToolId === null && caret}
       </div>
     </div>
   );
@@ -189,6 +224,7 @@ export function ToolbarDock({
     `toolbar-dock--${region}`,
     vertical ? 'toolbar-dock--vertical' : 'toolbar-dock--horizontal',
     empty ? 'toolbar-dock--empty' : '',
+    editing ? 'toolbar-dock--editing' : '',
     className,
   ].filter(Boolean).join(' ');
 

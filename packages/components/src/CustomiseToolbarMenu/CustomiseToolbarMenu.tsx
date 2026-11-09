@@ -100,9 +100,15 @@ export interface CustomiseToolbarMenuProps {
   /** A row was pressed: show or hide that tool */
   onToggleTool: (id: string) => void;
   entries?: ReadonlyArray<CustomiseToolbarEntry>;
+  /** "Rearrange tools…" at the menu's foot (2026-11-10, custom toolbars):
+   *  enters the layout's edit mode; absent = no such item */
+  onRearrange?: () => void;
+  /** "Reset layout", beside it; absent = no such item */
+  onResetLayout?: () => void;
+  resetLayoutDisabled?: boolean;
 }
 
-export function CustomiseToolbarMenu({ isOpen, onClose, anchor, hiddenTools, onToggleTool, entries = CUSTOMISE_TOOLBAR_ENTRIES }: CustomiseToolbarMenuProps) {
+export function CustomiseToolbarMenu({ isOpen, onClose, anchor, hiddenTools, onToggleTool, entries = CUSTOMISE_TOOLBAR_ENTRIES, onRearrange, onResetLayout, resetLayoutDisabled = false }: CustomiseToolbarMenuProps) {
   const hidden = React.useMemo(() => new Set(hiddenTools), [hiddenTools]);
   const anchorX = anchor ? (anchor.left + anchor.right) / 2 : 0;
   const x = Math.round(anchorX - (CUSTOMISE_TOOLBAR_WIDTH - TRIANGLE_FROM_RIGHT));
@@ -145,6 +151,20 @@ export function CustomiseToolbarMenu({ isOpen, onClose, anchor, hiddenTools, onT
             </button>
           ))}
         </div>
+        {(onRearrange || onResetLayout) && (
+          <div className="customise-toolbar__footer">
+            {onRearrange && (
+              <button type="button" role="menuitem" className="customise-toolbar__action" data-customise-rearrange onClick={onRearrange}>
+                Rearrange tools…
+              </button>
+            )}
+            {onResetLayout && (
+              <button type="button" role="menuitem" className="customise-toolbar__action" data-customise-reset disabled={resetLayoutDisabled} onClick={onResetLayout}>
+                Reset layout
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </ContextMenu>
   );

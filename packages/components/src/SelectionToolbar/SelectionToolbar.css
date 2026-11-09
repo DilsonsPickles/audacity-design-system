@@ -142,7 +142,7 @@
    centred the text in a slot no wider than itself, which in a grown slot
    put it mid-window: "the items in the bottom toolbar are always
    centrally aligned", 2026-11-09) */
-.toolbar-dock__bar--grow .toolbar-dock__tools > [data-status-tool="info"] {
+.toolbar-dock__bar--grow .toolbar-dock__tool-body > [data-status-tool="info"] {
   flex: 1 1 auto;
   min-width: 0;
   justify-content: flex-start;

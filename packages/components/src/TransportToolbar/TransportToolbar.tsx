@@ -180,6 +180,15 @@ export interface TransportToolbarProps {
    */
   recordingMeterOrientation?: MicrophoneMeterOrientation;
   onRecordingMeterOrientationChange?: (orientation: MicrophoneMeterOrientation) => void;
+
+  /** THE LAYOUT'S EDIT MODE (2026-11-10, custom toolbars): on, the tools
+   *  are inert and can be dragged between bars; the cog gives way to Done */
+  layoutEditing?: boolean;
+  onLayoutEditingChange?: (editing: boolean) => void;
+  /** Back to the workspace's own layout; absent = no such item */
+  onResetLayout?: () => void;
+  /** The user has rearranged this workspace (Reset is live) */
+  layoutCustomised?: boolean;
 }
 
 /** TransportTools: the toolbar's state and flyouts around `children`,
@@ -330,6 +339,7 @@ export function TransportTools({
   meterOrientation: meterOrientationProp, onMeterOrientationChange,
   meterLook: meterLookProp, onMeterLookChange,
   recordingMeterOrientation = 'flyout', onRecordingMeterOrientationChange,
+  layoutEditing = false, onLayoutEditingChange, onResetLayout, layoutCustomised = false,
   children,
 }: TransportToolsProps) {
   const { theme } = useTheme();
@@ -444,7 +454,12 @@ export function TransportTools({
 
   // The cog opens the Customise toolbar popover, hung under it;
   // `show(id)` gates each tool on the hidden list
-  const settingsCog = (
+  const settingsCog = layoutEditing ? (
+    // While the layout is being edited the cog gives way to DONE
+    <ToolbarButtonGroup gap={2}>
+      <Button variant="primary" size="small" onClick={() => onLayoutEditingChange?.(false)}>Done</Button>
+    </ToolbarButtonGroup>
+  ) : (
     <ToolbarButtonGroup gap={2}>
       <span ref={cogRef} style={{ display: 'inline-flex' }} data-customise-toolbar-cog>
         <ToolButton
@@ -463,6 +478,9 @@ export function TransportTools({
         anchor={customiseAnchor}
         hiddenTools={hiddenTools}
         onToggleTool={(id) => onToggleToolVisibility?.(id)}
+        onRearrange={onLayoutEditingChange ? () => { setCustomiseOpen(false); onLayoutEditingChange(true); } : undefined}
+        onResetLayout={onResetLayout ? () => { setCustomiseOpen(false); onResetLayout(); } : undefined}
+        resetLayoutDisabled={!layoutCustomised}
       />
     </ToolbarButtonGroup>
   );

@@ -83,6 +83,7 @@ Behavior is locked by `__tests__/tracksReducer.characterization.test.ts` and `__
 | `useCmdArrowMove.ts` | Cmd/Ctrl-release overlap resolution for Cmd+Arrow clip moves — listens for keyup, reconciles final clip positions against neighbors |
 | `useToolbarLayout.ts` | The toolbar layout per workspace (preferences `toolbarLayouts`; seeds from `defaultToolbarLayout`) — custom toolbars, 2026-11-09 |
 | `useToolbarBarDrag.ts` | A bar's grip drag between the four docks: ghost, drop target, edge fallback |
+| `useToolbarToolDrag.ts` | A tool's drag in the toolbars' edit mode (2026-11-10); the landing is `utils/toolbarToolDrop.ts` `resolveToolDrop` — join a bar, or a new bar beside one |
 | `useKeyboardShortcuts.ts` | **Keyboard routing hub** — delegates to domain handlers below |
 
 **EditorLayout effect hooks** (extracted from EditorLayout; each a self-contained `useEffect`):

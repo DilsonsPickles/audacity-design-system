@@ -341,6 +341,80 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     await waitFor(() => expect(dock('top').querySelector('[data-toolbar-bar="selection"] [aria-label="Selection start"]')).toBeTruthy());
     expect(dock('bottom').querySelector('[data-toolbar-bar="selection"]')).toBeNull();
   });
+
+  it('EDIT MODE: the cog\'s "Rearrange tools…" makes the tools inert and draggable; a tool pulled beside a bar gets a toolbar of its own; Escape leaves; Reset layout restores (2026-11-10)', async () => {
+    const { container, getByText } = renderApp();
+    fireEvent.click(getByText('Project'));
+    await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
+    const dock = (region: string) => container.querySelector(`[data-toolbar-dock="${region}"]`) as HTMLElement;
+    const tool = (id: string) => container.querySelector(`[data-toolbar-tool="${id}"]`) as HTMLElement;
+    const barIds = (region: string) => Array.from(dock(region).querySelectorAll('[data-toolbar-bar]')).map((b) => b.getAttribute('data-toolbar-bar'));
+    const openCog = async () => {
+      fireEvent.click(container.querySelector('[data-customise-toolbar-cog] button') as HTMLElement);
+      return waitFor(() => {
+        const menu = document.body.querySelector<HTMLElement>('[data-customise-toolbar]');
+        if (!menu) throw new Error('not yet');
+        return menu;
+      });
+    };
+
+    // At rest: live tools, Reset dimmed (nothing rearranged)
+    expect(tool('record').querySelector('.toolbar-dock__tool-body')!.hasAttribute('inert')).toBe(false);
+    let menu = await openCog();
+    expect((menu.querySelector('[data-customise-reset]') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(menu.querySelector('[data-customise-rearrange]') as HTMLElement);
+    await waitFor(() => expect(dock('top').classList.contains('toolbar-dock--editing')).toBe(true));
+    // Every dock is in the mode, the tools are inert, the cog gave way to Done
+    expect(dock('bottom').classList.contains('toolbar-dock--editing')).toBe(true);
+    expect(tool('record').querySelector('.toolbar-dock__tool-body')!.hasAttribute('inert')).toBe(true);
+    expect(container.querySelector('[data-customise-toolbar-cog]')).toBeNull();
+    expect(container.querySelector('.selection-toolbar__instruction-text')?.textContent).toMatch(/^Drag a tool onto a toolbar/);
+
+    // A press that never travels is a click: nothing moves
+    fireEvent.mouseDown(tool('record'), { clientX: 200, clientY: 30, button: 0 });
+    fireEvent.mouseUp(document, { clientX: 201, clientY: 30 });
+    expect(barIds('top')[0]).toBe('transport');
+    expect(tool('record').closest('[data-toolbar-bar]')!.getAttribute('data-toolbar-bar')).toBe('transport');
+
+    // Pulled BESIDE the first bar (its grip's strip — jsdom measures every
+    // rect as zero, so x < 24 is "beside"): Record gets a bar of its own
+    fireEvent.mouseDown(tool('record'), { clientX: 200, clientY: 30, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 10, clientY: 10 });
+    expect(dock('top').querySelector('.toolbar-dock__insert')).toBeTruthy(); // the new container's line
+    expect(container.querySelector('.selection-toolbar__instruction-text')?.textContent).toBe('Release to give it a toolbar of its own');
+    fireEvent.mouseUp(document, { clientX: 10, clientY: 10 });
+    await waitFor(() => expect(barIds('top').slice(0, 2)).toEqual(['bar-1', 'transport']));
+    expect(tool('record').closest('[data-toolbar-bar]')!.getAttribute('data-toolbar-bar')).toBe('bar-1');
+    expect(dock('top').querySelector('[data-toolbar-bar="transport"] [data-toolbar-tool="record"]')).toBeNull();
+    const stored = () => JSON.parse(window.localStorage.getItem('audacity-preferences')!).toolbarLayouts?.classic;
+    expect(stored().top[0]).toEqual({ id: 'bar-1', tools: ['record'] });
+
+    // …and another, to the bottom dock: as many containers as wanted
+    fireEvent.mouseDown(tool('loop'), { clientX: 200, clientY: 30, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: window.innerHeight - 10 });
+    fireEvent.mouseUp(document, { clientX: 300, clientY: window.innerHeight - 10 });
+    await waitFor(() => expect(barIds('bottom')).toContain('bar-2'));
+
+    // Escape leaves the mode; the tools are live again
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    await waitFor(() => expect(dock('top').classList.contains('toolbar-dock--editing')).toBe(false));
+    expect(tool('record').querySelector('.toolbar-dock__tool-body')!.hasAttribute('inert')).toBe(false);
+    // outside the mode a press on a tool picks nothing up
+    fireEvent.mouseDown(tool('record'), { clientX: 200, clientY: 30, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: window.innerHeight - 10 });
+    fireEvent.mouseUp(document, { clientX: 300, clientY: window.innerHeight - 10 });
+    expect(tool('record').closest('[data-toolbar-dock]')!.getAttribute('data-toolbar-dock')).toBe('top');
+
+    // Reset layout: the workspace's own bars again
+    menu = await openCog();
+    const reset = menu.querySelector('[data-customise-reset]') as HTMLButtonElement;
+    expect(reset.disabled).toBe(false);
+    fireEvent.click(reset);
+    await waitFor(() => expect(barIds('top')[0]).toBe('transport'));
+    expect(tool('record').closest('[data-toolbar-bar]')!.getAttribute('data-toolbar-bar')).toBe('transport');
+    expect(barIds('bottom')).toEqual(['status', 'selection']);
+    expect(stored()).toBeUndefined();
+  });
 });
 
 // ---------------------------------------------------------------------------

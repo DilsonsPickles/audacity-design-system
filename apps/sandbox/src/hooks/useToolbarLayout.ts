@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import {
-  defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, isToolbarLayout, moveBar, normaliseLayout, usePreferences,
+  defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, isToolbarLayout, moveBar, moveTool, moveToolToNewBar, normaliseLayout, usePreferences,
   type ToolbarLayout, type ToolbarRegion, type ToolbarWorkspace,
 } from '@audacity-ui/components';
 
@@ -12,6 +12,10 @@ export interface UseToolbarLayoutReturn {
   customised: boolean;
   /** Move a whole bar (the grip drag) */
   moveBarTo: (barId: string, region: ToolbarRegion, index: number) => void;
+  /** Move one tool into a bar, before a tool or at its end (the edit mode) */
+  moveToolInto: (toolId: string, barId: string, beforeToolId: string | null) => void;
+  /** Pull one tool out into a new bar of its own */
+  moveToolToNewBar: (toolId: string, region: ToolbarRegion, beforeBarId: string | null) => void;
   /** Back to the workspace's seed */
   resetLayout: () => void;
 }
@@ -34,13 +38,24 @@ export function useToolbarLayout(workspace: ToolbarWorkspace, activeMenuItem: st
     return normaliseLayout(custom ?? defaultToolbarLayout(workspace));
   }, [activeMenuItem, custom, workspace]);
 
-  const moveBarTo = useCallback((barId: string, region: ToolbarRegion, index: number) => {
+  // One edit of the layout in force, stored for this workspace
+  const edit = useCallback((change: (base: ToolbarLayout) => ToolbarLayout) => {
     if (activeMenuItem === 'export') return;
     const base = custom ?? defaultToolbarLayout(workspace);
-    const next = moveBar(base, barId, region, index);
+    const next = change(base);
     if (next === base) return;
     updatePreference('toolbarLayouts', { ...(preferences.toolbarLayouts ?? {}), [workspace]: next });
   }, [activeMenuItem, custom, preferences.toolbarLayouts, updatePreference, workspace]);
+
+  const moveBarTo = useCallback((barId: string, region: ToolbarRegion, index: number) => {
+    edit((base) => moveBar(base, barId, region, index));
+  }, [edit]);
+  const moveToolInto = useCallback((toolId: string, barId: string, beforeToolId: string | null) => {
+    edit((base) => moveTool(base, toolId, barId, beforeToolId));
+  }, [edit]);
+  const moveToolToNew = useCallback((toolId: string, region: ToolbarRegion, beforeBarId: string | null) => {
+    edit((base) => moveToolToNewBar(base, toolId, region, beforeBarId));
+  }, [edit]);
 
   const resetLayout = useCallback(() => {
     const next = { ...(preferences.toolbarLayouts ?? {}) };
@@ -48,5 +63,5 @@ export function useToolbarLayout(workspace: ToolbarWorkspace, activeMenuItem: st
     updatePreference('toolbarLayouts', next);
   }, [preferences.toolbarLayouts, updatePreference, workspace]);
 
-  return { layout, customised: custom !== null, moveBarTo, resetLayout };
+  return { layout, customised: custom !== null, moveBarTo, moveToolInto, moveToolToNewBar: moveToolToNew, resetLayout };
 }
