@@ -15,8 +15,9 @@ import { VarispeedControl } from '../VarispeedControl';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { Checkbox } from '../Checkbox';
 import { MasterMeter } from '../MasterMeter';
-import { MicrophoneLevelFlyout } from '../MicrophoneLevelFlyout';
-import { PlaybackMeterFlyout } from '../PlaybackMeterFlyout';
+import { MicrophoneLevelFlyout, type MicrophoneMeterOrientation } from '../MicrophoneLevelFlyout';
+import { useInputLevel } from '../MicrophoneLevelFlyout/useInputLevel';
+import { PlaybackMeterFlyout, type PlaybackMeterPosition } from '../PlaybackMeterFlyout';
 import { DEFAULT_PLAYBACK_METER_LOOK, type PlaybackMeterLook } from '../utils/meterLook';
 import { useTheme } from '../ThemeProvider';
 import type { SnapGrid } from '@audacity-ui/core';
@@ -150,14 +151,16 @@ export interface TransportToolbarProps {
   onMicrophoneMeteringChange?: (on: boolean) => void;
 
   /**
-   * Current orientation of the master meter. When 'vertical' the toolbar
-   * hides the meter (the consumer renders it elsewhere, e.g. as a side
-   * panel) but the volume settings button + its context menu remain.
+   * Current orientation of the master meter. 'horizontal' = button + meter
+   * on the toolbar; 'flyout' = the meter lives inside the volume button's
+   * flyout, so the toolbar shows the button alone; 'vertical' = the whole
+   * cluster leaves the toolbar (button included), the consumer rendering
+   * the meter as a side panel with its own button and flyout.
    * @default 'horizontal'
    */
-  meterOrientation?: 'horizontal' | 'vertical';
+  meterOrientation?: PlaybackMeterPosition;
   /** Called when the user picks a new orientation from the volume menu. */
-  onMeterOrientationChange?: (orientation: 'horizontal' | 'vertical') => void;
+  onMeterOrientationChange?: (orientation: PlaybackMeterPosition) => void;
   /** The playback meter's LOOK (2026-11-04, the Playback meter flyout):
    *  style, type, dB range — uncontrolled when absent */
   meterLook?: PlaybackMeterLook;
@@ -166,14 +169,15 @@ export interface TransportToolbarProps {
   /**
    * Where the RECORDING meter shows (2026-11-04, "dock recording meter to
    * the right, like the playback meter"): 'flyout' = the microphone
-   * button's flyout alone; 'vertical' = docked at the right too, the host
-   * rendering `RecordingMeterVertical` beside the playback meter's dock.
-   * Picked from a RIGHT-CLICK menu on the microphone button (its press is
-   * the flyout).
+   * button's flyout alone; 'horizontal' = on the toolbar beside the mic
+   * button, as the playback meter's top-bar meter; 'vertical' = docked at
+   * the right too, the host rendering `RecordingMeterVertical` beside the
+   * playback meter's dock. Picked from the flyout's Position radios (or
+   * the mic button's right-click menu — the flyout's press is the flyout).
    * @default 'flyout'
    */
-  recordingMeterOrientation?: 'flyout' | 'vertical';
-  onRecordingMeterOrientationChange?: (orientation: 'flyout' | 'vertical') => void;
+  recordingMeterOrientation?: MicrophoneMeterOrientation;
+  onRecordingMeterOrientationChange?: (orientation: MicrophoneMeterOrientation) => void;
 }
 
 function SplitRecordButton({
@@ -305,11 +309,20 @@ export function TransportToolbar({
   // menu — the volume button's pair for the input
   const [micMenu, setMicMenu] = React.useState<{ x: number; y: number } | null>(null);
   const closeMicMenu = React.useCallback(() => setMicMenu(null), []);
+  // The toolbar's own recording meter (orientation 'horizontal') reads the
+  // input a frame at a time, like the flyout and the vertical dock do.
+  const { level: micLevel, peak: micPeak } = useInputLevel(
+    getMicrophoneLevelDb,
+    recordingMeterOrientation === 'horizontal',
+  );
   const toggleMicFlyout = () => {
     if (micFlyout) { setMicFlyout(null); return; }
     if (performance.now() - micClosedAtRef.current < 300) return;
     const rect = micButtonRef.current?.getBoundingClientRect();
     if (!rect) return;
+    // Only one toolbar flyout open at a time — opening this closes the
+    // playback meter's (and its menu)
+    setVolumeFlyout(null);
     setMicFlyout({ x: rect.left + rect.width / 2, y: rect.bottom + 4 });
     onMicrophoneLevelsOpen?.();
   };
@@ -327,9 +340,9 @@ export function TransportToolbar({
   const closeCustomise = React.useCallback(() => setCustomiseOpen(false), []);
   // Uncontrolled fallback so the menu still works if the consumer hasn't
   // wired up `meterOrientation` / `onMeterOrientationChange` yet.
-  const [internalOrientation, setInternalOrientation] = React.useState<'horizontal' | 'vertical'>('horizontal');
+  const [internalOrientation, setInternalOrientation] = React.useState<PlaybackMeterPosition>('horizontal');
   const meterOrientation = meterOrientationProp ?? internalOrientation;
-  const setMeterOrientation = (next: 'horizontal' | 'vertical') => {
+  const setMeterOrientation = (next: PlaybackMeterPosition) => {
     if (onMeterOrientationChange) onMeterOrientationChange(next);
     else setInternalOrientation(next);
   };
@@ -339,6 +352,10 @@ export function TransportToolbar({
     if (performance.now() - volumeClosedAtRef.current < 300) return;
     const rect = volumeButtonRef.current?.getBoundingClientRect();
     if (!rect) return;
+    // Only one toolbar flyout open at a time — opening this closes the
+    // microphone level flyout (and its menu)
+    setMicFlyout(null);
+    setMicMenu(null);
     setVolumeFlyout({ x: rect.left + rect.width / 2, y: rect.bottom + 4 });
   };
   // Uncontrolled fallback for the look, as for the orientation
@@ -850,27 +867,49 @@ export function TransportToolbar({
           )}
 
 
-          <ToolbarButtonGroup gap={2}>
-            {show('microphone-levels') && (
-              <span
-                ref={micButtonRef}
-                style={{ display: 'inline-flex' }}
-                onContextMenu={(e) => { e.preventDefault(); setMicFlyout(null); setMicMenu({ x: e.clientX, y: e.clientY }); }}
-              >
-                <ToolButton
-                  icon="microphone"
-                  ariaLabel="Microphone level"
-                  state={micFlyout ? 'pressed' : undefined}
-                  onClick={toggleMicFlyout}
-                />
-              </span>
+          {show('microphone-levels') && (
+          <ToolbarButtonGroup gap={6}>
+            <span
+              ref={micButtonRef}
+              style={{ display: 'inline-flex' }}
+              onContextMenu={(e) => { e.preventDefault(); setMicFlyout(null); setMicMenu({ x: e.clientX, y: e.clientY }); }}
+            >
+              <ToolButton
+                icon="microphone"
+                ariaLabel="Microphone level"
+                state={micFlyout ? 'pressed' : undefined}
+                onClick={toggleMicFlyout}
+              />
+            </span>
+            {/* The recording meter on the toolbar (orientation 'horizontal'),
+                the mic's own top-bar meter beside the button — its slider is
+                the input gain, the flyout's knob, so the two move one value. */}
+            {recordingMeterOrientation === 'horizontal' && (
+              <MasterMeter
+                levelLeft={micLevel}
+                levelRight={micLevel}
+                clippedLeft={micLevel >= 0}
+                clippedRight={micLevel >= 0}
+                recentPeakLeft={micPeak}
+                recentPeakRight={micPeak}
+                volume={microphoneGain}
+                onVolumeChange={onMicrophoneGainChange}
+                ariaLabel="Microphone meter"
+                sliderAriaLabel="Microphone level"
+              />
             )}
           </ToolbarButtonGroup>
+          )}
 
           {/* Playback meter cluster: the volume settings button hosts the
-              meter's controls, so it must stay glued to the meter — they
-              wrap together as a single unit. */}
-          {show('playback-meter') && (
+              meter's controls, so it stays glued to the meter — they wrap
+              as one unit. The button shows unless the meter is docked to
+              the side (vertical), where the whole cluster leaves the
+              toolbar and the docked panel carries its own button/flyout;
+              the horizontal meter sits beside the button only when the
+              meter is 'horizontal' ('flyout' keeps the meter in the
+              button's popover, so the toolbar shows the button alone). */}
+          {show('playback-meter') && meterOrientation !== 'vertical' && (
           <ToolbarButtonGroup gap={6}>
             <div ref={volumeButtonRef} style={{ display: 'inline-flex' }}>
               <ToolButton
@@ -905,6 +944,8 @@ export function TransportToolbar({
             getLevelDb={getMicrophoneLevelDb}
             gain={microphoneGain}
             onGainChange={(next) => onMicrophoneGainChange?.(next)}
+            orientation={recordingMeterOrientation}
+            onOrientationChange={onRecordingMeterOrientationChange}
             inputMonitoring={microphoneInputMonitoring}
             onInputMonitoringChange={onMicrophoneInputMonitoringChange}
             micMetering={microphoneMetering}
@@ -921,6 +962,11 @@ export function TransportToolbar({
               label="Meter in flyout"
               checked={recordingMeterOrientation === 'flyout'}
               onClick={() => { onRecordingMeterOrientationChange?.('flyout'); setMicMenu(null); }}
+            />
+            <ContextMenuItem
+              label="Horizontal meter"
+              checked={recordingMeterOrientation === 'horizontal'}
+              onClick={() => { onRecordingMeterOrientationChange?.('horizontal'); setMicMenu(null); }}
             />
             <ContextMenuItem
               label="Vertical meter"
@@ -940,6 +986,14 @@ export function TransportToolbar({
             onPositionChange={setMeterOrientation}
             look={meterLook}
             onLookChange={setMeterLook}
+            levelLeft={masterLevelLeft}
+            levelRight={masterLevelRight}
+            clippedLeft={masterClippedLeft}
+            clippedRight={masterClippedRight}
+            recentPeakLeft={masterRecentPeakLeft}
+            recentPeakRight={masterRecentPeakRight}
+            volume={masterVolume}
+            onVolumeChange={onMasterVolumeChange}
           />
 
         </>

@@ -91,7 +91,7 @@ describe('the microphone button opens the Microphone level flyout (2026-11-04)',
 });
 
 describe('a right-click on the microphone button is the recording meter\'s dock menu (2026-11-04)', () => {
-  it('offers "Meter in flyout" / "Vertical meter", the current one checked, and reports the pick', () => {
+  it('offers "Meter in flyout" / "Horizontal meter" / "Vertical meter", the current one checked, and reports the pick', () => {
     const onRecordingMeterOrientationChange = vi.fn();
     const { container } = renderToolbar('classic', [], { recordingMeterOrientation: 'flyout', onRecordingMeterOrientationChange });
     const button = container.querySelector('button[aria-label="Microphone level"]') as HTMLElement;
@@ -99,11 +99,47 @@ describe('a right-click on the microphone button is the recording meter\'s dock 
     // The press's flyout is not what opened
     expect(document.querySelector('.microphone-level-flyout')).toBeNull();
     const items = Array.from(document.querySelectorAll('[role="menuitem"], .context-menu-item'))
-      .filter((el) => /Meter in flyout|Vertical meter/.test(el.textContent ?? ''));
-    expect(items.length).toBe(2);
-    const vertical = items.find((el) => el.textContent?.includes('Vertical meter')) as HTMLElement;
-    fireEvent.click(vertical);
-    expect(onRecordingMeterOrientationChange).toHaveBeenCalledWith('vertical');
+      .filter((el) => /Meter in flyout|Horizontal meter|Vertical meter/.test(el.textContent ?? ''));
+    expect(items.length).toBe(3);
+    const horizontal = items.find((el) => el.textContent?.includes('Horizontal meter')) as HTMLElement;
+    fireEvent.click(horizontal);
+    expect(onRecordingMeterOrientationChange).toHaveBeenCalledWith('horizontal');
+  });
+});
+
+describe('opening one toolbar meter flyout closes the other (2026-11-09)', () => {
+  it('opening the playback flyout closes the mic flyout, and vice versa', () => {
+    const { container } = renderToolbar('classic', []);
+    const micButton = container.querySelector('button[aria-label="Microphone level"]') as HTMLElement;
+    const volButton = container.querySelector('button[aria-label="Playback volume settings"]') as HTMLElement;
+
+    fireEvent.click(micButton);
+    expect(document.querySelector('.microphone-level-flyout')).toBeTruthy();
+    expect(document.querySelector('.playback-meter-flyout')).toBeNull();
+
+    fireEvent.click(volButton);
+    expect(document.querySelector('.microphone-level-flyout')).toBeNull();
+    expect(document.querySelector('.playback-meter-flyout')).toBeTruthy();
+
+    fireEvent.click(micButton);
+    expect(document.querySelector('.playback-meter-flyout')).toBeNull();
+    expect(document.querySelector('.microphone-level-flyout')).toBeTruthy();
+  });
+});
+
+describe('the recording meter shows on the toolbar when horizontal (2026-11-09)', () => {
+  it('renders the Microphone meter beside the button only when orientation is horizontal', () => {
+    const flyoutToolbar = renderToolbar('classic', [], { recordingMeterOrientation: 'flyout' });
+    expect(flyoutToolbar.container.querySelector('[aria-label="Microphone meter"]')).toBeNull();
+    cleanup();
+    const horizontalToolbar = renderToolbar('classic', [], { recordingMeterOrientation: 'horizontal' });
+    expect(horizontalToolbar.container.querySelector('[aria-label="Microphone meter"]')).toBeTruthy();
+  });
+
+  it('hides with its button when the microphone-levels tool is off', () => {
+    const { container } = renderToolbar('classic', ['microphone-levels'], { recordingMeterOrientation: 'horizontal' });
+    expect(container.querySelector('button[aria-label="Microphone level"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Microphone meter"]')).toBeNull();
   });
 });
 

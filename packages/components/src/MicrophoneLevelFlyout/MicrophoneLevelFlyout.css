@@ -15,6 +15,32 @@
   padding: 11px;
 }
 
+/* Position picker — a 12px label over a form well, as the playback
+   meter flyout draws its groups */
+.microphone-level-flyout__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.microphone-level-flyout__label {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--mlf-text, #14151a);
+}
+
+.microphone-level-flyout__position {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--mlf-well, #ebedf0);
+  border: 1px solid var(--mlf-border, #d4d5d9);
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
 .microphone-level-flyout__title,
 .microphone-level-flyout__hint {
   font-family: 'Inter', sans-serif;

@@ -10,17 +10,18 @@ afterEach(cleanup);
 const renderFlyout = (extra: Partial<React.ComponentProps<typeof PlaybackMeterFlyout>> = {}) => {
   const onPositionChange = vi.fn();
   const onLookChange = vi.fn();
+  const onClose = vi.fn();
   render(
     <ThemeProvider>
       <PlaybackMeterFlyout
-        isOpen onClose={() => {}} x={200} y={40}
+        isOpen onClose={onClose} x={200} y={40}
         position="horizontal" onPositionChange={onPositionChange}
         look={DEFAULT_PLAYBACK_METER_LOOK} onLookChange={onLookChange}
         {...extra}
       />
     </ThemeProvider>,
   );
-  return { onPositionChange, onLookChange };
+  return { onPositionChange, onLookChange, onClose };
 };
 
 const radio = (label: string) => {
@@ -34,7 +35,7 @@ describe('PlaybackMeterFlyout (2026-11-04, the Figma "Playback meter" flyout)', 
   it('shows the four groups of the design with the current choices checked', () => {
     renderFlyout();
     const flyout = document.querySelector('.playback-meter-flyout') as HTMLElement;
-    for (const text of ['Position', 'Top bar (horizontal)', 'Side bar (vertical)', 'Meter style', 'Default', 'RMS', 'Gradient', 'Meter type', 'Logarithmic (dB)', 'Linear (dB)', 'Linear (amp)', 'dB range']) {
+    for (const text of ['Position', 'In flyout', 'Top bar (horizontal)', 'Side bar (vertical)', 'Meter style', 'Default', 'RMS', 'Gradient', 'Meter type', 'Logarithmic (dB)', 'Linear (dB)', 'Linear (amp)', 'dB range']) {
       expect(flyout.textContent).toContain(text);
     }
     expect(radio('Top bar (horizontal)').checked).toBe(true);
@@ -51,5 +52,42 @@ describe('PlaybackMeterFlyout (2026-11-04, the Figma "Playback meter" flyout)', 
     expect(onLookChange).toHaveBeenLastCalledWith({ ...DEFAULT_PLAYBACK_METER_LOOK, style: 'gradient' });
     fireEvent.click(radio('Linear (amp)'));
     expect(onLookChange).toHaveBeenLastCalledWith({ ...DEFAULT_PLAYBACK_METER_LOOK, type: 'linear-amp' });
+  });
+
+  it('a position pick dismisses the flyout; style and type picks keep it open', () => {
+    const { onClose } = renderFlyout();
+    fireEvent.click(radio('Gradient'));
+    fireEvent.click(radio('Linear (amp)'));
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.click(radio('Side bar (vertical)'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the live meter inside the flyout only when the position is "In flyout"', () => {
+    const topBar = render(
+      <ThemeProvider>
+        <PlaybackMeterFlyout
+          isOpen onClose={() => {}} x={200} y={40}
+          position="horizontal" onPositionChange={() => {}}
+          look={DEFAULT_PLAYBACK_METER_LOOK} onLookChange={() => {}}
+        />
+      </ThemeProvider>,
+    );
+    expect(topBar.container.querySelector('.master-meter')).toBeNull();
+    expect(topBar.container.textContent).not.toContain('Playback level');
+    cleanup();
+
+    const inFlyout = render(
+      <ThemeProvider>
+        <PlaybackMeterFlyout
+          isOpen onClose={() => {}} x={200} y={40}
+          position="flyout" onPositionChange={() => {}}
+          look={DEFAULT_PLAYBACK_METER_LOOK} onLookChange={() => {}}
+        />
+      </ThemeProvider>,
+    );
+    expect(inFlyout.container.querySelector('.master-meter')).toBeTruthy();
+    expect(inFlyout.container.textContent).toContain('Playback level');
+    expect(radio('In flyout').checked).toBe(true);
   });
 });

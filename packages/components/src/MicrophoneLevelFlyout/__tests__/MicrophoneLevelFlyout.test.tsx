@@ -47,6 +47,87 @@ describe('MicrophoneLevelFlyout (2026-11-04, the toolbar mic button\'s flyout)',
     expect(onGainChange.mock.calls[0][0]).toBeLessThan(1);
   });
 
+  it('the Position picker shows only when wired, and reports the three orientations', () => {
+    const noPicker = render(
+      <ThemeProvider>
+        <MicrophoneLevelFlyout isOpen onClose={() => {}} x={200} y={40} gain={1} onGainChange={() => {}} />
+      </ThemeProvider>,
+    );
+    expect(noPicker.container.querySelector('[aria-label="Position"]')).toBeNull();
+    cleanup();
+
+    const onOrientationChange = vi.fn();
+    render(
+      <ThemeProvider>
+        <MicrophoneLevelFlyout
+          isOpen onClose={() => {}} x={200} y={40} gain={1} onGainChange={() => {}}
+          orientation="flyout" onOrientationChange={onOrientationChange}
+        />
+      </ThemeProvider>,
+    );
+    const group = document.querySelector('[aria-label="Position"]') as HTMLElement;
+    for (const text of ['In flyout', 'Top bar (horizontal)', 'Side bar (vertical)']) {
+      expect(group.textContent).toContain(text);
+    }
+    const radio = (label: string) => Array.from(group.querySelectorAll('input[type="radio"]'))
+      .find((el) => el.closest('.labeled-radio')?.textContent?.includes(label)) as HTMLInputElement;
+    expect(radio('In flyout').checked).toBe(true);
+    fireEvent.click(radio('Top bar (horizontal)'));
+    expect(onOrientationChange).toHaveBeenLastCalledWith('horizontal');
+    fireEvent.click(radio('Side bar (vertical)'));
+    expect(onOrientationChange).toHaveBeenLastCalledWith('vertical');
+  });
+
+  it('drops the meter and its gain knob when the meter lives on the toolbar or docked', () => {
+    const inFlyout = render(
+      <ThemeProvider>
+        <MicrophoneLevelFlyout
+          isOpen onClose={() => {}} x={200} y={40} gain={1} onGainChange={() => {}}
+          orientation="flyout" onOrientationChange={() => {}}
+        />
+      </ThemeProvider>,
+    );
+    expect(inFlyout.container.querySelector('[aria-label="Microphone meter"]')).toBeTruthy();
+    expect(inFlyout.container.textContent).toContain('Microphone level');
+    cleanup();
+
+    for (const orientation of ['horizontal', 'vertical'] as const) {
+      const { container } = render(
+        <ThemeProvider>
+          <MicrophoneLevelFlyout
+            isOpen onClose={() => {}} x={200} y={40} gain={1} onGainChange={() => {}}
+            orientation={orientation} onOrientationChange={() => {}}
+          />
+        </ThemeProvider>,
+      );
+      // meter + its knob + the title/hint are gone; Position + settings remain
+      expect(container.querySelector('[aria-label="Microphone meter"]')).toBeNull();
+      expect(container.textContent).not.toContain('Microphone level');
+      expect(container.querySelector('[aria-label="Position"]')).toBeTruthy();
+      expect(container.querySelectorAll('[role="checkbox"], input[type="checkbox"]')).toHaveLength(2);
+      cleanup();
+    }
+  });
+
+  it('dismisses the flyout on every position change, as the playback meter flyout does', () => {
+    const onClose = vi.fn();
+    render(
+      <ThemeProvider>
+        <MicrophoneLevelFlyout
+          isOpen onClose={onClose} x={200} y={40} gain={1} onGainChange={() => {}}
+          orientation="horizontal" onOrientationChange={() => {}}
+        />
+      </ThemeProvider>,
+    );
+    const group = document.querySelector('[aria-label="Position"]') as HTMLElement;
+    const radio = (label: string) => Array.from(group.querySelectorAll('input[type="radio"]'))
+      .find((el) => el.closest('.labeled-radio')?.textContent?.includes(label)) as HTMLInputElement;
+    fireEvent.click(radio('In flyout'));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.click(radio('Side bar (vertical)'));
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
   it('its two settings report their changes: input monitoring and mic metering', () => {
     const onInputMonitoringChange = vi.fn();
     const onMicMeteringChange = vi.fn();

@@ -18,6 +18,7 @@ import { useTheme } from '../ThemeProvider';
 import { Flyout, type FlyoutDirection } from '../Flyout';
 import { LabeledRadio } from '../LabeledRadio';
 import { Dropdown } from '../Dropdown';
+import { MasterMeter } from '../MasterMeter';
 import {
   PLAYBACK_METER_DB_RANGES,
   type PlaybackMeterLook,
@@ -27,7 +28,10 @@ import {
 } from '../utils/meterLook';
 import './PlaybackMeterFlyout.css';
 
-export type PlaybackMeterPosition = 'horizontal' | 'vertical';
+/** Where the playback meter lives — the 'flyout' home (meter inside this
+ *  popover) matches the mic meter; 'horizontal' is the top-bar meter,
+ *  'vertical' the right-hand dock. */
+export type PlaybackMeterPosition = 'flyout' | 'horizontal' | 'vertical';
 
 export interface PlaybackMeterFlyoutProps {
   isOpen: boolean;
@@ -43,6 +47,16 @@ export interface PlaybackMeterFlyoutProps {
   onPositionChange: (position: PlaybackMeterPosition) => void;
   look: PlaybackMeterLook;
   onLookChange: (look: PlaybackMeterLook) => void;
+  /** The live meter, shown in the flyout only while position === 'flyout'
+   *  (on the toolbar or docked, that meter carries these itself) */
+  levelLeft?: number;
+  levelRight?: number;
+  clippedLeft?: boolean;
+  clippedRight?: boolean;
+  recentPeakLeft?: number;
+  recentPeakRight?: number;
+  volume?: number;
+  onVolumeChange?: (volume: number) => void;
 }
 
 const STYLES: Array<{ value: PlaybackMeterStyle; label: string }> = [
@@ -56,12 +70,15 @@ const TYPES: Array<{ value: PlaybackMeterType; label: string }> = [
   { value: 'linear-amp', label: 'Linear (amp)' },
 ];
 const POSITIONS: Array<{ value: PlaybackMeterPosition; label: string }> = [
+  { value: 'flyout', label: 'In flyout' },
   { value: 'horizontal', label: 'Top bar (horizontal)' },
   { value: 'vertical', label: 'Side bar (vertical)' },
 ];
 
 export function PlaybackMeterFlyout({
   isOpen, onClose, x, y, direction = 'down', triggerRef, position, onPositionChange, look, onLookChange,
+  levelLeft = -60, levelRight = -60, clippedLeft = false, clippedRight = false,
+  recentPeakLeft, recentPeakRight, volume = 1, onVolumeChange,
 }: PlaybackMeterFlyoutProps) {
   const { theme } = useTheme();
   const style = {
@@ -93,11 +110,32 @@ export function PlaybackMeterFlyout({
                 value={p.value}
                 label={p.label}
                 checked={position === p.value}
-                onChange={() => onPositionChange(p.value)}
+                onChange={() => { onPositionChange(p.value); onClose(); }}
               />
             ))}
           </div>
         </div>
+        {/* The live meter lives here only while the meter is 'In flyout';
+            on the toolbar or docked it carries its own slider. */}
+        {position === 'flyout' && (
+          <div className="playback-meter-flyout__group">
+            <div className="playback-meter-flyout__label">Playback level</div>
+            <div className="playback-meter-flyout__meter-well">
+              <MasterMeter
+                levelLeft={levelLeft}
+                levelRight={levelRight}
+                clippedLeft={clippedLeft}
+                clippedRight={clippedRight}
+                recentPeakLeft={recentPeakLeft}
+                recentPeakRight={recentPeakRight}
+                volume={volume}
+                onVolumeChange={onVolumeChange}
+                look={look}
+                resizable={false}
+              />
+            </div>
+          </div>
+        )}
         <div className="playback-meter-flyout__columns">
           <div className="playback-meter-flyout__group" role="radiogroup" aria-label="Meter style">
             <div className="playback-meter-flyout__label">Meter style</div>

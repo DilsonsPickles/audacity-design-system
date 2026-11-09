@@ -25,8 +25,21 @@ import { useTheme } from '../ThemeProvider';
 import { Flyout } from '../Flyout';
 import { MasterMeter } from '../MasterMeter';
 import { LabeledCheckbox } from '../LabeledCheckbox';
+import { LabeledRadio } from '../LabeledRadio';
 import { useInputLevel } from './useInputLevel';
 import './MicrophoneLevelFlyout.css';
+
+/** Where the microphone meter lives — mirrors the playback meter, with an
+ *  extra 'flyout' home (the meter stays in this popover, nothing persists
+ *  on the toolbar). 'horizontal' puts it on the toolbar beside the mic
+ *  button; 'vertical' docks it to the right as RecordingMeterVertical. */
+export type MicrophoneMeterOrientation = 'flyout' | 'horizontal' | 'vertical';
+
+const POSITIONS: Array<{ value: MicrophoneMeterOrientation; label: string }> = [
+  { value: 'flyout', label: 'In flyout' },
+  { value: 'horizontal', label: 'Top bar (horizontal)' },
+  { value: 'vertical', label: 'Side bar (vertical)' },
+];
 
 export interface MicrophoneLevelFlyoutProps {
   isOpen: boolean;
@@ -41,6 +54,9 @@ export interface MicrophoneLevelFlyoutProps {
   /** The input gain, linear (1 = as the OS delivers it) */
   gain: number;
   onGainChange: (gain: number) => void;
+  /** Where the meter lives (default 'flyout') and the picker's callback */
+  orientation?: MicrophoneMeterOrientation;
+  onOrientationChange?: (orientation: MicrophoneMeterOrientation) => void;
   /** Hear yourself while recording */
   inputMonitoring?: boolean;
   onInputMonitoringChange?: (on: boolean) => void;
@@ -51,15 +67,25 @@ export interface MicrophoneLevelFlyoutProps {
 
 export function MicrophoneLevelFlyout({
   isOpen, onClose, x, y, triggerRef, getLevelDb, gain, onGainChange,
+  orientation = 'flyout', onOrientationChange,
   inputMonitoring = false, onInputMonitoringChange, micMetering = true, onMicMeteringChange,
 }: MicrophoneLevelFlyoutProps) {
   const { theme } = useTheme();
-  // Polled while open — the docked recording meter shares the hook
-  const { level, peak } = useInputLevel(getLevelDb, isOpen);
+  // Polled only while the meter is actually shown here (open AND in the
+  // flyout) — when it lives on the toolbar or docked, that meter polls
+  const { level, peak } = useInputLevel(getLevelDb, isOpen && orientation === 'flyout');
+
+  // Changing the position dismisses the flyout — the playback meter
+  // flyout's rule, every pick (the meter then lives where you chose it).
+  const pickOrientation = (next: MicrophoneMeterOrientation) => {
+    onOrientationChange?.(next);
+    onClose();
+  };
 
   const style = {
     '--mlf-text': theme.foreground.text.primary,
     '--mlf-border': theme.border.default,
+    '--mlf-well': theme.background.surface.inset,
   } as React.CSSProperties;
 
   return (
@@ -75,23 +101,48 @@ export function MicrophoneLevelFlyout({
       style={style}
     >
       <div className="microphone-level-flyout__body">
-        <div className="microphone-level-flyout__title">Microphone level</div>
-        <div className="microphone-level-flyout__well">
-          <MasterMeter
-            levelLeft={level}
-            levelRight={level}
-            clippedLeft={level >= 0}
-            clippedRight={level >= 0}
-            recentPeakLeft={peak}
-            recentPeakRight={peak}
-            volume={gain}
-            onVolumeChange={onGainChange}
-            resizable={false}
-            ariaLabel="Microphone meter"
-            sliderAriaLabel="Microphone level"
-          />
-        </div>
-        <div className="microphone-level-flyout__hint">Note: this control is tied to your computer’s main mic volume</div>
+        {onOrientationChange && (
+          <div className="microphone-level-flyout__group" role="radiogroup" aria-label="Position">
+            <div className="microphone-level-flyout__label">Position</div>
+            <div className="microphone-level-flyout__position">
+              {POSITIONS.map((p) => (
+                <LabeledRadio
+                  key={p.value}
+                  name="microphone-meter-position"
+                  value={p.value}
+                  label={p.label}
+                  checked={orientation === p.value}
+                  onChange={() => pickOrientation(p.value)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        {/* The meter and its gain knob live HERE only when the meter is in
+            the flyout; on the toolbar or docked, the meter carries its own
+            slider, so the popover is just the Position picker and the
+            settings below (the playback meter flyout's shape). */}
+        {orientation === 'flyout' && (
+          <>
+            <div className="microphone-level-flyout__title">Microphone level</div>
+            <div className="microphone-level-flyout__well">
+              <MasterMeter
+                levelLeft={level}
+                levelRight={level}
+                clippedLeft={level >= 0}
+                clippedRight={level >= 0}
+                recentPeakLeft={peak}
+                recentPeakRight={peak}
+                volume={gain}
+                onVolumeChange={onGainChange}
+                resizable={false}
+                ariaLabel="Microphone meter"
+                sliderAriaLabel="Microphone level"
+              />
+            </div>
+            <div className="microphone-level-flyout__hint">Note: this control is tied to your computer’s main mic volume</div>
+          </>
+        )}
         <div className="microphone-level-flyout__divider" role="separator" />
         <div className="microphone-level-flyout__options">
           <LabeledCheckbox

@@ -335,7 +335,7 @@ function CanvasDemoContent() {
   const [bpm, setBpm] = React.useState(120);
 
   const { toolbarPosition, handleToolbarGripperMouseDown } = useDraggableToolbar();
-  const [meterOrientation, setMeterOrientation] = React.useState<'horizontal' | 'vertical'>('horizontal');
+  const [meterOrientation, setMeterOrientation] = React.useState<'flyout' | 'horizontal' | 'vertical'>('horizontal');
   // The playback meter's LOOK (2026-11-04, the Playback meter flyout):
   // style, type, dB range — session state, as the orientation is
   const [meterLook, setMeterLook] = React.useState<PlaybackMeterLook>(DEFAULT_PLAYBACK_METER_LOOK);
@@ -343,7 +343,7 @@ function CanvasDemoContent() {
   const [playbackDockFlyout, setPlaybackDockFlyout] = React.useState<{ x: number; y: number } | null>(null);
   // The RECORDING meter's dock (2026-11-04): 'vertical' renders
   // RecordingMeterVertical at the right, beside the playback meter's
-  const [recordingMeterOrientation, setRecordingMeterOrientation] = React.useState<'flyout' | 'vertical'>('flyout');
+  const [recordingMeterOrientation, setRecordingMeterOrientation] = React.useState<'flyout' | 'horizontal' | 'vertical'>('flyout');
   // The dock's own mic button opens the orientation menu, the way back
   const [recordingDockMenu, setRecordingDockMenu] = React.useState<{ x: number; y: number } | null>(null);
 
@@ -1062,8 +1062,9 @@ function CanvasDemoContent() {
       recordingMeterOrientation,
       onRecordingMeterOrientationChange: (next) => {
         setRecordingMeterOrientation(next);
-        // A docked meter opens the microphone as the flyout does
-        if (next === 'vertical') void recordingManagerRef.current?.startMonitoring().catch(() => {});
+        // A persistent meter (toolbar or docked) opens the microphone as
+        // the flyout does, so it reads something live straight away
+        if (next !== 'flyout') void recordingManagerRef.current?.startMonitoring().catch(() => {});
       },
       isPlaying,
       isRecording: state.isRecording,
@@ -1650,7 +1651,7 @@ function CanvasDemoContent() {
           y={playbackDockFlyout.y}
           direction="left"
           position={meterOrientation}
-          onPositionChange={(next) => { setMeterOrientation(next); if (next === 'horizontal') setPlaybackDockFlyout(null); }}
+          onPositionChange={setMeterOrientation}
           look={meterLook}
           onLookChange={setMeterLook}
         />
@@ -1669,6 +1670,11 @@ function CanvasDemoContent() {
             label="Meter in flyout"
             checked={recordingMeterOrientation === 'flyout'}
             onClick={() => { setRecordingMeterOrientation('flyout'); setRecordingDockMenu(null); }}
+          />
+          <ContextMenuItem
+            label="Horizontal meter"
+            checked={recordingMeterOrientation === 'horizontal'}
+            onClick={() => { setRecordingMeterOrientation('horizontal'); setRecordingDockMenu(null); }}
           />
           <ContextMenuItem
             label="Vertical meter"
