@@ -1,7 +1,7 @@
 /* ToolbarDock — a dock of toolbars with persistent grips (2026-11-09).
-   Horizontal docks are rows of bars (48px a row: 10px above and below
-   28px controls, as the Toolbar was), with a 1px divider between bars on
-   a row and a 1px line between rows; vertical docks are a 48px column. */
+   Horizontal docks are rows of bars (56px a row: 14px above and below
+   28px controls), with a 1px divider between bars on a row and a 1px
+   line between rows; vertical docks are a 48px column. */
 
 .toolbar-dock {
   display: flex;
@@ -21,7 +21,7 @@
 .toolbar-dock--vertical.toolbar-dock--empty { width: 0; border-width: 0; overflow: hidden; }
 .toolbar-dock--vertical.toolbar-dock--zone { width: 48px; border-width: 1px; }
 .toolbar-dock--horizontal.toolbar-dock--empty { min-height: 0; border-width: 0; }
-.toolbar-dock--horizontal.toolbar-dock--zone { min-height: 48px; border-width: 1px; }
+.toolbar-dock--horizontal.toolbar-dock--zone { min-height: 56px; border-width: 1px; }
 .toolbar-dock--top.toolbar-dock--zone { border-top-width: 0; }
 .toolbar-dock--bottom.toolbar-dock--zone { border-bottom-width: 0; }
 .toolbar-dock--left.toolbar-dock--zone { border-left-width: 0; }
@@ -32,12 +32,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px 10px 0;
-  min-height: 48px;
-  /* A toolbar row never grows past 56px ("the toolbars should never get
-     taller than 56px", 2026-11-09): a tool taller than the row's 28px
-     content is clipped, not accommodated */
-  max-height: 56px;
+  /* EVERY ROW IS 56PX ("one toolbar is clearly bigger than the other. Each
+     row can be 56px", 2026-11-09 — the tool rows were 48 and the status
+     bar's 40): 14 above and below 28px controls; a tool taller than that
+     is clipped, not accommodated */
+  padding: 14px 12px 14px 0;
+  height: 56px;
   overflow: hidden;
   box-sizing: border-box;
 }

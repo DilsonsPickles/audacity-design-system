@@ -117,8 +117,9 @@
 }
 
 /* THE STATUS BAR AS A DOCK (2026-11-09): the bar's class on a ToolbarDock
-   keeps its tokens and its 40px rows; the fixed bar's own flex rules do
-   not apply to the dock */
+   keeps its tokens; the rows are the dock's 56px, the same as every
+   other row ("one toolbar is clearly bigger than the other"); the fixed
+   bar's own flex rules do not apply to the dock */
 .selection-toolbar.toolbar-dock {
   height: auto;
   justify-content: flex-start;
@@ -129,11 +130,6 @@
   align-items: stretch;
   padding: 0;
   display: flex;
-}
-.selection-toolbar.toolbar-dock .toolbar-dock__row {
-  min-height: 40px;
-  padding-top: 6px;
-  padding-bottom: 6px;
 }
 .selection-toolbar.toolbar-dock .selection-toolbar__status,
 .selection-toolbar.toolbar-dock .selection-toolbar__instruction {
