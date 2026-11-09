@@ -824,7 +824,6 @@ export interface TransportToolbarLayoutProps extends TransportToolbarProps {
   draggingBarId?: string | null;
   insertAt?: number | null;
   insertRefused?: boolean;
-  dropZoneLabel?: string | null;
 }
 
 /**
@@ -833,7 +832,7 @@ export interface TransportToolbarLayoutProps extends TransportToolbarProps {
  * host's). The sandbox places its own docks inside TransportTools instead.
  */
 export function TransportToolbar(props: TransportToolbarLayoutProps) {
-  const { layout, onBarGripMouseDown, draggingBarId, insertAt, insertRefused, dropZoneLabel, ...rest } = props;
+  const { layout, onBarGripMouseDown, draggingBarId, insertAt, insertRefused, ...rest } = props;
   const bars = (rest.activeMenuItem === 'export' ? EXPORT_TOOLBAR_LAYOUT : (layout ?? defaultToolbarLayout(rest.workspace))).top;
   return (
     <TransportTools {...rest}>
@@ -843,20 +842,18 @@ export function TransportToolbar(props: TransportToolbarLayoutProps) {
         draggingBarId={draggingBarId}
         insertAt={insertAt}
         insertRefused={insertRefused}
-        dropZoneLabel={dropZoneLabel}
       />
     </TransportTools>
   );
 }
 
 /** The top dock drawn from the context: the tools, the cog at its end */
-export function TransportTopDock({ bars, onBarGripMouseDown, draggingBarId, insertAt, insertRefused, dropZoneLabel }: {
+export function TransportTopDock({ bars, onBarGripMouseDown, draggingBarId, insertAt, insertRefused }: {
   bars: ReadonlyArray<ToolbarLayout['top'][number]>;
   onBarGripMouseDown?: (barId: string, event: React.MouseEvent, barRect: DOMRect) => void;
   draggingBarId?: string | null;
   insertAt?: number | null;
   insertRefused?: boolean;
-  dropZoneLabel?: string | null;
 }) {
   const { renderTool, toolMeta, settingsCog, hidden } = useTransportTools();
   if (hidden) return null;
@@ -870,7 +867,6 @@ export function TransportTopDock({ bars, onBarGripMouseDown, draggingBarId, inse
       draggingBarId={draggingBarId}
       insertAt={insertAt}
       insertRefused={insertRefused}
-      dropZoneLabel={dropZoneLabel}
       trailing={settingsCog}
       className="transport-toolbar"
       tabGroupId="tool-toolbar"

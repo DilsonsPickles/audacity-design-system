@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { findBar, isVerticalRegion, TOOLBAR_REGIONS, type ToolbarLayout, type ToolbarRegion } from '@audacity-ui/components';
+import { sideZoneAt } from '../components/editor/DockZoneOverlay';
 
 export interface ToolbarDropTarget {
   region: ToolbarRegion;
@@ -23,11 +24,16 @@ export interface UseToolbarBarDragReturn {
   dropTarget: ToolbarDropTarget | null;
   /** The ghost that follows the pointer */
   ghost: { x: number; y: number; width: number; height: number } | null;
+  /** The editor row's rect at the press — the side bands' frame */
+  rowRect: DOMRect | null;
+  /** The bar in hand may dock vertically (the side bands show for it) */
+  fitsVertical: boolean;
   onGripMouseDown: (barId: string, e: React.MouseEvent, barRect: DOMRect) => void;
 }
 
-/** Near a window edge with no dock under the pointer, the edge's dock
- *  takes the drop (the old toolbar gripper's snap) */
+/** Near the window's top or bottom edge with no dock under the pointer,
+ *  that edge's dock takes the drop (the old toolbar gripper's snap); the
+ *  SIDES are the editor row's bands, `sideZoneAt` */
 const EDGE_SNAP_PX = 72;
 
 /**
@@ -43,6 +49,8 @@ export function useToolbarBarDrag({ layout, barFitsVertical, onDrop }: UseToolba
   const [draggingBarId, setDraggingBarId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<ToolbarDropTarget | null>(null);
   const [ghost, setGhost] = useState<UseToolbarBarDragReturn['ghost']>(null);
+  const [rowRect, setRowRect] = useState<DOMRect | null>(null);
+  const [fitsVertical, setFitsVertical] = useState(false);
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
   const fitsRef = useRef(barFitsVertical);
@@ -55,7 +63,12 @@ export function useToolbarBarDrag({ layout, barFitsVertical, onDrop }: UseToolba
     const offsetX = e.clientX - barRect.left;
     const offsetY = e.clientY - barRect.top;
     const fits = fitsRef.current(barId);
+    // The editor row frames the side bands (the dockable panels' zones):
+    // the side docks' parent, measured at the press
+    const row = document.querySelector<HTMLElement>('[data-editor-row]')?.getBoundingClientRect() ?? null;
     setDraggingBarId(barId);
+    setFitsVertical(fits);
+    setRowRect(row);
     setGhost({ x: barRect.left, y: barRect.top, width: barRect.width, height: barRect.height });
     let target: ToolbarDropTarget | null = null;
     const home = findBar(layoutRef.current, barId);
@@ -66,11 +79,13 @@ export function useToolbarBarDrag({ layout, barFitsVertical, onDrop }: UseToolba
       const under = stack.find((el) => el.closest('[data-toolbar-dock]'))?.closest<HTMLElement>('[data-toolbar-dock]') ?? null;
       let region = under?.getAttribute('data-toolbar-dock') as ToolbarRegion | null;
       if (!region) {
-        // No dock under the pointer: the window's edges stand in
-        if (y < EDGE_SNAP_PX) region = 'top';
+        // No dock under the pointer: an EMPTY side dock is 0 wide, so its
+        // band along the editor row's edge stands in (the panels' zones,
+        // DOCK_ZONE_SIZE wide); else the window's top and bottom edges
+        const side = row ? sideZoneAt(x, y, row) : null;
+        if (side) region = side;
+        else if (y < EDGE_SNAP_PX) region = 'top';
         else if (y > window.innerHeight - EDGE_SNAP_PX) region = 'bottom';
-        else if (x < EDGE_SNAP_PX) region = 'left';
-        else if (x > window.innerWidth - EDGE_SNAP_PX) region = 'right';
         else return null;
       }
       if (!TOOLBAR_REGIONS.includes(region)) return null;
@@ -110,6 +125,7 @@ export function useToolbarBarDrag({ layout, barFitsVertical, onDrop }: UseToolba
       setDraggingBarId(null);
       setDropTarget(null);
       setGhost(null);
+      setRowRect(null);
       if (!final || final.refused) return;
       if (home && home.region === final.region && (final.index === home.index || final.index === home.index + 1)) return;
       onDropRef.current(barId, final.region, final.index);
@@ -118,5 +134,5 @@ export function useToolbarBarDrag({ layout, barFitsVertical, onDrop }: UseToolba
     document.addEventListener('mouseup', onUp);
   }, []);
 
-  return { draggingBarId, dropTarget, ghost, onGripMouseDown };
+  return { draggingBarId, dropTarget, ghost, rowRect, fitsVertical, onGripMouseDown };
 }

@@ -30,8 +30,6 @@ export interface ToolbarDockProps {
   insertAt?: number | null;
   /** The drop would be refused (a bar with no vertical form over a side dock) */
   insertRefused?: boolean;
-  /** A drag is in flight: an EMPTY dock opens as a labelled drop zone */
-  dropZoneLabel?: string | null;
   /** Drawn at the end of the last row, right-aligned (the top bar's cog) */
   trailing?: React.ReactNode;
   className?: string;
@@ -57,11 +55,12 @@ const GROW_BAR_PACK_WIDTH = 160;
  * between rows ("division lines between cols and rows"); VERTICAL docks
  * stack bars, each bar's tools in a column. The host renders the tools by
  * id and owns the layout and the drag; the dock only draws, measures and
- * reports a grip press.
+ * reports a grip press. An empty dock draws nothing — the host's overlay
+ * marks where a drop would land.
  */
 export function ToolbarDock({
   region, bars, renderTool, toolMeta,
-  onGripMouseDown, draggingBarId = null, insertAt = null, insertRefused = false, dropZoneLabel = null,
+  onGripMouseDown, draggingBarId = null, insertAt = null, insertRefused = false,
   trailing, className = '', tabGroupId, ariaLabel, dataAttrs, style: styleProp,
 }: ToolbarDockProps) {
   const { theme } = useTheme();
@@ -180,13 +179,16 @@ export function ToolbarDock({
   const insertBeforeId = insertAt == null ? null : (bars.slice(insertAt).find((b) => byId.has(b.id))?.id ?? null);
   const insertAtEnd = insertAt != null && insertBeforeId === null;
 
+  // An EMPTY dock takes no room and shows nothing of its own — during a
+  // drag the host's overlay bands say where a drop would land (the
+  // dockable panels' visuals, 2026-11-10: "don't show side panel slot
+  // unless they hover over that area")
   const empty = visible.length === 0;
   const classes = [
     'toolbar-dock',
     `toolbar-dock--${region}`,
     vertical ? 'toolbar-dock--vertical' : 'toolbar-dock--horizontal',
     empty ? 'toolbar-dock--empty' : '',
-    empty && dropZoneLabel ? 'toolbar-dock--zone' : '',
     className,
   ].filter(Boolean).join(' ');
 
@@ -202,11 +204,6 @@ export function ToolbarDock({
       onKeyDown={tabGroupId ? onKeyDown : undefined}
       onBlur={tabGroupId ? onBlur : undefined}
     >
-      {empty && dropZoneLabel && (
-        <div className={`toolbar-dock__zone${insertAt != null ? ' toolbar-dock__zone--over' : ''}${insertRefused ? ' toolbar-dock__zone--refused' : ''}`}>
-          <span>{dropZoneLabel}</span>
-        </div>
-      )}
       {!empty && drawnRows.map((row, rowIndex) => (
         <React.Fragment key={rowIndex}>
           {rowIndex > 0 && <div className="toolbar-dock__row-divider" aria-hidden="true" />}
@@ -227,7 +224,7 @@ export function ToolbarDock({
           </div>
         </React.Fragment>
       ))}
-      {empty && !dropZoneLabel && trailing && (
+      {empty && trailing && (
         <div className="toolbar-dock__row"><div className="toolbar-dock__trailing">{trailing}</div></div>
       )}
     </div>

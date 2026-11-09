@@ -17,15 +17,10 @@
 .toolbar-dock--left { border-right: 1px solid var(--toolbar-border); height: 100%; }
 .toolbar-dock--right { border-left: 1px solid var(--toolbar-border); height: 100%; }
 
-/* An empty side dock takes no room until a drag opens it as a zone */
+/* An empty dock takes no room: the host's overlay bands mark where a
+   drop would land (the dockable panels' visuals) */
 .toolbar-dock--vertical.toolbar-dock--empty { width: 0; border-width: 0; overflow: hidden; }
-.toolbar-dock--vertical.toolbar-dock--zone { width: 48px; border-width: 1px; }
 .toolbar-dock--horizontal.toolbar-dock--empty { min-height: 0; border-width: 0; }
-.toolbar-dock--horizontal.toolbar-dock--zone { min-height: 56px; border-width: 1px; }
-.toolbar-dock--top.toolbar-dock--zone { border-top-width: 0; }
-.toolbar-dock--bottom.toolbar-dock--zone { border-bottom-width: 0; }
-.toolbar-dock--left.toolbar-dock--zone { border-left-width: 0; }
-.toolbar-dock--right.toolbar-dock--zone { border-right-width: 0; }
 
 /* A row of bars */
 .toolbar-dock__row {
@@ -107,24 +102,6 @@
 }
 .toolbar-dock__insert--refused { background-color: var(--toolbar-dock-refuse); }
 
-/* An empty dock opened as a zone during a drag */
-.toolbar-dock__zone {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  margin: 6px;
-  border: 1px dashed var(--toolbar-dock-accent);
-  border-radius: 3px;
-  color: var(--toolbar-dock-accent);
-  font: 500 12px/16px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  text-align: center;
-  padding: 4px 8px;
-  min-height: 28px;
-}
-.toolbar-dock__zone--over { background-color: color-mix(in srgb, var(--toolbar-dock-accent) 14%, transparent); }
-.toolbar-dock__zone--refused { border-color: var(--toolbar-dock-refuse); color: var(--toolbar-dock-refuse); }
-
 /* VERTICAL docks: a column of bars, each bar a column of tools */
 .toolbar-dock--vertical { width: 48px; align-items: stretch; }
 .toolbar-dock--vertical .toolbar-dock__row {
@@ -140,5 +117,4 @@
 .toolbar-dock--vertical .toolbar-dock__grip { width: 28px; height: 18px; transform: rotate(90deg); }
 .toolbar-dock--vertical .toolbar-dock__divider { width: 24px; height: 1px; }
 .toolbar-dock--vertical .toolbar-dock__insert { width: 28px; height: 2px; }
-.toolbar-dock--vertical .toolbar-dock__zone span { writing-mode: vertical-rl; transform: rotate(180deg); }
 .toolbar-dock--vertical .toolbar-dock__trailing { margin-left: 0; margin-top: auto; }

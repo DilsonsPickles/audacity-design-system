@@ -250,6 +250,13 @@ not yet accepted or rejected:
 - 2026-11-09 (second session) — The status bar is the bottom dock and its
   items are tools; a Flexible space tool handles right-alignment. Author ("I
   want the bottom toolbar items to also be customisable").
+- 2026-11-10 — An empty dock shows nothing of its own during a drag; the
+  side docks' drop zones are the dockable panels' overlay (a subtle band,
+  the hovered one previewing the 48px footprint). Author ("don't show side
+  panel slot unless they hover over that area. We already have the visuals
+  I want (see effect panel drag behaviour)"). This also answers the edit
+  mode's "labelled drop zones": use the overlay there too, not in-layout
+  zones.
 - 2026-11-09 (third session) — Increment 1 built: rows WRAP with a divider
   between bars and a line between rows; grips persistent; floating dropped
   for now. Author ("let's see it in the build. But, I want division lines

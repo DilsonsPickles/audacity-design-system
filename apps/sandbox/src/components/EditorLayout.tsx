@@ -29,6 +29,7 @@ import { useFlatNavTabRouter } from '../hooks/useFlatNavTabRouter';
 import { usePlayback } from '../contexts/PlaybackContext';
 import { useLoopRegionContext } from '../contexts/LoopRegionContext';
 import { buildNewTrack, buildDuplicatedTracks } from '../utils/trackManagement';
+import { DockZoneOverlay, DOCK_ZONE_SIZE, sideBand } from './editor/DockZoneOverlay';
 import { LoopRegionStalks } from './editor/LoopRegionStalks';
 import { PunchPointIndicator } from './editor/PunchPointIndicator';
 import { PlaybackStartIndicator } from './editor/PlaybackStartIndicator';
@@ -174,8 +175,6 @@ const STYLE_RELATIVE_FLEX_OVERFLOW: React.CSSProperties = { position: 'relative'
 const STYLE_FULL_WIDTH_RELATIVE: React.CSSProperties = { width: '100%', position: 'relative' };
 const STYLE_FLEX_ROW_OVERFLOW_HIDDEN: React.CSSProperties = { flex: 1, display: 'flex', flexDirection: 'row' as const, overflow: 'hidden' };
 
-/** Width of the drag-to-dock bands along the editor row's edges */
-const DOCK_ZONE_SIZE = 88;
 function dockZoneAt(
   x: number,
   y: number,
@@ -1590,8 +1589,8 @@ export function EditorLayout(props: EditorLayoutProps) {
       const r = panelDrag.rowRect;
       const inset = 4;
       const bandStyles: Record<'left' | 'right' | 'bottom', React.CSSProperties> = {
-        left: { left: r.left + inset, top: r.top + inset, width: DOCK_ZONE_SIZE - inset * 2, height: r.height - inset * 2 },
-        right: { left: r.right - DOCK_ZONE_SIZE + inset, top: r.top + inset, width: DOCK_ZONE_SIZE - inset * 2, height: r.height - inset * 2 },
+        left: sideBand(r, 'left', inset),
+        right: sideBand(r, 'right', inset),
         bottom: { left: r.left + DOCK_ZONE_SIZE + inset, top: r.bottom - DOCK_ZONE_SIZE + inset, width: r.width - DOCK_ZONE_SIZE * 2 - inset * 2, height: DOCK_ZONE_SIZE - inset * 2 },
       };
       // The docked footprints: docks mount at their default widths
@@ -1606,27 +1605,7 @@ export function EditorLayout(props: EditorLayoutProps) {
         ? ['left', 'right', 'bottom']
         : ['left', 'right'];
       return (
-        <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9500 }}>
-          {zones.map((zone) => {
-            const active = panelDrag.zone === zone;
-            return (
-              <div
-                key={zone}
-                data-dock-zone={zone}
-                data-active={active ? 'true' : 'false'}
-                style={{
-                  position: 'fixed',
-                  ...(active ? previewStyles[zone] : bandStyles[zone]),
-                  boxSizing: 'border-box',
-                  borderRadius: active ? 4 : 6,
-                  background: active ? 'rgba(103, 124, 228, 0.25)' : 'rgba(103, 124, 228, 0.08)',
-                  border: active ? '2px solid #677CE4' : '1px dashed rgba(103, 124, 228, 0.55)',
-                  transition: 'background 0.12s ease, border-color 0.12s ease, left 0.12s ease, top 0.12s ease, width 0.12s ease, height 0.12s ease',
-                }}
-              />
-            );
-          })}
-        </div>
+        <DockZoneOverlay bands={zones.map((zone) => ({ zone, band: bandStyles[zone], preview: previewStyles[zone], active: panelDrag.zone === zone }))} />
       );
     })()}
 

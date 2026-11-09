@@ -11,8 +11,6 @@ export interface AppToolbarDockProps {
   draggingBarId: string | null;
   dropTarget: ToolbarDropTarget | null;
   onGripMouseDown: (barId: string, e: React.MouseEvent, barRect: DOMRect) => void;
-  /** Shown in an EMPTY dock while a drag is in flight */
-  dropZoneLabel: string;
   trailing?: React.ReactNode;
   /** The Customise toolbar cog at the dock's end (the top dock's) */
   showSettingsCog?: boolean;
@@ -31,7 +29,7 @@ export interface AppToolbarDockProps {
  * insertion indicator or the empty dock's zone.
  */
 export function AppToolbarDock({
-  region, bars, renderExtraTool, extraToolMeta, draggingBarId, dropTarget, onGripMouseDown, dropZoneLabel,
+  region, bars, renderExtraTool, extraToolMeta, draggingBarId, dropTarget, onGripMouseDown,
   trailing, showSettingsCog = false, className, tabGroupId, ariaLabel, style, dataAttrs,
 }: AppToolbarDockProps) {
   const { renderTool, toolMeta, hidden, settingsCog } = useTransportTools();
@@ -47,7 +45,6 @@ export function AppToolbarDock({
       draggingBarId={draggingBarId}
       insertAt={here ? here.index : null}
       insertRefused={here?.refused ?? false}
-      dropZoneLabel={draggingBarId ? dropZoneLabel : null}
       trailing={showSettingsCog ? settingsCog : trailing}
       className={className}
       tabGroupId={tabGroupId}

@@ -80,6 +80,7 @@ import { useMasterMeter } from './hooks/useMasterMeter';
 import { useToolbarLayout } from './hooks/useToolbarLayout';
 import { useToolbarBarDrag } from './hooks/useToolbarBarDrag';
 import { AppToolbarDock } from './components/AppToolbarDock';
+import { DockZoneOverlay, sideBand } from './components/editor/DockZoneOverlay';
 import { renderStatusTool, statusToolMeta, type StatusBarToolsDeps } from './components/StatusBarTools';
 import { transportToolMeta } from '@audacity-ui/components';
 import { useAudioDeviceMenu } from './hooks/useAudioDeviceMenu';
@@ -1236,7 +1237,6 @@ function CanvasDemoContent() {
           draggingBarId={barDrag.draggingBarId}
           dropTarget={barDrag.dropTarget}
           onGripMouseDown={barDrag.onGripMouseDown}
-          dropZoneLabel="Drop here for a top toolbar"
           showSettingsCog
           className="transport-toolbar"
           tabGroupId="tool-toolbar"
@@ -1373,7 +1373,7 @@ function CanvasDemoContent() {
         // renders before any of that — the integration tests seed tracks
         // right after opening the Project tab and were wiped by the late
         // RESET_STATE on a slow CI runner (2026-10-25). They wait for this.
-        <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0 }} data-project-id={currentProjectId ?? undefined}>
+        <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0 }} data-project-id={currentProjectId ?? undefined} data-editor-row>
         {/* The LEFT DOCK (2026-11-09): bars stacked beside the tracks */}
         <AppToolbarDock
           region="left"
@@ -1383,7 +1383,6 @@ function CanvasDemoContent() {
           draggingBarId={barDrag.draggingBarId}
           dropTarget={barDrag.dropTarget}
           onGripMouseDown={barDrag.onGripMouseDown}
-          dropZoneLabel="Drop here for a left toolbar"
           tabGroupId="tool-dock-left"
           ariaLabel="Left toolbar dock"
           style={selectionToolbarStyle}
@@ -1458,7 +1457,6 @@ function CanvasDemoContent() {
           draggingBarId={barDrag.draggingBarId}
           dropTarget={barDrag.dropTarget}
           onGripMouseDown={barDrag.onGripMouseDown}
-          dropZoneLabel="Drop here for a right toolbar"
           tabGroupId="tool-dock-right"
           ariaLabel="Right toolbar dock"
           style={selectionToolbarStyle}
@@ -1504,13 +1502,28 @@ function CanvasDemoContent() {
           draggingBarId={barDrag.draggingBarId}
           dropTarget={barDrag.dropTarget}
           onGripMouseDown={barDrag.onGripMouseDown}
-          dropZoneLabel="Drop here for a bottom toolbar"
           className="selection-toolbar"
           tabGroupId="selection-toolbar"
           ariaLabel="Selection toolbar"
           style={selectionToolbarStyle}
           dataAttrs={{ 'data-backgrounded': statusInfo.backgrounded ? 'true' : undefined }}
         />
+      )}
+
+      {/* The side docks' DROP ZONES while a bar is dragged (2026-11-10, the
+          dockable panels' visuals — "don't show side panel slot unless they
+          hover over that area"): a subtle band along the editor row's
+          edges, and the hovered one previews the dock's 48px footprint;
+          none for a bar with no vertical form */}
+      {barDrag.draggingBarId && barDrag.rowRect && barDrag.fitsVertical && (
+        <DockZoneOverlay bands={(['left', 'right'] as const).map((side) => ({
+          zone: side,
+          band: sideBand(barDrag.rowRect!, side),
+          preview: side === 'left'
+            ? { left: barDrag.rowRect!.left, top: barDrag.rowRect!.top, width: 48, height: barDrag.rowRect!.height }
+            : { left: barDrag.rowRect!.right - 48, top: barDrag.rowRect!.top, width: 48, height: barDrag.rowRect!.height },
+          active: barDrag.dropTarget?.region === side && toolbarLayout.layout[side].length === 0,
+        })).filter((b) => toolbarLayout.layout[b.zone].length === 0)} />
       )}
 
       {/* The bar in hand: a ghost of its size follows the pointer */}
