@@ -1,9 +1,12 @@
 # Custom toolbars / authored workspaces — design (in progress)
 
 **Date:** 2026-11-09
-**Status:** 🟡 Brainstorm in progress — spine decided, interaction detail still open.
-**Next step when resuming:** mockups in the visual companion (dock layout + the
-drag-to-relocate interaction), finish the open questions below, THEN hand to
+**Status:** 🟡 Brainstorm in progress — spine decided, the dock and the
+authoring interaction decided (2026-11-09, second session), rendering,
+persistence and grouping still open.
+**Next step when resuming:** mockups in the visual companion (a row holding two
+bars — the timecode bar beside the speed bar — to see the wrap; the edit mode's
+grips, tray and drop zones), finish open questions 4–8 below, THEN hand to
 `superpowers:writing-plans`. Nothing is built until this doc is approved.
 
 > This file is a resume point written because the author had to switch machines
@@ -102,20 +105,77 @@ the status bar.
 
 ---
 
+## Decided 2026-11-09 (second session) — the dock and the authoring interaction
+
+### The dock (was open question 1)
+- Regions: **top, bottom, left, right**, plus **floating** (free x/y, today's
+  detach). The bottom dock sits ABOVE the status bar; the status bar stays the
+  status bar.
+- **A dock holds an ordered list of toolbars, not one** — "two toolbars can
+  exist on the same horizontal or vertical slot" (author). A horizontal dock
+  lays them left to right, a vertical dock top to bottom. This is Audacity 3's
+  dock exactly: several toolbars on a row, each with a grabber.
+- **A full row WRAPS** to a second row inside the same dock (Audacity 3's rule;
+  a refused drop with no explanation is the worst outcome, and the drop zone
+  can show the wrap before the release). Author: "let's try it with wrapping".
+- **Every toolbar has a persistent GRIP** at its leading edge, live at all
+  times, as the transport bar's gripper is today — a whole bar moves as one
+  thing, between docks and along a row, without entering any mode. Author:
+  "persistent grippers".
+- So there are TWO drag grains: a TOOL moves between bars (inside the edit
+  mode, below); a BAR moves between docks and along a row (always).
+- Drop zones: between two bars on a row, at the end of a row, in an empty
+  dock. Dropping a TOOL between bars or at a row's end makes a NEW BAR there —
+  that is the "add new toolbar" gesture; no empty bar is ever made from a menu.
+- Watch: tool widths differ a lot (a button 28px, the timecode ~110px, the
+  speed control ~160px). The mockup must try a row holding the timecode bar
+  beside the speed bar — the case that decides how often wrapping happens.
+
+### The authoring interaction (was open questions 2 and 3)
+Two ideas were weighed — an "Add new toolbar" action in the cog menu, and an
+iPhone-style hold-and-jiggle — and combined:
+- **ONE EDIT MODE**, entered from the cog ("Customise toolbars…") or by a LONG
+  PRESS on any tool; exited by Done or Escape; the layout is saved to the
+  current workspace on exit. A plain drag on the live bar was rejected: a press
+  on a tool already means something (buttons act; sliders, knobs and timecode
+  digits already drag), so drag-to-relocate would need a modifier nobody finds
+  or a threshold that fights the sliders. A mode avoids all of it — macOS's
+  Customize Toolbar sheet is the same model with a palette.
+- In the mode, tools get grips and drag between bars and along them; live
+  controls go inert; the empty docks and the gaps between bars show as
+  LABELLED DROP ZONES; a zone that refuses a tool (a vertical dock for the
+  timecode) says so.
+- **The cog's list becomes the PALETTE**: hidden tools sit in a TRAY in the
+  mode; dragging one out adds it; dragging a tool off every bar onto nothing
+  returns it to the tray. `toolbarHiddenTools` folds into the layout model.
+  The cog is ABSORBED, not replaced: its menu becomes "Customise toolbars…"
+  and "Reset layout".
+- **The keyboard has the same powers**: in the mode a focused tool has a menu —
+  Move to left toolbar / right toolbar / bottom toolbar / New toolbar — the
+  keyboard's way to do what a drop into a zone does. "Add new toolbar" lives
+  there, as that menu's last item.
+- Open within this: whether the mode's tools JIGGLE (a phone convention) or
+  take a subtle grip and a raised shadow (likely better on a desktop) — decide
+  in the mockup.
+
 ## Open questions (resume here)
 
-Settle these in the visual companion, then finalise the doc.
+Settle these in the visual companion, then finalise the doc. Questions 1–3
+are settled above. The assistant's positions on 4–8, offered 2026-11-09 and
+not yet accepted or rejected:
 
-1. **Dock regions.** Confirm the set: top, bottom, left, right. Also **floating**
-   (free x/y, like today's detach)? Can a dock hold **multiple** toolbars
-   (stacked / side by side)?
-2. **Authoring interaction.** Direct manipulation on the **live** toolbars
-   (drag a tool straight off the bar, drop zones light up) vs a dedicated
-   **customise/edit mode** (enter a mode, rearrange, exit). Leaning direct —
-   confirm.
-3. **Relationship to the Customise cog.** Does drag-to-relocate **replace** the
-   cog, **absorb** it (the cog becomes "add a tool / reset layout"), or sit
-   **beside** it? `toolbarHiddenTools` likely becomes part of the layout model.
+4. **Vertical rendering.** — Position: buttons stack as icons; the timecode,
+   speed slider, snap and meters have no vertical form and are REFUSED by
+   vertical docks, the drop zone saying so.
+5. **Fixed vs free tools.** — Position: everything on the transport bar moves;
+   the project bar's tabs and workspace selector stay out of scope.
+6. **Persistence & scope.** — Position: the preferences blob, per user; create,
+   rename, delete and reset-to-built-in are all needed, or a fork cannot be
+   undone.
+7. **Groups / dividers.** — Position: automatic, from each tool's default
+   group; authoring dividers is a second project.
+8. **Non-goals.** — Position: the list below stands.
+
 4. **Vertical rendering.** When a tool sits in a vertical (left/right) dock, how
    does it render — icon-only stack? Do composite tools (timecode, meters,
    speed slider, snap) have a vertical form, or are some tools **not allowed**
@@ -160,3 +220,11 @@ Settle these in the visual companion, then finalise the doc.
   points; switching swaps the whole layout. Author ("yes").
 - 2026-11-09 — Design it properly (written design + plan), not a throwaway spike.
   Author.
+- 2026-11-09 (second session) — A dock holds several toolbars on one row;
+  a full row wraps; every toolbar has a persistent grip. Author ("let's try it
+  with wrapping and persistent grippers").
+- 2026-11-09 (second session) — Authoring is one edit mode (cog or long press),
+  with the cog's list as a tray and a keyboard Move-to menu; the cog is
+  absorbed. Assistant's combination of the author's two ideas ("Add new
+  toolbar" in the cog menu; iPhone-style hold-and-move); accepted by going on
+  to the dock decisions, not stated outright — confirm when resuming.
