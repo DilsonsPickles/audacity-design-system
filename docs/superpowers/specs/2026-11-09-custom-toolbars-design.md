@@ -4,10 +4,13 @@
 **Status:** 🟡 Brainstorm in progress — spine decided, the dock and the
 authoring interaction decided (2026-11-09, second session), rendering,
 persistence and grouping still open.
-**Next step when resuming:** mockups in the visual companion (a row holding two
-bars — the timecode bar beside the speed bar — to see the wrap; the edit mode's
-grips, tray and drop zones), finish open questions 4–8 below, THEN hand to
-`superpowers:writing-plans`. Nothing is built until this doc is approved.
+**Next step when resuming:** the mockup exists — a WORKING mock at
+https://claude.ai/code/artifact/da61130f-76fc-4337-907a-16002b1e0496 (wrap,
+persistent grips, side and bottom docks, the status bar as a dock, edit mode
+with tray and labelled zones, jiggle vs grip-and-shadow toggle, the keyboard
+Move-to menu); its source is not in the repo. Finish open questions 4–8 below,
+THEN hand to `superpowers:writing-plans`. Nothing is built until this doc is
+approved.
 
 > This file is a resume point written because the author had to switch machines
 > mid-brainstorm. It records what's decided, what the codebase looks like today,
@@ -109,8 +112,21 @@ the status bar.
 
 ### The dock (was open question 1)
 - Regions: **top, bottom, left, right**, plus **floating** (free x/y, today's
-  detach). The bottom dock sits ABOVE the status bar; the status bar stays the
-  status bar.
+  detach). **THE BOTTOM DOCK IS THE STATUS BAR** (author, later the same
+  session: "I want the bottom toolbar items to also be customisable" —
+  superseding the first cut, a bottom dock above an untouchable status bar):
+  the status bar's own items are TOOLS like any other — the playback cue, the
+  info line, the Selection timecodes, the Duration — seeded as two bars
+  ("Status": cue + info line; "Selection": timecodes + duration), each with a
+  grip; any can be hidden to the tray, reordered, or moved to another dock,
+  and any tool can be dropped beside them. The bottom row's right-alignment
+  comes from the info line GROWING (a tool with `flex: 1`) rather than from a
+  fixed two-sided layout; a **"Flexible space"** tool in the tray (macOS's
+  toolbar item) gives the same push anywhere, and is a supply: it stays in the
+  tray however many are placed. None of the status items has a vertical form.
+  The `SelectionToolbar` component therefore dissolves into tools, as
+  `TransportToolbar` does; the Status/Info bar spec's two slots become the
+  seed layout's first two tools.
 - **A dock holds an ordered list of toolbars, not one** — "two toolbars can
   exist on the same horizontal or vertical slot" (author). A horizontal dock
   lays them left to right, a vertical dock top to bottom. This is Audacity 3's
@@ -167,8 +183,9 @@ not yet accepted or rejected:
 4. **Vertical rendering.** — Position: buttons stack as icons; the timecode,
    speed slider, snap and meters have no vertical form and are REFUSED by
    vertical docks, the drop zone saying so.
-5. **Fixed vs free tools.** — Position: everything on the transport bar moves;
-   the project bar's tabs and workspace selector stay out of scope.
+5. **Fixed vs free tools.** — Position: everything on the transport bar AND
+   the status bar moves (the status bar decided, above); the project bar's
+   tabs and workspace selector stay out of scope.
 6. **Persistence & scope.** — Position: the preferences blob, per user; create,
    rename, delete and reset-to-built-in are all needed, or a fork cannot be
    undone.
@@ -223,6 +240,9 @@ not yet accepted or rejected:
 - 2026-11-09 (second session) — A dock holds several toolbars on one row;
   a full row wraps; every toolbar has a persistent grip. Author ("let's try it
   with wrapping and persistent grippers").
+- 2026-11-09 (second session) — The status bar is the bottom dock and its
+  items are tools; a Flexible space tool handles right-alignment. Author ("I
+  want the bottom toolbar items to also be customisable").
 - 2026-11-09 (second session) — Authoring is one edit mode (cog or long press),
   with the cog's list as a tray and a keyboard Move-to menu; the cog is
   absorbed. Assistant's combination of the author's two ideas ("Add new
