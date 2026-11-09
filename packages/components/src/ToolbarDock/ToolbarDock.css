@@ -1,7 +1,8 @@
 /* ToolbarDock — a dock of toolbars with persistent grips (2026-11-09).
    Horizontal docks are rows of bars (56px a row: 14px above and below
-   28px controls), with a 1px divider between bars on a row and a 1px
-   line between rows; vertical docks are a 48px column. */
+   28px controls), with a full-height 1px divider between bars on a row
+   and a 1px line between rows, so each bar is a cell; vertical docks are
+   a 48px column. */
 
 .toolbar-dock {
   display: flex;
@@ -43,9 +44,15 @@
   margin: 0;
 }
 
+/* THE SPLIT BETWEEN TWO BARS RUNS THE ROW'S FULL HEIGHT (2026-11-10, "I
+   need the split between toolbars to be more obvious" — it was a 24px
+   tick in the row's middle, which read as a separator inside one bar):
+   the line reaches from the row's top edge to its bottom, meeting the
+   lines between rows, so every bar sits in its own cell */
 .toolbar-dock__divider {
   width: 1px;
-  height: 24px;
+  align-self: stretch;
+  margin: -14px 0;
   background-color: var(--toolbar-divider);
   flex-shrink: 0;
 }
@@ -115,6 +122,6 @@
 .toolbar-dock--vertical .toolbar-dock__tools { flex-direction: column; gap: 8px; }
 .toolbar-dock--vertical .toolbar-dock__tools .toolbar__button-group { flex-direction: column; }
 .toolbar-dock--vertical .toolbar-dock__grip { width: 28px; height: 18px; transform: rotate(90deg); }
-.toolbar-dock--vertical .toolbar-dock__divider { width: 24px; height: 1px; }
+.toolbar-dock--vertical .toolbar-dock__divider { width: auto; height: 1px; margin: 0; }
 .toolbar-dock--vertical .toolbar-dock__insert { width: 28px; height: 2px; }
 .toolbar-dock--vertical .toolbar-dock__trailing { margin-left: 0; margin-top: auto; }
