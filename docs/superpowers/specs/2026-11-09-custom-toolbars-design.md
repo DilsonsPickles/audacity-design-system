@@ -1,9 +1,16 @@
 # Custom toolbars / authored workspaces — design (in progress)
 
 **Date:** 2026-11-09
-**Status:** 🟡 Brainstorm in progress — spine decided, the dock and the
-authoring interaction decided (2026-11-09, second session), rendering,
-persistence and grouping still open.
+**Status:** 🟢 Increment 1 BUILT (2026-11-09, third session — "let's see it
+in the build. But, I want division lines between cols and rows"): the
+layout model, the tool registry, `ToolbarDock` (wrapping rows with dividers
+between bars and between rows, vertical side docks), persistent grips with
+the bar-level drag, the status bar as the bottom dock, one layout per
+workspace in the preferences. See the CLAUDE.md rule "THE TOOLBARS ARE DOCKS
+OF BARS WITH PERSISTENT GRIPS". NOT YET: the edit mode (tool-level drags,
+the tray, "Customise toolbars…", the keyboard Move-to menu), the Flexible
+space tool, floating bars, user-named workspaces. Questions 4–8 below are
+still the assistant's positions; increment 1 took 4 and 5 as stated.
 **Next step when resuming:** the mockup exists — a WORKING mock at
 https://claude.ai/code/artifact/da61130f-76fc-4337-907a-16002b1e0496 (wrap,
 persistent grips, side and bottom docks, the status bar as a dock, edit mode
@@ -243,6 +250,10 @@ not yet accepted or rejected:
 - 2026-11-09 (second session) — The status bar is the bottom dock and its
   items are tools; a Flexible space tool handles right-alignment. Author ("I
   want the bottom toolbar items to also be customisable").
+- 2026-11-09 (third session) — Increment 1 built: rows WRAP with a divider
+  between bars and a line between rows; grips persistent; floating dropped
+  for now. Author ("let's see it in the build. But, I want division lines
+  between cols and rows").
 - 2026-11-09 (second session) — Authoring is one edit mode (cog or long press),
   with the cog's list as a tray and a keyboard Move-to menu; the cog is
   absorbed. Assistant's combination of the author's two ideas ("Add new

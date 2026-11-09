@@ -1,0 +1,139 @@
+/* ToolbarDock — a dock of toolbars with persistent grips (2026-11-09).
+   Horizontal docks are rows of bars (48px a row: 10px above and below
+   28px controls, as the Toolbar was), with a 1px divider between bars on
+   a row and a 1px line between rows; vertical docks are a 48px column. */
+
+.toolbar-dock {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background-color: var(--toolbar-bg);
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.toolbar-dock--top { border-bottom: 1px solid var(--toolbar-border); width: 100%; }
+.toolbar-dock--bottom { border-top: 1px solid var(--toolbar-border); width: 100%; }
+.toolbar-dock--left { border-right: 1px solid var(--toolbar-border); height: 100%; }
+.toolbar-dock--right { border-left: 1px solid var(--toolbar-border); height: 100%; }
+
+/* An empty side dock takes no room until a drag opens it as a zone */
+.toolbar-dock--vertical.toolbar-dock--empty { width: 0; border-width: 0; overflow: hidden; }
+.toolbar-dock--vertical.toolbar-dock--zone { width: 48px; border-width: 1px; }
+.toolbar-dock--horizontal.toolbar-dock--empty { min-height: 0; border-width: 0; }
+.toolbar-dock--horizontal.toolbar-dock--zone { min-height: 48px; border-width: 1px; }
+.toolbar-dock--top.toolbar-dock--zone { border-top-width: 0; }
+.toolbar-dock--bottom.toolbar-dock--zone { border-bottom-width: 0; }
+.toolbar-dock--left.toolbar-dock--zone { border-left-width: 0; }
+.toolbar-dock--right.toolbar-dock--zone { border-right-width: 0; }
+
+/* A row of bars */
+.toolbar-dock__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 10px 0;
+  min-height: 48px;
+  box-sizing: border-box;
+}
+
+.toolbar-dock__row-divider {
+  height: 1px;
+  background-color: var(--toolbar-divider);
+  margin: 0;
+}
+
+.toolbar-dock__divider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--toolbar-divider);
+  flex-shrink: 0;
+}
+
+/* A bar: its grip, then its tools */
+.toolbar-dock__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.toolbar-dock__bar--grow { flex: 1 1 auto; }
+.toolbar-dock__bar--grow .toolbar-dock__tools { flex: 1 1 auto; min-width: 0; }
+.toolbar-dock__bar--dragging { opacity: 0.35; }
+
+.toolbar-dock__tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* Everything in a row keeps its natural width — the dock packs rows */
+.toolbar-dock__tools > * { flex-shrink: 0; }
+
+/* The grip: the toolbar gripper's 24px, 14px glyph, primary colour */
+.toolbar-dock__grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 28px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--toolbar-gripper-color, var(--toolbar-divider));
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+.toolbar-dock__grip:active { cursor: grabbing; color: var(--toolbar-dock-accent); }
+
+/* The cog, at the end of the last row */
+.toolbar-dock__trailing { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* Where a dragged bar would land */
+.toolbar-dock__insert {
+  width: 2px;
+  height: 28px;
+  border-radius: 1px;
+  background-color: var(--toolbar-dock-accent);
+  flex-shrink: 0;
+}
+.toolbar-dock__insert--refused { background-color: var(--toolbar-dock-refuse); }
+
+/* An empty dock opened as a zone during a drag */
+.toolbar-dock__zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  margin: 6px;
+  border: 1px dashed var(--toolbar-dock-accent);
+  border-radius: 3px;
+  color: var(--toolbar-dock-accent);
+  font: 500 12px/16px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  text-align: center;
+  padding: 4px 8px;
+  min-height: 28px;
+}
+.toolbar-dock__zone--over { background-color: color-mix(in srgb, var(--toolbar-dock-accent) 14%, transparent); }
+.toolbar-dock__zone--refused { border-color: var(--toolbar-dock-refuse); color: var(--toolbar-dock-refuse); }
+
+/* VERTICAL docks: a column of bars, each bar a column of tools */
+.toolbar-dock--vertical { width: 48px; align-items: stretch; }
+.toolbar-dock--vertical .toolbar-dock__row {
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0 10px;
+  min-height: 0;
+  flex: 1;
+}
+.toolbar-dock--vertical .toolbar-dock__bar { flex-direction: column; gap: 6px; }
+.toolbar-dock--vertical .toolbar-dock__tools { flex-direction: column; gap: 8px; }
+.toolbar-dock--vertical .toolbar-dock__tools .toolbar__button-group { flex-direction: column; }
+.toolbar-dock--vertical .toolbar-dock__grip { width: 28px; height: 18px; transform: rotate(90deg); }
+.toolbar-dock--vertical .toolbar-dock__divider { width: 24px; height: 1px; }
+.toolbar-dock--vertical .toolbar-dock__insert { width: 28px; height: 2px; }
+.toolbar-dock--vertical .toolbar-dock__zone span { writing-mode: vertical-rl; transform: rotate(180deg); }
+.toolbar-dock--vertical .toolbar-dock__trailing { margin-left: 0; margin-top: auto; }

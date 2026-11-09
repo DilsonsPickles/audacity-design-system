@@ -283,60 +283,56 @@ describe('Loop', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Transport toolbar positions: docked-top (default), floating, docked-bottom
-// Seam: TransportToolbarContainer 3-slot seam + useDraggableToolbar.
+// Toolbar docks: a bar moves between the four docks by its grip (2026-11-09,
+// custom toolbars). Seam: useToolbarBarDrag + useToolbarLayout.
 //
-// useDraggableToolbar.ts's zone decision on mouseup depends only on the
-// event's clientY vs window.innerHeight (SNAP_PX = 72) — NOT on
-// getBoundingClientRect (that's only used to compute the floating drag
-// offset), so this is fully drivable in jsdom despite the zero-rect gap;
-// no flakiness-policy fallback needed here.
+// useToolbarBarDrag's drop resolution falls back to the window's edges
+// (EDGE_SNAP_PX = 72) when no dock is under the pointer — jsdom has no
+// elementsFromPoint and measures every rect as zero — so a release near
+// the top or bottom edge is fully drivable here.
 // ---------------------------------------------------------------------------
 
-describe('Transport toolbar positions', () => {
-  it('drives toolbarPosition via gripper drag through top -> floating -> bottom -> top', async () => {
+describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
+  it('moves a bar between docks by its grip: top -> bottom -> top, and keeps the layout in the preferences', async () => {
     const { container, getByText } = renderApp();
     fireEvent.click(getByText('Project'));
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
 
-    const transportToolbar = () => container.querySelector('.transport-toolbar') as HTMLElement | null;
-    const selectionToolbar = () => container.querySelector('.selection-toolbar') as HTMLElement | null;
-    const gripper = () => container.querySelector('.toolbar__gripper') as HTMLElement | null;
-    // a precedes b in document order (a is earlier).
-    const precedes = (a: Element, b: Element) =>
-      !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const dock = (region: string) => container.querySelector(`[data-toolbar-dock="${region}"]`) as HTMLElement;
+    const bar = () => container.querySelector('[data-toolbar-bar="transport"]') as HTMLElement;
+    const grip = () => bar().querySelector('.toolbar-dock__grip') as HTMLElement;
 
-    // Default slot: docked top. Toolbar renders before the selection
-    // toolbar and isn't wrapped in the floating position:fixed container.
-    expect(transportToolbar()).toBeTruthy();
-    expect(selectionToolbar()).toBeTruthy();
-    expect(precedes(transportToolbar()!, selectionToolbar()!)).toBe(true);
-    expect(transportToolbar()!.parentElement?.style.position).not.toBe('fixed');
+    // The seed: the transport bar on the top dock (the old toolbar's
+    // class and tab group kept), the status bar as the bottom dock with
+    // its own two bars
+    expect(dock('top').classList.contains('transport-toolbar')).toBe(true);
+    expect(dock('top').contains(bar())).toBe(true);
+    expect(dock('bottom').classList.contains('selection-toolbar')).toBe(true);
+    expect(dock('bottom').querySelector('[data-toolbar-bar="status"] .selection-toolbar__status-text')?.textContent).toBe('Stopped');
+    expect(dock('bottom').querySelector('[data-toolbar-bar="selection"] [aria-label="Selection start"]')).toBeTruthy();
 
-    // Drag to floating: mousedown flips to floating immediately (at the
-    // gripper's — zeroed in jsdom — rect); releasing mid-viewport (outside
-    // both SNAP_PX=72 edge zones) leaves it floating.
-    fireEvent.mouseDown(gripper()!, { clientX: 100, clientY: 100 });
-    fireEvent.mouseUp(document, { clientX: 100, clientY: Math.round(window.innerHeight / 2) });
-    await waitFor(() => {
-      expect(transportToolbar()!.parentElement?.style.position).toBe('fixed');
-    });
-
-    // Drag to bottom: release within SNAP_PX of the bottom edge.
-    fireEvent.mouseDown(gripper()!, { clientX: 100, clientY: 100 });
+    // Drag to the bottom edge: jsdom measures nothing, so the window's
+    // edge stands in for the dock under the pointer (the old gripper's snap)
+    fireEvent.mouseDown(grip(), { clientX: 100, clientY: 100, button: 0 });
+    fireEvent.mouseMove(document, { clientX: 100, clientY: window.innerHeight - 10 });
     fireEvent.mouseUp(document, { clientX: 100, clientY: window.innerHeight - 10 });
-    await waitFor(() => {
-      expect(precedes(selectionToolbar()!, transportToolbar()!)).toBe(true);
-    });
-    expect(transportToolbar()!.parentElement?.style.position).not.toBe('fixed');
+    await waitFor(() => expect(dock('bottom').contains(bar())).toBe(true));
+    expect(dock('top').contains(bar())).toBe(false);
+    // …and its tools came with it
+    expect(dock('bottom').querySelector('[aria-label="Play"]')).toBeTruthy();
+    const stored = () => JSON.parse(window.localStorage.getItem('audacity-preferences')!).toolbarLayouts.classic;
+    expect(stored().bottom.map((b: { id: string }) => b.id)).toContain('transport');
 
-    // Drag back to top: release within SNAP_PX of the top edge.
-    fireEvent.mouseDown(gripper()!, { clientX: 100, clientY: 100 });
+    // Released in the middle of the window, away from every dock: nothing moves
+    fireEvent.mouseDown(grip(), { clientX: 300, clientY: 300, button: 0 });
+    fireEvent.mouseUp(document, { clientX: 400, clientY: Math.round(window.innerHeight / 2) });
+    expect(dock('bottom').contains(bar())).toBe(true);
+
+    // Back to the top edge
+    fireEvent.mouseDown(grip(), { clientX: 100, clientY: 100, button: 0 });
     fireEvent.mouseUp(document, { clientX: 100, clientY: 10 });
-    await waitFor(() => {
-      expect(precedes(transportToolbar()!, selectionToolbar()!)).toBe(true);
-    });
-    expect(transportToolbar()!.parentElement?.style.position).not.toBe('fixed');
+    await waitFor(() => expect(dock('top').contains(bar())).toBe(true));
+    expect(stored().top.map((b: { id: string }) => b.id)).toContain('transport');
   });
 });
 

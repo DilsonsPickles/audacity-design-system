@@ -34,6 +34,9 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
         arrows: true,
         wrap: true,
       },
+      // The left / right toolbar docks (custom toolbars, 2026-11-09)
+      'tool-dock-left': { tabindex: 'roving', arrows: true, wrap: true },
+      'tool-dock-right': { tabindex: 'roving', arrows: true, wrap: true },
 
       // Selection toolbar (bottom toolbar with timecodes)
       'selection-toolbar': {
@@ -239,6 +242,8 @@ export const AU4_TAB_GROUPS_PROFILE: AccessibilityProfile = {
       'project-toolbar-workspace': 4,
       'project-toolbar-history':   5, // Undo / Redo cluster
       'tool-toolbar':              6,
+      'tool-dock-left':            6, // the left dock, beside the tracks: with the tools
+      'tool-dock-right':         197, // the right dock: after the tracks
       'dock-tabs-start':           7, // a dock's tabs come BEFORE what they name
       'effects-panel':             8,
       'macros-panel-actions':      9, // docked left
@@ -296,6 +301,8 @@ export const WCAG_FLAT_PROFILE: AccessibilityProfile = {
         arrows: false,
         wrap: false,
       },
+      'tool-dock-left': { tabindex: 'sequential', arrows: false, wrap: false },
+      'tool-dock-right': { tabindex: 'sequential', arrows: false, wrap: false },
 
       'selection-toolbar': {
         tabindex: 'sequential',

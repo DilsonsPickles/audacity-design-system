@@ -108,3 +108,40 @@
 .selection-toolbar[data-backgrounded] .selection-toolbar__instruction-text {
   opacity: 0.4;
 }
+
+/* A labelled timecode group (the Selection and Duration tools, 2026-11-09) */
+.selection-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* THE STATUS BAR AS A DOCK (2026-11-09): the bar's class on a ToolbarDock
+   keeps its tokens and its 40px rows; the fixed bar's own flex rules do
+   not apply to the dock */
+.selection-toolbar.toolbar-dock {
+  height: auto;
+  justify-content: flex-start;
+  padding: 0;
+  display: flex;
+}
+.selection-toolbar.toolbar-dock .toolbar-dock__row {
+  min-height: 40px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+.selection-toolbar.toolbar-dock .selection-toolbar__status,
+.selection-toolbar.toolbar-dock .selection-toolbar__instruction {
+  height: 28px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+/* The info line grows: it is what pushes the Selection bar to the right */
+.toolbar-dock__bar--grow .toolbar-dock__tools > [data-status-tool="info"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.selection-toolbar.toolbar-dock [data-status-tool="info"] .selection-toolbar__instruction-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

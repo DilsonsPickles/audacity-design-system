@@ -4,6 +4,7 @@
  * Manages all user preferences with localStorage persistence
  */
 
+import type { ToolbarLayout } from '../utils/toolbarLayout';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 
 export interface PreferencesState {
@@ -76,6 +77,10 @@ export interface PreferencesState {
   /** Tools hidden from the transport toolbar, by the cog's Customise
    *  toolbar popover (CustomiseToolbarMenu ids; 2026-10-07) */
   toolbarHiddenTools: string[];
+  /** The user's toolbar LAYOUTS, one per workspace (custom toolbars,
+   *  2026-11-09): which bars sit in which dock, which tools on each bar.
+   *  A workspace with no entry draws its built-in seed layout. */
+  toolbarLayouts: Partial<Record<string, ToolbarLayout>>;
 
   // Spectral Display
   enableSpectralSelection: boolean;
@@ -151,6 +156,7 @@ const defaultPreferences: PreferencesState = {
   // "playback-time-signature" off). A stored preference keeps whatever it
   // has — this is the default for a fresh profile.
   toolbarHiddenTools: ['collapse-tracks', 'expand-tracks', 'fit-tracks-height', 'bpm', 'time-signature'],
+  toolbarLayouts: {},
 
   // Spectral Display
   enableSpectralSelection: true,

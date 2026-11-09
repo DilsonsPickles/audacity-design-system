@@ -1,5 +1,7 @@
 import React from 'react';
-import { Toolbar, ToolbarButtonGroup } from '../Toolbar/Toolbar';
+import { ToolbarButtonGroup } from '../Toolbar/Toolbar';
+import { ToolbarDock, type ToolMeta } from '../ToolbarDock';
+import { defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, type ToolbarLayout, type ToolbarOrientation } from '../utils/toolbarLayout';
 import { TransportButton } from '../TransportButton';
 import { ToolButton } from '../ToolButton';
 import { ToggleToolButton } from '../ToggleToolButton';
@@ -180,6 +182,52 @@ export interface TransportToolbarProps {
   onRecordingMeterOrientationChange?: (orientation: MicrophoneMeterOrientation) => void;
 }
 
+/** TransportTools: the toolbar's state and flyouts around `children`,
+ *  which place ToolbarDocks anywhere and draw the tools by id through
+ *  `useTransportTools()` (2026-11-09, custom toolbars) */
+export interface TransportToolsProps extends TransportToolbarProps {
+  children?: React.ReactNode;
+}
+
+export interface TransportToolsContextValue {
+  /** The tool with this id for this orientation; null when hidden or unknown */
+  renderTool: (id: string, orientation: ToolbarOrientation) => React.ReactNode;
+  toolMeta: (id: string) => ToolMeta | undefined;
+  /** The cog's Customise toolbar button, for the top dock's end */
+  settingsCog: React.ReactNode;
+  /** The Home tab: nothing to draw */
+  hidden: boolean;
+}
+
+const TransportToolsContext = React.createContext<TransportToolsContextValue | null>(null);
+
+/** Which tools have a VERTICAL form (a left / right dock stacks them as
+ *  icons): the buttons; not the readouts, the sliders, the snap control,
+ *  nor a meter cluster carrying its horizontal meter. Static, so a host
+ *  can ask before a drop without the registry. */
+export function transportToolMeta(
+  id: string,
+  meters: { recordingMeterOrientation?: MicrophoneMeterOrientation; meterOrientation?: PlaybackMeterPosition } = {},
+): ToolMeta | undefined {
+  switch (id) {
+    case 'play': case 'stop': case 'record': case 'step-back': case 'step-forward': case 'loop':
+    case 'automation': case 'split': case 'spectral-editing': case 'waveform-view':
+    case 'zoom-in': case 'zoom-out': case 'fit-selection': case 'fit-project': case 'zoom-toggle':
+    case 'collapse-tracks': case 'expand-tracks': case 'fit-tracks-height':
+    case 'cut': case 'copy': case 'paste': case 'trim': case 'silence':
+      return { vertical: true };
+    case 'microphone-levels': return { vertical: meters.recordingMeterOrientation !== 'horizontal' };
+    case 'playback-meter': return { vertical: meters.meterOrientation !== 'horizontal' };
+    default: return { vertical: false };
+  }
+}
+
+export function useTransportTools(): TransportToolsContextValue {
+  const ctx = React.useContext(TransportToolsContext);
+  if (!ctx) throw new Error('useTransportTools must be used inside <TransportTools>');
+  return ctx;
+}
+
 function SplitRecordButton({
   isRecording,
   disabled,
@@ -261,7 +309,7 @@ function SplitRecordButton({
   );
 }
 
-export function TransportToolbar({
+export function TransportTools({
   activeMenuItem, workspace,
   hiddenTools = [], onToggleToolVisibility,
   varispeed = 1, varispeedOn = false, onVarispeedChange, onVarispeedDial, onVarispeedToggle,
@@ -282,7 +330,8 @@ export function TransportToolbar({
   meterOrientation: meterOrientationProp, onMeterOrientationChange,
   meterLook: meterLookProp, onMeterLookChange,
   recordingMeterOrientation = 'flyout', onRecordingMeterOrientationChange,
-}: TransportToolbarProps) {
+  children,
+}: TransportToolsProps) {
   const { theme } = useTheme();
   const [recordMenuOpen, setRecordMenuOpen] = React.useState(false);
   const [recordMenuPos, setRecordMenuPos] = React.useState({ x: 0, y: 0 });
@@ -391,7 +440,7 @@ export function TransportToolbar({
     setLoopRegionEnabled(!loopRegionEnabled);
   };
 
-  if (activeMenuItem === 'home') return null;
+  const hidden = activeMenuItem === 'home';
 
   // The cog opens the Customise toolbar popover, hung under it;
   // `show(id)` gates each tool on the hidden list
@@ -418,351 +467,101 @@ export function TransportToolbar({
     </ToolbarButtonGroup>
   );
 
-  return (
-    <Toolbar
-      tabGroupId="tool-toolbar"
-      enableTabGroup
-      showGripper
-      onGripperMouseDown={onGripperMouseDown}
-      rightContent={activeMenuItem === 'export' ? undefined : settingsCog}
-      className="transport-toolbar"
-    >
-      {activeMenuItem === 'export' ? (
-        <>
-          <ToolbarButtonGroup gap={2}>
-            {show('play') && <TransportButton icon={isPlaying ? "pause" : "play"} iconColor="#74BE59" ariaLabel={isPlaying ? "Pause" : "Play"} onClick={onPlay} />}
-            {show('stop') && <TransportButton icon="stop" ariaLabel="Stop" onClick={onStop} />}
-            {show('loop') && (
-            <TransportButton
-              icon="loop"
-              ariaLabel="Loop"
-              active={loopRegionEnabled}
-              onClick={handleToggleLoop}
+  const snapLabel = snapMode === 'musical'
+    ? { 1: 'Bar', 2: '1/2', 4: '1/4', 8: '1/8', 16: '1/16', 32: '1/32', 64: '1/64', 128: '1/128' }[snapSubdivision]
+    : { seconds: 'Seconds', deciseconds: 'Deciseconds', centiseconds: 'Centiseconds', milliseconds: 'Milliseconds', samples: 'Samples', 'video-24fps': 'Video Frames (24 fps)', 'video-29.97fps': 'NTSC (29.97 fps)', 'video-30fps': 'NTSC (30 fps)', 'video-25fps': 'PAL (25 fps)', 'cdda-75fps': 'CDDA (75 fps)' }[snapMode];
+
+  // THE TOOL REGISTRY (2026-11-09, the custom toolbars design): every tool
+  // by id, drawn wherever a dock puts it. The hidden list gates each; a
+  // tool the toolbar had no counterpart for draws nothing. The ids are the
+  // Customise toolbar's, plus 'split' (the Cut / Split toggle, which the
+  // Customise row 'cut' hides with the Cut tool) and the Export tab's.
+  const renderTool = (id: string, _orientation: ToolbarOrientation): React.ReactNode => {
+    if (hidden) return null;
+    switch (id) {
+      case 'play': return show('play') ? <TransportButton icon={isPlaying ? 'pause' : 'play'} iconColor="#74BE59" ariaLabel={isPlaying ? 'Pause' : 'Play'} onClick={onPlay} /> : null;
+      case 'stop': return show('stop') ? <TransportButton icon="stop" ariaLabel="Stop" onClick={onStop} /> : null;
+      case 'record':
+        if (!show('record')) return null;
+        return useSplitRecordButton ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 3, overflow: 'hidden' }}>
+            <SplitRecordButton
+              isRecording={isRecording}
+              disabled={isPlaying}
+              onRecord={onRecord}
+              onCaretClick={handleRecordCaretClick}
+              caretRef={caretRef}
             />
-            )}
-          </ToolbarButtonGroup>
-
-
-          <ToolbarButtonGroup gap={8}>
-            <Button
-              variant="secondary"
-              size="default"
-              icon={'\uEF25'}
-              onClick={onShareClick}
+            <ContextMenu
+              isOpen={recordMenuOpen}
+              onClose={() => setRecordMenuOpen(false)}
+              x={recordMenuPos.x}
+              y={recordMenuPos.y}
             >
-              Share on audio.com
-            </Button>
-          </ToolbarButtonGroup>
-
-
-          <ToolbarButtonGroup gap={8}>
-            <Button
-              variant="secondary"
-              size="default"
-              icon={'\uEF24'}
-              onClick={onExportAudioClick}
-            >
-              Export audio
-            </Button>
-            <Button
-              variant="secondary"
-              size="default"
-              icon={'\uEF1F'}
-              onClick={onExportLoopRegionClick}
-            >
-              Export loop region
-            </Button>
-          </ToolbarButtonGroup>
-        </>
-      ) : (
-        <>
-          <ToolbarButtonGroup gap={2}>
-            {show('play') && <TransportButton icon={isPlaying ? "pause" : "play"} iconColor="#74BE59" ariaLabel={isPlaying ? "Pause" : "Play"} onClick={onPlay} />}
-            {show('stop') && <TransportButton icon="stop" ariaLabel="Stop" onClick={onStop} />}
-            {show('record') && (useSplitRecordButton ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 3, overflow: 'hidden' }}>
-                <SplitRecordButton
-                  isRecording={isRecording}
-                  disabled={isPlaying}
-                  onRecord={onRecord}
-                  onCaretClick={handleRecordCaretClick}
-                  caretRef={caretRef}
-                />
-                <ContextMenu
-                  isOpen={recordMenuOpen}
-                  onClose={() => setRecordMenuOpen(false)}
-                  x={recordMenuPos.x}
-                  y={recordMenuPos.y}
-                >
-                  <ContextMenuItem
-                    label="Enable lead in time"
-                    checked={rollInTimeEnabled}
-                    onClick={() => {
-                      onToggleRollInTime?.();
-                      setRecordMenuOpen(false);
-                    }}
-                  />
-                </ContextMenu>
-              </div>
-            ) : (
-              <TransportButton
-                icon="record"
-                iconColor="#F08080"
-                ariaLabel="Record"
-                active={isRecording}
-                recording={isRecording}
-                disabled={isPlaying}
-                onClick={onRecord}
+              <ContextMenuItem
+                label="Enable lead in time"
+                checked={rollInTimeEnabled}
+                onClick={() => {
+                  onToggleRollInTime?.();
+                  setRecordMenuOpen(false);
+                }}
               />
-            ))}
-            {show('step-back') && <TransportButton icon="skip-back" ariaLabel="Skip to start" disabled={isPlaying} onClick={onSkipToStart} />}
-            {show('step-forward') && <TransportButton icon="skip-forward" ariaLabel="Skip to end" disabled={isPlaying} onClick={onSkipToEnd} />}
-            {show('loop') && (
-            <TransportButton
-              icon="loop"
-              ariaLabel="Loop"
-              active={loopRegionEnabled}
-              onClick={handleToggleLoop}
-            />
-            )}
-          </ToolbarButtonGroup>
+            </ContextMenu>
+          </div>
+        ) : (
+          <TransportButton
+            icon="record"
+            iconColor="#F08080"
+            ariaLabel="Record"
+            active={isRecording}
+            recording={isRecording}
+            disabled={isPlaying}
+            onClick={onRecord}
+          />
+        );
+      case 'step-back': return show('step-back') ? <TransportButton icon="skip-back" ariaLabel="Skip to start" disabled={isPlaying} onClick={onSkipToStart} /> : null;
+      case 'step-forward': return show('step-forward') ? <TransportButton icon="skip-forward" ariaLabel="Skip to end" disabled={isPlaying} onClick={onSkipToEnd} /> : null;
+      case 'loop': return show('loop') ? <TransportButton icon="loop" ariaLabel="Loop" active={loopRegionEnabled} onClick={handleToggleLoop} /> : null;
 
-          {workspace === 'classic' && (
-            <>
+      case 'automation': return show('automation') ? <ToggleToolButton icon="automation" ariaLabel="Clip envelope" isActive={envelopeMode} onClick={onToggleEnvelope} /> : null;
+      case 'split': return show('cut') ? <ToggleToolButton icon="split" ariaLabel="Cut / Split" isActive={splitMode} onClick={onToggleSplit} /> : null;
+      case 'spectral-editing': return show('spectral-editing') ? <ToggleToolButton icon="spectrogram" ariaLabel="Spectral view" isActive={spectrogramMode} onClick={onToggleSpectrogram} /> : null;
+      case 'waveform-view': return <ToggleToolButton icon="waveform" ariaLabel="Waveform" isActive={spectrogramMode} onClick={onToggleSpectrogram} />;
 
-              <ToolbarButtonGroup gap={2}>
-                {show('automation') && (
-                <ToggleToolButton
-                  icon="automation"
-                  ariaLabel="Clip envelope"
-                  isActive={envelopeMode}
-                  onClick={onToggleEnvelope}
-                />
-                )}
-                {show('cut') && (
-                <ToggleToolButton
-                  icon="split"
-                  ariaLabel="Cut / Split"
-                  isActive={splitMode}
-                  onClick={onToggleSplit}
-                />
-                )}
-                {show('spectral-editing') && (
-                <ToggleToolButton
-                  icon="spectrogram"
-                  ariaLabel="Spectral view"
-                  isActive={spectrogramMode}
-                  onClick={onToggleSpectrogram}
-                />
-                )}
-              </ToolbarButtonGroup>
+      case 'zoom-in': return show('zoom-in') ? <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} /> : null;
+      case 'zoom-out': return show('zoom-out') ? <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} /> : null;
+      case 'fit-selection': return show('fit-selection') ? <ToolButton icon="zoom-to-selection" ariaLabel="Fit selection" onClick={onZoomToSelection} /> : null;
+      case 'fit-project': return show('fit-project') ? <ToolButton icon="zoom-to-fit" ariaLabel="Fit project" onClick={onZoomToFitProject} /> : null;
+      case 'zoom-toggle': return show('zoom-toggle') ? <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} /> : null;
+      case 'collapse-tracks': return show('collapse-tracks') ? <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} /> : null;
+      case 'expand-tracks': return show('expand-tracks') ? <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} /> : null;
+      case 'fit-tracks-height': return show('fit-tracks-height') ? <ToolButton icon="track-fit-height" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} /> : null;
 
-              <ToolbarButtonGroup gap={2}>
-                {show('zoom-in') && <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />}
-                {show('zoom-out') && <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />}
-                {show('fit-selection') && <ToolButton icon="zoom-to-selection" ariaLabel="Fit selection" onClick={onZoomToSelection} />}
-                {show('fit-project') && <ToolButton icon="zoom-to-fit" ariaLabel="Fit project" onClick={onZoomToFitProject} />}
-                {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
-              </ToolbarButtonGroup>
+      case 'cut': return show('cut') ? <ToolButton icon="cut" ariaLabel="Cut" /> : null;
+      case 'copy': return show('copy') ? <ToolButton icon="copy" ariaLabel="Copy" /> : null;
+      case 'paste': return show('paste') ? <ToolButton icon="paste" ariaLabel="Paste" /> : null;
+      case 'trim': return show('trim') ? <ToolButton icon="trim" ariaLabel="Trim" /> : null;
+      case 'silence': return show('silence') ? <ToolButton icon="silence" ariaLabel="Silence" /> : null;
 
-              {(show('collapse-tracks') || show('expand-tracks') || show('fit-tracks-height')) && (
-              <ToolbarButtonGroup gap={2}>
-                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
-                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} />}
-                {show('fit-tracks-height') && <ToolButton icon="track-fit-height" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
-              </ToolbarButtonGroup>
-              )}
+      // Play-at-speed sits BEFORE the timecode, with the readouts and not
+      // among the transport buttons (the Figma "1.1 - Simple slider"
+      // third row, 2026-10-15)
+      case 'varispeed': return show('varispeed') && onVarispeedChange
+        ? <VarispeedControl speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onDial={onVarispeedDial ?? onVarispeedChange} />
+        : null;
+      case 'timecode': return show('timecode')
+        ? <TimeCode value={currentTime} format={timeCodeFormat} onChange={onTimeCodeChange} ariaLabel="Playhead position" onFormatChange={onTimeCodeFormatChange} />
+        : null;
+      // BPM and TIME SIGNATURE are tools of their own, in every workspace
+      // (2026-11-04), off by default as the real build has them
+      case 'bpm': return show('bpm') ? <BpmStepper value={bpm} onChange={(next) => onBpmChange?.(next)} min={20} max={300} /> : null;
+      case 'time-signature': return show('time-signature')
+        ? <TimeSignatureSelector value={{ numerator: beatsPerMeasure, denominator: noteValue }} onChange={(next) => onTimeSignatureChange?.(next)} />
+        : null;
 
-              <ToolbarButtonGroup gap={2}>
-                {show('cut') && (
-                <ToolButton
-                  icon="cut"
-                  ariaLabel="Cut"
-                  onClick={() => {}}
-                />
-                )}
-                {show('copy') && (
-                <ToolButton
-                  icon="copy"
-                  ariaLabel="Copy"
-                  onClick={() => {}}
-                />
-                )}
-                {show('paste') && (
-                <ToolButton
-                  icon="paste"
-                  ariaLabel="Paste"
-                  onClick={() => {}}
-                />
-                )}
-              </ToolbarButtonGroup>
-
-              <ToolbarButtonGroup gap={2}>
-                {show('trim') && <ToolButton icon="trim" ariaLabel="Trim" />}
-                {show('silence') && <ToolButton icon="silence" ariaLabel="Silence" />}
-              </ToolbarButtonGroup>
-            </>
-          )}
-
-          {workspace === 'spectral-editing' && (
-            <>
-              <ToolbarButtonGroup gap={2}>
-                {show('zoom-in') && <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />}
-                {show('zoom-out') && <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />}
-                {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
-              </ToolbarButtonGroup>
-
-              {(show('collapse-tracks') || show('expand-tracks') || show('fit-tracks-height')) && (
-              <ToolbarButtonGroup gap={2}>
-                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
-                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} />}
-                {show('fit-tracks-height') && <ToolButton icon="track-fit-height" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
-              </ToolbarButtonGroup>
-              )}
-
-              <ToolbarButtonGroup gap={2}>
-                <ToggleToolButton
-                  icon="waveform"
-                  ariaLabel="Waveform"
-                  isActive={spectrogramMode}
-                  onClick={onToggleSpectrogram}
-                />
-              </ToolbarButtonGroup>
-            </>
-          )}
-
-          {workspace === 'modern' && (
-            <>
-              <ToolbarButtonGroup gap={2}>
-                {show('automation') && (
-                <ToggleToolButton
-                  icon="automation"
-                  ariaLabel="Clip envelope"
-                  isActive={envelopeMode}
-                  onClick={onToggleEnvelope}
-                />
-                )}
-                {show('cut') && <ToggleToolButton icon="split" ariaLabel="Cut / Split" isActive={splitMode} onClick={onToggleSplit} />}
-                {show('spectral-editing') && (
-                <ToggleToolButton
-                  icon="spectrogram"
-                  ariaLabel="Spectral view"
-                  isActive={spectrogramMode}
-                  onClick={onToggleSpectrogram}
-                />
-                )}
-              </ToolbarButtonGroup>
-
-              <ToolbarButtonGroup gap={2}>
-                {show('zoom-in') && <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />}
-                {show('zoom-out') && <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />}
-                {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
-              </ToolbarButtonGroup>
-
-              {(show('collapse-tracks') || show('expand-tracks') || show('fit-tracks-height')) && (
-              <ToolbarButtonGroup gap={2}>
-                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
-                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} />}
-                {show('fit-tracks-height') && <ToolButton icon="track-fit-height" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
-              </ToolbarButtonGroup>
-              )}
-
-              <ToolbarButtonGroup gap={2}>
-                {show('trim') && <ToolButton icon="trim" ariaLabel="Trim" />}
-                {show('silence') && <ToolButton icon="silence" ariaLabel="Silence" />}
-              </ToolbarButtonGroup>
-            </>
-          )}
-
-          {workspace === 'music' && (
-            <>
-              <ToolbarButtonGroup gap={2}>
-                {show('automation') && (
-                <ToggleToolButton
-                  icon="automation"
-                  ariaLabel="Clip envelope"
-                  isActive={envelopeMode}
-                  onClick={onToggleEnvelope}
-                />
-                )}
-                {show('cut') && <ToggleToolButton icon="split" ariaLabel="Cut / Split" isActive={splitMode} onClick={onToggleSplit} />}
-              </ToolbarButtonGroup>
-
-              <ToolbarButtonGroup gap={2}>
-                {show('zoom-in') && <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} />}
-                {show('zoom-out') && <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} />}
-                {show('zoom-toggle') && <ToolButton icon="zoom-toggle" ariaLabel="Zoom toggle" onClick={onZoomToggle} />}
-              </ToolbarButtonGroup>
-
-              {(show('collapse-tracks') || show('expand-tracks') || show('fit-tracks-height')) && (
-              <ToolbarButtonGroup gap={2}>
-                {show('collapse-tracks') && <ToolButton icon="track-collapse" ariaLabel="Collapse tracks" onClick={onCollapseTracks} />}
-                {show('expand-tracks') && <ToolButton icon="track-expand" ariaLabel="Expand collapsed tracks" onClick={onExpandTracks} />}
-                {show('fit-tracks-height') && <ToolButton icon="track-fit-height" ariaLabel="Fit tracks to height" onClick={onFitTracksToHeight} />}
-              </ToolbarButtonGroup>
-              )}
-
-              <ToolbarButtonGroup gap={2}>
-                {show('trim') && <ToolButton icon="trim" ariaLabel="Trim" />}
-                {show('silence') && <ToolButton icon="silence" ariaLabel="Silence" />}
-              </ToolbarButtonGroup>
-            </>
-          )}
-
-
-          {/* Play-at-speed sits BEFORE the timecode, with the readouts and not
-              among the transport buttons (the Figma "1.1 - Simple slider"
-              third row, 2026-10-15; after the timecode from 2026-10-14) */}
-          {show('varispeed') && onVarispeedChange && (
-          <ToolbarButtonGroup gap={2}>
-            <VarispeedControl speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onDial={onVarispeedDial ?? onVarispeedChange} />
-          </ToolbarButtonGroup>
-          )}
-
-          {show('timecode') && (
-          <ToolbarButtonGroup gap={2}>
-            <TimeCode
-              value={currentTime}
-              format={timeCodeFormat}
-              onChange={onTimeCodeChange}
-              ariaLabel="Playhead position"
-              onFormatChange={onTimeCodeFormatChange}
-            />
-          </ToolbarButtonGroup>
-          )}
-
-          {/* BPM IS A TOOL OF ITS OWN, IN EVERY WORKSPACE (2026-11-04, "we're
-              missing a few tools that can be turned on by toolbar config.
-              Let's do BPM"): Customise toolbar's row puts it after the
-              timecode wherever you are — it was drawn in the Music workspace
-              alone, so the row did nothing anywhere else. Off by default, as
-              the real build's playback toolbar has it ("playback-bpm" false
-              in defaultPlaybackToolBarConfig) */}
-          {show('bpm') && (
-          <ToolbarButtonGroup gap={2}>
-            <BpmStepper
-              value={bpm}
-              onChange={(next) => onBpmChange?.(next)}
-              min={20}
-              max={300}
-            />
-          </ToolbarButtonGroup>
-          )}
-
-          {/* So is TIME SIGNATURE (2026-11-04, the component library's
-              3347:89565), after BPM; off by default, as the real build has
-              "playback-time-signature" */}
-          {show('time-signature') && (
-          <ToolbarButtonGroup gap={2}>
-            <TimeSignatureSelector
-              value={{ numerator: beatsPerMeasure, denominator: noteValue }}
-              onChange={(next) => onTimeSignatureChange?.(next)}
-            />
-          </ToolbarButtonGroup>
-          )}
-
-
-          {show('snapping') && (
+      case 'snapping':
+        if (!show('snapping')) return null;
+        return (
           <ToolbarButtonGroup gap={8}>
             <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: theme.foreground.text.primary, whiteSpace: 'nowrap', userSelect: 'none' }}>
               Snap
@@ -802,72 +601,15 @@ export function TransportToolbar({
                 gap: 4,
               }}
             >
-              {snapMode === 'musical'
-                ? { 1: 'Bar', 2: '1/2', 4: '1/4', 8: '1/8', 16: '1/16', 32: '1/32', 64: '1/64', 128: '1/128' }[snapSubdivision]
-                : { seconds: 'Seconds', deciseconds: 'Deciseconds', centiseconds: 'Centiseconds', milliseconds: 'Milliseconds', samples: 'Samples', 'video-24fps': 'Video Frames (24 fps)', 'video-29.97fps': 'NTSC (29.97 fps)', 'video-30fps': 'NTSC (30 fps)', 'video-25fps': 'PAL (25 fps)', 'cdda-75fps': 'CDDA (75 fps)' }[snapMode]
-              }
+              {snapLabel}
               <Icon name="caret-down" size={10} />
             </button>
-            <ContextMenu
-              isOpen={snapMenuOpen}
-              onClose={() => setSnapMenuOpen(false)}
-              x={snapMenuPos.x}
-              y={snapMenuPos.y}
-            >
-              {([1, 2, 4, 8, 16, 32, 64, 128] as const).map((val) => (
-                <ContextMenuItem
-                  key={val}
-                  label={val === 1 ? 'Bar' : `1/${val}`}
-                  checked={snapMode === 'musical' && snapSubdivision === val}
-                  onClick={() => {
-                    onSnapModeChange?.('musical');
-                    onSnapSubdivisionChange?.(val);
-                    setSnapMenuOpen(false);
-                  }}
-                />
-              ))}
-              <div className="context-menu-separator" />
-              <ContextMenuItem
-                label="Enable triplets"
-                checked={snapTriplet}
-                onClick={() => {
-                  onToggleSnapTriplet?.();
-                }}
-              />
-              <div className="context-menu-separator" />
-              <ContextMenuItem label="Seconds samples" hasSubmenu checked={['seconds', 'deciseconds', 'centiseconds', 'milliseconds', 'samples'].includes(snapMode)}>
-                {(['seconds', 'deciseconds', 'centiseconds', 'milliseconds', 'samples'] as const).map((mode) => (
-                  <ContextMenuItem
-                    key={mode}
-                    label={{ seconds: 'Seconds', deciseconds: 'Deciseconds', centiseconds: 'Centiseconds', milliseconds: 'Milliseconds', samples: 'Samples' }[mode]}
-                    checked={snapMode === mode}
-                    onClick={() => { onSnapModeChange?.(mode); setSnapMenuOpen(false); }}
-                  />
-                ))}
-              </ContextMenuItem>
-              <ContextMenuItem label="Video frames" hasSubmenu checked={['video-24fps', 'video-29.97fps', 'video-30fps', 'video-25fps'].includes(snapMode)}>
-                {(['video-24fps', 'video-29.97fps', 'video-30fps', 'video-25fps'] as const).map((mode) => (
-                  <ContextMenuItem
-                    key={mode}
-                    label={{ 'video-24fps': 'Video Frames (24 fps)', 'video-29.97fps': 'NTSC Frames (29.97 fps)', 'video-30fps': 'NTSC Frames (30 fps)', 'video-25fps': 'PAL Frames (25 fps)' }[mode]}
-                    checked={snapMode === mode}
-                    onClick={() => { onSnapModeChange?.(mode); setSnapMenuOpen(false); }}
-                  />
-                ))}
-              </ContextMenuItem>
-              <ContextMenuItem label="CD frames" hasSubmenu checked={snapMode === 'cdda-75fps'}>
-                <ContextMenuItem
-                  label="CDDA Frames (75 fps)"
-                  checked={snapMode === 'cdda-75fps'}
-                  onClick={() => { onSnapModeChange?.('cdda-75fps'); setSnapMenuOpen(false); }}
-                />
-              </ContextMenuItem>
-            </ContextMenu>
           </ToolbarButtonGroup>
-          )}
+        );
 
-
-          {show('microphone-levels') && recordingMeterOrientation !== 'vertical' && (
+      case 'microphone-levels':
+        if (!show('microphone-levels') || recordingMeterOrientation === 'vertical') return null;
+        return (
           <ToolbarButtonGroup gap={6}>
             <span
               ref={micButtonRef}
@@ -899,17 +641,15 @@ export function TransportToolbar({
               />
             )}
           </ToolbarButtonGroup>
-          )}
+        );
 
-          {/* Playback meter cluster: the volume settings button hosts the
-              meter's controls, so it stays glued to the meter — they wrap
-              as one unit. The button shows unless the meter is docked to
-              the side (vertical), where the whole cluster leaves the
-              toolbar and the docked panel carries its own button/flyout;
-              the horizontal meter sits beside the button only when the
-              meter is 'horizontal' ('flyout' keeps the meter in the
-              button's popover, so the toolbar shows the button alone). */}
-          {show('playback-meter') && meterOrientation !== 'vertical' && (
+      // Playback meter cluster: the volume settings button hosts the
+      // meter's controls, so it stays glued to the meter — they wrap as
+      // one unit. The button shows unless the meter is docked to the side
+      // (vertical), where the whole cluster leaves the toolbar.
+      case 'playback-meter':
+        if (!show('playback-meter') || meterOrientation === 'vertical') return null;
+        return (
           <ToolbarButtonGroup gap={6}>
             <div ref={volumeButtonRef} style={{ display: 'inline-flex' }}>
               <ToolButton
@@ -933,7 +673,81 @@ export function TransportToolbar({
               />
             )}
           </ToolbarButtonGroup>
-          )}
+        );
+
+      // The Export tab's own tools
+      case 'export-share': return <Button variant="secondary" size="default" icon={''} onClick={onShareClick}>Share on audio.com</Button>;
+      case 'export-audio': return <Button variant="secondary" size="default" icon={''} onClick={onExportAudioClick}>Export audio</Button>;
+      case 'export-loop-region': return <Button variant="secondary" size="default" icon={''} onClick={onExportLoopRegionClick}>Export loop region</Button>;
+
+      default: return null;
+    }
+  };
+
+  const toolMeta = (id: string): ToolMeta | undefined => transportToolMeta(id, { recordingMeterOrientation, meterOrientation });
+
+  const contextValue: TransportToolsContextValue = { renderTool, toolMeta, settingsCog, hidden };
+
+  return (
+    <TransportToolsContext.Provider value={contextValue}>
+      {children}
+      {!hidden && (
+        <>
+          <ContextMenu
+            isOpen={snapMenuOpen}
+            onClose={() => setSnapMenuOpen(false)}
+            x={snapMenuPos.x}
+            y={snapMenuPos.y}
+          >
+            {([1, 2, 4, 8, 16, 32, 64, 128] as const).map((val) => (
+              <ContextMenuItem
+                key={val}
+                label={val === 1 ? 'Bar' : `1/${val}`}
+                checked={snapMode === 'musical' && snapSubdivision === val}
+                onClick={() => {
+                  onSnapModeChange?.('musical');
+                  onSnapSubdivisionChange?.(val);
+                  setSnapMenuOpen(false);
+                }}
+              />
+            ))}
+            <div className="context-menu-separator" />
+            <ContextMenuItem
+              label="Enable triplets"
+              checked={snapTriplet}
+              onClick={() => {
+                onToggleSnapTriplet?.();
+              }}
+            />
+            <div className="context-menu-separator" />
+            <ContextMenuItem label="Seconds samples" hasSubmenu checked={['seconds', 'deciseconds', 'centiseconds', 'milliseconds', 'samples'].includes(snapMode)}>
+              {(['seconds', 'deciseconds', 'centiseconds', 'milliseconds', 'samples'] as const).map((mode) => (
+                <ContextMenuItem
+                  key={mode}
+                  label={{ seconds: 'Seconds', deciseconds: 'Deciseconds', centiseconds: 'Centiseconds', milliseconds: 'Milliseconds', samples: 'Samples' }[mode]}
+                  checked={snapMode === mode}
+                  onClick={() => { onSnapModeChange?.(mode); setSnapMenuOpen(false); }}
+                />
+              ))}
+            </ContextMenuItem>
+            <ContextMenuItem label="Video frames" hasSubmenu checked={['video-24fps', 'video-29.97fps', 'video-30fps', 'video-25fps'].includes(snapMode)}>
+              {(['video-24fps', 'video-29.97fps', 'video-30fps', 'video-25fps'] as const).map((mode) => (
+                <ContextMenuItem
+                  key={mode}
+                  label={{ 'video-24fps': 'Video Frames (24 fps)', 'video-29.97fps': 'NTSC Frames (29.97 fps)', 'video-30fps': 'NTSC Frames (30 fps)', 'video-25fps': 'PAL Frames (25 fps)' }[mode]}
+                  checked={snapMode === mode}
+                  onClick={() => { onSnapModeChange?.(mode); setSnapMenuOpen(false); }}
+                />
+              ))}
+            </ContextMenuItem>
+            <ContextMenuItem label="CD frames" hasSubmenu checked={snapMode === 'cdda-75fps'}>
+              <ContextMenuItem
+                label="CDDA Frames (75 fps)"
+                checked={snapMode === 'cdda-75fps'}
+                onClick={() => { onSnapModeChange?.('cdda-75fps'); setSnapMenuOpen(false); }}
+              />
+            </ContextMenuItem>
+          </ContextMenu>
 
           <MicrophoneLevelFlyout
             isOpen={micFlyout !== null}
@@ -995,9 +809,72 @@ export function TransportToolbar({
             volume={masterVolume}
             onVolumeChange={onMasterVolumeChange}
           />
-
         </>
       )}
-    </Toolbar>
+    </TransportToolsContext.Provider>
+  );
+}
+
+export interface TransportToolbarLayoutProps extends TransportToolbarProps {
+  /** The top dock's bars; absent = the workspace's seed (the Export tab
+   *  always draws its own) */
+  layout?: ToolbarLayout;
+  /** A press on a bar's grip — the host's drag */
+  onBarGripMouseDown?: (barId: string, event: React.MouseEvent, barRect: DOMRect) => void;
+  draggingBarId?: string | null;
+  insertAt?: number | null;
+  insertRefused?: boolean;
+  dropZoneLabel?: string | null;
+}
+
+/**
+ * The TOP DOCK alone, for hosts that want the one bar: TransportTools
+ * around a ToolbarDock drawing the workspace's seed layout (or the
+ * host's). The sandbox places its own docks inside TransportTools instead.
+ */
+export function TransportToolbar(props: TransportToolbarLayoutProps) {
+  const { layout, onBarGripMouseDown, draggingBarId, insertAt, insertRefused, dropZoneLabel, ...rest } = props;
+  const bars = (rest.activeMenuItem === 'export' ? EXPORT_TOOLBAR_LAYOUT : (layout ?? defaultToolbarLayout(rest.workspace))).top;
+  return (
+    <TransportTools {...rest}>
+      <TransportTopDock
+        bars={bars}
+        onBarGripMouseDown={onBarGripMouseDown}
+        draggingBarId={draggingBarId}
+        insertAt={insertAt}
+        insertRefused={insertRefused}
+        dropZoneLabel={dropZoneLabel}
+      />
+    </TransportTools>
+  );
+}
+
+/** The top dock drawn from the context: the tools, the cog at its end */
+export function TransportTopDock({ bars, onBarGripMouseDown, draggingBarId, insertAt, insertRefused, dropZoneLabel }: {
+  bars: ReadonlyArray<ToolbarLayout['top'][number]>;
+  onBarGripMouseDown?: (barId: string, event: React.MouseEvent, barRect: DOMRect) => void;
+  draggingBarId?: string | null;
+  insertAt?: number | null;
+  insertRefused?: boolean;
+  dropZoneLabel?: string | null;
+}) {
+  const { renderTool, toolMeta, settingsCog, hidden } = useTransportTools();
+  if (hidden) return null;
+  return (
+    <ToolbarDock
+      region="top"
+      bars={bars}
+      renderTool={renderTool}
+      toolMeta={toolMeta}
+      onGripMouseDown={onBarGripMouseDown}
+      draggingBarId={draggingBarId}
+      insertAt={insertAt}
+      insertRefused={insertRefused}
+      dropZoneLabel={dropZoneLabel}
+      trailing={settingsCog}
+      className="transport-toolbar"
+      tabGroupId="tool-toolbar"
+      ariaLabel="Tool toolbar"
+    />
   );
 }

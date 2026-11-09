@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksProvider';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ToastContainer, toast, SelectionToolbar, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, RecordingMeterVertical, PlaybackMeterFlyout, DEFAULT_PLAYBACK_METER_LOOK, type PlaybackMeterLook, type StoredProject } from '@audacity-ui/components';
+import { ApplicationHeader, ToastContainer, toast, useSelectionToolbarStyle, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, RecordingMeterVertical, PlaybackMeterFlyout, DEFAULT_PLAYBACK_METER_LOOK, type PlaybackMeterLook, type StoredProject } from '@audacity-ui/components';
 import { ADIEU_BASE } from './lib/adieu-client';
 import { type EnvelopePointStyleKey, yToTrackIndex } from '@audacity-ui/core';
 import { createWheelTargetLock } from './utils/canvasWheelTarget';
@@ -77,7 +77,11 @@ import { ClipPropertiesProvider } from './contexts/ClipPropertiesContext';
 import { ContextMenuProvider, useContextMenus } from './contexts/ContextMenuContext';
 import { useLoopRegion } from './hooks/useLoopRegion';
 import { useMasterMeter } from './hooks/useMasterMeter';
-import { useDraggableToolbar } from './hooks/useDraggableToolbar';
+import { useToolbarLayout } from './hooks/useToolbarLayout';
+import { useToolbarBarDrag } from './hooks/useToolbarBarDrag';
+import { AppToolbarDock } from './components/AppToolbarDock';
+import { renderStatusTool, statusToolMeta, type StatusBarToolsDeps } from './components/StatusBarTools';
+import { TransportTopDock, transportToolMeta } from '@audacity-ui/components';
 import { useAudioDeviceMenu } from './hooks/useAudioDeviceMenu';
 import { useFocusDebugger } from './hooks/useFocusDebugger';
 import { HandleHintProvider, useHandleHint } from './contexts/HandleHintContext';
@@ -334,7 +338,18 @@ function CanvasDemoContent() {
   const [timelineFormat, setTimelineFormat] = React.useState<'minutes-seconds' | 'beats-measures'>('minutes-seconds');
   const [bpm, setBpm] = React.useState(120);
 
-  const { toolbarPosition, handleToolbarGripperMouseDown } = useDraggableToolbar();
+  // THE TOOLBAR LAYOUT (2026-11-09, custom toolbars): four docks of bars
+  // with persistent grips, one layout per workspace, in the preferences;
+  // a grip drag moves a whole bar between docks and along a row
+  const toolbarLayout = useToolbarLayout(workspace, activeMenuItem);
+  const barDrag = useToolbarBarDrag({
+    layout: toolbarLayout.layout,
+    barFitsVertical: (barId) => {
+      const bar = [...toolbarLayout.layout.top, ...toolbarLayout.layout.bottom, ...toolbarLayout.layout.left, ...toolbarLayout.layout.right].find((b) => b.id === barId);
+      return !!bar && bar.tools.every((id) => (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true);
+    },
+    onDrop: toolbarLayout.moveBarTo,
+  });
   const [meterOrientation, setMeterOrientation] = React.useState<'flyout' | 'horizontal' | 'vertical'>('horizontal');
   // The playback meter's LOOK (2026-11-04, the Playback meter flyout):
   // style, type, dB range — session state, as the orientation is
@@ -1044,6 +1059,41 @@ function CanvasDemoContent() {
   // calls `onDockChange` on drag-release. Grouped into cohesive object
   // props consumed by TransportToolbarContainer (loop-region props are
   // read from LoopRegionContext by the container itself).
+  // The status bar's tools (the bottom dock, 2026-11-09): the two slots of
+  // the Figma Status/Info bar spec — the first the PLAYBACK CUE (Stopped,
+  // Playing, Recording; "always says stopped": it was the component's
+  // default) with a speed that is on as part of it ("Playing at 110%");
+  // the second what is under the pointer: the clip handle (user decision
+  // 2026-10-01), else the control or surface (`utils/statusInfo.ts`), else
+  // the focus debugger, if on, or "Click and drag to select audio". THE
+  // SPEED IS SAID ONCE, in the cue ("I don't like the duplicate") — and
+  // the selection timecodes and the duration
+  const selectionToolbarStyle = useSelectionToolbarStyle();
+  const statusToolDeps: StatusBarToolsDeps = {
+    status: showFocusDebug && !handleHint
+      ? 'Focused element'
+      : transportStatusText({ isRecording: state.isRecording, isPlaying, isSeeking, speed: playback.varispeed }),
+    infoText: handleHint
+      ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled })
+      : (statusInfo.text ?? (showFocusDebug ? focusedElement : 'Click and drag to select audio')),
+    selectionStart: state.timeSelection?.startTime ?? null,
+    selectionEnd: state.timeSelection?.endTime ?? null,
+    format: selectionTimeCodeFormat,
+    durationFormat: durationTimeCodeFormat,
+    onFormatChange: setSelectionTimeCodeFormat,
+    onDurationFormatChange: setDurationTimeCodeFormat,
+    onSelectionStartChange: (newStart) => {
+      // Create selection if it doesn't exist, otherwise update start time
+      const endTime = state.timeSelection?.endTime ?? newStart;
+      dispatch({ type: 'SET_TIME_SELECTION', payload: { ...state.timeSelection, startTime: newStart, endTime } });
+    },
+    onSelectionEndChange: (newEnd) => {
+      // Create selection if it doesn't exist, otherwise update end time
+      const startTime = state.timeSelection?.startTime ?? 0;
+      dispatch({ type: 'SET_TIME_SELECTION', payload: { ...state.timeSelection, startTime, endTime: newEnd } });
+    },
+  };
+
   const transportToolbarProps: TransportToolbarContainerProps = {
     transport: {
       activeMenuItem,
@@ -1149,15 +1199,12 @@ function CanvasDemoContent() {
       meterLook,
       onMeterLookChange: setMeterLook,
     },
-    gripper: {
-      onGripperMouseDown: handleToolbarGripperMouseDown,
-    },
   };
-  const transportToolbarElement = <TransportToolbarContainer {...transportToolbarProps} />;
 
   return (
     <PlaybackProvider value={playback}>
     <LoopRegionProvider value={loopRegion}>
+    <TransportToolbarContainer {...transportToolbarProps}>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
       {!IS_ELECTRON && (
         <ApplicationHeader
@@ -1179,7 +1226,17 @@ function CanvasDemoContent() {
         workspace={workspace}
         onWorkspacePick={handleWorkspacePick}
       />
-      {toolbarPosition.kind === 'top' && transportToolbarElement}
+      {/* The TOP DOCK: the tools, in the workspace's bars (2026-11-09) */}
+      {activeMenuItem !== 'home' && (
+        <TransportTopDock
+          bars={toolbarLayout.layout.top}
+          onBarGripMouseDown={barDrag.onGripMouseDown}
+          draggingBarId={barDrag.draggingBarId}
+          insertAt={barDrag.dropTarget?.region === 'top' ? barDrag.dropTarget.index : null}
+          insertRefused={barDrag.dropTarget?.region === 'top' ? barDrag.dropTarget.refused : false}
+          dropZoneLabel={barDrag.draggingBarId ? 'Drop here for a top toolbar' : null}
+        />
+      )}
 
       {/* Hidden file input for "Open from Computer" — triggered programmatically. */}
       <input
@@ -1310,6 +1367,19 @@ function CanvasDemoContent() {
         // right after opening the Project tab and were wiped by the late
         // RESET_STATE on a slow CI runner (2026-10-25). They wait for this.
         <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0 }} data-project-id={currentProjectId ?? undefined}>
+        {/* The LEFT DOCK (2026-11-09): bars stacked beside the tracks */}
+        <AppToolbarDock
+          region="left"
+          bars={toolbarLayout.layout.left}
+          renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
+          extraToolMeta={statusToolMeta}
+          draggingBarId={barDrag.draggingBarId}
+          dropTarget={barDrag.dropTarget}
+          onGripMouseDown={barDrag.onGripMouseDown}
+          dropZoneLabel="Drop here for a left toolbar"
+          tabGroupId="tool-dock-left"
+          ariaLabel="Left toolbar dock"
+        />
         <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <EditorLayout
           activeMenuItem={activeMenuItem}
@@ -1371,6 +1441,19 @@ function CanvasDemoContent() {
           setMarketplaceModal={setMarketplaceModal}
         />
         </div>
+        {/* The RIGHT DOCK, before the meters' columns, which keep the far edge */}
+        <AppToolbarDock
+          region="right"
+          bars={toolbarLayout.layout.right}
+          renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
+          extraToolMeta={statusToolMeta}
+          draggingBarId={barDrag.draggingBarId}
+          dropTarget={barDrag.dropTarget}
+          onGripMouseDown={barDrag.onGripMouseDown}
+          dropZoneLabel="Drop here for a right toolbar"
+          tabGroupId="tool-dock-right"
+          ariaLabel="Right toolbar dock"
+        />
         {recordingMeterOrientation === 'vertical' && (
           <div style={{ width: 64, flexShrink: 0 }} data-recording-meter-dock>
             <RecordingMeterVertical
@@ -1400,78 +1483,37 @@ function CanvasDemoContent() {
         </div>
       )}
 
-      {/* Selection Toolbar - Hidden in Home view */}
+      {/* THE BOTTOM DOCK IS THE STATUS BAR (2026-11-09): its cue, info
+          line, selection timecodes and duration are tools, seeded as two
+          bars, and any bar can join them. Hidden in the Home view. */}
       {activeMenuItem !== 'home' && (
-        <SelectionToolbar
-          selectionStart={state.timeSelection?.startTime ?? null}
-          selectionEnd={state.timeSelection?.endTime ?? null}
-          format={selectionTimeCodeFormat}
-          durationFormat={durationTimeCodeFormat}
-          showCloudIndicator={isCloudProject || isCloudUploading}
-          isCloudUploading={isCloudUploading}
-          showDuration={true}
-          // The two slots of the Figma Status/Info bar spec (2026-11-05):
-          // the first is the PLAYBACK CUE — Stopped, Playing, Recording
-          // ("always says stopped": it was the component's default) —
-          // with a speed that is on as part of it ("Playing at 110%");
-          status={showFocusDebug && !handleHint
-            ? 'Focused element'
-            : transportStatusText({ isRecording: state.isRecording, isPlaying, isSeeking, speed: playback.varispeed })}
-          backgrounded={statusInfo.backgrounded}
-          // the second says what is under the pointer: the clip handle
-          // (user decision 2026-10-01), else the control or surface
-          // (`utils/statusInfo.ts` — a button's name and shortcut, a
-          // slider's value), else the focus debugger, if on, or the
-          // component's own "Click and drag to select audio". THE SPEED
-          // IS SAID ONCE, in the cue ("I don't like the duplicate")
-          instructionText={handleHint
-            ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled })
-            : (statusInfo.text ?? (showFocusDebug ? focusedElement : undefined))}
-          onFormatChange={setSelectionTimeCodeFormat}
-          onDurationFormatChange={setDurationTimeCodeFormat}
-          onSelectionStartChange={(newStart) => {
-            // Create selection if it doesn't exist, otherwise update start time
-            const endTime = state.timeSelection?.endTime ?? newStart;
-            dispatch({
-              type: 'SET_TIME_SELECTION',
-              payload: {
-                ...state.timeSelection,
-                startTime: newStart,
-                endTime: endTime,
-              }
-            });
-          }}
-          onSelectionEndChange={(newEnd) => {
-            // Create selection if it doesn't exist, otherwise update end time
-            const startTime = state.timeSelection?.startTime ?? 0;
-            dispatch({
-              type: 'SET_TIME_SELECTION',
-              payload: {
-                ...state.timeSelection,
-                startTime: startTime,
-                endTime: newEnd,
-              }
-            });
-          }}
+        <AppToolbarDock
+          region="bottom"
+          bars={toolbarLayout.layout.bottom}
+          renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
+          extraToolMeta={statusToolMeta}
+          draggingBarId={barDrag.draggingBarId}
+          dropTarget={barDrag.dropTarget}
+          onGripMouseDown={barDrag.onGripMouseDown}
+          dropZoneLabel="Drop here for a bottom toolbar"
+          className="selection-toolbar"
+          tabGroupId="selection-toolbar"
+          ariaLabel="Selection toolbar"
+          style={selectionToolbarStyle}
+          dataAttrs={{ 'data-backgrounded': statusInfo.backgrounded ? 'true' : undefined }}
         />
       )}
 
-      {toolbarPosition.kind === 'bottom' && transportToolbarElement}
-
-      {toolbarPosition.kind === 'floating' && (
+      {/* The bar in hand: a ghost of its size follows the pointer */}
+      {barDrag.ghost && (
         <div
+          aria-hidden="true"
           style={{
-            position: 'fixed',
-            left: toolbarPosition.x,
-            top: toolbarPosition.y,
-            zIndex: 9000,
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.15)',
-            borderRadius: 4,
-            overflow: 'hidden',
+            position: 'fixed', left: barDrag.ghost.x, top: barDrag.ghost.y, width: barDrag.ghost.width, height: barDrag.ghost.height,
+            zIndex: 9000, pointerEvents: 'none', borderRadius: 4,
+            background: 'rgba(103, 124, 228, 0.12)', boxShadow: '0 0 0 1px rgba(103, 124, 228, 0.6), 0 10px 30px rgba(0, 0, 0, 0.25)',
           }}
-        >
-          {transportToolbarElement}
-        </div>
+        />
       )}
 
       {/* Toast Container */}
@@ -1821,6 +1863,7 @@ function CanvasDemoContent() {
         </Dialog>
       )}
     </div>
+    </TransportToolbarContainer>
     </LoopRegionProvider>
     </PlaybackProvider>
   );

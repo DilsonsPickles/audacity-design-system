@@ -161,6 +161,8 @@ export * from './ProjectToolbar';
 export * from './Toolbar';
 export * from './ToolbarGroup';
 export * from './TransportToolbar';
+export * from './ToolbarDock';
+export * from './utils/toolbarLayout';
 export * from './TrackControlSidePanel';
 export * from './EffectsPanel';
 export * from './PanelHeader';

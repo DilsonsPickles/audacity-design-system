@@ -1,4 +1,5 @@
-import { TransportToolbar, usePreferences, type TransportToolbarProps } from '@audacity-ui/components';
+import React from 'react';
+import { TransportTools, usePreferences, type TransportToolbarProps } from '@audacity-ui/components';
 import { useLoopRegionContext } from '../contexts/LoopRegionContext';
 import type { UseMasterMeterReturn } from '../hooks/useMasterMeter';
 
@@ -45,23 +46,22 @@ export type TransportToolbarContainerMasterMeter = UseMasterMeterReturn & {
   onMeterLookChange: NonNullable<TransportToolbarProps['onMeterLookChange']>;
 };
 
-export interface TransportToolbarContainerGripper {
-  onGripperMouseDown: NonNullable<TransportToolbarProps['onGripperMouseDown']>;
-}
-
 export interface TransportToolbarContainerProps {
   transport: TransportToolbarContainerTransport;
   snap: TransportToolbarContainerSnap;
   timecode: TransportToolbarContainerTimecode;
   masterMeter: TransportToolbarContainerMasterMeter;
-  gripper: TransportToolbarContainerGripper;
+  /** The editor, whose ToolbarDocks draw the tools (2026-11-09) */
+  children?: React.ReactNode;
 }
 
 /**
- * Wraps TransportToolbar for App.tsx's three render slots (docked top,
- * docked bottom, floating). Groups the ~40 values App.tsx used to close
- * over into a handful of cohesive object props instead of drilling them
- * individually.
+ * Wraps TransportTools — the toolbar's state, flyouts and TOOL REGISTRY —
+ * around the editor, whose ToolbarDocks draw the tools wherever the
+ * layout puts them (2026-11-09, custom toolbars; it wrapped the one
+ * TransportToolbar for App's docked / floating slots until then). Groups
+ * the ~40 values App.tsx used to close over into a handful of cohesive
+ * object props instead of drilling them individually.
  *
  * Loop-region props (loopRegionEnabled/Start/End + setters) come from
  * LoopRegionContext rather than a prop group — LoopRegionProvider wraps
@@ -74,7 +74,7 @@ export function TransportToolbarContainer({
   snap,
   timecode,
   masterMeter,
-  gripper,
+  children,
 }: TransportToolbarContainerProps) {
   const {
     loopRegionEnabled, loopRegionStart, loopRegionEnd,
@@ -91,7 +91,7 @@ export function TransportToolbarContainer({
   );
 
   return (
-    <TransportToolbar
+    <TransportTools
       hiddenTools={hiddenTools}
       onToggleToolVisibility={toggleTool}
       // The mic flyout's two settings ARE the preferences (2026-11-04) — the
@@ -121,7 +121,8 @@ export function TransportToolbarContainer({
       onMeterOrientationChange={masterMeter.onMeterOrientationChange}
       meterLook={masterMeter.meterLook}
       onMeterLookChange={masterMeter.onMeterLookChange}
-      onGripperMouseDown={gripper.onGripperMouseDown}
-    />
+    >
+      {children}
+    </TransportTools>
   );
 }
