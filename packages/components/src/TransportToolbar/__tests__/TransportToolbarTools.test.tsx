@@ -141,6 +141,15 @@ describe('the recording meter shows on the toolbar when horizontal (2026-11-09)'
     expect(container.querySelector('button[aria-label="Microphone level"]')).toBeNull();
     expect(container.querySelector('[aria-label="Microphone meter"]')).toBeNull();
   });
+
+  it('hides the mic button from the toolbar when the meter is docked vertical', () => {
+    const flyoutToolbar = renderToolbar('classic', [], { recordingMeterOrientation: 'flyout' });
+    expect(flyoutToolbar.container.querySelector('button[aria-label="Microphone level"]')).toBeTruthy();
+    cleanup();
+    const verticalToolbar = renderToolbar('classic', [], { recordingMeterOrientation: 'vertical' });
+    expect(verticalToolbar.container.querySelector('button[aria-label="Microphone level"]')).toBeNull();
+    expect(verticalToolbar.container.querySelector('[aria-label="Microphone meter"]')).toBeNull();
+  });
 });
 
 describe('the volume button opens the Playback meter flyout (2026-11-04)', () => {

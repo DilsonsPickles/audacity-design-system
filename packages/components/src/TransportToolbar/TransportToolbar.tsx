@@ -867,7 +867,7 @@ export function TransportToolbar({
           )}
 
 
-          {show('microphone-levels') && (
+          {show('microphone-levels') && recordingMeterOrientation !== 'vertical' && (
           <ToolbarButtonGroup gap={6}>
             <span
               ref={micButtonRef}
