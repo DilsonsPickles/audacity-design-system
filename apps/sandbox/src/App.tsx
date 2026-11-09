@@ -81,7 +81,7 @@ import { useToolbarLayout } from './hooks/useToolbarLayout';
 import { useToolbarBarDrag } from './hooks/useToolbarBarDrag';
 import { AppToolbarDock } from './components/AppToolbarDock';
 import { renderStatusTool, statusToolMeta, type StatusBarToolsDeps } from './components/StatusBarTools';
-import { TransportTopDock, transportToolMeta } from '@audacity-ui/components';
+import { transportToolMeta } from '@audacity-ui/components';
 import { useAudioDeviceMenu } from './hooks/useAudioDeviceMenu';
 import { useFocusDebugger } from './hooks/useFocusDebugger';
 import { HandleHintProvider, useHandleHint } from './contexts/HandleHintContext';
@@ -1228,13 +1228,20 @@ function CanvasDemoContent() {
       />
       {/* The TOP DOCK: the tools, in the workspace's bars (2026-11-09) */}
       {activeMenuItem !== 'home' && (
-        <TransportTopDock
+        <AppToolbarDock
+          region="top"
           bars={toolbarLayout.layout.top}
-          onBarGripMouseDown={barDrag.onGripMouseDown}
+          renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
+          extraToolMeta={statusToolMeta}
           draggingBarId={barDrag.draggingBarId}
-          insertAt={barDrag.dropTarget?.region === 'top' ? barDrag.dropTarget.index : null}
-          insertRefused={barDrag.dropTarget?.region === 'top' ? barDrag.dropTarget.refused : false}
-          dropZoneLabel={barDrag.draggingBarId ? 'Drop here for a top toolbar' : null}
+          dropTarget={barDrag.dropTarget}
+          onGripMouseDown={barDrag.onGripMouseDown}
+          dropZoneLabel="Drop here for a top toolbar"
+          showSettingsCog
+          className="transport-toolbar"
+          tabGroupId="tool-toolbar"
+          ariaLabel="Tool toolbar"
+          style={selectionToolbarStyle}
         />
       )}
 
@@ -1379,6 +1386,7 @@ function CanvasDemoContent() {
           dropZoneLabel="Drop here for a left toolbar"
           tabGroupId="tool-dock-left"
           ariaLabel="Left toolbar dock"
+          style={selectionToolbarStyle}
         />
         <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <EditorLayout
@@ -1453,6 +1461,7 @@ function CanvasDemoContent() {
           dropZoneLabel="Drop here for a right toolbar"
           tabGroupId="tool-dock-right"
           ariaLabel="Right toolbar dock"
+          style={selectionToolbarStyle}
         />
         {recordingMeterOrientation === 'vertical' && (
           <div style={{ width: 64, flexShrink: 0 }} data-recording-meter-dock>

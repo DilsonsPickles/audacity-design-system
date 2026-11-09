@@ -333,6 +333,13 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     fireEvent.mouseUp(document, { clientX: 100, clientY: 10 });
     await waitFor(() => expect(dock('top').contains(bar())).toBe(true));
     expect(stored().top.map((b: { id: string }) => b.id)).toContain('transport');
+
+    // The status bar's bars draw wherever they go: the Selection bar to the top dock
+    const selectionGrip = dock('bottom').querySelector('[data-toolbar-bar="selection"] .toolbar-dock__grip') as HTMLElement;
+    fireEvent.mouseDown(selectionGrip, { clientX: 100, clientY: 100, button: 0 });
+    fireEvent.mouseUp(document, { clientX: 100, clientY: 10 });
+    await waitFor(() => expect(dock('top').querySelector('[data-toolbar-bar="selection"] [aria-label="Selection start"]')).toBeTruthy());
+    expect(dock('bottom').querySelector('[data-toolbar-bar="selection"]')).toBeNull();
   });
 });
 

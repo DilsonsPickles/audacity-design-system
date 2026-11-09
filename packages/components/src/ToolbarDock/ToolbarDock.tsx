@@ -40,6 +40,8 @@ export interface ToolbarDockProps {
   ariaLabel?: string;
   /** Extra data attributes on the dock's root */
   dataAttrs?: Record<string, string | undefined>;
+  /** Extra styles on the root (a host's own tokens for its tools) */
+  style?: React.CSSProperties;
 }
 
 const GRIP_GLYPH = '';
@@ -60,7 +62,7 @@ const GROW_BAR_PACK_WIDTH = 160;
 export function ToolbarDock({
   region, bars, renderTool, toolMeta,
   onGripMouseDown, draggingBarId = null, insertAt = null, insertRefused = false, dropZoneLabel = null,
-  trailing, className = '', tabGroupId, ariaLabel, dataAttrs,
+  trailing, className = '', tabGroupId, ariaLabel, dataAttrs, style: styleProp,
 }: ToolbarDockProps) {
   const { theme } = useTheme();
   const vertical = isVerticalRegion(region);
@@ -122,6 +124,7 @@ export function ToolbarDock({
   useEffect(() => { if (tabGroupId) initTabIndices(); }, [tabGroupId, bars, initTabIndices]);
 
   const style = {
+    ...styleProp,
     '--toolbar-bg': theme.background.toolbar,
     '--toolbar-border': theme.border.onSurface,
     '--toolbar-divider': theme.border.divider,

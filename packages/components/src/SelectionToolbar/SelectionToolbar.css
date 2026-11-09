@@ -122,6 +122,11 @@
 .selection-toolbar.toolbar-dock {
   height: auto;
   justify-content: flex-start;
+  /* the fixed bar centres its two sides vertically; on a column of rows
+     that centred the ROWS horizontally — a row of content in the middle
+     of a wide window ("the items in the bottom toolbar are always
+     centrally aligned", 2026-11-09) */
+  align-items: stretch;
   padding: 0;
   display: flex;
 }
@@ -136,10 +141,15 @@
   padding-top: 0;
   padding-bottom: 0;
 }
-/* The info line grows: it is what pushes the Selection bar to the right */
+/* The info line grows: it is what pushes the Selection bar to the right —
+   and its text stays at the LEFT of the room it takes (the fixed bar
+   centred the text in a slot no wider than itself, which in a grown slot
+   put it mid-window: "the items in the bottom toolbar are always
+   centrally aligned", 2026-11-09) */
 .toolbar-dock__bar--grow .toolbar-dock__tools > [data-status-tool="info"] {
   flex: 1 1 auto;
   min-width: 0;
+  justify-content: flex-start;
 }
 .selection-toolbar.toolbar-dock [data-status-tool="info"] .selection-toolbar__instruction-text {
   overflow: hidden;

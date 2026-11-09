@@ -34,6 +34,11 @@
   gap: 8px;
   padding: 10px 12px 10px 0;
   min-height: 48px;
+  /* A toolbar row never grows past 56px ("the toolbars should never get
+     taller than 56px", 2026-11-09): a tool taller than the row's 28px
+     content is clipped, not accommodated */
+  max-height: 56px;
+  overflow: hidden;
   box-sizing: border-box;
 }
 
