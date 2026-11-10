@@ -143,7 +143,7 @@ describe('the recording meter shows on the toolbar when horizontal (2026-11-09)'
     expect(container.querySelector('[aria-label="Microphone meter"]')).toBeNull();
   });
 
-  it('THE METERS FOLLOW THEIR DOCK (2026-11-10): shown on the bar, a meter in a side dock is the vertical meter, its button still the toolbar\'s', () => {
+  it('THE METERS FOLLOW THEIR DOCK (2026-11-10): shown on the bar, a meter in a side dock is the vertical meter as it was — its own button at its head', () => {
     // A side dock drawn from the same registry
     function LeftDock() {
       const { renderTool, toolMeta } = useTransportTools();
@@ -156,13 +156,14 @@ describe('the recording meter shows on the toolbar when horizontal (2026-11-09)'
         </AccessibilityProfileProvider>
       </ThemeProvider>,
     );
-    // on the bar ('horizontal' or 'vertical' alike — the dock decides): the bare vertical meters, under their buttons
+    // on the bar ('horizontal' or 'vertical' alike — the dock decides): the
+    // whole MasterMeterVertical, whose head buttons are the meters' buttons
     for (const orientation of ['horizontal', 'vertical'] as const) {
       const { container } = renderLeft({ recordingMeterOrientation: orientation, meterOrientation: orientation });
       const dock = container.querySelector('[data-toolbar-dock="left"]')!;
-      expect(dock.querySelector('button[aria-label="Microphone level"]')).toBeTruthy();
-      expect(dock.querySelector('button[aria-label="Playback volume settings"]')).toBeTruthy();
-      expect(dock.querySelectorAll('.master-meter-vertical--bare')).toHaveLength(2);
+      expect(dock.querySelectorAll('.master-meter-vertical')).toHaveLength(2);
+      expect(dock.querySelector('[data-docked-meter="recording"] .master-meter-vertical button[aria-label="Microphone level"]')).toBeTruthy();
+      expect(dock.querySelector('[data-docked-meter="playback"] .master-meter-vertical button[aria-label="Playback volume settings"]')).toBeTruthy();
       expect(dock.querySelector('.master-meter')).toBeNull();
       // a grown tool in a column: it fills the dock as the old docked column did
       expect(dock.querySelector('[data-toolbar-tool="playback-meter"]')!.classList.contains('toolbar-dock__tool--grow')).toBe(true);
@@ -176,7 +177,7 @@ describe('the recording meter shows on the toolbar when horizontal (2026-11-09)'
 
   it('transportToolMeta: a meter on its bar stretches in a row and grows in a column; either way a side dock takes it', () => {
     expect(transportToolMeta('playback-meter', { meterOrientation: 'horizontal' }, 'horizontal')).toMatchObject({ vertical: true, stretch: true, minSize: 154 });
-    expect(transportToolMeta('playback-meter', { meterOrientation: 'horizontal' }, 'vertical')).toMatchObject({ vertical: true, grow: true, minSize: 154 });
+    expect(transportToolMeta('playback-meter', { meterOrientation: 'horizontal' }, 'vertical')).toMatchObject({ vertical: true, grow: true, minSize: 188 });
     expect(transportToolMeta('microphone-levels', { recordingMeterOrientation: 'flyout' }, 'vertical')).toEqual({ vertical: true });
   });
 });

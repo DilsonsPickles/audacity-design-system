@@ -14,18 +14,6 @@
   user-select: none;
 }
 
-/* BARE: the meter alone, in a toolbar in a side dock (2026-11-10) — the
-   toolbar's own button heads it, the dock is its surface */
-.master-meter-vertical--bare {
-  flex: 1 1 auto;
-  height: auto;
-  min-height: 0;
-  padding: 0;
-  gap: 0;
-  background: none;
-  border-left: none;
-}
-
 /* Bars + tick scale row */
 .master-meter-vertical__meter-row {
   display: flex;

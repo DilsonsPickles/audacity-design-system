@@ -95,8 +95,10 @@ const GROW_BAR_PACK_WIDTH = 160;
  * window WRAPS onto further lines by measured width (Audacity 3's dock) —
  * with a divider between bars on a line (each bar's GRIP: the divider's
  * gutter shows the dots on hover) and a line between rows
- * ("division lines between cols and rows"); a VERTICAL dock stacks every
- * bar in one column, each bar's tools in a column. The host renders the tools by
+ * ("division lines between cols and rows"); a VERTICAL dock draws each of
+ * its rows as a COLUMN, side by side ("allow me to have multiple vertical
+ * toolbars like we do in horizontal", 2026-11-10), each bar's tools in a
+ * column. The host renders the tools by
  * id and owns the layout and the drag; the dock only draws, measures and
  * reports a grip press. An empty dock draws nothing — the host's overlay
  * marks where a drop would land.
@@ -391,8 +393,8 @@ export function ToolbarDock({
   const oneLineARow: DockLine[] = [];
   for (const d of visible) {
     const last = oneLineARow[oneLineARow.length - 1];
-    if (last && (vertical || last.row === d.row)) last.ids.push(d.bar.id);
-    else oneLineARow.push({ row: vertical ? 0 : d.row, ids: [d.bar.id] });
+    if (last && last.row === d.row) last.ids.push(d.bar.id);
+    else oneLineARow.push({ row: d.row, ids: [d.bar.id] });
   }
   const packed = lines.flatMap((l) => l.ids);
   const usePacked = !vertical && lines.length > 0 && packed.length === visible.length
@@ -413,13 +415,13 @@ export function ToolbarDock({
   if (barInsert) {
     if (insertAfterBarId && byId.has(insertAfterBarId)) insertAfterId = insertAfterBarId;
     else {
-      const order = vertical ? rows.flat() : (rows[barInsert.row] ?? []);
+      const order = rows[barInsert.row] ?? [];
       const from = barInsert.beforeBarId === null ? -1 : order.findIndex((b) => b.id === barInsert.beforeBarId);
       insertBeforeId = from < 0 ? null : (order.slice(from).find((b) => byId.has(b.id))?.id ?? null);
       if (insertBeforeId === null) {
         // The end of the row: its last line (the dock's last when the row draws nothing)
         insertEndOfLine = drawnLines.length - 1;
-        if (!vertical) for (let i = drawnLines.length - 1; i >= 0; i--) if (drawnLines[i].row === barInsert.row) { insertEndOfLine = i; break; }
+        for (let i = drawnLines.length - 1; i >= 0; i--) if (drawnLines[i].row === barInsert.row) { insertEndOfLine = i; break; }
       }
     }
   }

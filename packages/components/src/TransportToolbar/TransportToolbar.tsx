@@ -226,15 +226,15 @@ const METER_SLOT_STYLE: React.CSSProperties = { display: 'flex', flex: '1 1 360p
 function meterMeta(onBar: boolean, orientation: ToolbarOrientation): ToolMeta {
   if (!onBar) return { vertical: true };
   return orientation === 'vertical'
-    ? { vertical: true, grow: true, minSize: METER_TOOL_MIN }
+    ? { vertical: true, grow: true, minSize: VERTICAL_METER_MIN }
     : { vertical: true, stretch: true, minSize: METER_TOOL_MIN };
 }
 
 /** Where a toolbar flyout opens from its button: toward the canvas — down
  *  from the top dock, up from the bottom, sideways from a side dock */
-function flyoutAnchor(el: HTMLElement | null): { x: number; y: number; direction: FlyoutDirection } | null {
+function flyoutAnchor(el: HTMLElement | null, rect?: DOMRect): { x: number; y: number; direction: FlyoutDirection } | null {
   if (!el) return null;
-  const r = el.getBoundingClientRect();
+  const r = rect ?? el.getBoundingClientRect();
   const region = el.closest('[data-toolbar-dock]')?.getAttribute('data-toolbar-dock');
   if (region === 'left') return { x: r.right + 4, y: r.top + r.height / 2, direction: 'right' };
   if (region === 'right') return { x: r.left - 4, y: r.top + r.height / 2, direction: 'left' };
@@ -242,9 +242,15 @@ function flyoutAnchor(el: HTMLElement | null): { x: number; y: number; direction
   return { x: r.left + r.width / 2, y: r.bottom + 4, direction: 'down' };
 }
 
-/** A vertical meter's slot: 240px at rest, growing to fill a side dock's
- *  column (or a sized bar) and shrinking to 120 */
+/** The docked vertical meter's slot — THE VERTICAL LAYOUT WE ALREADY HAD
+ *  (2026-11-10, "use the vertical layout we already had. It will mean that
+ *  once a playback meter is docked in the vertical panel it will get
+ *  wider"): `MasterMeterVertical` whole, its own button at its head, its
+ *  padding and width; 240px tall at rest, growing to fill the column */
 const VERTICAL_METER_SLOT_STYLE: React.CSSProperties = { display: 'flex', flexDirection: 'column', flex: '1 1 240px', height: 240, minHeight: 120 };
+/** The docked vertical meter's least height: its 14 + button + 14, a
+ *  120px meter and its 12 below */
+const VERTICAL_METER_MIN = 14 + 28 + 14 + 120 + 12;
 
 export function transportToolMeta(
   id: string,
@@ -417,10 +423,11 @@ export function TransportTools({
     getMicrophoneLevelDb,
     recordingMeterOrientation !== 'flyout',
   );
-  const toggleMicFlyout = () => {
+  // (`rect`: the docked vertical meter's own head button, which opens it)
+  const toggleMicFlyout = (rect?: DOMRect) => {
     if (micFlyout) { setMicFlyout(null); return; }
     if (performance.now() - micClosedAtRef.current < 300) return;
-    const anchor = flyoutAnchor(micButtonRef.current);
+    const anchor = flyoutAnchor(micButtonRef.current, rect);
     if (!anchor) return;
     // Only one toolbar flyout open at a time — opening this closes the
     // playback meter's (and its menu)
@@ -449,10 +456,10 @@ export function TransportTools({
     else setInternalOrientation(next);
   };
 
-  const handleVolumeButtonClick = () => {
+  const handleVolumeButtonClick = (rect?: DOMRect) => {
     if (volumeFlyout) { setVolumeFlyout(null); return; }
     if (performance.now() - volumeClosedAtRef.current < 300) return;
-    const anchor = flyoutAnchor(volumeButtonRef.current);
+    const anchor = flyoutAnchor(volumeButtonRef.current, rect);
     if (!anchor) return;
     // Only one toolbar flyout open at a time — opening this closes the
     // microphone level flyout (and its menu)
@@ -670,6 +677,33 @@ export function TransportTools({
 
       case 'microphone-levels':
         if (!show('microphone-levels')) return null;
+        // In a side dock, shown on the bar: THE VERTICAL METER AS IT WAS —
+        // the whole MasterMeterVertical, its own mic button at its head
+        // (a click opens the flyout from there, a right-click the menu)
+        if (orientation === 'vertical' && recordingMeterOrientation !== 'flyout') {
+          return (
+            <span ref={micButtonRef} style={VERTICAL_METER_SLOT_STYLE} data-docked-meter="recording">
+              <MasterMeterVertical
+                icon="microphone"
+                settingsAriaLabel="Microphone level"
+                sliderAriaLabel="Microphone level"
+                levelLeft={micLevel}
+                levelRight={micLevel}
+                clippedLeft={micLevel >= 0}
+                clippedRight={micLevel >= 0}
+                recentPeakLeft={micPeak}
+                recentPeakRight={micPeak}
+                volume={microphoneGain}
+                onVolumeChange={onMicrophoneGainChange}
+                onSettingsMenu={(x, y, rect) => {
+                  if (rect) { toggleMicFlyout(rect); return; }
+                  setMicFlyout(null);
+                  setMicMenu({ x, y });
+                }}
+              />
+            </span>
+          );
+        }
         return (
           <ToolbarButtonGroup gap={6}>
             <span
@@ -681,27 +715,13 @@ export function TransportTools({
                 icon="microphone"
                 ariaLabel="Microphone level"
                 state={micFlyout ? 'pressed' : undefined}
-                onClick={toggleMicFlyout}
+                onClick={() => toggleMicFlyout()}
               />
             </span>
-            {/* The recording meter on the toolbar (orientation 'horizontal'),
-                the mic's own top-bar meter beside the button — its slider is
-                the input gain, the flyout's knob, so the two move one value. */}
-            {recordingMeterOrientation !== 'flyout' && orientation === 'vertical' && (
-              <div style={VERTICAL_METER_SLOT_STYLE}><MasterMeterVertical
-                bare
-                levelLeft={micLevel}
-                levelRight={micLevel}
-                clippedLeft={micLevel >= 0}
-                clippedRight={micLevel >= 0}
-                recentPeakLeft={micPeak}
-                recentPeakRight={micPeak}
-                volume={microphoneGain}
-                onVolumeChange={onMicrophoneGainChange}
-                sliderAriaLabel="Microphone level"
-              /></div>
-            )}
-            {recordingMeterOrientation !== 'flyout' && orientation === 'horizontal' && (
+            {/* The recording meter on the toolbar, beside the button — its
+                slider is the input gain, the flyout's knob, so the two
+                move one value. */}
+            {recordingMeterOrientation !== 'flyout' && (
               <div style={METER_SLOT_STYLE}><MasterMeter
                 resizable={false}
                 levelLeft={micLevel}
@@ -725,19 +745,12 @@ export function TransportTools({
       // (vertical), where the whole cluster leaves the toolbar.
       case 'playback-meter':
         if (!show('playback-meter')) return null;
-        return (
-          <ToolbarButtonGroup gap={6}>
-            <div ref={volumeButtonRef} style={{ display: 'inline-flex' }}>
-              <ToolButton
-                icon="volume"
-                ariaLabel="Playback volume settings"
-                state={volumeFlyout ? 'pressed' : undefined}
-                onClick={handleVolumeButtonClick}
-              />
-            </div>
-            {meterOrientation !== 'flyout' && orientation === 'vertical' && (
-              <div style={VERTICAL_METER_SLOT_STYLE}><MasterMeterVertical
-                bare
+        // In a side dock, shown on the bar: the vertical meter as it was,
+        // its volume button at its head
+        if (orientation === 'vertical' && meterOrientation !== 'flyout') {
+          return (
+            <div ref={volumeButtonRef} style={VERTICAL_METER_SLOT_STYLE} data-docked-meter="playback">
+              <MasterMeterVertical
                 levelLeft={masterLevelLeft}
                 levelRight={masterLevelRight}
                 clippedLeft={masterClippedLeft}
@@ -747,9 +760,22 @@ export function TransportTools({
                 volume={masterVolume}
                 onVolumeChange={onMasterVolumeChange}
                 look={meterLook}
-              /></div>
-            )}
-            {meterOrientation !== 'flyout' && orientation === 'horizontal' && (
+                onSettingsMenu={(_x, _y, rect) => handleVolumeButtonClick(rect ?? undefined)}
+              />
+            </div>
+          );
+        }
+        return (
+          <ToolbarButtonGroup gap={6}>
+            <div ref={volumeButtonRef} style={{ display: 'inline-flex' }}>
+              <ToolButton
+                icon="volume"
+                ariaLabel="Playback volume settings"
+                state={volumeFlyout ? 'pressed' : undefined}
+                onClick={() => handleVolumeButtonClick()}
+              />
+            </div>
+            {meterOrientation !== 'flyout' && (
               <div style={METER_SLOT_STYLE}><MasterMeter
                 resizable={false}
                 levelLeft={masterLevelLeft}

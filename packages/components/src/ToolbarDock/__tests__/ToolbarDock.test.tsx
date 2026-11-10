@@ -156,17 +156,26 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect((container.querySelector('.toolbar-dock__insert') as HTMLElement).previousElementSibling!.getAttribute('data-toolbar-bar')).toBe('a');
   });
 
-  it('a SIDE dock stacks every row\'s bars in one column', () => {
-    const { container } = render(
+  it('a SIDE dock draws each row as a COLUMN, side by side, with a line between; a new column shows the vertical line (2026-11-10)', () => {
+    const wrapLeft = (props: Partial<ToolbarDockProps>) => (
       <ThemeProvider>
         <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
-          <ToolbarDock region="left" rows={THREE_ROWS} renderTool={(id) => (id === 'gone' ? null : <button aria-label={id}>{id}</button>)} insert={{ region: 'left', row: 2, beforeBarId: 'c' }} />
+          <ToolbarDock region="left" rows={THREE_ROWS} renderTool={(id) => (id === 'gone' ? null : <button aria-label={id}>{id}</button>)} {...props} />
         </AccessibilityProfileProvider>
-      </ThemeProvider>,
+      </ThemeProvider>
     );
-    expect(container.querySelectorAll('.toolbar-dock__row')).toHaveLength(1);
-    expect(Array.from(container.querySelectorAll('[data-toolbar-bar]')).map((b) => b.getAttribute('data-toolbar-bar'))).toEqual(['a', 'b', 'c']);
+    const { container, rerender } = render(wrapLeft({ insert: { region: 'left', row: 2, beforeBarId: 'c' } }));
+    const columns = () => Array.from(container.querySelectorAll('.toolbar-dock__row'));
+    // rows 0 and 2 draw (row 1's only bar draws nothing)
+    expect(columns().map((c) => c.getAttribute('data-toolbar-row'))).toEqual(['0', '2']);
+    expect(columns().map((c) => Array.from(c.querySelectorAll('[data-toolbar-bar]')).map((b) => b.getAttribute('data-toolbar-bar')))).toEqual([['a', 'b'], ['c']]);
+    expect(container.querySelectorAll('.toolbar-dock__row-divider')).toHaveLength(1);
+    // beside a bar: the line in that bar's gutter, in its column
     expect((container.querySelector('.toolbar-dock__insert') as HTMLElement).parentElement).toBe(container.querySelector('[data-toolbar-bar="c"] .toolbar-dock__grip'));
+    // a new column between the two
+    rerender(wrapLeft({ insert: { region: 'left', newRowAt: 1 } }));
+    const line = container.querySelector('.toolbar-dock__row-insert') as HTMLElement;
+    expect(line.previousElementSibling).toBe(columns()[0]);
   });
 
   describe('SIZING (2026-11-10): a bar\'s width in a horizontal dock, height in a vertical one', () => {

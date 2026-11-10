@@ -46,7 +46,9 @@ const rowOf = (el: HTMLElement): number => Number(el.getAttribute('data-toolbar-
  * bottom `ROW_EDGE_PX`, where two ROWS meet or at the dock's outer edge,
  * mean a NEW ROW there; the rest of the line is that row. (A wrap inside
  * one row is not a row boundary.) jsdom measures nothing, so there the
- * dock's last line stands in.
+ * dock's last line stands in. A SIDE dock's rows are COLUMNS (2026-11-10):
+ * the same rule runs across them on x, the left and right 12px of a column
+ * and 24px past the dock's inner edge meaning a NEW COLUMN there.
  */
 export function locateDockSpot(x: number, y: number, layout: ToolbarLayout, editorRow: DOMRect | null): DockSpot | null {
   // (jsdom has no elementsFromPoint: the edges below stand in there)
@@ -68,6 +70,14 @@ export function locateDockSpot(x: number, y: number, layout: ToolbarLayout, edit
         const reached = r === 'top' ? y > rect.bottom && y <= rect.bottom + ROW_REACH_PX : y < rect.top && y >= rect.top - ROW_REACH_PX;
         if (reached) return { region: r, vertical: false, dockEl: el, newRowAt: r === 'top' ? layout.top.length : 0, lineEl: null, row: 0 };
       }
+      // …and just past a side dock's inner edge: a new column there
+      for (const r of ['left', 'right'] as const) {
+        const el = document.querySelector<HTMLElement>(`[data-toolbar-dock="${r}"]`);
+        const rect = el?.getBoundingClientRect();
+        if (!el || !rect || rect.width <= 0 || y < rect.top || y > rect.bottom) continue;
+        const reached = r === 'left' ? x > rect.right && x <= rect.right + ROW_REACH_PX : x < rect.left && x >= rect.left - ROW_REACH_PX;
+        if (reached) return { region: r, vertical: true, dockEl: el, newRowAt: r === 'left' ? layout.left.length : 0, lineEl: null, row: 0 };
+      }
       if (y < EDGE_SNAP_PX) region = 'top';
       else if (y > window.innerHeight - EDGE_SNAP_PX) region = 'bottom';
       else return null;
@@ -79,16 +89,30 @@ export function locateDockSpot(x: number, y: number, layout: ToolbarLayout, edit
   const lastRow = Math.max(0, layout[region].length - 1);
   const lines = dockEl ? Array.from(dockEl.querySelectorAll<HTMLElement>('.toolbar-dock__row')) : [];
   if (lines.length === 0) return { region, vertical, dockEl, newRowAt: null, lineEl: null, row: lastRow };
-  if (vertical) return { region, vertical, dockEl, newRowAt: null, lineEl: lines[0], row: lastRow };
-
+  // A horizontal dock's lines run across, so the pointer's y picks one; a
+  // side dock's rows are COLUMNS side by side (2026-11-10), so its x does
+  const lo = (r: DOMRect) => (vertical ? r.left : r.top);
+  const hi = (r: DOMRect) => (vertical ? r.right : r.bottom);
+  const extent = (r: DOMRect) => (vertical ? r.width : r.height);
+  const p = vertical ? x : y;
   const rects = lines.map((l) => l.getBoundingClientRect());
-  const at = rects.findIndex((r) => r.height > 0 && y >= r.top && y <= r.bottom);
+
+  // Just past a side dock's inner edge (toward the canvas): a new column there
+  if (vertical && dockEl) {
+    const d = dockEl.getBoundingClientRect();
+    if (d.width > 0) {
+      if (region === 'left' && x > d.right && x <= d.right + ROW_REACH_PX) return { region, vertical, dockEl, newRowAt: layout[region].length, lineEl: null, row: lastRow };
+      if (region === 'right' && x < d.left && x >= d.left - ROW_REACH_PX) return { region, vertical, dockEl, newRowAt: 0, lineEl: null, row: 0 };
+    }
+  }
+
+  const at = rects.findIndex((r) => extent(r) > 0 && p >= lo(r) && p <= hi(r));
   if (at >= 0) {
     const row = rowOf(lines[at]);
     const first = at === 0 || rowOf(lines[at - 1]) !== row;
     const last = at === lines.length - 1 || rowOf(lines[at + 1]) !== row;
-    if (first && y < rects[at].top + ROW_EDGE_PX) return { region, vertical, dockEl, newRowAt: row, lineEl: null, row };
-    if (last && y > rects[at].bottom - ROW_EDGE_PX) return { region, vertical, dockEl, newRowAt: row + 1, lineEl: null, row };
+    if (first && p < lo(rects[at]) + ROW_EDGE_PX) return { region, vertical, dockEl, newRowAt: row, lineEl: null, row };
+    if (last && p > hi(rects[at]) - ROW_EDGE_PX) return { region, vertical, dockEl, newRowAt: row + 1, lineEl: null, row };
     return { region, vertical, dockEl, newRowAt: null, lineEl: lines[at], row };
   }
   // Not on a line (the window's edge stood in, or nothing is measured):
@@ -96,8 +120,8 @@ export function locateDockSpot(x: number, y: number, layout: ToolbarLayout, edit
   let nearest = lines.length - 1;
   let best = Infinity;
   rects.forEach((r, i) => {
-    if (r.height <= 0) return;
-    const d = y < r.top ? r.top - y : y - r.bottom;
+    if (extent(r) <= 0) return;
+    const d = p < lo(r) ? lo(r) - p : p - hi(r);
     if (d < best) { best = d; nearest = i; }
   });
   return { region, vertical, dockEl, newRowAt: null, lineEl: lines[nearest], row: rowOf(lines[nearest]) };

@@ -194,4 +194,23 @@ describe('resolveBarDrop — where a whole bar lands (the grip drag)', () => {
     // a dock that has bars is not reached by its band (it is a dock of its own, with its reach strip)
     expect(resolveBarDrop(500, 680, { ...empty, bottom: [[{ id: 's', tools: ['status-cue'] }]] }, row, true)).toBeNull();
   });
+
+  it('a SIDE dock\'s rows are COLUMNS: the left and right 12px of a column and 24px past the dock\'s inner edge mean a NEW COLUMN; the rest is that column (2026-11-10)', () => {
+    // the left dock, two columns: row 0 at x 0..48, row 1 at x 49..121 (a docked meter, wider)
+    dock('left', rect(0, 100, 121, 500), [
+      { row: 0, rect: rect(0, 100, 48, 500), bars: [{ id: 'v', rect: rect(0, 100, 48, 90), tools: [] }] },
+      { row: 1, rect: rect(49, 100, 72, 500), bars: [{ id: 'm', rect: rect(49, 100, 72, 400), tools: [] }] },
+    ]);
+    const layout: ToolbarLayout = { top: [], bottom: [], left: [[{ id: 'v', tools: ['six'] }], [{ id: 'm', tools: ['playback-meter'] }]], right: [] };
+    const row = rect(0, 100, 1000, 500);
+    const newColumn = (at: number) => ({ region: 'left', placement: { region: 'left', newRowAt: at }, refused: false });
+    expect(resolveBarDrop(4, 300, layout, row, true)).toEqual(newColumn(0)); // the dock's outer edge
+    expect(resolveBarDrop(44, 300, layout, row, true)).toEqual(newColumn(1)); // between the columns
+    expect(resolveBarDrop(52, 300, layout, row, true)).toEqual(newColumn(1));
+    expect(resolveBarDrop(118, 300, layout, row, true)).toEqual(newColumn(2)); // the inner edge
+    expect(resolveBarDrop(135, 300, layout, row, true)).toEqual(newColumn(2)); // just past it
+    // the middle of a column is that column, down its bars
+    expect(resolveBarDrop(24, 300, layout, row, true)).toEqual({ region: 'left', placement: { region: 'left', row: 0, beforeBarId: null }, refused: false });
+    expect(resolveBarDrop(85, 120, layout, row, true)).toEqual({ region: 'left', placement: { region: 'left', row: 1, beforeBarId: 'm' }, refused: false });
+  });
 });

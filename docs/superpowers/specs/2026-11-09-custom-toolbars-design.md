@@ -24,6 +24,9 @@ in a flyout; a double-click or a release on the natural size resets.
 METERS IN THE DOCK SYSTEM, BUILT 2026-11-10: a meter tool is horizontal in
 the top / bottom dock and vertical in a side dock; the separate fixed meter
 columns are gone; the meters' Position pickers move the tool between docks.
+The docked vertical meter is the original MasterMeterVertical (its own head
+button, 72px wide). SIDE-DOCK COLUMNS, BUILT 2026-11-10: a side dock's rows
+are columns side by side, made by a drop at a column's edge.
 NOT YET: the tray of
 hidden tools, hold-to-enter, the keyboard Move-to menu, the Flexible space
 tool, floating bars, user-named workspaces. Questions 4–8 below are
@@ -300,6 +303,11 @@ not yet accepted or rejected:
   "on the toolbar or in the flyout", now persisted; the Top bar / Side bar
   pickers move the tool. Author ("pull the horizontal and vertical layouts
   of the meters into the same system").
+- 2026-11-10 — The docked vertical meter keeps its original layout (head
+  button, padding, width), so a side dock widens for it; and a side dock
+  holds several vertical toolbars side by side as columns, as the top dock
+  holds rows. Author ("use the vertical layout we already had… Also allow
+  me to have multiple vertical toolbars like we do in horizontal").
 - 2026-11-10 — An empty dock shows nothing of its own during a drag; the
   side docks' drop zones are the dockable panels' overlay (a subtle band,
   the hovered one previewing the 48px footprint). Author ("don't show side

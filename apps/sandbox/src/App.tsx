@@ -403,8 +403,9 @@ function CanvasDemoContent() {
   // flyout; HORIZONTAL OR VERTICAL is where its toolbar is docked — a side
   // dock stands it up. The 'flyout' / 'horizontal' / 'vertical' the
   // toolbar's pickers speak is derived from the two, and a pick of the
-  // other orientation MOVES the meter's tool, into a toolbar of its own in
-  // the right dock (vertical) or at the end of the top dock (horizontal).
+  // other orientation MOVES the meter's tool, into a column of its own at
+  // the right dock's far edge (vertical) or a toolbar of its own at the end
+  // of the top dock (horizontal).
   const meterOnBar = preferences.playbackMeterOnToolbar;
   const recordingMeterOnBar = preferences.recordingMeterOnToolbar;
   const setMeterOnBar = (on: boolean) => updatePreference('playbackMeterOnToolbar', on);
@@ -421,7 +422,8 @@ function CanvasDemoContent() {
     setOnBar(next !== 'flyout');
     if (next === 'flyout') return;
     const side = toolInSideDock(toolId);
-    if (next === 'vertical' && !side) toolbarLayout.moveToolToNewBar(toolId, { region: 'right', row: 0, beforeBarId: null });
+    // (a column of its own at the far right, where the docked meter always stood)
+    if (next === 'vertical' && !side) toolbarLayout.moveToolToNewBar(toolId, { region: 'right', newRowAt: toolbarLayout.layout.right.length });
     if (next === 'horizontal' && side) {
       toolbarLayout.moveToolToNewBar(toolId, { region: 'top', row: Math.max(0, toolbarLayout.layout.top.length - 1), beforeBarId: null });
     }
