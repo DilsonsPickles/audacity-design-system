@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { TransportToolbar, type TransportToolbarProps, type Workspace } from '../TransportToolbar';
+import { TransportToolbar, TransportTools, useTransportTools, transportToolMeta, type TransportToolbarProps, type Workspace } from '../TransportToolbar';
+import { ToolbarDock } from '../../ToolbarDock';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 import { AccessibilityProfileProvider } from '../../contexts/AccessibilityProfileContext';
 
@@ -142,13 +143,41 @@ describe('the recording meter shows on the toolbar when horizontal (2026-11-09)'
     expect(container.querySelector('[aria-label="Microphone meter"]')).toBeNull();
   });
 
-  it('hides the mic button from the toolbar when the meter is docked vertical', () => {
-    const flyoutToolbar = renderToolbar('classic', [], { recordingMeterOrientation: 'flyout' });
-    expect(flyoutToolbar.container.querySelector('button[aria-label="Microphone level"]')).toBeTruthy();
-    cleanup();
-    const verticalToolbar = renderToolbar('classic', [], { recordingMeterOrientation: 'vertical' });
-    expect(verticalToolbar.container.querySelector('button[aria-label="Microphone level"]')).toBeNull();
-    expect(verticalToolbar.container.querySelector('[aria-label="Microphone meter"]')).toBeNull();
+  it('THE METERS FOLLOW THEIR DOCK (2026-11-10): shown on the bar, a meter in a side dock is the vertical meter, its button still the toolbar\'s', () => {
+    // A side dock drawn from the same registry
+    function LeftDock() {
+      const { renderTool, toolMeta } = useTransportTools();
+      return <ToolbarDock region="left" rows={[[{ id: 'meters', tools: ['microphone-levels', 'playback-meter'] }]]} renderTool={renderTool} toolMeta={toolMeta} />;
+    }
+    const renderLeft = (extra: Partial<TransportToolbarProps>) => render(
+      <ThemeProvider>
+        <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
+          <TransportTools {...propsFor('classic', [])} {...extra}><LeftDock /></TransportTools>
+        </AccessibilityProfileProvider>
+      </ThemeProvider>,
+    );
+    // on the bar ('horizontal' or 'vertical' alike — the dock decides): the bare vertical meters, under their buttons
+    for (const orientation of ['horizontal', 'vertical'] as const) {
+      const { container } = renderLeft({ recordingMeterOrientation: orientation, meterOrientation: orientation });
+      const dock = container.querySelector('[data-toolbar-dock="left"]')!;
+      expect(dock.querySelector('button[aria-label="Microphone level"]')).toBeTruthy();
+      expect(dock.querySelector('button[aria-label="Playback volume settings"]')).toBeTruthy();
+      expect(dock.querySelectorAll('.master-meter-vertical--bare')).toHaveLength(2);
+      expect(dock.querySelector('.master-meter')).toBeNull();
+      // a grown tool in a column: it fills the dock as the old docked column did
+      expect(dock.querySelector('[data-toolbar-tool="playback-meter"]')!.classList.contains('toolbar-dock__tool--grow')).toBe(true);
+      cleanup();
+    }
+    // in the flyout: the buttons alone
+    const { container } = renderLeft({ recordingMeterOrientation: 'flyout', meterOrientation: 'flyout' });
+    expect(container.querySelector('.master-meter-vertical')).toBeNull();
+    expect(container.querySelector('button[aria-label="Microphone level"]')).toBeTruthy();
+  });
+
+  it('transportToolMeta: a meter on its bar stretches in a row and grows in a column; either way a side dock takes it', () => {
+    expect(transportToolMeta('playback-meter', { meterOrientation: 'horizontal' }, 'horizontal')).toMatchObject({ vertical: true, stretch: true, minSize: 154 });
+    expect(transportToolMeta('playback-meter', { meterOrientation: 'horizontal' }, 'vertical')).toMatchObject({ vertical: true, grow: true, minSize: 154 });
+    expect(transportToolMeta('microphone-levels', { recordingMeterOrientation: 'flyout' }, 'vertical')).toEqual({ vertical: true });
   });
 });
 

@@ -28,7 +28,9 @@ export interface ToolbarDockProps {
    *  that is hidden or unknown (a bar whose every tool is null draws
    *  nothing) */
   renderTool: (id: string, orientation: ToolbarOrientation) => React.ReactNode;
-  toolMeta?: (id: string) => ToolMeta | undefined;
+  /** A tool's meta in THIS dock's orientation (a meter grows in a column
+   *  and stretches in a row) */
+  toolMeta?: (id: string, orientation: ToolbarOrientation) => ToolMeta | undefined;
   /** A press on a bar's GRIP: the host owns the drag (self-cleaning
    *  document listeners), as the old toolbar gripper did */
   onGripMouseDown?: (barId: string, event: React.MouseEvent, barRect: DOMRect) => void;
@@ -129,8 +131,8 @@ export function ToolbarDock({
   const availableRef = useRef(0);
   const [overflowOpen, setOverflowOpen] = useState<{ barId: string; x: number; y: number } | null>(null);
   const sizeKey = (id: string) => `${orientation}:${id}`;
-  const stretchy = (id: string) => { const m = toolMeta?.(id); return !!(m?.grow || m?.stretch); };
-  const minOf = (id: string) => toolMeta?.(id)?.minSize ?? DEFAULT_MIN_STRETCH;
+  const stretchy = (id: string) => { const m = toolMeta?.(id, orientation); return !!(m?.grow || m?.stretch); };
+  const minOf = (id: string) => toolMeta?.(id, orientation)?.minSize ?? DEFAULT_MIN_STRETCH;
   const naturalOfTool = (id: string) => toolSizes.current.get(sizeKey(id)) ?? (stretchy(id) ? minOf(id) : 0);
   const naturalOf = (ids: string[]) => GUTTER + ids.reduce((sum, id, i) => sum + (i ? TOOL_GAP : 0) + naturalOfTool(id), 0);
 
@@ -155,7 +157,7 @@ export function ToolbarDock({
   // Draw each bar's tools once; a bar with nothing to draw is skipped
   const drawn = rows.flatMap((row, rowIndex) => row.map((bar) => {
     const nodes = bar.tools.map((id) => ({ id, node: renderTool(id, orientation) })).filter((t) => t.node !== null && t.node !== undefined && t.node !== false);
-    const grow = nodes.some((t) => toolMeta?.(t.id)?.grow);
+    const grow = nodes.some((t) => toolMeta?.(t.id, orientation)?.grow);
     const size = sizeOf(bar);
     const overflow = overflowOf(nodes.map((t) => t.id), size);
     return { bar, nodes, grow, row: rowIndex, size, overflow };
@@ -313,7 +315,7 @@ export function ToolbarDock({
           <React.Fragment key={t.id}>
             {toolInsert?.barId === d.bar.id && toolInsert.beforeToolId === t.id && caret}
             <div
-              className={`toolbar-dock__tool${toolMeta?.(t.id)?.grow ? ' toolbar-dock__tool--grow' : ''}${toolMeta?.(t.id)?.stretch ? ' toolbar-dock__tool--stretch' : ''}${draggingToolId === t.id ? ' toolbar-dock__tool--dragging' : ''}`}
+              className={`toolbar-dock__tool${toolMeta?.(t.id, orientation)?.grow ? ' toolbar-dock__tool--grow' : ''}${toolMeta?.(t.id, orientation)?.stretch ? ' toolbar-dock__tool--stretch' : ''}${draggingToolId === t.id ? ' toolbar-dock__tool--dragging' : ''}`}
               style={d.size !== undefined && stretchy(t.id) ? { [vertical ? 'minHeight' : 'minWidth']: minOf(t.id) } : undefined}
               data-toolbar-tool={t.id}
               onMouseDown={editing ? (e) => {

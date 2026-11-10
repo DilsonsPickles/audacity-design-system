@@ -59,7 +59,7 @@ export function AppToolbarDock({
       region={region}
       rows={rows}
       renderTool={(id, o) => renderExtraTool?.(id, o) ?? renderTool(id, o)}
-      toolMeta={(id) => extraToolMeta?.(id) ?? toolMeta(id)}
+      toolMeta={(id, o) => extraToolMeta?.(id) ?? toolMeta(id, o)}
       onGripMouseDown={drag.onGripMouseDown}
       onBarResize={onBarResize}
       draggingBarId={drag.draggingBarId}

@@ -22,7 +22,7 @@
  */
 import React from 'react';
 import { useTheme } from '../ThemeProvider';
-import { Flyout } from '../Flyout';
+import { Flyout, type FlyoutDirection } from '../Flyout';
 import { MasterMeter } from '../MasterMeter';
 import { LabeledCheckbox } from '../LabeledCheckbox';
 import { LabeledRadio } from '../LabeledRadio';
@@ -49,6 +49,9 @@ export interface MicrophoneLevelFlyoutProps {
   y: number;
   /** The button, for focus to return to on Escape */
   triggerRef?: React.RefObject<HTMLElement>;
+  /** Which way it opens from the anchor (default down; sideways from a
+   *  toolbar in a side dock, up from the bottom dock) */
+  direction?: FlyoutDirection;
   /** The input level in dB right now (null = no microphone open) — polled each frame */
   getLevelDb?: () => number | null;
   /** The input gain, linear (1 = as the OS delivers it) */
@@ -66,7 +69,7 @@ export interface MicrophoneLevelFlyoutProps {
 }
 
 export function MicrophoneLevelFlyout({
-  isOpen, onClose, x, y, triggerRef, getLevelDb, gain, onGainChange,
+  isOpen, onClose, x, y, triggerRef, direction = 'down', getLevelDb, gain, onGainChange,
   orientation = 'flyout', onOrientationChange,
   inputMonitoring = false, onInputMonitoringChange, micMetering = true, onMicMeteringChange,
 }: MicrophoneLevelFlyoutProps) {
@@ -94,7 +97,7 @@ export function MicrophoneLevelFlyout({
       onClose={onClose}
       x={x}
       y={y}
-      direction="down"
+      direction={direction}
       triggerRef={triggerRef}
       ariaLabel="Microphone level"
       className="microphone-level-flyout"

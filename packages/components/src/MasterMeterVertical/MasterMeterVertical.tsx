@@ -38,6 +38,10 @@ export interface MasterMeterVerticalProps {
   onSettingsMenu?: (x: number, y: number, buttonRect?: DOMRect) => void;
   /** The meter's LOOK (2026-11-04): style, type and dB range */
   look?: PlaybackMeterLook;
+  /** The meter alone — no button at its head, no surface, border or
+   *  padding: the form a toolbar in a side dock draws, its button the
+   *  toolbar's own (2026-11-10, the meters in the dock system) */
+  bare?: boolean;
 }
 
 /** Two unlabelled minor ticks between each pair of numeric ticks. */
@@ -59,6 +63,7 @@ export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
   sliderAriaLabel = 'Master volume',
   onSettingsMenu,
   look = DEFAULT_PLAYBACK_METER_LOOK,
+  bare = false,
 }) => {
   const { theme } = useTheme();
   const lookRef = React.useRef(look);
@@ -130,8 +135,8 @@ export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
   } as React.CSSProperties;
 
   return (
-    <div className={`master-meter-vertical ${className}`} style={style}>
-      <span
+    <div className={`master-meter-vertical${bare ? ' master-meter-vertical--bare' : ''} ${className}`} style={style}>
+      {!bare && <span
         ref={settingsRef}
         style={{ display: 'inline-flex' }}
         onContextMenu={onSettingsMenu ? (e) => { e.preventDefault(); onSettingsMenu(e.clientX, e.clientY); } : undefined}
@@ -147,7 +152,7 @@ export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
             }
           }}
         />
-      </span>
+      </span>}
 
       <div className="master-meter-vertical__meter-row">
         <div ref={trackRef} className="master-meter-vertical__bars" role="slider"

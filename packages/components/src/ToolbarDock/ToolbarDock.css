@@ -150,7 +150,8 @@
 .toolbar-dock__bar--sized .toolbar-dock__tools { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
 .toolbar-dock__bar--sized .toolbar-dock__tool--stretch,
 .toolbar-dock__bar--sized .toolbar-dock__tool--stretch > .toolbar-dock__tool-body { flex: 1 1 auto; }
-.toolbar-dock__tool--stretch > .toolbar-dock__tool-body > * { flex: 1 1 auto; min-width: 0; }
+.toolbar-dock__tool--stretch > .toolbar-dock__tool-body > *,
+.toolbar-dock__tool--grow > .toolbar-dock__tool-body > * { flex: 1 1 auto; min-width: 0; min-height: 0; }
 
 /* THE RESIZE EDGE: 6px over the start of whatever follows the bar (the
    next bar's gutter, or the row's padding), the row's full height */
@@ -265,6 +266,8 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 
 /* VERTICAL docks: a column of bars, each bar a column of tools */
 .toolbar-dock--vertical { width: 48px; align-items: stretch; }
+/* A grown tool in a column fills it top to bottom: the vertical meters */
+.toolbar-dock--vertical .toolbar-dock__bar--grow .toolbar-dock__tools { justify-content: flex-start; }
 .toolbar-dock--vertical .toolbar-dock__row {
   flex-direction: column;
   align-items: stretch;

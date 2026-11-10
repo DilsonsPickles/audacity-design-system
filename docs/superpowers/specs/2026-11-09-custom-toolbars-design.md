@@ -21,6 +21,9 @@ BUILT 2026-11-10: a bar's width (horizontal dock) or height (vertical) is
 set by its trailing edge; stretchy tools (the meters, the info line) take
 or give room first, then tools overflow behind a chevron that opens them
 in a flyout; a double-click or a release on the natural size resets.
+METERS IN THE DOCK SYSTEM, BUILT 2026-11-10: a meter tool is horizontal in
+the top / bottom dock and vertical in a side dock; the separate fixed meter
+columns are gone; the meters' Position pickers move the tool between docks.
 NOT YET: the tray of
 hidden tools, hold-to-enter, the keyboard Move-to menu, the Flexible space
 tool, floating bars, user-named workspaces. Questions 4–8 below are
@@ -292,6 +295,11 @@ not yet accepted or rejected:
   the meter's. Author ("I want to be able to adjust the width of the
   toolbars when docked horizontally and height when docked vertically");
   the overflow and stretch rules are the assistant's call, flagged.
+- 2026-11-10 — The meters join the dock system: the dock decides a meter's
+  orientation (vertical in a side dock, filling it); the only state left is
+  "on the toolbar or in the flyout", now persisted; the Top bar / Side bar
+  pickers move the tool. Author ("pull the horizontal and vertical layouts
+  of the meters into the same system").
 - 2026-11-10 — An empty dock shows nothing of its own during a drag; the
   side docks' drop zones are the dockable panels' overlay (a subtle band,
   the hovered one previewing the 48px footprint). Author ("don't show side

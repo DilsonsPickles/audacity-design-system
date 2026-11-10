@@ -81,6 +81,11 @@ export interface PreferencesState {
    *  2026-11-09): which bars sit in which dock, which tools on each bar.
    *  A workspace with no entry draws its built-in seed layout. */
   toolbarLayouts: Partial<Record<string, ToolbarLayout>>;
+  /** The meters on their toolbars (2026-11-10): shown there (horizontal or
+   *  vertical by the dock their toolbar is in), or only in their button's
+   *  flyout — kept with the layouts, since where a meter is persists */
+  playbackMeterOnToolbar: boolean;
+  recordingMeterOnToolbar: boolean;
 
   // Spectral Display
   enableSpectralSelection: boolean;
@@ -157,6 +162,8 @@ const defaultPreferences: PreferencesState = {
   // has — this is the default for a fresh profile.
   toolbarHiddenTools: ['collapse-tracks', 'expand-tracks', 'fit-tracks-height', 'bpm', 'time-signature'],
   toolbarLayouts: {},
+  playbackMeterOnToolbar: true,
+  recordingMeterOnToolbar: false,
 
   // Spectral Display
   enableSpectralSelection: true,

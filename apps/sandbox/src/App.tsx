@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksProvider';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ToastContainer, toast, useSelectionToolbarStyle, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, MasterMeterVertical, RecordingMeterVertical, PlaybackMeterFlyout, DEFAULT_PLAYBACK_METER_LOOK, type PlaybackMeterLook, type StoredProject } from '@audacity-ui/components';
+import { ApplicationHeader, ToastContainer, toast, useSelectionToolbarStyle, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, DEFAULT_PLAYBACK_METER_LOOK, type PlaybackMeterLook, type StoredProject } from '@audacity-ui/components';
 import { ADIEU_BASE } from './lib/adieu-client';
 import { type EnvelopePointStyleKey, yToTrackIndex } from '@audacity-ui/core';
 import { createWheelTargetLock } from './utils/canvasWheelTarget';
@@ -83,7 +83,7 @@ import { AppToolbarDock, type ToolbarDockDrag } from './components/AppToolbarDoc
 import { useToolbarToolDrag } from './hooks/useToolbarToolDrag';
 import { DockZoneOverlay, edgeBand, sideBand } from './components/editor/DockZoneOverlay';
 import { renderStatusTool, statusToolMeta, type StatusBarToolsDeps } from './components/StatusBarTools';
-import { findBar, transportToolMeta, type ToolbarRegion } from '@audacity-ui/components';
+import { findBar, findTool, transportToolMeta, type ToolbarRegion } from '@audacity-ui/components';
 import { useAudioDeviceMenu } from './hooks/useAudioDeviceMenu';
 import { useFocusDebugger } from './hooks/useFocusDebugger';
 import { HandleHintProvider, useHandleHint } from './contexts/HandleHintContext';
@@ -397,17 +397,38 @@ function CanvasDemoContent() {
     : toolDrag.draggingToolId
       ? { rowRect: toolDrag.rowRect, fits: toolDrag.fitsVertical, region: toolDrag.target?.region ?? null, ghost: toolDrag.ghost }
       : null;
-  const [meterOrientation, setMeterOrientation] = React.useState<'flyout' | 'horizontal' | 'vertical'>('horizontal');
+  // THE METERS ARE IN THE DOCK SYSTEM (2026-11-10, "pull the horizontal
+  // and vertical layouts of the meters into the same system"): what is
+  // STATE is whether a meter is shown on its toolbar or only in its button's
+  // flyout; HORIZONTAL OR VERTICAL is where its toolbar is docked — a side
+  // dock stands it up. The 'flyout' / 'horizontal' / 'vertical' the
+  // toolbar's pickers speak is derived from the two, and a pick of the
+  // other orientation MOVES the meter's tool, into a toolbar of its own in
+  // the right dock (vertical) or at the end of the top dock (horizontal).
+  const meterOnBar = preferences.playbackMeterOnToolbar;
+  const recordingMeterOnBar = preferences.recordingMeterOnToolbar;
+  const setMeterOnBar = (on: boolean) => updatePreference('playbackMeterOnToolbar', on);
+  const setRecordingMeterOnBar = (on: boolean) => updatePreference('recordingMeterOnToolbar', on);
+  const toolInSideDock = (toolId: string) => {
+    const region = findTool(toolbarLayout.layout, toolId)?.region;
+    return region === 'left' || region === 'right';
+  };
+  const meterOrientation: 'flyout' | 'horizontal' | 'vertical' = !meterOnBar ? 'flyout'
+    : toolInSideDock('playback-meter') ? 'vertical' : 'horizontal';
+  const recordingMeterOrientation: 'flyout' | 'horizontal' | 'vertical' = !recordingMeterOnBar ? 'flyout'
+    : toolInSideDock('microphone-levels') ? 'vertical' : 'horizontal';
+  const placeMeter = (toolId: string, next: 'flyout' | 'horizontal' | 'vertical', setOnBar: (on: boolean) => void) => {
+    setOnBar(next !== 'flyout');
+    if (next === 'flyout') return;
+    const side = toolInSideDock(toolId);
+    if (next === 'vertical' && !side) toolbarLayout.moveToolToNewBar(toolId, { region: 'right', row: 0, beforeBarId: null });
+    if (next === 'horizontal' && side) {
+      toolbarLayout.moveToolToNewBar(toolId, { region: 'top', row: Math.max(0, toolbarLayout.layout.top.length - 1), beforeBarId: null });
+    }
+  };
   // The playback meter's LOOK (2026-11-04, the Playback meter flyout):
   // style, type, dB range — session state, as the orientation is
   const [meterLook, setMeterLook] = React.useState<PlaybackMeterLook>(DEFAULT_PLAYBACK_METER_LOOK);
-  // The docked playback meter's volume button opens the same flyout, to its left
-  const [playbackDockFlyout, setPlaybackDockFlyout] = React.useState<{ x: number; y: number } | null>(null);
-  // The RECORDING meter's dock (2026-11-04): 'vertical' renders
-  // RecordingMeterVertical at the right, beside the playback meter's
-  const [recordingMeterOrientation, setRecordingMeterOrientation] = React.useState<'flyout' | 'horizontal' | 'vertical'>('flyout');
-  // The dock's own mic button opens the orientation menu, the way back
-  const [recordingDockMenu, setRecordingDockMenu] = React.useState<{ x: number; y: number } | null>(null);
 
   // Project-toolbar responsiveness (compact icon swap + label drop) is
   // now handled inside ProjectToolbar itself. We just provide the
@@ -1169,7 +1190,7 @@ function CanvasDemoContent() {
       onMicrophoneLevelsOpen: () => { void recordingManagerRef.current?.startMonitoring().catch(() => {}); },
       recordingMeterOrientation,
       onRecordingMeterOrientationChange: (next) => {
-        setRecordingMeterOrientation(next);
+        placeMeter('microphone-levels', next, setRecordingMeterOnBar);
         // A persistent meter (toolbar or docked) opens the microphone as
         // the flyout does, so it reads something live straight away
         if (next !== 'flyout') void recordingManagerRef.current?.startMonitoring().catch(() => {});
@@ -1253,7 +1274,7 @@ function CanvasDemoContent() {
       masterLevelRight,
       masterRecentPeak,
       meterOrientation,
-      onMeterOrientationChange: setMeterOrientation,
+      onMeterOrientationChange: (next) => placeMeter('playback-meter', next, setMeterOnBar),
       meterLook,
       onMeterLookChange: setMeterLook,
     },
@@ -1515,32 +1536,6 @@ function CanvasDemoContent() {
           ariaLabel="Right toolbar dock"
           style={selectionToolbarStyle}
         />
-        {recordingMeterOrientation === 'vertical' && (
-          <div style={{ width: 64, flexShrink: 0 }} data-recording-meter-dock>
-            <RecordingMeterVertical
-              getLevelDb={() => recordingManagerRef.current?.getInputLevelDb() ?? null}
-              gain={microphoneGain}
-              onGainChange={handleMicrophoneGainChange}
-              onSettingsMenu={(x, y) => setRecordingDockMenu({ x, y })}
-            />
-          </div>
-        )}
-        {meterOrientation === 'vertical' && (
-          <div style={{ width: 64, flexShrink: 0 }}>
-            <MasterMeterVertical
-              levelLeft={masterLevelLeft}
-              levelRight={masterLevelRight}
-              clippedLeft={masterLevelLeft >= 0}
-              clippedRight={masterLevelRight >= 0}
-              recentPeakLeft={masterRecentPeak}
-              recentPeakRight={masterRecentPeak}
-              volume={masterVolume}
-              onVolumeChange={handleMasterVolumeChange}
-              look={meterLook}
-              onSettingsMenu={(x, y, rect) => setPlaybackDockFlyout(rect ? { x: rect.left - 4, y: rect.top + rect.height / 2 } : { x, y })}
-            />
-          </div>
-        )}
         </div>
       )}
 
@@ -1772,49 +1767,6 @@ function CanvasDemoContent() {
         onFitTrackToHeight={handleFitTrackToHeight}
         onResetTrackHeight={handleResetTrackHeight}
       />
-
-      {/* The docked playback meter's flyout (2026-11-04): its volume button,
-          the toolbar's flyout hung to the left (the design's vertical variant) */}
-      {playbackDockFlyout && (
-        <PlaybackMeterFlyout
-          isOpen
-          onClose={() => setPlaybackDockFlyout(null)}
-          x={playbackDockFlyout.x}
-          y={playbackDockFlyout.y}
-          direction="left"
-          position={meterOrientation}
-          onPositionChange={setMeterOrientation}
-          look={meterLook}
-          onLookChange={setMeterLook}
-        />
-      )}
-
-      {/* The docked recording meter's menu (2026-11-04): its mic button,
-          click or right-click — the toolbar mic button's right-click pair */}
-      {recordingDockMenu && (
-        <ContextMenu
-          isOpen
-          x={recordingDockMenu.x}
-          y={recordingDockMenu.y}
-          onClose={() => setRecordingDockMenu(null)}
-        >
-          <ContextMenuItem
-            label="Meter in flyout"
-            checked={recordingMeterOrientation === 'flyout'}
-            onClick={() => { setRecordingMeterOrientation('flyout'); setRecordingDockMenu(null); }}
-          />
-          <ContextMenuItem
-            label="Horizontal meter"
-            checked={recordingMeterOrientation === 'horizontal'}
-            onClick={() => { setRecordingMeterOrientation('horizontal'); setRecordingDockMenu(null); }}
-          />
-          <ContextMenuItem
-            label="Vertical meter"
-            checked={recordingMeterOrientation === 'vertical'}
-            onClick={() => { setRecordingDockMenu(null); }}
-          />
-        </ContextMenu>
-      )}
 
       {/* Time Selection Context Menu */}
       {timeSelectionContextMenu && timeSelectionContextMenu.isOpen && (
