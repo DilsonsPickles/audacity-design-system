@@ -140,6 +140,73 @@
   .toolbar-dock__grip-dots { transition: none; }
 }
 
+/* A SIZED bar (2026-11-10): the size is the user's, so it neither grows
+   nor shrinks with the row; its stretch tools take what it has beyond
+   their natural size, and give it back down to their minSize */
+.toolbar-dock__bar { position: relative; }
+.toolbar-dock__bar--sized,
+.toolbar-dock__bar--sized.toolbar-dock__bar--grow { flex: 0 0 auto; }
+.toolbar-dock--horizontal .toolbar-dock__bar--sized { max-width: 100%; }
+.toolbar-dock__bar--sized .toolbar-dock__tools { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
+.toolbar-dock__bar--sized .toolbar-dock__tool--stretch,
+.toolbar-dock__bar--sized .toolbar-dock__tool--stretch > .toolbar-dock__tool-body { flex: 1 1 auto; }
+.toolbar-dock__tool--stretch > .toolbar-dock__tool-body > * { flex: 1 1 auto; min-width: 0; }
+
+/* THE RESIZE EDGE: 6px over the start of whatever follows the bar (the
+   next bar's gutter, or the row's padding), the row's full height */
+.toolbar-dock__resize {
+  position: absolute;
+  top: -14px;
+  bottom: -14px;
+  right: -6px;
+  width: 6px;
+  z-index: 2;
+  cursor: ew-resize;
+  transition: background-color 0.06s ease;
+}
+.toolbar-dock__resize:hover,
+.toolbar-dock__resize--active {
+  background-color: color-mix(in srgb, var(--toolbar-dock-accent) 35%, transparent);
+}
+.toolbar-dock--vertical .toolbar-dock__resize {
+  top: auto;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  width: auto;
+  height: 6px;
+  cursor: ns-resize;
+}
+body[data-toolbar-resize="width"],
+body[data-toolbar-resize="width"] * { cursor: ew-resize !important; }
+body[data-toolbar-resize="height"],
+body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
+@media (prefers-reduced-motion: reduce) { .toolbar-dock__resize { transition: none; } }
+
+/* THE OVERFLOW BUTTON: the tools a sized bar cannot fit, behind a chevron */
+.toolbar-dock__overflow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 8px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--toolbar-gripper-color);
+  font-size: 16px;
+  cursor: pointer;
+}
+.toolbar-dock__overflow:hover { background-color: color-mix(in srgb, var(--toolbar-gripper-color) 8%, transparent); }
+.toolbar-dock__overflow[aria-expanded="true"] { background-color: color-mix(in srgb, var(--toolbar-gripper-color) 14%, transparent); }
+.toolbar-dock--vertical .toolbar-dock__overflow { margin: 8px 0 0; }
+.toolbar-dock--vertical .toolbar-dock__overflow .musescore-icon { transform: rotate(90deg); }
+.toolbar-dock__overflow-tools { display: flex; align-items: center; gap: 8px; padding: 4px; }
+.toolbar-dock__overflow-tool { display: flex; align-items: center; }
+
 /* The cog, at the end of the last row */
 .toolbar-dock__trailing { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 

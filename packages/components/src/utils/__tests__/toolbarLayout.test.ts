@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   coerceToolbarLayout, defaultToolbarLayout, dockBars, findBar, findTool, moveBar, moveTool, moveToolToNewBar, nextBarId,
-  normaliseLayout, isToolbarLayout, type ToolbarLayout, type ToolbarRegion,
+  normaliseLayout, isToolbarLayout, setBarSize, type ToolbarLayout, type ToolbarRegion,
 } from '../toolbarLayout';
 
 /** A dock's rows as lists of bar ids */
@@ -135,5 +135,23 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(coerceToolbarLayout({ top: [], bottom: [] })).toBeNull();
     expect(coerceToolbarLayout({ top: [{ id: 1 }], bottom: [], left: [], right: [] })).toBeNull();
     expect(coerceToolbarLayout(null)).toBeNull();
+  });
+
+  it('setBarSize keeps a width for horizontal docks and a height for vertical ones; null clears; a move keeps both (2026-11-10)', () => {
+    const layout = defaultToolbarLayout('classic');
+    const a = setBarSize(layout, 'edit', 'width', 120.4);
+    expect(findBar(a, 'edit')!.bar.width).toBe(120);
+    const b = setBarSize(a, 'edit', 'height', 90);
+    expect(findBar(b, 'edit')!.bar).toMatchObject({ width: 120, height: 90 });
+    // moving it keeps both
+    const moved = moveBar(b, 'edit', { region: 'left', row: 0, beforeBarId: null });
+    expect(findBar(moved, 'edit')!.bar).toMatchObject({ width: 120, height: 90 });
+    // null clears that axis alone
+    expect(findBar(setBarSize(b, 'edit', 'width', null), 'edit')!.bar).toEqual({ id: 'edit', tools: ['cut', 'copy', 'paste', 'trim', 'silence'], height: 90 });
+    // nothing to do: the same size, clearing what is not set, an unknown bar
+    expect(setBarSize(a, 'edit', 'width', 120)).toBe(a);
+    expect(setBarSize(layout, 'edit', 'width', null)).toBe(layout);
+    expect(setBarSize(layout, 'nope', 'width', 50)).toBe(layout);
+    expect(findBar(layout, 'edit')!.bar.width).toBeUndefined();
   });
 });

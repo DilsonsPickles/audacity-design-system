@@ -1292,6 +1292,7 @@ function CanvasDemoContent() {
           renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
           extraToolMeta={statusToolMeta}
           drag={dockDrag}
+          onBarResize={toolbarLayout.resizeBar}
           showSettingsCog={activeMenuItem !== 'export'}
           className="transport-toolbar"
           tabGroupId="tool-toolbar"
@@ -1436,6 +1437,7 @@ function CanvasDemoContent() {
           renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
           extraToolMeta={statusToolMeta}
           drag={dockDrag}
+          onBarResize={toolbarLayout.resizeBar}
           tabGroupId="tool-dock-left"
           ariaLabel="Left toolbar dock"
           style={selectionToolbarStyle}
@@ -1508,6 +1510,7 @@ function CanvasDemoContent() {
           renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
           extraToolMeta={statusToolMeta}
           drag={dockDrag}
+          onBarResize={toolbarLayout.resizeBar}
           tabGroupId="tool-dock-right"
           ariaLabel="Right toolbar dock"
           style={selectionToolbarStyle}
@@ -1551,6 +1554,7 @@ function CanvasDemoContent() {
           renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
           extraToolMeta={statusToolMeta}
           drag={dockDrag}
+          onBarResize={toolbarLayout.resizeBar}
           className="selection-toolbar"
           tabGroupId="selection-toolbar"
           ariaLabel="Selection toolbar"

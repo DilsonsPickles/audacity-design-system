@@ -16,7 +16,12 @@ mode) dropped on the line between two rows, or at a horizontal dock's edge,
 gets a NEW ROW, shown by a horizontal accent line; a row lives while it
 holds a bar. GRIPS IN THE GAP, BUILT 2026-11-10: the 17px gutter between
 two bars is the later bar's grip (the line at rest, the dots on hover), and
-the seeds are six Audacity 3-sized bars instead of ten small ones. NOT YET: the tray of
+the seeds are six Audacity 3-sized bars instead of ten small ones. SIZING,
+BUILT 2026-11-10: a bar's width (horizontal dock) or height (vertical) is
+set by its trailing edge; stretchy tools (the meters, the info line) take
+or give room first, then tools overflow behind a chevron that opens them
+in a flyout; a double-click or a release on the natural size resets.
+NOT YET: the tray of
 hidden tools, hold-to-enter, the keyboard Move-to menu, the Flexible space
 tool, floating bars, user-named workspaces. Questions 4–8 below are
 still the assistant's positions; increment 1 took 4 and 5 as stated.
@@ -280,6 +285,13 @@ not yet accepted or rejected:
   "I'm trying to avoid having to enter a mode like this. But we can keep
   that in our back pocket… we'll probably need it eventually for
   accessibility users." Author ("Try 1 and 2").
+- 2026-11-10 — Bars are resizable: width in a horizontal dock, height in a
+  vertical one, by the bar's trailing edge. Wider = the stretch tools fill
+  (else empty space); narrower = they shrink to their minimum, then tools
+  overflow behind a chevron. The meters' own grip goes: the bar's width is
+  the meter's. Author ("I want to be able to adjust the width of the
+  toolbars when docked horizontally and height when docked vertically");
+  the overflow and stretch rules are the assistant's call, flagged.
 - 2026-11-10 — An empty dock shows nothing of its own during a drag; the
   side docks' drop zones are the dockable panels' overlay (a subtle band,
   the hovered one previewing the 48px footprint). Author ("don't show side

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ToolbarDock, useTransportTools, type ToolbarRegion, type ToolbarRow, type ToolMeta, type ToolbarOrientation } from '@audacity-ui/components';
+import { ToolbarDock, useTransportTools, type ToolbarBarAxis, type ToolbarRegion, type ToolbarRow, type ToolMeta, type ToolbarOrientation } from '@audacity-ui/components';
 import type { ToolbarDropTarget } from '../hooks/useToolbarBarDrag';
 import type { ToolDropTarget } from '../utils/toolbarToolDrop';
 
@@ -23,6 +23,8 @@ export interface AppToolbarDockProps {
   renderExtraTool?: (id: string, orientation: ToolbarOrientation) => React.ReactNode;
   extraToolMeta?: (id: string) => ToolMeta | undefined;
   drag: ToolbarDockDrag;
+  /** A bar's resize edge was released (null = natural size) */
+  onBarResize?: (barId: string, axis: ToolbarBarAxis, size: number | null) => void;
   trailing?: React.ReactNode;
   /** The Customise toolbar cog at the dock's end (the top dock's) */
   showSettingsCog?: boolean;
@@ -41,7 +43,7 @@ export interface AppToolbarDockProps {
  * insertion line (beside a bar, or across the dock for a new row).
  */
 export function AppToolbarDock({
-  region, rows, renderExtraTool, extraToolMeta, drag,
+  region, rows, renderExtraTool, extraToolMeta, drag, onBarResize,
   trailing, showSettingsCog = false, className, tabGroupId, ariaLabel, style, dataAttrs,
 }: AppToolbarDockProps) {
   const { renderTool, toolMeta, hidden, settingsCog } = useTransportTools();
@@ -59,6 +61,7 @@ export function AppToolbarDock({
       renderTool={(id, o) => renderExtraTool?.(id, o) ?? renderTool(id, o)}
       toolMeta={(id) => extraToolMeta?.(id) ?? toolMeta(id)}
       onGripMouseDown={drag.onGripMouseDown}
+      onBarResize={onBarResize}
       draggingBarId={drag.draggingBarId}
       insert={arriving?.placement ?? null}
       insertAfterBarId={arriving?.lineEndAfter ?? null}

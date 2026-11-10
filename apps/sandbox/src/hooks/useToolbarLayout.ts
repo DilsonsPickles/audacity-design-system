@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import {
-  coerceToolbarLayout, defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, moveBar, moveTool, moveToolToNewBar, normaliseLayout, usePreferences,
-  type BarPlacement, type ToolbarLayout, type ToolbarWorkspace,
+  coerceToolbarLayout, defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, moveBar, moveTool, moveToolToNewBar, normaliseLayout, setBarSize, usePreferences,
+  type BarPlacement, type ToolbarBarAxis, type ToolbarLayout, type ToolbarWorkspace,
 } from '@audacity-ui/components';
 
 export interface UseToolbarLayoutReturn {
@@ -16,6 +16,8 @@ export interface UseToolbarLayoutReturn {
   moveToolInto: (toolId: string, barId: string, beforeToolId: string | null) => void;
   /** Pull one tool out into a new bar of its own, in a row or on a new one */
   moveToolToNewBar: (toolId: string, placement: BarPlacement) => void;
+  /** A bar's width (horizontal docks) or height (vertical); null = natural */
+  resizeBar: (barId: string, axis: ToolbarBarAxis, size: number | null) => void;
   /** Back to the workspace's seed */
   resetLayout: () => void;
 }
@@ -58,11 +60,15 @@ export function useToolbarLayout(workspace: ToolbarWorkspace, activeMenuItem: st
     edit((base) => moveToolToNewBar(base, toolId, placement));
   }, [edit]);
 
+  const resizeBar = useCallback((barId: string, axis: ToolbarBarAxis, size: number | null) => {
+    edit((base) => setBarSize(base, barId, axis, size));
+  }, [edit]);
+
   const resetLayout = useCallback(() => {
     const next = { ...(preferences.toolbarLayouts ?? {}) };
     delete next[workspace];
     updatePreference('toolbarLayouts', next);
   }, [preferences.toolbarLayouts, updatePreference, workspace]);
 
-  return { layout, customised: custom !== null, moveBarTo, moveToolInto, moveToolToNewBar: moveToolToNew, resetLayout };
+  return { layout, customised: custom !== null, moveBarTo, moveToolInto, moveToolToNewBar: moveToolToNew, resizeBar, resetLayout };
 }

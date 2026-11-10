@@ -214,6 +214,13 @@ const TransportToolsContext = React.createContext<TransportToolsContextValue | n
  *  icons): the buttons; not the readouts, the sliders, the snap control,
  *  nor a meter cluster carrying its horizontal meter. Static, so a host
  *  can ask before a drop without the registry. */
+/** The meter tools' least size: the button, the group's 6px, a 120px meter */
+const METER_TOOL_MIN = 28 + 6 + 120;
+
+/** A meter's slot in its cluster: 360px at rest (the meter's old default
+ *  width), growing with a sized bar and shrinking to 120 */
+const METER_SLOT_STYLE: React.CSSProperties = { display: 'flex', flex: '1 1 360px', width: 360, minWidth: 120 };
+
 export function transportToolMeta(
   id: string,
   meters: { recordingMeterOrientation?: MicrophoneMeterOrientation; meterOrientation?: PlaybackMeterPosition } = {},
@@ -225,8 +232,15 @@ export function transportToolMeta(
     case 'collapse-tracks': case 'expand-tracks': case 'fit-tracks-height':
     case 'cut': case 'copy': case 'paste': case 'trim': case 'silence':
       return { vertical: true };
-    case 'microphone-levels': return { vertical: meters.recordingMeterOrientation !== 'horizontal' };
-    case 'playback-meter': return { vertical: meters.meterOrientation !== 'horizontal' };
+    // A meter on the bar STRETCHES with a sized bar (2026-11-10): the bar's
+    // width is the meter's, so the meter's own resize grip is gone; it
+    // shrinks to its button + 6 + a 120px meter before anything overflows
+    case 'microphone-levels': return meters.recordingMeterOrientation === 'horizontal'
+      ? { vertical: false, stretch: true, minSize: METER_TOOL_MIN }
+      : { vertical: true };
+    case 'playback-meter': return meters.meterOrientation === 'horizontal'
+      ? { vertical: false, stretch: true, minSize: METER_TOOL_MIN }
+      : { vertical: true };
     default: return { vertical: false };
   }
 }
@@ -645,7 +659,8 @@ export function TransportTools({
                 the mic's own top-bar meter beside the button — its slider is
                 the input gain, the flyout's knob, so the two move one value. */}
             {recordingMeterOrientation === 'horizontal' && (
-              <MasterMeter
+              <div style={METER_SLOT_STYLE}><MasterMeter
+                resizable={false}
                 levelLeft={micLevel}
                 levelRight={micLevel}
                 clippedLeft={micLevel >= 0}
@@ -656,7 +671,7 @@ export function TransportTools({
                 onVolumeChange={onMicrophoneGainChange}
                 ariaLabel="Microphone meter"
                 sliderAriaLabel="Microphone level"
-              />
+              /></div>
             )}
           </ToolbarButtonGroup>
         );
@@ -678,7 +693,8 @@ export function TransportTools({
               />
             </div>
             {meterOrientation === 'horizontal' && (
-              <MasterMeter
+              <div style={METER_SLOT_STYLE}><MasterMeter
+                resizable={false}
                 levelLeft={masterLevelLeft}
                 levelRight={masterLevelRight}
                 clippedLeft={masterClippedLeft}
@@ -688,7 +704,7 @@ export function TransportTools({
                 volume={masterVolume}
                 onVolumeChange={onMasterVolumeChange}
                 look={meterLook}
-              />
+              /></div>
             )}
           </ToolbarButtonGroup>
         );

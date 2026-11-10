@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
-import { isVerticalRegion, type BarPlacement, type ToolbarBar, type ToolbarOrientation, type ToolbarRegion } from '../utils/toolbarLayout';
+import { isVerticalRegion, type BarPlacement, type ToolbarBar, type ToolbarBarAxis, type ToolbarOrientation, type ToolbarRegion } from '../utils/toolbarLayout';
+import { Flyout } from '../Flyout';
 import '../assets/fonts/musescore-icon.css';
 import './ToolbarDock.css';
 
@@ -10,6 +11,12 @@ export interface ToolMeta {
   vertical?: boolean;
   /** The tool stretches to fill its row (the status bar's info line) */
   grow?: boolean;
+  /** In a bar the user has SIZED, the tool takes the room the bar has
+   *  beyond its natural size, and gives it back down to `minSize` before
+   *  any tool overflows (the meters, 2026-11-10) */
+  stretch?: boolean;
+  /** The least a `grow` / `stretch` tool may shrink to, px along the dock */
+  minSize?: number;
 }
 
 export interface ToolbarDockProps {
@@ -46,6 +53,10 @@ export interface ToolbarDockProps {
    *  bar's end) — the short caret among the bar's tools. A drop that
    *  makes a NEW bar shows `insertAt`'s full-height line instead. */
   toolInsert?: { barId: string; beforeToolId: string | null } | null;
+  /** A bar's resize edge was dragged (or double-clicked: null = natural
+   *  size again). `axis` is 'width' in a horizontal dock, 'height' in a
+   *  vertical one. Absent = bars cannot be resized. */
+  onBarResize?: (barId: string, axis: ToolbarBarAxis, size: number | null) => void;
   /** Drawn at the end of the last row, right-aligned (the top bar's cog) */
   trailing?: React.ReactNode;
   className?: string;
@@ -59,6 +70,18 @@ export interface ToolbarDockProps {
 }
 
 const GRIP_GLYPH = '';
+
+/** A bar's gutter (its grip), the gap between tools, and the overflow
+ *  button — the numbers the dock's sizing is made of (ToolbarDock.css) */
+const GUTTER = 17;
+const TOOL_GAP = 8;
+const OVERFLOW_BUTTON = 28;
+/** A sized bar is never smaller than its gutter and the overflow button */
+const MIN_BAR_SIZE = GUTTER + OVERFLOW_BUTTON;
+/** A resize lands on the bar's natural size within this distance */
+const RESIZE_SNAP_PX = 6;
+/** What a grow / stretch tool needs when it states no minSize */
+const DEFAULT_MIN_STRETCH = 80;
 
 /** The natural width a growing bar is packed at (its content stretches after) */
 const GROW_BAR_PACK_WIDTH = 160;
@@ -77,7 +100,7 @@ const GROW_BAR_PACK_WIDTH = 160;
  * marks where a drop would land.
  */
 export function ToolbarDock({
-  region, rows, renderTool, toolMeta,
+  region, rows, renderTool, toolMeta, onBarResize,
   onGripMouseDown, draggingBarId = null, insert = null, insertAfterBarId = null, insertRefused = false,
   editing = false, onToolMouseDown, draggingToolId = null, toolInsert = null,
   trailing, className = '', tabGroupId, ariaLabel, dataAttrs, style: styleProp,
@@ -88,13 +111,112 @@ export function ToolbarDock({
   const rootRef = useRef<HTMLDivElement>(null);
   const barRefs = useRef(new Map<string, HTMLDivElement>());
 
+  // SIZING (2026-11-10, "adjust the width of the toolbars when docked
+  // horizontally and height when docked vertically"): a bar may carry a
+  // size along the dock — its `width` in a horizontal dock, its `height`
+  // in a vertical one. Wider than its tools, the stretch / grow tools take
+  // the room (else it is empty space); narrower, they give it back down to
+  // their minSize, and then the tools that still do not fit move behind
+  // an overflow button, last first.
+  const axis: ToolbarBarAxis = vertical ? 'height' : 'width';
+  const [liveSize, setLiveSize] = useState<{ barId: string; size: number } | null>(null);
+  const sizeOf = (bar: ToolbarBar): number | undefined => (liveSize?.barId === bar.id ? liveSize.size : bar[axis]);
+  // Each tool's natural size along the dock, measured whenever it is drawn
+  // unstretched (a tool behind the overflow button keeps its last)
+  const toolSizes = useRef(new Map<string, number>());
+  const [, setMeasureTick] = useState(0);
+  // The room a line has, from the last pack (a sized bar never exceeds it)
+  const availableRef = useRef(0);
+  const [overflowOpen, setOverflowOpen] = useState<{ barId: string; x: number; y: number } | null>(null);
+  const sizeKey = (id: string) => `${orientation}:${id}`;
+  const stretchy = (id: string) => { const m = toolMeta?.(id); return !!(m?.grow || m?.stretch); };
+  const minOf = (id: string) => toolMeta?.(id)?.minSize ?? DEFAULT_MIN_STRETCH;
+  const naturalOfTool = (id: string) => toolSizes.current.get(sizeKey(id)) ?? (stretchy(id) ? minOf(id) : 0);
+  const naturalOf = (ids: string[]) => GUTTER + ids.reduce((sum, id, i) => sum + (i ? TOOL_GAP : 0) + naturalOfTool(id), 0);
+
+  /** The tools of a sized bar that do not fit, in order */
+  const overflowOf = (ids: string[], size: number | undefined): Set<string> => {
+    const out = new Set<string>();
+    if (size === undefined) return out;
+    const room = Math.min(size, availableRef.current > 0 ? availableRef.current : Infinity) - GUTTER;
+    const need = (id: string) => (stretchy(id) ? minOf(id) : naturalOfTool(id));
+    const total = ids.reduce((sum, id, i) => sum + (i ? TOOL_GAP : 0) + need(id), 0);
+    if (total <= room) return out;
+    const budget = room - OVERFLOW_BUTTON - TOOL_GAP;
+    let used = 0;
+    let full = false;
+    ids.forEach((id, i) => {
+      const next = used + (i ? TOOL_GAP : 0) + need(id);
+      if (full || next > budget) { full = true; out.add(id); } else used = next;
+    });
+    return out;
+  };
+
   // Draw each bar's tools once; a bar with nothing to draw is skipped
   const drawn = rows.flatMap((row, rowIndex) => row.map((bar) => {
     const nodes = bar.tools.map((id) => ({ id, node: renderTool(id, orientation) })).filter((t) => t.node !== null && t.node !== undefined && t.node !== false);
     const grow = nodes.some((t) => toolMeta?.(t.id)?.grow);
-    return { bar, nodes, grow, row: rowIndex };
+    const size = sizeOf(bar);
+    const overflow = overflowOf(nodes.map((t) => t.id), size);
+    return { bar, nodes, grow, row: rowIndex, size, overflow };
   }));
   const visible = drawn.filter((d) => d.nodes.length > 0);
+
+  // Measure the tools drawn at their natural size; a change re-renders
+  // once, so the overflow split reads the new sizes
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    let changed = false;
+    root.querySelectorAll<HTMLElement>('[data-toolbar-tool]').forEach((el) => {
+      const id = el.getAttribute('data-toolbar-tool');
+      if (!id) return;
+      if (stretchy(id) && el.closest('.toolbar-dock__bar--sized')) return; // stretched, not natural
+      const value = vertical ? el.offsetHeight : el.offsetWidth;
+      if (toolSizes.current.get(sizeKey(id)) !== value) { toolSizes.current.set(sizeKey(id), value); changed = true; }
+    });
+    if (changed) setMeasureTick((t) => t + 1);
+  });
+
+  // The open overflow closes when its bar no longer overflows
+  const openBar = overflowOpen ? visible.find((d) => d.bar.id === overflowOpen.barId) : undefined;
+  useEffect(() => {
+    if (overflowOpen && (!openBar || openBar.overflow.size === 0)) setOverflowOpen(null);
+  }, [overflowOpen, openBar]);
+
+  /** A press on a bar's RESIZE EDGE: the size follows the pointer (held in
+   *  the dock until the release, then reported once), clamped between the
+   *  gutter + overflow button and the dock's room, with a soft landing on
+   *  the bar's natural size — which, released there, clears the size */
+  const beginResize = (d: (typeof visible)[number], e: React.MouseEvent) => {
+    if (e.button !== 0 || !onBarResize) return;
+    const el = barRefs.current.get(d.bar.id);
+    if (!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const start = vertical ? e.clientY : e.clientX;
+    const startSize = vertical ? el.offsetHeight : el.offsetWidth;
+    const natural = naturalOf(d.nodes.map((t) => t.id));
+    const root = rootRef.current;
+    const roomRaw = root ? (vertical ? root.clientHeight - 10 : root.clientWidth - 12) : 0;
+    const room = roomRaw > 0 ? roomRaw : Infinity;
+    const at = (ev: MouseEvent) => {
+      const next = Math.max(MIN_BAR_SIZE, Math.min(room, startSize + ((vertical ? ev.clientY : ev.clientX) - start)));
+      return Math.abs(next - natural) <= RESIZE_SNAP_PX ? natural : next;
+    };
+    document.body.setAttribute('data-toolbar-resize', axis);
+    const onMove = (ev: MouseEvent) => setLiveSize({ barId: d.bar.id, size: at(ev) });
+    const onUp = (ev: MouseEvent) => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.removeAttribute('data-toolbar-resize');
+      const size = at(ev);
+      setLiveSize(null);
+      onBarResize(d.bar.id, axis, size === natural ? null : Math.round(size));
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
 
   // LINES: each row packed from measured widths, wrapping onto further
   // lines; one line a row until measured (jsdom measures nothing, so it
@@ -105,12 +227,13 @@ export function ToolbarDock({
     const root = rootRef.current;
     if (!root) return;
     const available = root.clientWidth - 12; // the right padding
+    availableRef.current = available;
     const result: DockLine[] = [];
     let line: DockLine | null = null;
     let used = 0;
     for (const d of visible) {
       const el = barRefs.current.get(d.bar.id);
-      const w = d.grow ? GROW_BAR_PACK_WIDTH : (el?.offsetWidth ?? 0);
+      const w = d.grow && d.size === undefined ? GROW_BAR_PACK_WIDTH : (el?.offsetWidth ?? 0);
       // (each bar's width carries its gutter: the grip is the gap)
       if (!line || line.row !== d.row || (available > 0 && line.ids.length > 0 && used + w > available)) {
         line = { row: d.row, ids: [] };
@@ -164,7 +287,8 @@ export function ToolbarDock({
     <div
       key={d.bar.id}
       ref={(el) => { if (el) barRefs.current.set(d.bar.id, el); else barRefs.current.delete(d.bar.id); }}
-      className={`toolbar-dock__bar${d.grow ? ' toolbar-dock__bar--grow' : ''}${draggingBarId === d.bar.id ? ' toolbar-dock__bar--dragging' : ''}`}
+      className={`toolbar-dock__bar${d.grow ? ' toolbar-dock__bar--grow' : ''}${d.size !== undefined ? ' toolbar-dock__bar--sized' : ''}${draggingBarId === d.bar.id ? ' toolbar-dock__bar--dragging' : ''}`}
+      style={d.size !== undefined ? { [axis]: d.size } : undefined}
       data-toolbar-bar={d.bar.id}
     >
       <span
@@ -185,11 +309,12 @@ export function ToolbarDock({
         {insertHere && indicator}
       </span>
       <div className="toolbar-dock__tools">
-        {d.nodes.map((t) => (
+        {d.nodes.filter((t) => !d.overflow.has(t.id)).map((t) => (
           <React.Fragment key={t.id}>
             {toolInsert?.barId === d.bar.id && toolInsert.beforeToolId === t.id && caret}
             <div
-              className={`toolbar-dock__tool${toolMeta?.(t.id)?.grow ? ' toolbar-dock__tool--grow' : ''}${draggingToolId === t.id ? ' toolbar-dock__tool--dragging' : ''}`}
+              className={`toolbar-dock__tool${toolMeta?.(t.id)?.grow ? ' toolbar-dock__tool--grow' : ''}${toolMeta?.(t.id)?.stretch ? ' toolbar-dock__tool--stretch' : ''}${draggingToolId === t.id ? ' toolbar-dock__tool--dragging' : ''}`}
+              style={d.size !== undefined && stretchy(t.id) ? { [vertical ? 'minHeight' : 'minWidth']: minOf(t.id) } : undefined}
               data-toolbar-tool={t.id}
               onMouseDown={editing ? (e) => {
                 if (e.button !== 0 || !onToolMouseDown) return;
@@ -208,6 +333,43 @@ export function ToolbarDock({
         ))}
         {toolInsert?.barId === d.bar.id && toolInsert.beforeToolId === null && caret}
       </div>
+      {d.overflow.size > 0 && (
+        <button
+          type="button"
+          className="toolbar-dock__overflow"
+          data-toolbar-overflow-button={d.bar.id}
+          aria-label={`${d.overflow.size} more ${d.overflow.size === 1 ? 'tool' : 'tools'}`}
+          aria-haspopup="dialog"
+          aria-expanded={overflowOpen?.barId === d.bar.id}
+          // (stopped, so the open flyout's outside-press close does not
+          // fire before this press toggles it)
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            if (overflowOpen?.barId === d.bar.id) { setOverflowOpen(null); return; }
+            const r = e.currentTarget.getBoundingClientRect();
+            setOverflowOpen({
+              barId: d.bar.id,
+              x: vertical ? (region === 'right' ? r.left : r.right) : r.left + r.width / 2,
+              y: vertical ? r.top + r.height / 2 : (region === 'bottom' ? r.top : r.bottom),
+            });
+          }}
+        >
+          <span className="musescore-icon" aria-hidden="true">{'\uF39B'}</span>
+        </button>
+      )}
+      {onBarResize && (
+        // THE RESIZE EDGE: the bar's trailing edge (bottom, in a column),
+        // over the first 6px of whatever follows — the next bar's gutter,
+        // whose line divides "resize the bar before" from "move the bar
+        // after". Double-click: the bar's natural size again.
+        <span
+          className={`toolbar-dock__resize${liveSize?.barId === d.bar.id ? ' toolbar-dock__resize--active' : ''}`}
+          data-toolbar-resize={d.bar.id}
+          aria-hidden="true"
+          onMouseDown={(e) => beginResize(d, e)}
+          onDoubleClick={(e) => { e.stopPropagation(); onBarResize(d.bar.id, axis, null); }}
+        />
+      )}
     </div>
   );
 
@@ -315,6 +477,25 @@ export function ToolbarDock({
       )}
       {empty && trailing && (
         <div className="toolbar-dock__row"><div className="toolbar-dock__trailing">{trailing}</div></div>
+      )}
+      {overflowOpen && openBar && openBar.overflow.size > 0 && (
+        <Flyout
+          isOpen
+          onClose={() => setOverflowOpen(null)}
+          x={overflowOpen.x}
+          y={overflowOpen.y}
+          direction={region === 'bottom' ? 'up' : region === 'left' ? 'right' : region === 'right' ? 'left' : 'down'}
+          ariaLabel="More tools"
+          className="toolbar-dock__overflow-flyout"
+        >
+          <div className="toolbar-dock__overflow-tools" data-toolbar-overflow={openBar.bar.id}>
+            {openBar.nodes.filter((t) => openBar.overflow.has(t.id)).map((t) => (
+              <div key={t.id} className="toolbar-dock__overflow-tool" data-toolbar-overflow-tool={t.id}>
+                {vertical ? renderTool(t.id, 'horizontal') : t.node}
+              </div>
+            ))}
+          </div>
+        </Flyout>
       )}
     </div>
   );

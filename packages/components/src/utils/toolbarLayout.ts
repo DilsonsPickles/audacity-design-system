@@ -31,7 +31,16 @@ export interface ToolbarBar {
   id: string;
   /** Tool ids, in order (the Customise toolbar ids, plus the status bar's) */
   tools: string[];
+  /** The user's WIDTH for this bar in a horizontal dock, px, its gutter
+   *  included (2026-11-10, "adjust the width of the toolbars when docked
+   *  horizontally and height when docked vertically"); absent = natural */
+  width?: number;
+  /** The user's HEIGHT for this bar in a vertical dock, px; absent = natural */
+  height?: number;
 }
+
+/** Which of a bar's sizes a dock uses */
+export type ToolbarBarAxis = 'width' | 'height';
 
 export type ToolbarRow = ToolbarBar[];
 
@@ -181,7 +190,8 @@ const sameLayout = (a: ToolbarLayout, b: ToolbarLayout): boolean => TOOLBAR_REGI
   a[r].length === b[r].length && a[r].every((row, i) =>
     row.length === b[r][i].length && row.every((x, j) => {
       const y = b[r][i][j];
-      return x.id === y.id && x.tools.length === y.tools.length && x.tools.every((t, k) => t === y.tools[k]);
+      return x.id === y.id && x.width === y.width && x.height === y.height
+        && x.tools.length === y.tools.length && x.tools.every((t, k) => t === y.tools[k]);
     })));
 
 /** Bars with no tools are dropped, then rows with no bars; empty docks stay */
@@ -260,6 +270,21 @@ export function moveToolToNewBar(layout: ToolbarLayout, toolId: string, placemen
   findBar(next, from.bar.id)!.bar.tools.splice(from.index, 1);
   place(next, { id: nextBarId(layout), tools: [toolId] }, placement);
   return normaliseLayout(next);
+}
+
+/**
+ * Set a bar's WIDTH (used in a horizontal dock) or HEIGHT (a vertical
+ * one); null clears it, back to the bar's natural size. A bar keeps both,
+ * so moving it between a top and a side dock keeps each. The same layout
+ * comes back when nothing would change.
+ */
+export function setBarSize(layout: ToolbarLayout, barId: string, axis: ToolbarBarAxis, size: number | null): ToolbarLayout {
+  if (!findBar(layout, barId)) return layout;
+  const next = cloneLayout(layout);
+  const target = findBar(next, barId)!.bar;
+  if (size === null) delete target[axis];
+  else target[axis] = Math.max(0, Math.round(size));
+  return sameLayout(next, layout) ? layout : next;
 }
 
 const isBar = (b: unknown): b is ToolbarBar =>

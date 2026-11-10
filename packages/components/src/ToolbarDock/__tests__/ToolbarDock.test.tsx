@@ -168,4 +168,108 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(Array.from(container.querySelectorAll('[data-toolbar-bar]')).map((b) => b.getAttribute('data-toolbar-bar'))).toEqual(['a', 'b', 'c']);
     expect((container.querySelector('.toolbar-dock__insert') as HTMLElement).parentElement).toBe(container.querySelector('[data-toolbar-bar="c"] .toolbar-dock__grip'));
   });
+
+  describe('SIZING (2026-11-10): a bar\'s width in a horizontal dock, height in a vertical one', () => {
+    // jsdom measures nothing: every tool is 28px along the dock, everything else 0
+    const measured = () => {
+      const w = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
+        if (this.hasAttribute('data-toolbar-tool')) return 28;
+        if (this.hasAttribute('data-toolbar-bar')) return parseFloat(this.style.width) || 0;
+        return 0;
+      });
+      const h = vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockImplementation(function (this: HTMLElement) {
+        if (this.hasAttribute('data-toolbar-tool')) return 28;
+        if (this.hasAttribute('data-toolbar-bar')) return parseFloat(this.style.height) || 0;
+        return 0;
+      });
+      return () => { w.mockRestore(); h.mockRestore(); };
+    };
+    const FIVE = [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'] }]];
+    const wrap = (props: Partial<ToolbarDockProps>) => (
+      <ThemeProvider>
+        <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
+          <ToolbarDock region="top" rows={FIVE} renderTool={(id) => <button aria-label={id}>{id}</button>} {...props} />
+        </AccessibilityProfileProvider>
+      </ThemeProvider>
+    );
+    const inline = (c: HTMLElement) => Array.from(c.querySelectorAll('[data-toolbar-bar] [data-toolbar-tool]')).map((t) => t.getAttribute('data-toolbar-tool'));
+
+    it('a bar narrower than its tools keeps what fits and puts the rest behind the overflow button, which opens them in a flyout', () => {
+      const restore = measured();
+      try {
+        // natural: 17 + 5×28 + 4×8 = 189 — everything inline, no button
+        const { container, rerender } = render(wrap({}));
+        expect(inline(container)).toEqual(['t1', 't2', 't3', 't4', 't5']);
+        expect(container.querySelector('.toolbar-dock__overflow')).toBeNull();
+        // 117 wide: 100 of room; less the button and its gap, 64 → two tools
+        rerender(wrap({ rows: [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'], width: 117 }]] }));
+        expect((container.querySelector('[data-toolbar-bar="e"]') as HTMLElement).style.width).toBe('117px');
+        expect(inline(container)).toEqual(['t1', 't2']);
+        const button = container.querySelector('[data-toolbar-overflow-button="e"]') as HTMLElement;
+        expect(button.getAttribute('aria-label')).toBe('3 more tools');
+        fireEvent.click(button);
+        expect(Array.from(document.body.querySelectorAll('[data-toolbar-overflow-tool]')).map((t) => t.getAttribute('data-toolbar-overflow-tool'))).toEqual(['t3', 't4', 't5']);
+        // wide enough again: the button goes, and its flyout with it
+        rerender(wrap({ rows: [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'], width: 400 }]] }));
+        expect(inline(container)).toHaveLength(5);
+        expect(container.querySelector('.toolbar-dock__overflow')).toBeNull();
+      } finally { restore(); }
+    });
+
+    it('a vertical dock sizes by HEIGHT and ignores the width', () => {
+      const restore = measured();
+      try {
+        const { container } = render(wrap({ region: 'left', rows: [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'], width: 50, height: 117 }]] }));
+        const bar = container.querySelector('[data-toolbar-bar="e"]') as HTMLElement;
+        expect(bar.style.height).toBe('117px');
+        expect(bar.style.width).toBe('');
+        expect(inline(container)).toEqual(['t1', 't2']);
+      } finally { restore(); }
+    });
+
+    it('the resize edge: a drag reports the new size once, at the release; a release on the natural size and a double-click report null', () => {
+      const restore = measured();
+      const onBarResize = vi.fn();
+      try {
+        const { container } = render(wrap({ onBarResize }));
+        const edge = container.querySelector('[data-toolbar-resize="e"]') as HTMLElement;
+        // natural 189 (jsdom: the bar measures 0, so the drag starts from 0)
+        fireEvent.mouseDown(edge, { button: 0, clientX: 0 });
+        fireEvent.mouseMove(document, { clientX: 100 });
+        expect(onBarResize).not.toHaveBeenCalled();
+        expect((container.querySelector('[data-toolbar-bar="e"]') as HTMLElement).style.width).toBe('100px'); // live
+        fireEvent.mouseUp(document, { clientX: 100 });
+        expect(onBarResize).toHaveBeenLastCalledWith('e', 'width', 100);
+        // never below the gutter + the overflow button
+        fireEvent.mouseDown(edge, { button: 0, clientX: 0 });
+        fireEvent.mouseUp(document, { clientX: 5 });
+        expect(onBarResize).toHaveBeenLastCalledWith('e', 'width', 45);
+        // within 6px of the natural size: back to natural
+        fireEvent.mouseDown(edge, { button: 0, clientX: 0 });
+        fireEvent.mouseUp(document, { clientX: 186 });
+        expect(onBarResize).toHaveBeenLastCalledWith('e', 'width', null);
+        fireEvent.doubleClick(edge);
+        expect(onBarResize).toHaveBeenLastCalledWith('e', 'width', null);
+      } finally { restore(); }
+    });
+
+    it('a STRETCH tool in a sized bar carries its minSize and is what gives way first', () => {
+      const restore = measured();
+      try {
+        const meta = (id: string) => (id === 'm' ? { stretch: true, minSize: 60 } : undefined);
+        const rows = (width?: number) => [[{ id: 'e', tools: ['t1', 'm', 't2'], ...(width ? { width } : {}) }]];
+        const { container, rerender } = render(wrap({ rows: rows(), toolMeta: meta }));
+        expect((container.querySelector('[data-toolbar-tool="m"]') as HTMLElement).style.minWidth).toBe('');
+        // 17 + 28 + 8 + 60 + 8 + 28 = 149: at that width all three fit, the meter at its least
+        rerender(wrap({ rows: rows(149), toolMeta: meta }));
+        expect(inline(container)).toEqual(['t1', 'm', 't2']);
+        expect((container.querySelector('[data-toolbar-tool="m"]') as HTMLElement).style.minWidth).toBe('60px');
+        // a pixel less and the overflow button needs its own room (28 + 8):
+        // the meter, at its least already, goes behind it with the last tool
+        rerender(wrap({ rows: rows(148), toolMeta: meta }));
+        expect(inline(container)).toEqual(['t1']);
+        expect(container.querySelector('[data-toolbar-overflow-button="e"]')!.getAttribute('aria-label')).toBe('2 more tools');
+      } finally { restore(); }
+    });
+  });
 });
