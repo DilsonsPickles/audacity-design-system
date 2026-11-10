@@ -59,3 +59,23 @@ export function sideZoneAt(x: number, y: number, rect: DOMRect): 'left' | 'right
   if (x >= rect.right - DOCK_ZONE_SIZE) return 'right';
   return null;
 }
+
+/** The band along a row's top or bottom edge, BETWEEN the side bands (the
+ *  dockable panels' bottom band) */
+export function edgeBand(rect: DOMRect, edge: 'top' | 'bottom', inset = 4): React.CSSProperties {
+  return {
+    left: rect.left + DOCK_ZONE_SIZE + inset,
+    top: edge === 'top' ? rect.top + inset : rect.bottom - DOCK_ZONE_SIZE + inset,
+    width: rect.width - DOCK_ZONE_SIZE * 2 - inset * 2,
+    height: DOCK_ZONE_SIZE - inset * 2,
+  };
+}
+
+/** Is the point inside a row's top or bottom band? The side bands take
+ *  the corners, as `sideZoneAt` is asked first */
+export function edgeZoneAt(x: number, y: number, rect: DOMRect): 'top' | 'bottom' | null {
+  if (y < rect.top || y > rect.bottom || x <= rect.left + DOCK_ZONE_SIZE || x >= rect.right - DOCK_ZONE_SIZE) return null;
+  if (y <= rect.top + DOCK_ZONE_SIZE) return 'top';
+  if (y >= rect.bottom - DOCK_ZONE_SIZE) return 'bottom';
+  return null;
+}

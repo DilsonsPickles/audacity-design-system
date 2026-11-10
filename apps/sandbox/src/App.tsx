@@ -81,9 +81,9 @@ import { useToolbarLayout } from './hooks/useToolbarLayout';
 import { useToolbarBarDrag } from './hooks/useToolbarBarDrag';
 import { AppToolbarDock, type ToolbarDockDrag } from './components/AppToolbarDock';
 import { useToolbarToolDrag } from './hooks/useToolbarToolDrag';
-import { DockZoneOverlay, sideBand } from './components/editor/DockZoneOverlay';
+import { DockZoneOverlay, edgeBand, sideBand } from './components/editor/DockZoneOverlay';
 import { renderStatusTool, statusToolMeta, type StatusBarToolsDeps } from './components/StatusBarTools';
-import { findBar, transportToolMeta } from '@audacity-ui/components';
+import { findBar, transportToolMeta, type ToolbarRegion } from '@audacity-ui/components';
 import { useAudioDeviceMenu } from './hooks/useAudioDeviceMenu';
 import { useFocusDebugger } from './hooks/useFocusDebugger';
 import { HandleHintProvider, useHandleHint } from './contexts/HandleHintContext';
@@ -1564,16 +1564,30 @@ function CanvasDemoContent() {
           hover over that area"): a subtle band along the editor row's
           edges, and the hovered one previews the dock's 48px footprint;
           none for a bar with no vertical form */}
-      {sideDrag?.rowRect && sideDrag.fits && (
-        <DockZoneOverlay bands={(['left', 'right'] as const).map((side) => ({
-          zone: side,
-          band: sideBand(sideDrag.rowRect!, side),
-          preview: side === 'left'
-            ? { left: sideDrag.rowRect!.left, top: sideDrag.rowRect!.top, width: 48, height: sideDrag.rowRect!.height }
-            : { left: sideDrag.rowRect!.right - 48, top: sideDrag.rowRect!.top, width: 48, height: sideDrag.rowRect!.height },
-          active: sideDrag.region === side && toolbarLayout.layout[side].length === 0,
-        })).filter((b) => toolbarLayout.layout[b.zone].length === 0)} />
-      )}
+      {/* The EMPTY docks' drop zones, the dockable panels' overlay: a band
+          along each side of the editor row (for a bar or tool that fits a
+          column), and along its top and bottom between them — an empty
+          dock is 0px, so without its band a drop there showed nothing
+          (2026-11-10). The hovered band previews the dock's footprint. */}
+      {sideDrag?.rowRect && (() => {
+        const r = sideDrag.rowRect;
+        const all: ToolbarRegion[] = sideDrag.fits ? ['left', 'right', 'top', 'bottom'] : ['top', 'bottom'];
+        const zones = all.filter((zone) => toolbarLayout.layout[zone].length === 0);
+        const preview: Record<ToolbarRegion, React.CSSProperties> = {
+          left: { left: r.left, top: r.top, width: 48, height: r.height },
+          right: { left: r.right - 48, top: r.top, width: 48, height: r.height },
+          top: { left: r.left, top: r.top, width: r.width, height: 56 },
+          bottom: { left: r.left, top: r.bottom - 56, width: r.width, height: 56 },
+        };
+        return (
+          <DockZoneOverlay bands={zones.map((zone) => ({
+            zone,
+            band: zone === 'left' || zone === 'right' ? sideBand(r, zone) : edgeBand(r, zone),
+            preview: preview[zone],
+            active: sideDrag.region === zone,
+          }))} />
+        );
+      })()}
 
       {/* The bar or tool in hand: a ghost of its size follows the pointer */}
       {sideDrag?.ghost && (

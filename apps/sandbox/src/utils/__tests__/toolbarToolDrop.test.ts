@@ -181,4 +181,17 @@ describe('resolveBarDrop — where a whole bar lands (the grip drag)', () => {
     expect(resolveBarDrop(300, 10, LAYOUT, null, true)).toEqual({ region: 'top', placement: { region: 'top', row: 1, beforeBarId: null }, refused: false });
     expect(resolveBarDrop(300, window.innerHeight - 10, LAYOUT, null, true)).toEqual({ region: 'bottom', placement: { region: 'bottom', row: 0, beforeBarId: null }, refused: false });
   });
+
+  it('an EMPTY top or bottom dock is 0px: its band along the editor row\'s edge, between the side bands, takes the drop (2026-11-10)', () => {
+    const row = rect(0, 100, 1000, 600);
+    const empty: ToolbarLayout = { top: [], bottom: [], left: [], right: [] };
+    // the editor row's bottom strip, away from the sides
+    expect(resolveBarDrop(500, 680, empty, row, true)).toEqual({ region: 'bottom', placement: { region: 'bottom', row: 0, beforeBarId: null }, refused: false });
+    // its top strip
+    expect(resolveBarDrop(500, 120, empty, row, true)).toEqual({ region: 'top', placement: { region: 'top', row: 0, beforeBarId: null }, refused: false });
+    // the corners belong to the side bands
+    expect(resolveBarDrop(40, 680, empty, row, true)).toMatchObject({ region: 'left' });
+    // a dock that has bars is not reached by its band (it is a dock of its own, with its reach strip)
+    expect(resolveBarDrop(500, 680, { ...empty, bottom: [[{ id: 's', tools: ['status-cue'] }]] }, row, true)).toBeNull();
+  });
 });

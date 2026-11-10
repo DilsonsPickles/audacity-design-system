@@ -1,5 +1,5 @@
 import { findBar, isVerticalRegion, TOOLBAR_REGIONS, type BarPlacement, type ToolbarLayout, type ToolbarRegion } from '@audacity-ui/components';
-import { sideZoneAt } from '../components/editor/DockZoneOverlay';
+import { edgeZoneAt, sideZoneAt } from '../components/editor/DockZoneOverlay';
 
 /** Near the window's top or bottom edge with no dock under the pointer,
  *  that edge's dock takes the drop (the old toolbar gripper's snap); the
@@ -55,7 +55,9 @@ export function locateDockSpot(x: number, y: number, layout: ToolbarLayout, edit
   let region = under?.getAttribute('data-toolbar-dock') as ToolbarRegion | null;
   if (!region) {
     const side = editorRow ? sideZoneAt(x, y, editorRow) : null;
+    const edge = editorRow ? edgeZoneAt(x, y, editorRow) : null;
     if (side) region = side;
+    else if (edge && layout[edge].length === 0) region = edge;
     else {
       // Just below the top dock, or just above the bottom one: a new row
       // on that dock's inner edge
