@@ -11,6 +11,9 @@ export interface MixerDockPanelProps {
   trackMeterLevels: Map<number, number>;
   audioManagerRef: React.MutableRefObject<AudioPlaybackManager>;
   setEffectSelectorMenu: React.Dispatch<React.SetStateAction<EffectSelectorMenuState | null>>;
+  /** In a side dock (the VERTICAL layout): the strips fill the dock's
+   *  height, the faders taking the extra, and the row labels go */
+  vertical?: boolean;
 }
 
 /**
@@ -20,7 +23,7 @@ export interface MixerDockPanelProps {
  * inline Mixer tab, so the drawer, the side docks and its OS window all
  * draw the same panel.
  */
-export function MixerDockPanel({ state, theme, trackMeterLevels, audioManagerRef, setEffectSelectorMenu }: MixerDockPanelProps) {
+export function MixerDockPanel({ state, theme, trackMeterLevels, audioManagerRef, setEffectSelectorMenu, vertical = false }: MixerDockPanelProps) {
   const dispatch = useTracksDispatch();
 
   const audioTracks = state.tracks.filter((t) => t.type !== 'label' && t.type !== 'folder');
@@ -90,6 +93,8 @@ export function MixerDockPanel({ state, theme, trackMeterLevels, audioManagerRef
   return (
     <MixerPanel
       hideHeader
+      fillHeight={vertical}
+      hideRowLabels={vertical}
       masterChannel={{
         trackName: 'Master',
         trackColor: theme.accent.secondary,

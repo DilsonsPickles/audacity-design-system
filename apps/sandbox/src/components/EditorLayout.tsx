@@ -853,7 +853,7 @@ export function EditorLayout(props: EditorLayoutProps) {
             />
           )}
           {activeLeftDockTab === 'mixer' && mixerDockedLeft && (
-            <MixerDockPanel state={state} theme={theme} trackMeterLevels={trackMeterLevels} audioManagerRef={audioManagerRef} setEffectSelectorMenu={setEffectSelectorMenu} />
+            <MixerDockPanel state={state} theme={theme} trackMeterLevels={trackMeterLevels} audioManagerRef={audioManagerRef} setEffectSelectorMenu={setEffectSelectorMenu} vertical />
           )}
           {activeLeftDockTab === 'macros' && macrosDockedLeft && <MacrosDockPanel placement="start" />}
           {activeLeftDockTab === 'clip-properties' && propsDockedLeft && <ClipPropertiesDockPanel placement="start" />}
@@ -1660,7 +1660,7 @@ export function EditorLayout(props: EditorLayoutProps) {
             />
           )}
           {activeRightDockTab === 'mixer' && mixerDockedRight && (
-            <MixerDockPanel state={state} theme={theme} trackMeterLevels={trackMeterLevels} audioManagerRef={audioManagerRef} setEffectSelectorMenu={setEffectSelectorMenu} />
+            <MixerDockPanel state={state} theme={theme} trackMeterLevels={trackMeterLevels} audioManagerRef={audioManagerRef} setEffectSelectorMenu={setEffectSelectorMenu} vertical />
           )}
           {activeRightDockTab === 'macros' && macrosDockedRight && <MacrosDockPanel placement="end" />}
           {activeRightDockTab === 'clip-properties' && propsDockedRight && <ClipPropertiesDockPanel placement="end" />}

@@ -46,6 +46,18 @@ export interface MixerPanelProps {
    */
   hideHeader?: boolean;
   /**
+   * The strips FILL the panel's height, the extra going to each fader and
+   * meter (2026-11-10, the mixer docked in a tall side panel — "let the
+   * fader fill the available space"); without it the strips keep their
+   * drawer height, bottom-aligned
+   */
+  fillHeight?: boolean;
+  /**
+   * No row-label column (Audio FX, Pan, Volume…) — the side-dock form
+   * ("in the vertical layout, let's hide the labels")
+   */
+  hideRowLabels?: boolean;
+  /**
    * Additional CSS classes
    */
   className?: string;
@@ -76,6 +88,8 @@ export const MixerPanel: React.FC<MixerPanelProps> = ({
   channels = [],
   effectFooterLabel,
   hideHeader = false,
+  fillHeight = false,
+  hideRowLabels = false,
   className = '',
 }) => {
   const { theme } = useTheme();
@@ -94,7 +108,7 @@ export const MixerPanel: React.FC<MixerPanelProps> = ({
   } as React.CSSProperties;
 
   return (
-    <div className={`mixer-panel ${className}`} style={style}>
+    <div className={`mixer-panel${fillHeight ? ' mixer-panel--fill' : ''} ${className}`} style={style}>
       {/* Reuse existing PanelHeader component */}
       {!hideHeader && (
         <PanelHeader
@@ -110,7 +124,7 @@ export const MixerPanel: React.FC<MixerPanelProps> = ({
         {/* Inner content row — sized by channel content, may exceed body */}
         <div className="mixer-panel__content">
           {/* Row labels */}
-          <div className="mixer-panel__row-labels">
+          {!hideRowLabels && <div className="mixer-panel__row-labels">
             <div style={{ marginTop: 'auto', paddingRight: 8 }}>
               <div className="mixer-panel__row-label" style={{ height: effectRowHeight, alignItems: 'flex-start', paddingTop: 10 }}>
                 <span>Audio FX</span>
@@ -134,7 +148,7 @@ export const MixerPanel: React.FC<MixerPanelProps> = ({
                 <span>Name</span>
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* Channel strip area — scrolls horizontally */}
           <div className="mixer-panel__channels-scroll">

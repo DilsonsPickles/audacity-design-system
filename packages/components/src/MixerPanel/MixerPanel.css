@@ -77,3 +77,13 @@
   opacity: 0.15;
   flex-shrink: 0;
 }
+
+/* FILL: the strips fill the panel's height, the extra going to each
+   fader and meter (2026-11-10, the mixer in a tall side dock). The
+   channel row is a column flex child of the scroller so the sideways
+   scrollbar's height comes out of the strips, not off their foot. */
+.mixer-panel--fill .mixer-panel__content { height: 100%; }
+.mixer-panel--fill .mixer-panel__channels-scroll { display: flex; flex-direction: column; }
+.mixer-panel--fill .mixer-panel__channels { flex: 1 1 auto; height: auto; min-height: 0; }
+.mixer-panel--fill .mixer-channel { min-height: 0; }
+.mixer-panel--fill .mixer-channel__fader-section { flex: 1 1 auto; height: auto; min-height: 160px; }
