@@ -336,7 +336,9 @@
    flow down, then across in columns that SHARE THE SECTION'S WIDTH ("can
    the effect slots fill the width?" — one column is the whole section,
    more divide it, none under 240px; past that the stack scrolls sideways).
-   A slot row is the slot's 40px (24 + 8 above and below), 6 between. */
+   A slot row is the slot's own 24px box, 6 between — the side dock's
+   pitch (it was 40 for an hour, reading the slot's padding as extra, which
+   opened a 16px gap under every slot). */
 .effects-panel--columns .effects-panel__content { flex-direction: row; }
 .effects-panel--columns .effects-panel__track-section,
 .effects-panel--columns .effects-panel__master-section {
@@ -348,7 +350,7 @@
 .effects-panel--columns .effects-panel__effect-stack {
   display: grid;
   grid-auto-flow: column;
-  grid-template-rows: repeat(auto-fill, 40px);
+  grid-template-rows: repeat(auto-fill, 24px);
   grid-auto-columns: minmax(240px, 1fr);
   row-gap: 6px;
   column-gap: 16px;
