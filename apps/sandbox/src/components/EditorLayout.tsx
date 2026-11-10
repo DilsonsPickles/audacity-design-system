@@ -34,6 +34,7 @@ import { LoopRegionStalks } from './editor/LoopRegionStalks';
 import { PunchPointIndicator } from './editor/PunchPointIndicator';
 import { PlaybackStartIndicator } from './editor/PlaybackStartIndicator';
 import { EditorBottomDrawer, type DrawerTabId } from './editor/EditorBottomDrawer';
+import { DEFAULT_DRAWER_GROUPS, drawerDropAt, drawerMoveTargets, moveDrawerTab, reorderDrawerGroup, type DrawerDrop, type DrawerGroup, type DrawerTarget } from '../utils/drawerGroups';
 import { TrackEffectsPanel } from './editor/TrackEffectsPanel';
 import { MacrosDockPanel } from './editor/MacrosDockPanel';
 import { ancestorFolders, effectiveTrackHeight, effectiveTrackStride, folderDescendantIndices } from '../utils/trackFolders';
@@ -181,6 +182,9 @@ function dockZoneAt(
   _panel: DockPanelId,
   rect: DOMRect,
 ): 'left' | 'right' | 'bottom' | null {
+  // Over the open drawer itself: the bottom (its panels pick the spot)
+  const drawer = typeof document === 'undefined' ? null : document.querySelector('[data-bottom-drawer]')?.getBoundingClientRect();
+  if (drawer && drawer.height > 0 && y >= drawer.top && y <= drawer.bottom && x >= drawer.left && x <= drawer.right) return 'bottom';
   if (y < rect.top || y > rect.bottom || x < rect.left || x > rect.right) return null;
   if (x <= rect.left + DOCK_ZONE_SIZE) return 'left';
   if (x >= rect.right - DOCK_ZONE_SIZE) return 'right';
@@ -258,8 +262,26 @@ export function EditorLayout(props: EditorLayoutProps) {
     anchorRect: DOMRect | null;
   }>({ open: false, x: 0, y: 0, anchorRect: null });
   const [drawerHeight, setDrawerHeight] = React.useState(376);
-  const [drawerActiveTab, setDrawerActiveTab] = React.useState<DrawerTabId>('mixer');
-  const [drawerTabOrder, setDrawerTabOrder] = React.useState<DrawerTabId[]>(['mixer', 'piano-roll', 'effects', 'macros', 'clip-properties']);
+  // THE DRAWER'S PANELS (2026-11-10, "let me put Mixer and Effects side
+  // by side NOT in the same panel. Like in MuseScore"): groups side by
+  // side, each its own tabs; a tab is ACTIVATED by stamping it, and each
+  // panel shows its latest-stamped open tab (utils/drawerGroups.ts)
+  const [drawerGroups, setDrawerGroups] = React.useState<DrawerGroup[]>(DEFAULT_DRAWER_GROUPS);
+  const [drawerStamps, setDrawerStamps] = React.useState<Partial<Record<DrawerTabId, number>>>({ mixer: 1 });
+  const drawerStampRef = React.useRef(1);
+  const drawerActiveTab: DrawerTabId = (Object.entries(drawerStamps) as Array<[DrawerTabId, number]>)
+    .reduce<[DrawerTabId, number]>((best, e) => (e[1] > best[1] ? e : best), ['mixer', 0])[0];
+  // (the one-active-tab setter the drawer had, kept for its callers: it
+  // activates the tab in whichever panel holds it)
+  const setDrawerActiveTab = React.useCallback<React.Dispatch<React.SetStateAction<DrawerTabId>>>((next) => {
+    setDrawerStamps((stamps) => {
+      const current = (Object.entries(stamps) as Array<[DrawerTabId, number]>)
+        .reduce<[DrawerTabId, number]>((best, e) => (e[1] > best[1] ? e : best), ['mixer', 0])[0];
+      const tab = typeof next === 'function' ? next(current) : next;
+      drawerStampRef.current += 1;
+      return { ...stamps, [tab]: drawerStampRef.current };
+    });
+  }, []);
 
   // Side docks — the left dock hosts Effects and (optionally) Macros as
   // tabs. The Macros panel opens floating by default; its tab's kebab menu
@@ -307,6 +329,20 @@ export function EditorLayout(props: EditorLayoutProps) {
   const propsDockedRight = propsOpen && clipPropertiesSide === 'right';
   const propsDockedBottom = propsOpen && clipPropertiesSide === 'bottom';
   const propsInWindow = propsOpen && clipPropertiesSide === 'window';
+  // The drawer's open tabs — what its panels show
+  const drawerOpenIds = React.useMemo(() => {
+    const ids = new Set<DrawerTabId>();
+    if (showMixer && activeMenuItem !== 'export') ids.add('mixer');
+    if (state.pianoRollOpen && state.pianoRollTrackIndex !== null) ids.add('piano-roll');
+    if (effectsDockedBottom && effectsPanel) ids.add('effects');
+    if (macrosDockedBottom) ids.add('macros');
+    if (propsDockedBottom) ids.add('clip-properties');
+    return ids;
+  }, [showMixer, activeMenuItem, state.pianoRollOpen, state.pianoRollTrackIndex, effectsDockedBottom, effectsPanel, macrosDockedBottom, propsDockedBottom]);
+  const moveDrawerTabTo = React.useCallback((tab: DrawerTabId, target: DrawerTarget) => {
+    setDrawerGroups((groups) => moveDrawerTab(groups, tab, target));
+    setDrawerActiveTab(tab);
+  }, [setDrawerActiveTab]);
 
   // Auto-activate a dock tab when its panel opens (mirrors the bottom
   // drawer's useDrawerTabAutoSwitch behavior).
@@ -389,12 +425,15 @@ export function EditorLayout(props: EditorLayoutProps) {
     panel: DockPanelId;
     zone: 'left' | 'right' | 'bottom' | null;
     rowRect: DOMRect;
+    /** Over the bottom band with the drawer open: which of its panels */
+    drawer?: DrawerDrop | null;
   } | null>(null);
 
   const dockDragMove = React.useCallback((panel: DockPanelId, x: number, y: number) => {
     const rowRect = editorRowRef.current?.getBoundingClientRect();
     if (!rowRect) return;
-    setPanelDrag({ panel, zone: dockZoneAt(x, y, panel, rowRect), rowRect });
+    const zone = dockZoneAt(x, y, panel, rowRect);
+    setPanelDrag({ panel, zone, rowRect, drawer: zone === 'bottom' ? drawerDropAt(x) : null });
   }, []);
 
   const dockDragEnd = React.useCallback((panel: DockPanelId, x: number, y: number) => {
@@ -403,6 +442,11 @@ export function EditorLayout(props: EditorLayoutProps) {
     if (!rowRect) return;
     const zone = dockZoneAt(x, y, panel, rowRect);
     if (!zone) return;
+    // Into the drawer: beside or into the panel under the pointer
+    if (zone === 'bottom') {
+      const drop = drawerDropAt(x);
+      if (drop) moveDrawerTabTo(panel, drop.target);
+    }
     if (panel === 'effects') {
       setEffectsPanelSide(zone);
     } else if (panel === 'macros') {
@@ -410,7 +454,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     } else {
       setClipPropertiesSide(zone);
     }
-  }, [setMacrosPanelSide, setClipPropertiesSide]);
+  }, [setMacrosPanelSide, setClipPropertiesSide, moveDrawerTabTo]);
 
   const handlePanelDragMove = (panel: DockPanelId) => (x: number, y: number) =>
     dockDragMove(panel, x, y);
@@ -1607,7 +1651,7 @@ export function EditorLayout(props: EditorLayoutProps) {
       const previewStyles: Record<'left' | 'right' | 'bottom', React.CSSProperties> = {
         left: { left: r.left, top: r.top, width: 240, height: r.height },
         right: { left: r.right - 280, top: r.top, width: 280, height: r.height },
-        bottom: { left: r.left, top: r.bottom - bottomPreviewH, width: r.width, height: bottomPreviewH },
+        bottom: panelDrag.drawer?.preview ?? { left: r.left, top: r.bottom - bottomPreviewH, width: r.width, height: bottomPreviewH },
       };
       const zones: Array<'left' | 'right' | 'bottom'> = ['left', 'right', 'bottom'];
       return (
@@ -1726,6 +1770,11 @@ export function EditorLayout(props: EditorLayoutProps) {
             {side !== 'right' && <ContextMenuItem label="Dock right" onClick={() => place('right')} />}
             {side !== 'bottom' && <ContextMenuItem label="Dock bottom" onClick={() => place('bottom')} />}
             {side !== 'window' && <ContextMenuItem label="Open in window" onClick={() => place('window')} />}
+            {/* In the drawer: its moves between the drawer's panels */}
+            {side === 'bottom' && drawerMoveTargets(drawerGroups, drawerOpenIds, tab).length > 0 && <ContextMenuItem isDivider label="" />}
+            {side === 'bottom' && drawerMoveTargets(drawerGroups, drawerOpenIds, tab).map((m) => (
+              <ContextMenuItem key={m.label} label={m.label} onClick={() => { moveDrawerTabTo(tab, m.target); setDockMenu(null); }} />
+            ))}
             <ContextMenuItem isDivider label="" />
             <ContextMenuItem label="Close" onClick={close} />
           </>
@@ -1778,10 +1827,14 @@ export function EditorLayout(props: EditorLayoutProps) {
       setHoveredMidiClipId={setHoveredMidiClipId}
       drawerHeight={drawerHeight}
       setDrawerHeight={setDrawerHeight}
-      drawerActiveTab={drawerActiveTab}
-      setDrawerActiveTab={setDrawerActiveTab}
-      drawerTabOrder={drawerTabOrder}
-      setDrawerTabOrder={setDrawerTabOrder}
+      groups={drawerGroups}
+      openIds={drawerOpenIds}
+      activeStamps={drawerStamps}
+      onActivateTab={setDrawerActiveTab}
+      onReorderGroup={(groupId, order) => setDrawerGroups((groups) => reorderDrawerGroup(groups, groupId, order))}
+      onGroupFlexChange={(flexById) => setDrawerGroups((groups) => groups.map((g) => (flexById[g.id] !== undefined ? { ...g, flex: flexById[g.id] } : g)))}
+      moveTargets={(tab) => drawerMoveTargets(drawerGroups, drawerOpenIds, tab)}
+      onMoveTab={moveDrawerTabTo}
     />
 
     <EffectPickerMenu

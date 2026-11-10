@@ -514,7 +514,8 @@ describe('Bottom drawer', () => {
       if (!el) throw new Error('drawer did not open');
       return el as HTMLElement;
     });
-    const drawer = panelHeader.parentElement as HTMLElement;
+    // (the header heads one of the drawer's panels since 2026-11-10)
+    const drawer = panelHeader.closest('[data-bottom-drawer]') as HTMLElement;
 
     // Default drawerHeight is 376 (EditorLayout.tsx useState) — jsdom's
     // getBoundingClientRect defaults to an all-zero rect, so a mousemove at
@@ -2417,6 +2418,42 @@ describe('Focus routing', () => {
     fireEvent.click(menuItem('Dock left')!);
     await waitFor(() => expect(container.querySelector('.effects-panel--columns')).toBeNull());
     expect(container.querySelector('.effects-panel')).toBeTruthy();
+  });
+
+  it('THE DRAWER IS A ROW OF PANELS (2026-11-10): Mixer and Effects side by side, each its own panel, and back into one', async () => {
+    const rendered = renderApp();
+    const { container, findByLabelText } = rendered;
+    await gotoProject(rendered);
+    await addTrackType(container, 'Mono');
+    const menuItem = (label: string) =>
+      Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+        .find((el) => el.textContent?.trim() === label);
+    const panels = () => Array.from(container.querySelectorAll('[data-drawer-group]')).map((g) =>
+      Array.from(g.querySelectorAll('[role="tab"]')).map((t) => t.textContent?.replace(/[^A-Za-z ]/g, '').trim()));
+
+    // The mixer opens the drawer; Effects docks into it, joining the mixer's panel
+    fireEvent.click(await findByLabelText('Mixer'));
+    const effectsButton = Array.from(container.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Effects')!;
+    fireEvent.click(effectsButton);
+    await waitFor(() => expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy());
+    fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
+    fireEvent.click(menuItem('Dock bottom')!);
+    await waitFor(() => expect(panels()).toEqual([['Mixer', 'Effects']]));
+
+    // Its own panel, beside the mixer's
+    fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
+    fireEvent.click(menuItem('Move to new panel')!);
+    await waitFor(() => expect(panels()).toEqual([['Mixer'], ['Effects']]));
+    expect(container.querySelectorAll('.bottom-drawer__splitter')).toHaveLength(1);
+    // both show at once: the mixer's strip and the effects panel
+    expect(container.querySelector('[data-drawer-group] .effects-panel--columns')).toBeTruthy();
+
+    // And back: into the panel on the left
+    fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
+    expect(menuItem('Move to new panel')).toBeUndefined();
+    fireEvent.click(menuItem('Move to left panel')!);
+    await waitFor(() => expect(panels()).toEqual([['Mixer', 'Effects']]));
+    expect(container.querySelector('.bottom-drawer__splitter')).toBeNull();
   });
 
   it('tearing a docked tab pops the panel into its OS window mid-drag and docks on release', async () => {

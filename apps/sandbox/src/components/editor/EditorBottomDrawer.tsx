@@ -7,6 +7,7 @@ import { MIDI_INSTRUMENTS } from '../../contexts/AudioEngineContext';
 import type { EffectSelectorMenuState } from '../../hooks/useContextMenuState';
 import { MacrosDockPanel } from './MacrosDockPanel';
 import { ClipPropertiesDockPanel } from './ClipPropertiesDockPanel';
+import { activeDrawerTab, visibleDrawerGroups, type DrawerGroup, type DrawerTarget } from '../../utils/drawerGroups';
 
 export type DrawerTabId = 'mixer' | 'piano-roll' | 'effects' | 'macros' | 'clip-properties';
 
@@ -35,10 +36,21 @@ export interface EditorBottomDrawerProps {
   setHoveredMidiClipId: React.Dispatch<React.SetStateAction<number | null>>;
   drawerHeight: number;
   setDrawerHeight: React.Dispatch<React.SetStateAction<number>>;
-  drawerActiveTab: DrawerTabId;
-  setDrawerActiveTab: React.Dispatch<React.SetStateAction<DrawerTabId>>;
-  drawerTabOrder: DrawerTabId[];
-  setDrawerTabOrder: React.Dispatch<React.SetStateAction<DrawerTabId[]>>;
+  /** THE DRAWER'S PANELS (2026-11-10, "let me put Mixer and Effects side
+   *  by side NOT in the same panel. Like in MuseScore"): groups side by
+   *  side, each with its own tabs (utils/drawerGroups.ts) */
+  groups: DrawerGroup[];
+  /** The drawer tabs that are open right now */
+  openIds: ReadonlySet<DrawerTabId>;
+  /** When each tab was last activated — a group shows its latest */
+  activeStamps: Partial<Record<DrawerTabId, number>>;
+  onActivateTab: (tab: DrawerTabId) => void;
+  onReorderGroup: (groupId: string, visibleOrder: DrawerTabId[]) => void;
+  /** The splitter between two panels: every shown panel's new width share */
+  onGroupFlexChange: (flexById: Record<string, number>) => void;
+  /** The tab menu's moves between panels, and doing one */
+  moveTargets: (tab: DrawerTabId) => Array<{ label: string; target: DrawerTarget }>;
+  onMoveTab: (tab: DrawerTabId, target: DrawerTarget) => void;
   /** The Effects panel, when it is docked into this drawer (2026-11-10):
    *  the host's TrackEffectsPanel in its columns layout; null otherwise */
   effects?: React.ReactNode;
@@ -86,10 +98,14 @@ export function EditorBottomDrawer({
   setHoveredMidiClipId,
   drawerHeight,
   setDrawerHeight,
-  drawerActiveTab,
-  setDrawerActiveTab,
-  drawerTabOrder,
-  setDrawerTabOrder,
+  groups,
+  openIds,
+  activeStamps,
+  onActivateTab,
+  onReorderGroup,
+  onGroupFlexChange,
+  moveTargets,
+  onMoveTab,
   effects,
   onCloseEffects,
   onEffectsMenuClick,
@@ -106,33 +122,20 @@ export function EditorBottomDrawer({
   // Kebab menu for the Mixer / Piano roll tabs (Macros routes to the
   // shared placement menu via onMacrosMenuClick). Closing a tab lives
   // here — panel headers have no close button (2026-09-10).
-  const [tabMenu, setTabMenu] = React.useState<{ x: number; y: number } | null>(null);
+  const [tabMenu, setTabMenu] = React.useState<{ x: number; y: number; tab: DrawerTabId } | null>(null);
 
   const mixerOpen = showMixer && activeMenuItem !== 'export';
   const pianoRollOpen = state.pianoRollOpen && state.pianoRollTrackIndex !== null;
-  const effectsOpen = !!effects;
-  if (!mixerOpen && !pianoRollOpen && !effectsOpen && !macrosOpen && !clipPropertiesOpen) return null;
+  const groupsShown = visibleDrawerGroups(groups, openIds);
+  if (groupsShown.length === 0) return null;
 
-  // Build tabs for open panels, respecting user's drag order
-  const allTabDefs: Record<string, PanelHeaderTab> = {
+  const allTabDefs: Record<DrawerTabId, PanelHeaderTab> = {
     mixer: { id: 'mixer', label: 'Mixer' },
     'piano-roll': { id: 'piano-roll', label: 'Piano roll' },
     effects: { id: 'effects', label: 'Effects' },
     macros: { id: 'macros', label: 'Macro manager' },
     'clip-properties': { id: 'clip-properties', label: 'Clip properties' },
   };
-  const openIds = new Set<string>();
-  if (mixerOpen) openIds.add('mixer');
-  if (pianoRollOpen) openIds.add('piano-roll');
-  if (effectsOpen) openIds.add('effects');
-  if (macrosOpen) openIds.add('macros');
-  if (clipPropertiesOpen) openIds.add('clip-properties');
-  const tabs: PanelHeaderTab[] = drawerTabOrder
-    .filter(id => openIds.has(id))
-    .map(id => allTabDefs[id]);
-
-  // Ensure active tab is valid
-  const activeTab = tabs.find(t => t.id === drawerActiveTab) ? drawerActiveTab : tabs[0].id;
 
   // Close a drawer tab. The mixer is controlled by App.tsx's
   // setMixerPanelOpen, which we only have as a read prop — the
@@ -155,66 +158,59 @@ export function EditorBottomDrawer({
   // Content height = drawer height - header (32px)
   const contentHeight = drawerHeight - 32;
 
-  return (
-    <div
-      style={{
-        borderTop: `1px solid ${theme.border.default}`,
-        flexShrink: 0,
-        height: drawerHeight,
-        minHeight: 144,
-        maxHeight: '50vh',
-        overflow: 'hidden',
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <PanelHeader
-        tabs={tabs}
-        activeTabId={activeTab}
-        onTabChange={(tabId) => setDrawerActiveTab(tabId as DrawerTabId)}
-        onTabReorder={(newTabs) => setDrawerTabOrder(newTabs.map(t => t.id) as DrawerTabId[])}
-        onTabTearOff={onTabTearOff
-          ? (tabId, e) => { if (tabId === 'effects' || tabId === 'macros' || tabId === 'clip-properties') onTabTearOff(tabId, e); }
-          : undefined}
-        onMenuClick={activeTab === 'effects'
-          ? onEffectsMenuClick
-          : activeTab === 'macros'
-          ? onMacrosMenuClick
-          : activeTab === 'clip-properties'
-          ? onClipPropertiesMenuClick
-          : (e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            setTabMenu({ x: rect.right, y: rect.bottom });
-          }}
-        onResizeStart={(e) => {
-          e.preventDefault();
-          const startY = e.clientY;
-          const startHeight = drawerHeight;
-          const maxH = window.innerHeight * 0.5;
-          const onMove = (ev: MouseEvent) => {
-            const delta = startY - ev.clientY;
-            const newH = Math.max(144, Math.min(maxH, startHeight + delta));
-            setDrawerHeight(newH);
-          };
-          const onUp = () => {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-          };
-          document.addEventListener('mousemove', onMove);
-          document.addEventListener('mouseup', onUp);
-        }}
-        tabGroupId="dock-tabs-end"
-      />
+  // The drawer's height, from any panel's header
+  const startHeightResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = drawerHeight;
+    const maxH = window.innerHeight * 0.5;
+    const onMove = (ev: MouseEvent) => {
+      const delta = startY - ev.clientY;
+      setDrawerHeight(Math.max(144, Math.min(maxH, startHeight + delta)));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
 
+  // THE SPLITTER between two panels: both widths follow the pointer (each
+  // at least 160px); every shown panel's share becomes its pixel width
+  const groupRefs = new Map<string, HTMLDivElement>();
+  const startSplit = (leftId: string, rightId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    const widths = new Map(groupsShown.map((g) => [g.id, groupRefs.get(g.id)?.getBoundingClientRect().width ?? 0]));
+    const startX = e.clientX;
+    const l0 = widths.get(leftId) ?? 0;
+    const r0 = widths.get(rightId) ?? 0;
+    const onMove = (ev: MouseEvent) => {
+      const dx = Math.max(160 - l0, Math.min(r0 - 160, ev.clientX - startX));
+      const next: Record<string, number> = {};
+      widths.forEach((w, id) => { next[id] = Math.max(1, w); });
+      next[leftId] = Math.max(1, l0 + dx);
+      next[rightId] = Math.max(1, r0 - dx);
+      onGroupFlexChange(next);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  };
+
+  const renderContent = (tab: DrawerTabId) => (
+    <>
       {/* Effects content — the host's panel, in its columns layout */}
-      {activeTab === 'effects' && effects}
+      {tab === 'effects' && effects}
       {/* Macros content — same sandbox wiring as the side docks */}
-      {activeTab === 'macros' && macrosOpen && <MacrosDockPanel placement="end" />}
-      {activeTab === 'clip-properties' && clipPropertiesOpen && <ClipPropertiesDockPanel placement="end" layout="columns" />}
+      {tab === 'macros' && macrosOpen && <MacrosDockPanel placement="end" />}
+      {tab === 'clip-properties' && clipPropertiesOpen && <ClipPropertiesDockPanel placement="end" layout="columns" />}
 
       {/* Mixer content */}
-      {activeTab === 'mixer' && mixerOpen && (() => {
+      {tab === 'mixer' && mixerOpen && (() => {
         const audioTracks = state.tracks.filter((t) => t.type !== 'label' && t.type !== 'folder');
         const mixerChannels: MixerPanelChannel[] = audioTracks.map((track) => {
           const trackIndex = state.tracks.findIndex((t) => t.id === track.id);
@@ -317,7 +313,7 @@ export function EditorBottomDrawer({
       })()}
 
       {/* Piano Roll content */}
-      {activeTab === 'piano-roll' && pianoRollOpen && (() => {
+      {tab === 'piano-roll' && pianoRollOpen && (() => {
         const prTrack = state.tracks[state.pianoRollTrackIndex];
         if (!prTrack) return null;
         const prClip = prTrack.midiClips?.find(c => c.selected) ?? null;
@@ -484,6 +480,71 @@ export function EditorBottomDrawer({
         );
       })()}
 
+    </>
+  );
+
+  return (
+    <div
+      style={{
+        borderTop: `1px solid ${theme.border.default}`,
+        flexShrink: 0,
+        height: drawerHeight,
+        minHeight: 144,
+        maxHeight: '50vh',
+        overflow: 'hidden',
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'row',
+      }}
+      data-bottom-drawer
+    >
+      {groupsShown.map((group, i) => {
+        const activeTab = activeDrawerTab(group.tabs, activeStamps);
+        return (
+          <React.Fragment key={group.id}>
+            {i > 0 && (
+              <div
+                className="bottom-drawer__splitter"
+                role="separator"
+                aria-orientation="vertical"
+                style={{ width: 5, margin: '0 -2px', flexShrink: 0, cursor: 'col-resize', position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'center' }}
+                onMouseDown={(e) => startSplit(groupsShown[i - 1].id, group.id, e)}
+              >
+                <div style={{ width: 1, background: theme.border.default }} />
+              </div>
+            )}
+            <div
+              ref={(el) => { if (el) groupRefs.set(group.id, el); }}
+              data-drawer-group={group.id}
+              style={{ flex: `${group.flex} 1 0`, minWidth: 160, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+            >
+              <PanelHeader
+                tabs={group.tabs.map((t) => allTabDefs[t])}
+                activeTabId={activeTab}
+                onTabChange={(tabId) => onActivateTab(tabId as DrawerTabId)}
+                onTabReorder={(newTabs) => onReorderGroup(group.id, newTabs.map((t) => t.id as DrawerTabId))}
+                onTabTearOff={onTabTearOff
+                  ? (tabId, e) => { if (tabId === 'effects' || tabId === 'macros' || tabId === 'clip-properties') onTabTearOff(tabId, e); }
+                  : undefined}
+                onMenuClick={activeTab === 'effects'
+                  ? onEffectsMenuClick
+                  : activeTab === 'macros'
+                  ? onMacrosMenuClick
+                  : activeTab === 'clip-properties'
+                  ? onClipPropertiesMenuClick
+                  : (e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setTabMenu({ x: rect.right, y: rect.bottom, tab: activeTab });
+                  }}
+                onResizeStart={startHeightResize}
+                tabGroupId="dock-tabs-end"
+              />
+              {renderContent(activeTab)}
+            </div>
+          </React.Fragment>
+        );
+      })}
+
       {/* Mixer / Piano roll tab kebab menu — Close lives here */}
       <ContextMenu
         isOpen={tabMenu !== null}
@@ -491,10 +552,14 @@ export function EditorBottomDrawer({
         x={tabMenu?.x ?? 0}
         y={tabMenu?.y ?? 0}
       >
+        {tabMenu && moveTargets(tabMenu.tab).map((m) => (
+          <ContextMenuItem key={m.label} label={m.label} onClick={() => { onMoveTab(tabMenu.tab, m.target); setTabMenu(null); }} />
+        ))}
+        {tabMenu && moveTargets(tabMenu.tab).length > 0 && <ContextMenuItem isDivider label="" />}
         <ContextMenuItem
           label="Close"
           onClick={() => {
-            closeTab(activeTab);
+            if (tabMenu) closeTab(tabMenu.tab);
             setTabMenu(null);
           }}
         />
