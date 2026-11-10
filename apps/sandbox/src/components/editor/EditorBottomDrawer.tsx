@@ -1,12 +1,13 @@
 import React from 'react';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
-import { MixerPanel, PianoRollPanel, PanelHeader, ContextMenu, ContextMenuItem, barSeconds, type MixerPanelChannel, type PanelHeaderTab, type ThemeTokens } from '@audacity-ui/components';
+import { PianoRollPanel, PanelHeader, ContextMenu, ContextMenuItem, barSeconds, type PanelHeaderTab, type ThemeTokens } from '@audacity-ui/components';
 import { type TracksState } from '../../contexts/TracksContext';
 import { useTracksDispatch } from '../../contexts/useTracks';
 import { MIDI_INSTRUMENTS } from '../../contexts/AudioEngineContext';
 import type { EffectSelectorMenuState } from '../../hooks/useContextMenuState';
 import { MacrosDockPanel } from './MacrosDockPanel';
 import { ClipPropertiesDockPanel } from './ClipPropertiesDockPanel';
+import { MixerDockPanel } from './MixerDockPanel';
 import { activeDrawerTab, visibleDrawerGroups, type DrawerGroup, type DrawerTarget } from '../../utils/drawerGroups';
 
 export type DrawerTabId = 'mixer' | 'piano-roll' | 'effects' | 'macros' | 'clip-properties';
@@ -51,6 +52,9 @@ export interface EditorBottomDrawerProps {
   /** The tab menu's moves between panels, and doing one */
   moveTargets: (tab: DrawerTabId) => Array<{ label: string; target: DrawerTarget }>;
   onMoveTab: (tab: DrawerTabId, target: DrawerTarget) => void;
+  /** The Mixer's placement menu (it docks like the others since
+   *  2026-11-10); absent = the drawer's own Close-only menu */
+  onMixerMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   /** The Effects panel, when it is docked into this drawer (2026-11-10):
    *  the host's TrackEffectsPanel in its columns layout; null otherwise */
   effects?: React.ReactNode;
@@ -106,6 +110,7 @@ export function EditorBottomDrawer({
   onGroupFlexChange,
   moveTargets,
   onMoveTab,
+  onMixerMenuClick,
   effects,
   onCloseEffects,
   onEffectsMenuClick,
@@ -210,107 +215,9 @@ export function EditorBottomDrawer({
       {tab === 'clip-properties' && clipPropertiesOpen && <ClipPropertiesDockPanel placement="end" layout="columns" />}
 
       {/* Mixer content */}
-      {tab === 'mixer' && mixerOpen && (() => {
-        const audioTracks = state.tracks.filter((t) => t.type !== 'label' && t.type !== 'folder');
-        const mixerChannels: MixerPanelChannel[] = audioTracks.map((track) => {
-          const trackIndex = state.tracks.findIndex((t) => t.id === track.id);
-          const trackGain = track.gain ?? -6;
-          const meterLevel = trackMeterLevels.get(trackIndex) ?? 0;
-          return {
-            id: String(track.id),
-            channelProps: {
-              trackName: track.name,
-              trackColor: track.color ? (theme.audio.clip as any)[track.color]?.header : undefined, // justified: dynamic string-index into theme tokens (no index signature)
-              variant: track.channelSplitRatio !== undefined ? 'stereo' as const : 'mono' as const,
-              volume: trackGain,
-              pan: track.pan ?? 0,
-              muted: track.muted ?? false,
-              soloed: track.soloed ?? false,
-              meterLeft: meterLevel,
-              meterRight: meterLevel,
-              onVolumeChange: (value: number) => {
-                dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { gain: value } } });
-                audioManagerRef.current.setTrackGain(trackIndex, value);
-              },
-              onPanChange: (value: number) => {
-                dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { pan: value } } });
-              },
-              onMuteToggle: () => {
-                const newMuted = !track.muted;
-                dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { muted: newMuted } } });
-                if (newMuted) {
-                  audioManagerRef.current.setTrackMuted(trackIndex, true);
-                } else {
-                  audioManagerRef.current.setTrackGain(trackIndex, trackGain);
-                }
-              },
-              onSoloToggle: () => {
-                dispatch({ type: 'UPDATE_TRACK', payload: { index: trackIndex, track: { soloed: !track.soloed } } });
-              },
-              effects: (track.effects || []).map((effect, effectIndex: number) => ({
-                name: effect.name,
-                enabled: effect.enabled,
-                onToggle: () => {
-                  dispatch({ type: 'UPDATE_TRACK_EFFECT', payload: { trackIndex, effectIndex, updates: { enabled: !effect.enabled } } });
-                },
-                onRemoveEffect: () => {
-                  dispatch({ type: 'REMOVE_TRACK_EFFECT', payload: { trackIndex, effectIndex } });
-                },
-                onReplaceEffect: (effectName: string) => {
-                  dispatch({ type: 'UPDATE_TRACK_EFFECT', payload: { trackIndex, effectIndex, updates: { name: effectName } } });
-                },
-              })),
-              onAddEffect: (e: React.MouseEvent<HTMLButtonElement>) => {
-                const button = e.currentTarget as HTMLElement;
-                const rect = button.getBoundingClientRect();
-                setEffectSelectorMenu({
-                  isOpen: true,
-                  x: rect.left,
-                  y: rect.bottom + 4,
-                  trackIndex,
-                  triggerElement: button,
-                });
-              },
-            },
-          };
-        });
-
-        return (
-          <MixerPanel
-            hideHeader
-            masterChannel={{
-              trackName: 'Master',
-              trackColor: theme.accent.secondary,
-              variant: 'stereo',
-              effects: (state.masterEffects || []).map((effect, effectIndex: number) => ({
-                name: effect.name,
-                enabled: effect.enabled,
-                onToggle: () => {
-                  dispatch({ type: 'UPDATE_MASTER_EFFECT', payload: { effectIndex, updates: { enabled: !effect.enabled } } });
-                },
-                onRemoveEffect: () => {
-                  dispatch({ type: 'REMOVE_MASTER_EFFECT', payload: effectIndex });
-                },
-                onReplaceEffect: (effectName: string) => {
-                  dispatch({ type: 'UPDATE_MASTER_EFFECT', payload: { effectIndex, updates: { name: effectName } } });
-                },
-              })),
-              onAddEffect: (e: React.MouseEvent<HTMLButtonElement>) => {
-                const button = e.currentTarget as HTMLElement;
-                const rect = button.getBoundingClientRect();
-                setEffectSelectorMenu({
-                  isOpen: true,
-                  x: rect.left,
-                  y: rect.bottom + 4,
-                  trackIndex: undefined,
-                  triggerElement: button,
-                });
-              },
-            }}
-            channels={mixerChannels}
-          />
-        );
-      })()}
+      {tab === 'mixer' && mixerOpen && (
+        <MixerDockPanel state={state} theme={theme} trackMeterLevels={trackMeterLevels} audioManagerRef={audioManagerRef} setEffectSelectorMenu={setEffectSelectorMenu} />
+      )}
 
       {/* Piano Roll content */}
       {tab === 'piano-roll' && pianoRollOpen && (() => {
@@ -524,9 +431,11 @@ export function EditorBottomDrawer({
                 onTabChange={(tabId) => onActivateTab(tabId as DrawerTabId)}
                 onTabReorder={(newTabs) => onReorderGroup(group.id, newTabs.map((t) => t.id as DrawerTabId))}
                 onTabTearOff={onTabTearOff
-                  ? (tabId, e) => { if (tabId === 'effects' || tabId === 'macros' || tabId === 'clip-properties') onTabTearOff(tabId, e); }
+                  ? (tabId, e) => { if (tabId === 'mixer' || tabId === 'effects' || tabId === 'macros' || tabId === 'clip-properties') onTabTearOff(tabId, e); }
                   : undefined}
-                onMenuClick={activeTab === 'effects'
+                onMenuClick={activeTab === 'mixer' && onMixerMenuClick
+                  ? onMixerMenuClick
+                  : activeTab === 'effects'
                   ? onEffectsMenuClick
                   : activeTab === 'macros'
                   ? onMacrosMenuClick

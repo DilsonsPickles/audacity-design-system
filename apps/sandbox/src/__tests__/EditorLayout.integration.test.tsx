@@ -2420,6 +2420,42 @@ describe('Focus routing', () => {
     expect(container.querySelector('.effects-panel')).toBeTruthy();
   });
 
+  it('THE MIXER DOCKS LEFT OR RIGHT (2026-11-10): from the drawer to a side dock and back, by its tab menu', async () => {
+    const rendered = renderApp();
+    const { container, findByLabelText } = rendered;
+    await gotoProject(rendered);
+    await addTrackType(container, 'Mono');
+    const menuItem = (label: string) =>
+      Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+        .find((el) => el.textContent?.trim() === label);
+    const mixerMenu = () => container.querySelector('button[aria-label="Mixer menu"]') as HTMLElement;
+
+    // It starts in the drawer
+    fireEvent.click(await findByLabelText('Mixer'));
+    await waitFor(() => expect(container.querySelector('[data-drawer-group] .mixer-panel, [data-drawer-group] [class*="mixer"]')).toBeTruthy());
+    expect(mixerMenu()).toBeTruthy();
+
+    // Dock left: the left dock takes it and the drawer, its only tab gone, closes
+    fireEvent.click(mixerMenu());
+    expect(menuItem('Dock bottom')).toBeUndefined(); // it is there already
+    fireEvent.click(menuItem('Dock left')!);
+    await waitFor(() => expect(container.querySelector('.side-panel--left button[aria-label="Mixer menu"]')).toBeTruthy());
+    expect(container.querySelector('[data-bottom-drawer]')).toBeNull();
+
+    // …right
+    fireEvent.click(mixerMenu());
+    fireEvent.click(menuItem('Dock right')!);
+    await waitFor(() => expect(container.querySelector('.side-panel--right button[aria-label="Mixer menu"]')).toBeTruthy());
+
+    // …and back to the drawer; Close closes it wherever it is
+    fireEvent.click(mixerMenu());
+    fireEvent.click(menuItem('Dock bottom')!);
+    await waitFor(() => expect(container.querySelector('[data-bottom-drawer]')).toBeTruthy());
+    fireEvent.click(mixerMenu());
+    fireEvent.click(menuItem('Close')!);
+    await waitFor(() => expect(container.querySelector('[data-bottom-drawer]')).toBeNull());
+  });
+
   it('THE DRAWER IS A ROW OF PANELS (2026-11-10): Mixer and Effects side by side, each its own panel, and back into one', async () => {
     const rendered = renderApp();
     const { container, findByLabelText } = rendered;

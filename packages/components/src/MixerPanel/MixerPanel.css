@@ -58,7 +58,11 @@
 .mixer-panel__channels-scroll {
   flex: 1 1 0;
   min-width: 0;
-  overflow: hidden;
+  /* The channels scroll sideways when they do not fit (2026-11-10: the
+     mixer docks in a side panel now, where one channel fills 240px; it
+     clipped them before, in the drawer too with many tracks) */
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .mixer-panel__channels {

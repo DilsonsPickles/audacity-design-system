@@ -6,7 +6,7 @@
  * fourth panel is a new id and a content branch, not a fourth copy of
  * the plumbing.
  */
-export type DockPanelId = 'effects' | 'macros' | 'clip-properties';
+export type DockPanelId = 'effects' | 'macros' | 'clip-properties' | 'mixer';
 
 /** Where a panel can sit — every panel takes all four. (Effects never
  *  docked bottom until 2026-11-10, "the effects panel and macro manager
@@ -19,4 +19,7 @@ export const DOCK_PANEL_LABELS: Record<DockPanelId, string> = {
   effects: 'Effects',
   macros: 'Macro manager',
   'clip-properties': 'Clip properties',
+  // The mixer docks like the others since 2026-11-10 ("let me put the
+  // mixer on left or right"); the drawer is where it starts
+  mixer: 'Mixer',
 };

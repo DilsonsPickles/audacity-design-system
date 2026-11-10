@@ -37,6 +37,7 @@ import { EditorBottomDrawer, type DrawerTabId } from './editor/EditorBottomDrawe
 import { DEFAULT_DRAWER_GROUPS, drawerDropAt, drawerMoveTargets, moveDrawerTab, reorderDrawerGroup, type DrawerDrop, type DrawerGroup, type DrawerTarget } from '../utils/drawerGroups';
 import { TrackEffectsPanel } from './editor/TrackEffectsPanel';
 import { MacrosDockPanel } from './editor/MacrosDockPanel';
+import { MixerDockPanel } from './editor/MixerDockPanel';
 import { ancestorFolders, effectiveTrackHeight, effectiveTrackStride, folderDescendantIndices } from '../utils/trackFolders';
 import { PopoutPanel } from './editor/PopoutPanel';
 import { useMacros } from '../contexts/MacrosContext';
@@ -302,7 +303,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   // ⌥F / ⌥T / ⌥S / ⌥Enter from a TRACK: the clip under the playhead (2026-10-13)
   usePlayheadClipHotkeys();
   const [leftDockActiveTab, setLeftDockActiveTab] = React.useState<DockPanelId>('effects');
-  const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'macros', 'clip-properties']);
+  const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'mixer', 'macros', 'clip-properties']);
   // Effects panel placement — docked left (the classic position), docked
   // right, in the BOTTOM DRAWER (2026-11-10, its sections side by side), or
   // floating in its own OS window, moved via its tab's kebab menu or by
@@ -310,7 +311,11 @@ export function EditorLayout(props: EditorLayoutProps) {
   const [effectsPanelSide, setEffectsPanelSide] = React.useState<PanelSide>('left');
   // The right dock hosts Effects and/or Macros as tabs, mirroring the left
   const [rightDockActiveTab, setRightDockActiveTab] = React.useState<DockPanelId>('macros');
-  const [rightDockTabOrder, setRightDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'macros', 'clip-properties']);
+  const [rightDockTabOrder, setRightDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'mixer', 'macros', 'clip-properties']);
+  // The MIXER's placement (2026-11-10, "let me put the mixer on left or
+  // right"): the bottom drawer (where it always was), a side dock, or its
+  // own OS window — its open state is still App's (showMixer)
+  const [mixerPanelSide, setMixerPanelSide] = React.useState<PanelSide>('bottom');
   // Which tab's kebab menu is open. Closing a panel lives in this menu —
   // panel headers deliberately have no close button (2026-09-10).
   const [dockMenu, setDockMenu] = React.useState<{ x: number; y: number; tab: DockPanelId } | null>(null);
@@ -329,16 +334,23 @@ export function EditorLayout(props: EditorLayoutProps) {
   const propsDockedRight = propsOpen && clipPropertiesSide === 'right';
   const propsDockedBottom = propsOpen && clipPropertiesSide === 'bottom';
   const propsInWindow = propsOpen && clipPropertiesSide === 'window';
+  const mixerOpen = !!showMixer && activeMenuItem !== 'export';
+  const mixerDockedLeft = mixerOpen && mixerPanelSide === 'left';
+  const mixerDockedRight = mixerOpen && mixerPanelSide === 'right';
+  const mixerDockedBottom = mixerOpen && mixerPanelSide === 'bottom';
+  const mixerInWindow = mixerOpen && mixerPanelSide === 'window';
+  // The mixer is closed through App's listener, as the drawer always did
+  const closeMixer = React.useCallback(() => { window.dispatchEvent(new CustomEvent('close-mixer-panel')); }, []);
   // The drawer's open tabs — what its panels show
   const drawerOpenIds = React.useMemo(() => {
     const ids = new Set<DrawerTabId>();
-    if (showMixer && activeMenuItem !== 'export') ids.add('mixer');
+    if (mixerDockedBottom) ids.add('mixer');
     if (state.pianoRollOpen && state.pianoRollTrackIndex !== null) ids.add('piano-roll');
     if (effectsDockedBottom && effectsPanel) ids.add('effects');
     if (macrosDockedBottom) ids.add('macros');
     if (propsDockedBottom) ids.add('clip-properties');
     return ids;
-  }, [showMixer, activeMenuItem, state.pianoRollOpen, state.pianoRollTrackIndex, effectsDockedBottom, effectsPanel, macrosDockedBottom, propsDockedBottom]);
+  }, [mixerDockedBottom, state.pianoRollOpen, state.pianoRollTrackIndex, effectsDockedBottom, effectsPanel, macrosDockedBottom, propsDockedBottom]);
   const moveDrawerTabTo = React.useCallback((tab: DrawerTabId, target: DrawerTarget) => {
     setDrawerGroups((groups) => moveDrawerTab(groups, tab, target));
     setDrawerActiveTab(tab);
@@ -346,6 +358,12 @@ export function EditorLayout(props: EditorLayoutProps) {
 
   // Auto-activate a dock tab when its panel opens (mirrors the bottom
   // drawer's useDrawerTabAutoSwitch behavior).
+  React.useEffect(() => {
+    if (!mixerOpen) return;
+    if (mixerPanelSide === 'left') setLeftDockActiveTab('mixer');
+    if (mixerPanelSide === 'right') setRightDockActiveTab('mixer');
+    if (mixerPanelSide === 'bottom') setDrawerActiveTab('mixer');
+  }, [mixerOpen, mixerPanelSide]); // eslint-disable-line react-hooks/exhaustive-deps
   React.useEffect(() => {
     if (effectsPanel?.isOpen && effectsPanelSide === 'left') setLeftDockActiveTab('effects');
     if (effectsPanel?.isOpen && effectsPanelSide === 'right') setRightDockActiveTab('effects');
@@ -367,8 +385,10 @@ export function EditorLayout(props: EditorLayoutProps) {
     effects: { id: 'effects', label: 'Effects' },
     macros: macrosTabDef,
     'clip-properties': { id: 'clip-properties', label: DOCK_PANEL_LABELS['clip-properties'] },
+    mixer: { id: 'mixer', label: DOCK_PANEL_LABELS.mixer },
   };
   const openLeftDockIds = new Set<string>();
+  if (mixerDockedLeft) openLeftDockIds.add('mixer');
   if (effectsDockedLeft) openLeftDockIds.add('effects');
   if (macrosDockedLeft) openLeftDockIds.add('macros');
   if (propsDockedLeft) openLeftDockIds.add('clip-properties');
@@ -380,6 +400,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     : (leftDockTabs[0]?.id as DockPanelId | undefined);
 
   const openRightDockIds = new Set<string>();
+  if (mixerDockedRight) openRightDockIds.add('mixer');
   if (effectsDockedRight) openRightDockIds.add('effects');
   if (macrosDockedRight) openRightDockIds.add('macros');
   if (propsDockedRight) openRightDockIds.add('clip-properties');
@@ -398,6 +419,11 @@ export function EditorLayout(props: EditorLayoutProps) {
   const openEffectsDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setDockMenu({ x: rect.right, y: rect.bottom, tab: 'effects' });
+  };
+
+  const openMixerDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDockMenu({ x: rect.right, y: rect.bottom, tab: 'mixer' });
   };
 
   const openClipPropertiesDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -447,7 +473,9 @@ export function EditorLayout(props: EditorLayoutProps) {
       const drop = drawerDropAt(x);
       if (drop) moveDrawerTabTo(panel, drop.target);
     }
-    if (panel === 'effects') {
+    if (panel === 'mixer') {
+      setMixerPanelSide(zone);
+    } else if (panel === 'effects') {
       setEffectsPanelSide(zone);
     } else if (panel === 'macros') {
       setMacrosPanelSide(zone);
@@ -476,11 +504,12 @@ export function EditorLayout(props: EditorLayoutProps) {
     tabId: string,
     e: { clientX: number; clientY: number; screenX: number; screenY: number; pointerId: number },
   ) => {
-    if (tabId !== 'effects' && tabId !== 'macros' && tabId !== 'clip-properties') return;
+    if (tabId !== 'effects' && tabId !== 'macros' && tabId !== 'clip-properties' && tabId !== 'mixer') return;
     // Keep pointer events flowing to this document even when the cursor
     // leaves the app window mid-drag (the torn panel is an OS window)
     try { document.body.setPointerCapture(e.pointerId); } catch { /* jsdom / no capture */ }
-    if (tabId === 'effects') setEffectsPanelSide('window');
+    if (tabId === 'mixer') setMixerPanelSide('window');
+    else if (tabId === 'effects') setEffectsPanelSide('window');
     else if (tabId === 'macros') setMacrosPanelSide('window');
     else setClipPropertiesSide('window');
     setPanelTearDrag({ panel: tabId, clientX: e.clientX, clientY: e.clientY, screenX: e.screenX, screenY: e.screenY });
@@ -524,7 +553,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   useFlatNavTabRouter({ isFlatNavigation });
 
   // Auto-switch drawer active tab when panels open/close
-  useDrawerTabAutoSwitch({ showMixer, pianoRollOpen: state.pianoRollOpen, drawerActiveTab, setDrawerActiveTab });
+  useDrawerTabAutoSwitch({ showMixer: mixerDockedBottom, pianoRollOpen: state.pianoRollOpen, drawerActiveTab, setDrawerActiveTab });
 
   // Auto-open/switch piano roll when a MIDI track is focused
   useAutoOpenPianoRoll({ state, dispatch });
@@ -799,7 +828,8 @@ export function EditorLayout(props: EditorLayoutProps) {
           position="left"
           width={240}
           minWidth={220}
-          maxWidth={400}
+          // (640, not 400, since the mixer docks here too — 2026-11-10)
+          maxWidth={640}
           tabs={leftDockTabs}
           activeTabId={activeLeftDockTab ?? leftDockTabs[0].id}
           onTabChange={(tabId) => setLeftDockActiveTab(tabId as DockPanelId)}
@@ -821,6 +851,9 @@ export function EditorLayout(props: EditorLayoutProps) {
               setEffectsPanel={setEffectsPanel}
               setMarketplaceModal={setMarketplaceModal}
             />
+          )}
+          {activeLeftDockTab === 'mixer' && mixerDockedLeft && (
+            <MixerDockPanel state={state} theme={theme} trackMeterLevels={trackMeterLevels} audioManagerRef={audioManagerRef} setEffectSelectorMenu={setEffectSelectorMenu} />
           )}
           {activeLeftDockTab === 'macros' && macrosDockedLeft && <MacrosDockPanel placement="start" />}
           {activeLeftDockTab === 'clip-properties' && propsDockedLeft && <ClipPropertiesDockPanel placement="start" />}
@@ -1603,7 +1636,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           position="right"
           width={280}
           minWidth={220}
-          maxWidth={400}
+          maxWidth={640}
           tabs={rightDockTabs}
           activeTabId={activeRightDockTab ?? rightDockTabs[0].id}
           onTabChange={(tabId) => setRightDockActiveTab(tabId as DockPanelId)}
@@ -1625,6 +1658,9 @@ export function EditorLayout(props: EditorLayoutProps) {
               setEffectsPanel={setEffectsPanel}
               setMarketplaceModal={setMarketplaceModal}
             />
+          )}
+          {activeRightDockTab === 'mixer' && mixerDockedRight && (
+            <MixerDockPanel state={state} theme={theme} trackMeterLevels={trackMeterLevels} audioManagerRef={audioManagerRef} setEffectSelectorMenu={setEffectSelectorMenu} />
           )}
           {activeRightDockTab === 'macros' && macrosDockedRight && <MacrosDockPanel placement="end" />}
           {activeRightDockTab === 'clip-properties' && propsDockedRight && <ClipPropertiesDockPanel placement="end" />}
@@ -1695,6 +1731,28 @@ export function EditorLayout(props: EditorLayoutProps) {
       </PopoutPanel>
     )}
 
+    {/* The mixer in its own OS window; closing docks it back in the drawer. */}
+    {mixerInWindow && (
+      <PopoutPanel
+        title={DOCK_PANEL_LABELS.mixer}
+        width={640}
+        height={420}
+        onClose={() => setMixerPanelSide('bottom')}
+        onDragMove={handlePanelDragMove('mixer')}
+        onDragEnd={handlePopoutDragEnd('mixer')}
+        continueDragFrom={panelTearDrag?.panel === 'mixer' ? panelTearDrag : null}
+        menuItems={[
+          { label: 'Dock left', onClick: () => setMixerPanelSide('left') },
+          { label: 'Dock right', onClick: () => setMixerPanelSide('right') },
+          { label: 'Dock bottom', onClick: () => setMixerPanelSide('bottom') },
+          { label: '', isDivider: true },
+          { label: 'Close', onClick: closeMixer },
+        ]}
+      >
+        <MixerDockPanel state={state} theme={theme} trackMeterLevels={trackMeterLevels} audioManagerRef={audioManagerRef} setEffectSelectorMenu={setEffectSelectorMenu} />
+      </PopoutPanel>
+    )}
+
     {/* Macros panel in its own OS window; closing docks it back right. */}
     {macrosInWindow && (
       <PopoutPanel
@@ -1751,15 +1809,17 @@ export function EditorLayout(props: EditorLayoutProps) {
           is not already in, then Close (dockPanels.ts). */}
       {dockMenu && (() => {
         const tab = dockMenu.tab;
-        const side = tab === 'effects' ? effectsPanelSide : tab === 'macros' ? macrosPanelSide : clipPropertiesSide;
+        const side = tab === 'mixer' ? mixerPanelSide : tab === 'effects' ? effectsPanelSide : tab === 'macros' ? macrosPanelSide : clipPropertiesSide;
         const place = (next: PanelSide) => {
-          if (tab === 'effects') setEffectsPanelSide(next);
+          if (tab === 'mixer') setMixerPanelSide(next);
+          else if (tab === 'effects') setEffectsPanelSide(next);
           else if (tab === 'macros') setMacrosPanelSide(next);
           else setClipPropertiesSide(next);
           setDockMenu(null);
         };
         const close = () => {
-          if (tab === 'effects') setEffectsPanel(null);
+          if (tab === 'mixer') closeMixer();
+          else if (tab === 'effects') setEffectsPanel(null);
           else if (tab === 'macros') setIsMacrosPanelOpen(false);
           else setIsClipPropertiesOpen(false);
           setDockMenu(null);
@@ -1813,7 +1873,8 @@ export function EditorLayout(props: EditorLayoutProps) {
       state={state}
       theme={theme}
       activeMenuItem={activeMenuItem}
-      showMixer={showMixer}
+      showMixer={mixerDockedBottom}
+      onMixerMenuClick={openMixerDockMenu}
       trackMeterLevels={trackMeterLevels}
       audioManagerRef={audioManagerRef}
       setEffectSelectorMenu={setEffectSelectorMenu}
