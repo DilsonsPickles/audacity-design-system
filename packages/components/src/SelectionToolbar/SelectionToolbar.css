@@ -117,7 +117,7 @@
 }
 
 /* THE STATUS BAR AS A DOCK (2026-11-09): the bar's class on a ToolbarDock
-   keeps its tokens; the rows are the dock's 56px, the same as every
+   keeps its tokens; the rows are the dock's 44px, the same as every
    other row ("one toolbar is clearly bigger than the other"); the fixed
    bar's own flex rules do not apply to the dock */
 .selection-toolbar.toolbar-dock {

@@ -216,8 +216,8 @@ const TransportToolsContext = React.createContext<TransportToolsContextValue | n
  *  icons): the buttons; not the readouts, the sliders, the snap control,
  *  nor a meter cluster carrying its horizontal meter. Static, so a host
  *  can ask before a drop without the registry. */
-/** The meter tools' least size: the button, the group's 6px, a 120px meter */
-const METER_TOOL_MIN = 28 + 6 + 120;
+/** The meter tools' least size: the button, the group's 8px, a 120px meter */
+const METER_TOOL_MIN = 28 + 8 + 120;
 
 /** A meter's slot in its cluster: 360px at rest (the meter's old default
  *  width), growing with a sized bar and shrinking to 120 */
@@ -654,7 +654,8 @@ export function TransportTools({
                 setSnapMenuOpen(true);
               }}
               style={{
-                height: 24,
+                // 28, the height of every other control on the bar (it was 24)
+                height: 28,
                 fontSize: 12,
                 padding: '0 8px',
                 borderRadius: 2,
@@ -705,7 +706,7 @@ export function TransportTools({
           );
         }
         return (
-          <ToolbarButtonGroup gap={6}>
+          <ToolbarButtonGroup gap={8}>
             <span
               ref={micButtonRef}
               style={{ display: 'inline-flex' }}
@@ -766,7 +767,7 @@ export function TransportTools({
           );
         }
         return (
-          <ToolbarButtonGroup gap={6}>
+          <ToolbarButtonGroup gap={8}>
             <div ref={volumeButtonRef} style={{ display: 'inline-flex' }}>
               <ToolButton
                 icon="volume"

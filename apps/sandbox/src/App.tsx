@@ -1577,8 +1577,8 @@ function CanvasDemoContent() {
         const preview: Record<ToolbarRegion, React.CSSProperties> = {
           left: { left: r.left, top: r.top, width: 48, height: r.height },
           right: { left: r.right - 48, top: r.top, width: 48, height: r.height },
-          top: { left: r.left, top: r.top, width: r.width, height: 56 },
-          bottom: { left: r.left, top: r.bottom - 56, width: r.width, height: 56 },
+          top: { left: r.left, top: r.top, width: r.width, height: 44 },
+          bottom: { left: r.left, top: r.bottom - 44, width: r.width, height: 44 },
         };
         return (
           <DockZoneOverlay bands={zones.map((zone) => ({

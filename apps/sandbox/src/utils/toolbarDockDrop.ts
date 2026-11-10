@@ -5,9 +5,9 @@ import { edgeZoneAt, sideZoneAt } from '../components/editor/DockZoneOverlay';
  *  that edge's dock takes the drop (the old toolbar gripper's snap); the
  *  SIDES are the editor row's bands, `sideZoneAt` */
 export const EDGE_SNAP_PX = 72;
-/** The strip along a row's top and bottom edge that means "a NEW ROW
- *  here" — inside the row's 14px padding, so never over a control */
-export const ROW_EDGE_PX = 12;
+/** The strip along a row's top and bottom edge (a column's sides) that
+ *  means "a NEW ROW here" — the row's 8px padding, so never over a control */
+export const ROW_EDGE_PX = 8;
 /** Just past a horizontal dock's inner edge still means a new row there */
 export const ROW_REACH_PX = 24;
 
@@ -42,12 +42,12 @@ const rowOf = (el: HTMLElement): number => Number(el.getAttribute('data-toolbar-
  * the ability to create new rows"). The dock is the one under the pointer;
  * failing that a strip just past a horizontal dock's inner edge, then an
  * empty side dock's band along the editor row, then the window's top and
- * bottom edges. In a horizontal dock each drawn line is 56px: its top and
+ * bottom edges. In a horizontal dock each drawn line is 44px: its top and
  * bottom `ROW_EDGE_PX`, where two ROWS meet or at the dock's outer edge,
  * mean a NEW ROW there; the rest of the line is that row. (A wrap inside
  * one row is not a row boundary.) jsdom measures nothing, so there the
  * dock's last line stands in. A SIDE dock's rows are COLUMNS (2026-11-10):
- * the same rule runs across them on x, the left and right 12px of a column
+ * the same rule runs across them on x, the left and right 8px of a column
  * and 24px past the dock's inner edge meaning a NEW COLUMN there.
  */
 export function locateDockSpot(x: number, y: number, layout: ToolbarLayout, editorRow: DOMRect | null): DockSpot | null {

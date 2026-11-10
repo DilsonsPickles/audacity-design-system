@@ -176,7 +176,7 @@ describe('the recording meter shows on the toolbar when horizontal (2026-11-09)'
   });
 
   it('transportToolMeta: a meter on its bar stretches in a row and grows in a column; either way a side dock takes it', () => {
-    expect(transportToolMeta('playback-meter', { meterOrientation: 'horizontal' }, 'horizontal')).toMatchObject({ vertical: true, stretch: true, minSize: 154 });
+    expect(transportToolMeta('playback-meter', { meterOrientation: 'horizontal' }, 'horizontal')).toMatchObject({ vertical: true, stretch: true, minSize: 156 });
     expect(transportToolMeta('playback-meter', { meterOrientation: 'horizontal' }, 'vertical')).toMatchObject({ vertical: true, grow: true, minSize: 188 });
     expect(transportToolMeta('microphone-levels', { recordingMeterOrientation: 'flyout' }, 'vertical')).toEqual({ vertical: true });
   });
