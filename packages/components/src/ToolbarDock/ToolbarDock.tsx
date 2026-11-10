@@ -17,6 +17,9 @@ export interface ToolMeta {
   stretch?: boolean;
   /** The least a `grow` / `stretch` tool may shrink to, px along the dock */
   minSize?: number;
+  /** The tool stays LIVE in the edit mode — not inert, not picked up by a
+   *  press (the cog, which becomes the mode's Done button) */
+  live?: boolean;
 }
 
 export interface ToolbarDockProps {
@@ -354,7 +357,7 @@ export function ToolbarDock({
               className={`toolbar-dock__tool${toolMeta?.(t.id, orientation)?.grow ? ' toolbar-dock__tool--grow' : ''}${toolMeta?.(t.id, orientation)?.stretch ? ' toolbar-dock__tool--stretch' : ''}${draggingToolId === t.id ? ' toolbar-dock__tool--dragging' : ''}`}
               style={d.size !== undefined && stretchy(t.id) ? { [vertical ? 'minHeight' : 'minWidth']: minOf(t.id) } : undefined}
               data-toolbar-tool={t.id}
-              onMouseDown={editing ? (e) => {
+              onMouseDown={editing && !toolMeta?.(t.id, orientation)?.live ? (e) => {
                 if (e.button !== 0 || !onToolMouseDown) return;
                 e.preventDefault();
                 e.stopPropagation();
@@ -365,7 +368,7 @@ export function ToolbarDock({
                   or typed into, and the press lands on the wrapper. Set
                   on the element itself — React 18 drops a boolean `inert`
                   and React 19 reads an empty string as false */}
-              <div className="toolbar-dock__tool-body" ref={(el) => { el?.toggleAttribute('inert', editing); }}>{t.node}</div>
+              <div className="toolbar-dock__tool-body" ref={(el) => { el?.toggleAttribute('inert', editing && !toolMeta?.(t.id, orientation)?.live); }}>{t.node}</div>
             </div>
           </React.Fragment>
         ))}

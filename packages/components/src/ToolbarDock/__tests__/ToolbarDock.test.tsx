@@ -77,6 +77,13 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     }
     fireEvent.mouseDown(container.querySelector('[data-toolbar-tool="two"]')!, { button: 0 });
     expect(onToolMouseDown).toHaveBeenCalledWith('two', 'a', expect.anything(), expect.anything());
+    // A LIVE tool (the cog, Done in this mode) is neither inert nor picked up
+    const { container: c2 } = renderDock({ editing: true, onToolMouseDown, toolMeta: (id) => (id === 'three' ? { live: true } : undefined) });
+    expect(c2.querySelector('[data-toolbar-tool="three"] .toolbar-dock__tool-body')!.hasAttribute('inert')).toBe(false);
+    expect(c2.querySelector('[data-toolbar-tool="one"] .toolbar-dock__tool-body')!.hasAttribute('inert')).toBe(true);
+    onToolMouseDown.mockClear();
+    fireEvent.mouseDown(c2.querySelector('[data-toolbar-tool="three"]')!, { button: 0 });
+    expect(onToolMouseDown).not.toHaveBeenCalled();
     // The right button picks nothing up
     onToolMouseDown.mockClear();
     fireEvent.mouseDown(container.querySelector('[data-toolbar-tool="two"]')!, { button: 2 });

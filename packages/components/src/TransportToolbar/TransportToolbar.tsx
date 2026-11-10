@@ -1,7 +1,7 @@
 import React from 'react';
 import { ToolbarButtonGroup } from '../Toolbar/Toolbar';
 import { ToolbarDock, type ToolMeta } from '../ToolbarDock';
-import { defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, type BarPlacement, type ToolbarLayout, type ToolbarOrientation } from '../utils/toolbarLayout';
+import { CUSTOMISE_TOOL_ID, defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, withCustomiseTool, type BarPlacement, type ToolbarLayout, type ToolbarOrientation } from '../utils/toolbarLayout';
 import { TransportButton } from '../TransportButton';
 import { ToolButton } from '../ToolButton';
 import { ToggleToolButton } from '../ToggleToolButton';
@@ -264,6 +264,8 @@ export function transportToolMeta(
     case 'collapse-tracks': case 'expand-tracks': case 'fit-tracks-height':
     case 'cut': case 'copy': case 'paste': case 'trim': case 'silence':
       return { vertical: true };
+    // The cog: anywhere, and live in the edit mode, where it is Done
+    case CUSTOMISE_TOOL_ID: return { vertical: true, live: true };
     // THE METERS ARE IN THE DOCK SYSTEM (2026-11-10, "pull the horizontal
     // and vertical layouts of the meters into the same system"): a meter
     // shown on its toolbar (anything but 'flyout') takes the form of the
@@ -439,7 +441,7 @@ export function TransportTools({
   // Home-tab early return, with the rest
   const cogRef = React.useRef<HTMLSpanElement>(null);
   const [customiseOpen, setCustomiseOpen] = React.useState(false);
-  const [customiseAnchor, setCustomiseAnchor] = React.useState<{ left: number; right: number; bottom: number } | null>(null);
+  const [customiseAnchor, setCustomiseAnchor] = React.useState<{ left: number; right: number; bottom: number; top: number } | null>(null);
   const hiddenSet = React.useMemo(() => new Set(hiddenTools), [hiddenTools]);
   const show = (id: string) => !hiddenSet.has(id);
   // STABLE: the toolbar re-renders with every meter tick, and a fresh
@@ -517,7 +519,7 @@ export function TransportTools({
           ariaLabel="Customise toolbar"
           onClick={() => {
             const r = cogRef.current?.getBoundingClientRect();
-            setCustomiseAnchor(r ? { left: r.left, right: r.right, bottom: r.bottom } : null);
+            setCustomiseAnchor(r ? { left: r.left, right: r.right, bottom: r.bottom, top: r.top } : null);
             setCustomiseOpen((open) => !open);
           }}
         />
@@ -793,6 +795,9 @@ export function TransportTools({
           </ToolbarButtonGroup>
         );
 
+      // The Customise toolbar cog (Done while the layout is being edited)
+      case CUSTOMISE_TOOL_ID: return settingsCog;
+
       // The Export tab's own tools
       case 'export-share': return <Button variant="secondary" size="default" icon={''} onClick={onShareClick}>Share on audio.com</Button>;
       case 'export-audio': return <Button variant="secondary" size="default" icon={''} onClick={onExportAudioClick}>Export audio</Button>;
@@ -952,7 +957,7 @@ export interface TransportToolbarLayoutProps extends TransportToolbarProps {
  */
 export function TransportToolbar(props: TransportToolbarLayoutProps) {
   const { layout, onBarGripMouseDown, draggingBarId, insert, insertRefused, ...rest } = props;
-  const rows = (rest.activeMenuItem === 'export' ? EXPORT_TOOLBAR_LAYOUT : (layout ?? defaultToolbarLayout(rest.workspace))).top;
+  const rows = (rest.activeMenuItem === 'export' ? EXPORT_TOOLBAR_LAYOUT : withCustomiseTool(layout ?? defaultToolbarLayout(rest.workspace))).top;
   return (
     <TransportTools {...rest}>
       <TransportTopDock
@@ -974,7 +979,7 @@ export function TransportTopDock({ rows, onBarGripMouseDown, draggingBarId, inse
   insert?: BarPlacement | null;
   insertRefused?: boolean;
 }) {
-  const { renderTool, toolMeta, settingsCog, hidden } = useTransportTools();
+  const { renderTool, toolMeta, hidden } = useTransportTools();
   if (hidden) return null;
   return (
     <ToolbarDock
@@ -986,7 +991,6 @@ export function TransportTopDock({ rows, onBarGripMouseDown, draggingBarId, inse
       draggingBarId={draggingBarId}
       insert={insert}
       insertRefused={insertRefused}
-      trailing={settingsCog}
       className="transport-toolbar"
       tabGroupId="tool-toolbar"
       ariaLabel="Tool toolbar"

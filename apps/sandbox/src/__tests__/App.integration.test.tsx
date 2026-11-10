@@ -347,7 +347,8 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     const { container, getByText } = renderApp({
       toolbarLayouts: { classic: {
         top: [{ id: 'transport', tools: ['play', 'stop', 'record'] }, { id: 'zoom', tools: ['zoom-in', 'zoom-out'] }],
-        bottom: [{ id: 'status', tools: ['status-cue', 'status-info'] }], left: [], right: [],
+        // (the cog in the status bar, so the top rows are the two bars alone)
+        bottom: [{ id: 'status', tools: ['status-cue', 'status-info'] }, { id: 'customise', tools: ['customise'] }], left: [], right: [],
       } },
     });
     fireEvent.click(getByText('Project'));
@@ -391,6 +392,26 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     } finally {
       delete doc.elementsFromPoint;
     }
+  });
+
+  it('THE COG IS A TOOL (2026-11-10): its own toolbar at the top row\'s end, moved by its grip like any bar; a layout saved without it gets it back', async () => {
+    // A layout saved before the cog was a tool
+    const { container, getByText } = renderApp({
+      toolbarLayouts: { classic: { top: [[{ id: 'transport', tools: ['play', 'stop'] }]], bottom: [[{ id: 'status', tools: ['status-cue', 'status-info'] }]], left: [], right: [] } },
+    });
+    fireEvent.click(getByText('Project'));
+    await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
+    const dock = (region: string) => container.querySelector(`[data-toolbar-dock="${region}"]`) as HTMLElement;
+    const cogBar = () => container.querySelector('[data-toolbar-bar="customise"]') as HTMLElement;
+    expect(dock('top').contains(cogBar())).toBe(true);
+    expect(cogBar().querySelector('[data-customise-toolbar-cog] button[aria-label="Customise toolbar"]')).toBeTruthy();
+    expect(dock('top').querySelector('.toolbar-dock__trailing--pinned')).toBeNull(); // no longer pinned
+    // By its grip to the bottom edge: the status bar takes it, and it still opens the menu there
+    fireEvent.mouseDown(cogBar().querySelector('.toolbar-dock__grip')!, { clientX: 100, clientY: 100, button: 0 });
+    fireEvent.mouseUp(document, { clientX: 100, clientY: window.innerHeight - 10 });
+    await waitFor(() => expect(dock('bottom').contains(cogBar())).toBe(true));
+    fireEvent.click(container.querySelector('[data-customise-toolbar-cog] button') as HTMLElement);
+    await waitFor(() => expect(document.body.querySelector('[data-customise-toolbar]')).toBeTruthy());
   });
 
   it('EDIT MODE: the cog\'s "Rearrange tools…" makes the tools inert and draggable; a tool pulled beside a bar gets a toolbar of its own; Escape leaves; Reset layout restores (2026-11-10)', async () => {

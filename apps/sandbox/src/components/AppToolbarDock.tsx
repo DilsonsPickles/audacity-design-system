@@ -26,8 +26,6 @@ export interface AppToolbarDockProps {
   /** A bar's resize edge was released (null = natural size) */
   onBarResize?: (barId: string, axis: ToolbarBarAxis, size: number | null) => void;
   trailing?: React.ReactNode;
-  /** The Customise toolbar cog at the dock's end (the top dock's) */
-  showSettingsCog?: boolean;
   className?: string;
   tabGroupId?: string;
   ariaLabel?: string;
@@ -44,9 +42,9 @@ export interface AppToolbarDockProps {
  */
 export function AppToolbarDock({
   region, rows, renderExtraTool, extraToolMeta, drag, onBarResize,
-  trailing, showSettingsCog = false, className, tabGroupId, ariaLabel, style, dataAttrs,
+  trailing, className, tabGroupId, ariaLabel, style, dataAttrs,
 }: AppToolbarDockProps) {
-  const { renderTool, toolMeta, hidden, settingsCog } = useTransportTools();
+  const { renderTool, toolMeta, hidden } = useTransportTools();
   if (hidden) return null;
   // A whole bar's landing, or a NEW bar's for a tool pulled beside one or
   // onto a new row: all are a container arriving, and wear the dock's
@@ -70,7 +68,7 @@ export function AppToolbarDock({
       onToolMouseDown={drag.onToolMouseDown}
       draggingToolId={drag.draggingToolId}
       toolInsert={tool?.kind === 'into' && !tool.refused ? { barId: tool.barId, beforeToolId: tool.beforeToolId } : null}
-      trailing={showSettingsCog ? settingsCog : trailing}
+      trailing={trailing}
       className={className}
       tabGroupId={tabGroupId}
       ariaLabel={ariaLabel}

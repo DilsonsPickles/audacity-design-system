@@ -62,6 +62,14 @@ export type BarPlacement =
   | { region: ToolbarRegion; row: number; beforeBarId: string | null }
   | { region: ToolbarRegion; newRowAt: number };
 
+/** THE COG IS A TOOL (2026-11-10, "I think the cog button should probably
+ *  be its own toolbar, or at least moveable"): the Customise toolbar cog,
+ *  seeded as a toolbar of its own at the end of the top row, moved by its
+ *  grip like any bar and able to join another. It cannot be hidden (it is
+ *  not in the Customise list), and a layout without it gets it back at the
+ *  top dock's end (`withCustomiseTool`), so it can never be lost. */
+export const CUSTOMISE_TOOL_ID = 'customise';
+
 /** The status bar's seed: the Figma Status/Info bar's two slots, then the
  *  selection timecodes and the duration */
 const statusBars = (): ToolbarBar[] => [
@@ -129,7 +137,7 @@ export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout
       ];
       break;
   }
-  return { top: [top], bottom: [statusBars()], left: [], right: [] };
+  return { top: [[...top, bar(CUSTOMISE_TOOL_ID, [CUSTOMISE_TOOL_ID])]], bottom: [statusBars()], left: [], right: [] };
 }
 
 /** The Export tab's toolbar (its own bars, not customisable) */
@@ -285,6 +293,22 @@ export function setBarSize(layout: ToolbarLayout, barId: string, axis: ToolbarBa
   if (size === null) delete target[axis];
   else target[axis] = Math.max(0, Math.round(size));
   return sameLayout(next, layout) ? layout : next;
+}
+
+/**
+ * A layout that has the Customise cog somewhere: the same layout, or —
+ * a layout saved before the cog was a tool, or one that lost it — a copy
+ * with the cog as a toolbar of its own at the end of the top dock's last
+ * row (its own row when the top dock is empty).
+ */
+export function withCustomiseTool(layout: ToolbarLayout): ToolbarLayout {
+  if (findTool(layout, CUSTOMISE_TOOL_ID)) return layout;
+  const next = cloneLayout(layout);
+  const id = findBar(layout, CUSTOMISE_TOOL_ID) ? nextBarId(layout) : CUSTOMISE_TOOL_ID;
+  const item: ToolbarBar = { id, tools: [CUSTOMISE_TOOL_ID] };
+  if (next.top.length === 0) next.top.push([item]);
+  else next.top[next.top.length - 1].push(item);
+  return next;
 }
 
 const isBar = (b: unknown): b is ToolbarBar =>

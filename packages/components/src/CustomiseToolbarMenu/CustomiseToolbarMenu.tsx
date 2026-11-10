@@ -88,13 +88,19 @@ export const CUSTOMISE_TOOLBAR_WIDTH = 256;
 const TRIANGLE_FROM_RIGHT = 26;
 const TRIANGLE_W = 16;
 const TRIANGLE_H = 9;
+/** The least the menu keeps from the window's edges */
+const EDGE_GAP = 10;
+/** Below the cog when at least this much room is there (else above, if roomier) */
+const MIN_ROOM_BELOW = 320;
 
 export interface CustomiseToolbarMenuProps {
   isOpen: boolean;
   onClose: () => void;
   /** The cog's rectangle in viewport pixels: the menu hangs under it,
-   *  the triangle on its centre */
-  anchor: { left: number; right: number; bottom: number } | null;
+   *  the triangle on its centre — or, when the cog is low in the window
+   *  (it is a movable tool since 2026-11-10: the bottom dock), stands
+   *  above it with the triangle pointing down. `top` enables that. */
+  anchor: { left: number; right: number; bottom: number; top?: number } | null;
   /** Tools currently hidden from the toolbar */
   hiddenTools: ReadonlyArray<string>;
   /** A row was pressed: show or hide that tool */
@@ -111,22 +117,44 @@ export interface CustomiseToolbarMenuProps {
 export function CustomiseToolbarMenu({ isOpen, onClose, anchor, hiddenTools, onToggleTool, entries = CUSTOMISE_TOOLBAR_ENTRIES, onRearrange, onResetLayout, resetLayoutDisabled = false }: CustomiseToolbarMenuProps) {
   const hidden = React.useMemo(() => new Set(hiddenTools), [hiddenTools]);
   const anchorX = anchor ? (anchor.left + anchor.right) / 2 : 0;
-  const x = Math.round(anchorX - (CUSTOMISE_TOOLBAR_WIDTH - TRIANGLE_FROM_RIGHT));
-  // The box's top is a triangle's height under the cog, less the 1px
-  // the triangle overlaps the border
-  const y = anchor ? Math.round(anchor.bottom + TRIANGLE_H - 1) : 0;
-  const maxHeight = typeof window === 'undefined' ? undefined : Math.max(160, window.innerHeight - y - 16);
+  const viewportW = typeof window === 'undefined' ? Infinity : window.innerWidth;
+  const viewportH = typeof window === 'undefined' ? Infinity : window.innerHeight;
+  // Right-aligned on the cog, as the design hangs it — slid back inside the
+  // window when the cog is near its left edge (a side dock), the triangle
+  // staying on the cog
+  const x = Math.round(Math.max(EDGE_GAP, Math.min(anchorX - (CUSTOMISE_TOOLBAR_WIDTH - TRIANGLE_FROM_RIGHT), viewportW - CUSTOMISE_TOOLBAR_WIDTH - EDGE_GAP)));
+  const triangleRight = x + CUSTOMISE_TOOLBAR_WIDTH - anchorX - TRIANGLE_W / 2;
+  // Below the cog unless the room below is short and there is more above
+  const roomBelow = anchor ? viewportH - anchor.bottom - TRIANGLE_H - EDGE_GAP : 0;
+  const roomAbove = anchor?.top !== undefined ? anchor.top - TRIANGLE_H - EDGE_GAP : 0;
+  const above = anchor?.top !== undefined && roomBelow < MIN_ROOM_BELOW && roomAbove > roomBelow;
+  // The box's height, measured once it is drawn, to stand it above the cog
+  const mainRef = React.useRef<HTMLDivElement>(null);
+  const [height, setHeight] = React.useState(0);
+  React.useLayoutEffect(() => {
+    if (!isOpen || !above) return;
+    const h = mainRef.current?.offsetHeight ?? 0;
+    if (h !== height) setHeight(h);
+  });
+  // The box's edge is a triangle's height from the cog, less the 1px the
+  // triangle overlaps the border
+  const y = !anchor ? 0 : above
+    ? Math.round(anchor.top! - TRIANGLE_H + 1 - height)
+    : Math.round(anchor.bottom + TRIANGLE_H - 1);
+  const maxHeight = typeof window === 'undefined' ? undefined : Math.max(160, above ? roomAbove : viewportH - y - 16);
   return (
-    <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} className="customise-toolbar">
+    // Portaled to the body: the cog may sit in any dock now, and an
+    // ancestor that is a containing block for fixed elements would shift it
+    <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} className={`customise-toolbar${above ? ' customise-toolbar--above' : ''}`} portalTo={typeof document === 'undefined' ? null : document.body}>
       <img
         className="customise-toolbar__triangle"
         src={triangleSvg}
         alt=""
         width={TRIANGLE_W}
         height={TRIANGLE_H}
-        style={{ right: TRIANGLE_FROM_RIGHT - TRIANGLE_W / 2 }}
+        style={{ right: triangleRight }}
       />
-      <div className="customise-toolbar__main" role="menu" aria-label="Customise toolbar" data-customise-toolbar style={{ maxHeight }}>
+      <div ref={mainRef} className="customise-toolbar__main" role="menu" aria-label="Customise toolbar" data-customise-toolbar style={{ maxHeight }}>
         <div className="customise-toolbar__header">Customise toolbar</div>
         <div className="customise-toolbar__list">
           {entries.map((entry, i) => entry.kind === 'divider' ? (

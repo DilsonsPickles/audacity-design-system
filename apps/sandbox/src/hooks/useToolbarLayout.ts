@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import {
-  coerceToolbarLayout, defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, moveBar, moveTool, moveToolToNewBar, normaliseLayout, setBarSize, usePreferences,
+  coerceToolbarLayout, defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, moveBar, moveTool, moveToolToNewBar, normaliseLayout, setBarSize, usePreferences, withCustomiseTool,
   type BarPlacement, type ToolbarBarAxis, type ToolbarLayout, type ToolbarWorkspace,
 } from '@audacity-ui/components';
 
@@ -38,13 +38,14 @@ export function useToolbarLayout(workspace: ToolbarWorkspace, activeMenuItem: st
   const custom = useMemo(() => coerceToolbarLayout(stored), [stored]);
   const layout = useMemo(() => {
     if (activeMenuItem === 'export') return EXPORT_TOOLBAR_LAYOUT;
-    return normaliseLayout(custom ?? defaultToolbarLayout(workspace));
+    // (a layout saved before the cog was a tool gets it at the top dock's end)
+    return normaliseLayout(withCustomiseTool(custom ?? defaultToolbarLayout(workspace)));
   }, [activeMenuItem, custom, workspace]);
 
   // One edit of the layout in force, stored for this workspace
   const edit = useCallback((change: (base: ToolbarLayout) => ToolbarLayout) => {
     if (activeMenuItem === 'export') return;
-    const base = custom ?? defaultToolbarLayout(workspace);
+    const base = withCustomiseTool(custom ?? defaultToolbarLayout(workspace));
     const next = change(base);
     if (next === base) return;
     updatePreference('toolbarLayouts', { ...(preferences.toolbarLayouts ?? {}), [workspace]: next });

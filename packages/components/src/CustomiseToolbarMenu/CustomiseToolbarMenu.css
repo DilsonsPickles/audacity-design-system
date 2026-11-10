@@ -18,6 +18,13 @@
   display: block;
   pointer-events: none;
 }
+/* Standing ABOVE the cog (the cog low in the window): the triangle under
+   the box, pointing down */
+.customise-toolbar--above .customise-toolbar__triangle {
+  top: auto;
+  bottom: -8px;
+  transform: rotate(180deg);
+}
 
 .customise-toolbar__main {
   display: flex;

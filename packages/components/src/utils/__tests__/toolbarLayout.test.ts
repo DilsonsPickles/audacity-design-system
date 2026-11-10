@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   coerceToolbarLayout, defaultToolbarLayout, dockBars, findBar, findTool, moveBar, moveTool, moveToolToNewBar, nextBarId,
-  normaliseLayout, isToolbarLayout, setBarSize, type ToolbarLayout, type ToolbarRegion,
+  normaliseLayout, isToolbarLayout, setBarSize, withCustomiseTool, type ToolbarLayout, type ToolbarRegion,
 } from '../toolbarLayout';
 
 /** A dock's rows as lists of bar ids */
@@ -20,7 +20,7 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
       expect(isToolbarLayout(layout)).toBe(true);
     }
     // FEWER, BIGGER BARS (2026-11-10): six on the classic workspace
-    expect(dockBars(defaultToolbarLayout('classic'), 'top').map((b) => b.id)).toEqual(['transport', 'tools', 'edit', 'view', 'time', 'meters']);
+    expect(dockBars(defaultToolbarLayout('classic'), 'top').map((b) => b.id)).toEqual(['transport', 'tools', 'edit', 'view', 'time', 'meters', 'customise']);
     expect(findBar(defaultToolbarLayout('classic'), 'edit')?.bar.tools).toEqual(['cut', 'copy', 'paste', 'trim', 'silence']);
     expect(findBar(defaultToolbarLayout('classic'), 'time')?.bar.tools).toEqual(['varispeed', 'timecode', 'bpm', 'time-signature', 'snapping']);
     // music has no spectral view
@@ -153,5 +153,25 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(setBarSize(layout, 'edit', 'width', null)).toBe(layout);
     expect(setBarSize(layout, 'nope', 'width', 50)).toBe(layout);
     expect(findBar(layout, 'edit')!.bar.width).toBeUndefined();
+  });
+
+  it('THE COG IS A TOOL: every seed ends the top row with it as a toolbar of its own; a layout without it gets it back at the top dock\'s end (2026-11-10)', () => {
+    for (const ws of ['classic', 'spectral-editing', 'modern', 'music'] as const) {
+      expect(defaultToolbarLayout(ws).top[0].slice(-1)).toEqual([{ id: 'customise', tools: ['customise'] }]);
+    }
+    const layout = defaultToolbarLayout('classic');
+    expect(withCustomiseTool(layout)).toBe(layout);
+    // moved elsewhere, it stays where it is
+    const moved = moveBar(layout, 'customise', { region: 'left', row: 0, beforeBarId: null });
+    expect(withCustomiseTool(moved)).toBe(moved);
+    // a layout saved before the cog was a tool: appended to the top dock's last row
+    const old: ToolbarLayout = { top: [[{ id: 'a', tools: ['play'] }], [{ id: 'b', tools: ['stop'] }]], bottom: [], left: [], right: [] };
+    expect(withCustomiseTool(old).top).toEqual([[{ id: 'a', tools: ['play'] }], [{ id: 'b', tools: ['stop'] }, { id: 'customise', tools: ['customise'] }]]);
+    // an empty top dock: a row of its own; a bar already named 'customise' (without the tool): a fresh id
+    expect(withCustomiseTool({ top: [], bottom: [], left: [], right: [] }).top).toEqual([[{ id: 'customise', tools: ['customise'] }]]);
+    const clash: ToolbarLayout = { top: [[{ id: 'customise', tools: ['play'] }]], bottom: [], left: [], right: [] };
+    expect(withCustomiseTool(clash).top[0][1]).toEqual({ id: 'bar-1', tools: ['customise'] });
+    expect(old.top).toHaveLength(2);
+    expect(old.top[1]).toHaveLength(1); // not mutated
   });
 });

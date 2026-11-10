@@ -1316,7 +1316,6 @@ function CanvasDemoContent() {
           extraToolMeta={statusToolMeta}
           drag={dockDrag}
           onBarResize={toolbarLayout.resizeBar}
-          showSettingsCog={activeMenuItem !== 'export'}
           className="transport-toolbar"
           tabGroupId="tool-toolbar"
           ariaLabel="Tool toolbar"
