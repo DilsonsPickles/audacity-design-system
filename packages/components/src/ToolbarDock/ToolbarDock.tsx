@@ -84,6 +84,12 @@ const MIN_BAR_SIZE = GUTTER + OVERFLOW_BUTTON;
 const RESIZE_SNAP_PX = 6;
 /** What a grow / stretch tool needs when it states no minSize */
 const DEFAULT_MIN_STRETCH = 80;
+/** A row's padding at its end, and above / below (ToolbarDock.css) */
+const ROW_END_PAD = 8;
+/** The most the dock re-lays itself out in one frame; past it the layout
+ *  is left as it is rather than looping (a measure that flips between two
+ *  values would otherwise re-render until React aborts — a crash) */
+const MAX_RELAYOUTS_PER_FRAME = 8;
 
 /** The natural width a growing bar is packed at (its content stretches after) */
 const GROW_BAR_PACK_WIDTH = 160;
@@ -129,6 +135,27 @@ export function ToolbarDock({
   // unstretched (a tool behind the overflow button keeps its last)
   const toolSizes = useRef(new Map<string, number>());
   const [, setMeasureTick] = useState(0);
+  // THE RELAYOUT GUARD: every self-triggered re-render (a measure, a pack,
+  // the cog's width) counts against a per-frame budget
+  const relayouts = useRef({ count: 0, resetQueued: false, warned: false });
+  const mayRelayout = () => {
+    const r = relayouts.current;
+    if (!r.resetQueued && typeof requestAnimationFrame === 'function') {
+      r.resetQueued = true;
+      requestAnimationFrame(() => { r.count = 0; r.resetQueued = false; });
+    }
+    r.count += 1;
+    if (r.count <= MAX_RELAYOUTS_PER_FRAME) return true;
+    if (!r.warned) { r.warned = true; console.warn(`ToolbarDock (${region}): the layout did not settle; left as it is`); }
+    return false;
+  };
+  // THE COG HAS A PLACE OF ITS OWN (2026-11-10, "if I enlarge a toolbar so
+  // that it nudges the cog off the screen, the app crashes"): pinned to the
+  // dock's end beside the last line, its width reserved at the end of every
+  // line, so no bar can push it off
+  const trailingRef = useRef<HTMLDivElement>(null);
+  const [trailingWidth, setTrailingWidth] = useState(0);
+  const endPadRef = useRef(ROW_END_PAD);
   // The room a line has, from the last pack (a sized bar never exceeds it)
   const availableRef = useRef(0);
   const [overflowOpen, setOverflowOpen] = useState<{ barId: string; x: number; y: number } | null>(null);
@@ -179,7 +206,7 @@ export function ToolbarDock({
       const value = vertical ? el.offsetHeight : el.offsetWidth;
       if (toolSizes.current.get(sizeKey(id)) !== value) { toolSizes.current.set(sizeKey(id), value); changed = true; }
     });
-    if (changed) setMeasureTick((t) => t + 1);
+    if (changed && mayRelayout()) setMeasureTick((t) => t + 1);
   });
 
   // The open overflow closes when its bar no longer overflows
@@ -202,7 +229,7 @@ export function ToolbarDock({
     const startSize = vertical ? el.offsetHeight : el.offsetWidth;
     const natural = naturalOf(d.nodes.map((t) => t.id));
     const root = rootRef.current;
-    const roomRaw = root ? (vertical ? root.clientHeight - 10 : root.clientWidth - 12) : 0;
+    const roomRaw = root ? (vertical ? root.clientHeight - ROW_END_PAD : root.clientWidth - endPadRef.current) : 0;
     const room = roomRaw > 0 ? roomRaw : Infinity;
     const at = (ev: MouseEvent) => {
       const next = Math.max(MIN_BAR_SIZE, Math.min(room, startSize + ((vertical ? ev.clientY : ev.clientX) - start)));
@@ -230,7 +257,12 @@ export function ToolbarDock({
     if (vertical) return;
     const root = rootRef.current;
     if (!root) return;
-    const available = root.clientWidth - 12; // the right padding
+    // The line's room: the dock, less its end padding and the cog's place
+    const tw = !vertical && trailing && trailingRef.current ? trailingRef.current.offsetWidth : 0;
+    if (tw !== trailingWidth && mayRelayout()) setTrailingWidth(tw);
+    const endPad = ROW_END_PAD + (tw ? tw + ROW_END_PAD : 0);
+    endPadRef.current = endPad;
+    const available = root.clientWidth - endPad;
     availableRef.current = available;
     const result: DockLine[] = [];
     let line: DockLine | null = null;
@@ -247,8 +279,8 @@ export function ToolbarDock({
       used += w;
       line.ids.push(d.bar.id);
     }
-    setLines((prev) => (sameLines(prev, result) ? prev : result));
-  }, [vertical, visible]);
+    setLines((prev) => (sameLines(prev, result) || !mayRelayout() ? prev : result));
+  }, [vertical, visible, trailing, trailingWidth]);
 
   useLayoutEffect(() => { pack(); }, [pack]);
   useEffect(() => {
@@ -276,6 +308,8 @@ export function ToolbarDock({
     '--toolbar-gripper-color': theme.foreground.text.primary,
     '--toolbar-dock-accent': theme.accent.primary,
     '--toolbar-dock-refuse': theme.semantic.error.border,
+    // The end of every line keeps the cog's place free
+    ...(!vertical && trailingWidth ? { '--toolbar-dock-end-pad': `${ROW_END_PAD + trailingWidth + ROW_END_PAD}px` } : null),
   } as React.CSSProperties;
 
   // Where a dragged tool would JOIN a bar: a short caret among its tools
@@ -472,12 +506,15 @@ export function ToolbarDock({
               );
             })}
             {insertEndOfLine === lineIndex && endIndicator}
-            {lineIndex === drawnLines.length - 1 && trailing && <div className="toolbar-dock__trailing">{trailing}</div>}
+            {vertical && lineIndex === drawnLines.length - 1 && trailing && <div className="toolbar-dock__trailing">{trailing}</div>}
           </div>
         </React.Fragment>
       ))}
       {!empty && rowInsertAtEnd && (
         <div className="toolbar-dock__row-insert toolbar-dock__row-insert--end" data-row-insert={rowInsert!.newRowAt} aria-hidden="true" />
+      )}
+      {!empty && !vertical && trailing && (
+        <div ref={trailingRef} className="toolbar-dock__trailing toolbar-dock__trailing--pinned">{trailing}</div>
       )}
       {empty && trailing && (
         <div className="toolbar-dock__row"><div className="toolbar-dock__trailing">{trailing}</div></div>

@@ -281,4 +281,24 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
       } finally { restore(); }
     });
   });
+
+  it('THE COG IS PINNED to the dock\'s end, outside every line, so no bar can push it off (2026-11-10)', () => {
+    const { container } = renderDock({ trailing: <button aria-label="cog">cog</button> });
+    const cog = container.querySelector('[aria-label="cog"]')!;
+    expect(cog.closest('.toolbar-dock__trailing--pinned')).toBeTruthy();
+    expect(cog.closest('.toolbar-dock__row')).toBeNull();
+  });
+
+  it('a measure that flips on every read no longer re-renders until React aborts: the dock settles and warns (2026-11-10)', () => {
+    let flip = false;
+    const w = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      if (this.hasAttribute('data-toolbar-tool')) { flip = !flip; return flip ? 28 : 40; }
+      return 0;
+    });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(() => renderDock({})).not.toThrow();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('did not settle'));
+    } finally { w.mockRestore(); warn.mockRestore(); }
+  });
 });

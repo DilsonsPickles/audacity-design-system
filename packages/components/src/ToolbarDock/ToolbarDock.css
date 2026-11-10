@@ -35,7 +35,9 @@
      56 from 2026-11-09 ("each row can be 56px": the tool rows were 48 and
      the status bar's 40). A tool taller than 28 is clipped, not
      accommodated */
-  padding: 8px 8px 8px 0;
+  /* (the end padding grows by the cog's width + 8 in a dock that pins
+     one, so no bar can reach under it) */
+  padding: 8px var(--toolbar-dock-end-pad, 8px) 8px 0;
   height: 44px;
   overflow: hidden;
   box-sizing: border-box;
@@ -214,6 +216,11 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 
 /* The cog, at the end of the last row */
 .toolbar-dock__trailing { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+/* The cog PINNED to the dock's end, beside the last line (2026-11-10: a
+   wide bar pushed it off the screen) — its width is reserved at the end
+   of every line */
+.toolbar-dock { position: relative; }
+.toolbar-dock__trailing--pinned { position: absolute; right: 8px; bottom: 8px; height: 28px; margin: 0; }
 
 /* WHERE A CONTAINER WOULD LAND — a whole bar dragged by its grip, or a
    NEW bar made for a tool pulled beside another (2026-11-10, "put a line
