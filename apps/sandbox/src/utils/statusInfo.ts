@@ -117,6 +117,8 @@ export const STATUS_INFO_RULES: ReadonlyArray<StatusInfoRule> = [
   { selector: '[data-envelope-hover="curve"]', line: 'Click to create new envelope point.', over: true },
 
   // --- Toolbars ---
+  // The gap between two toolbars is the later one's grip (2026-11-10)
+  { selector: '.toolbar-dock__grip', line: 'Drag to move this toolbar' },
   { selector: '.project-toolbar .tab', line: (el) => el.textContent?.trim() || null },
   // The speed's VALUE is the cue's ("Playing at 110%"): said once, so
   // the control reads its name and keys, as a button does

@@ -19,9 +19,10 @@ export type ToolDropTarget =
   | { kind: 'into'; region: ToolbarRegion; barId: string; beforeToolId: string | null; refused: boolean }
   | { kind: 'new'; region: ToolbarRegion; placement: BarPlacement; lineEndAfter?: string; refused: boolean };
 
-/** The bar's leading strip that means "beside it", not "in it": its grip */
-const GRIP_ZONE_PX = 24;
-const GRIP_ZONE_VERTICAL_PX = 18;
+/** The bar's leading strip that means "beside it", not "in it": its
+ *  gutter, which is its grip (17px, the gap between two bars, 2026-11-10) */
+const GRIP_ZONE_PX = 17;
+const GRIP_ZONE_VERTICAL_PX = 17;
 /** Past a bar's last tool by this much is still that bar's end */
 const BAR_END_SLACK_PX = 4;
 

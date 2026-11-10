@@ -19,25 +19,28 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
       expect(layout.right).toEqual([]);
       expect(isToolbarLayout(layout)).toBe(true);
     }
-    // the classic workspace has the full edit set; music has no spectral view
-    expect(dockBars(defaultToolbarLayout('classic'), 'top').map((b) => b.id)).toContain('edit');
+    // FEWER, BIGGER BARS (2026-11-10): six on the classic workspace
+    expect(dockBars(defaultToolbarLayout('classic'), 'top').map((b) => b.id)).toEqual(['transport', 'tools', 'edit', 'view', 'time', 'meters']);
+    expect(findBar(defaultToolbarLayout('classic'), 'edit')?.bar.tools).toEqual(['cut', 'copy', 'paste', 'trim', 'silence']);
+    expect(findBar(defaultToolbarLayout('classic'), 'time')?.bar.tools).toEqual(['varispeed', 'timecode', 'bpm', 'time-signature', 'snapping']);
+    // music has no spectral view
     expect(findBar(defaultToolbarLayout('music'), 'tools')?.bar.tools).toEqual(['automation', 'split']);
   });
 
   it('moveBar moves a bar within its row, between docks, and before itself is no change', () => {
     const layout = defaultToolbarLayout('classic');
     // to the left dock (no rows yet: a row is made)
-    const left = moveBar(layout, 'zoom', { region: 'left', row: 0, beforeBarId: null });
-    expect(rows(left, 'left')).toEqual([['zoom']]);
-    expect(dockBars(left, 'top').map((b) => b.id)).not.toContain('zoom');
-    expect(findBar(left, 'zoom')).toMatchObject({ region: 'left', row: 0, index: 0 });
+    const left = moveBar(layout, 'view', { region: 'left', row: 0, beforeBarId: null });
+    expect(rows(left, 'left')).toEqual([['view']]);
+    expect(dockBars(left, 'top').map((b) => b.id)).not.toContain('view');
+    expect(findBar(left, 'view')).toMatchObject({ region: 'left', row: 0, index: 0 });
     // along the top row: before the transport bar puts it first
-    expect(rows(moveBar(layout, 'zoom', { region: 'top', row: 0, beforeBarId: 'transport' }), 'top')[0][0]).toBe('zoom');
+    expect(rows(moveBar(layout, 'view', { region: 'top', row: 0, beforeBarId: 'transport' }), 'top')[0][0]).toBe('view');
     // to the row's end
     expect(rows(moveBar(layout, 'transport', { region: 'top', row: 0, beforeBarId: null }), 'top')[0].slice(-1)).toEqual(['transport']);
     // nothing to do: before itself, before the bar that already follows it, an unknown bar
-    expect(moveBar(layout, 'zoom', { region: 'top', row: 0, beforeBarId: 'zoom' })).toBe(layout);
-    expect(moveBar(layout, 'zoom', { region: 'top', row: 0, beforeBarId: 'track-height' })).toBe(layout);
+    expect(moveBar(layout, 'view', { region: 'top', row: 0, beforeBarId: 'view' })).toBe(layout);
+    expect(moveBar(layout, 'view', { region: 'top', row: 0, beforeBarId: 'time' })).toBe(layout);
     expect(moveBar(layout, 'nope', { region: 'top', row: 0, beforeBarId: null })).toBe(layout);
     // the input is never mutated
     expect(layout.left).toEqual([]);
@@ -46,25 +49,25 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
   it('A NEW ROW: a bar dropped on the line between rows gets a row of its own, and a row lives while it holds a bar', () => {
     const layout = defaultToolbarLayout('classic');
     // a new row at the top dock's end
-    const a = moveBar(layout, 'zoom', { region: 'top', newRowAt: 1 });
+    const a = moveBar(layout, 'view', { region: 'top', newRowAt: 1 });
     expect(rows(a, 'top')).toHaveLength(2);
-    expect(rows(a, 'top')[1]).toEqual(['zoom']);
-    expect(rows(a, 'top')[0]).not.toContain('zoom');
+    expect(rows(a, 'top')[1]).toEqual(['view']);
+    expect(rows(a, 'top')[0]).not.toContain('view');
     // another above everything
     const b = moveBar(a, 'edit', { region: 'top', newRowAt: 0 });
-    expect(rows(b, 'top').map((r) => r[0])).toEqual(['edit', 'transport', 'zoom']);
+    expect(rows(b, 'top').map((r) => r[0])).toEqual(['edit', 'transport', 'view']);
     // a second bar joins the zoom row
     const c = moveBar(b, 'tools', { region: 'top', row: 2, beforeBarId: null });
-    expect(rows(c, 'top')[2]).toEqual(['zoom', 'tools']);
+    expect(rows(c, 'top')[2]).toEqual(['view', 'tools']);
     // the edit row loses its only bar: the row goes with it
     const d = moveBar(c, 'edit', { region: 'top', row: 1, beforeBarId: null });
     expect(rows(d, 'top')).toHaveLength(2);
     expect(rows(d, 'top')[0].slice(-1)).toEqual(['edit']);
     // a bar alone in its row, dropped on the line above or below that row: no change
-    expect(moveBar(a, 'zoom', { region: 'top', newRowAt: 1 })).toBe(a);
-    expect(moveBar(a, 'zoom', { region: 'top', newRowAt: 2 })).toBe(a);
+    expect(moveBar(a, 'view', { region: 'top', newRowAt: 1 })).toBe(a);
+    expect(moveBar(a, 'view', { region: 'top', newRowAt: 2 })).toBe(a);
     // a new row in the bottom dock, above the status bar
-    expect(rows(moveBar(layout, 'zoom', { region: 'bottom', newRowAt: 0 }), 'bottom')).toEqual([['zoom'], ['status', 'selection']]);
+    expect(rows(moveBar(layout, 'view', { region: 'bottom', newRowAt: 0 }), 'bottom')).toEqual([['view'], ['status', 'selection']]);
   });
 
   it('moveTool moves one tool into a bar before another tool or at its end, and drops a bar it empties', () => {
@@ -72,15 +75,17 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     // zoom-in into the transport bar, before Stop
     const a = moveTool(layout, 'zoom-in', 'transport', 'stop');
     expect(findBar(a, 'transport')!.bar.tools).toEqual(['play', 'zoom-in', 'stop', 'record', 'step-back', 'step-forward', 'loop']);
-    expect(findBar(a, 'zoom')!.bar.tools).not.toContain('zoom-in');
+    expect(findBar(a, 'view')!.bar.tools).not.toContain('zoom-in');
     // …at the end
     expect(findBar(moveTool(layout, 'zoom-in', 'transport', null), 'transport')!.bar.tools.slice(-1)).toEqual(['zoom-in']);
     // within its own bar: reorder
     expect(findBar(moveTool(layout, 'loop', 'transport', 'play'), 'transport')!.bar.tools[0]).toBe('loop');
-    // the speed bar holds one tool: moving it out drops the bar
-    const b = moveTool(layout, 'varispeed', 'time', null);
-    expect(findBar(b, 'speed')).toBeNull();
-    expect(findBar(b, 'time')!.bar.tools).toContain('varispeed');
+    // a bar that holds one tool: moving it out drops the bar
+    const lone = moveTool(layout, 'microphone-levels', 'time', null);
+    expect(findBar(lone, 'meters')!.bar.tools).toEqual(['playback-meter']);
+    const b = moveTool(lone, 'playback-meter', 'time', null);
+    expect(findBar(b, 'meters')).toBeNull();
+    expect(findBar(b, 'time')!.bar.tools.slice(-2)).toEqual(['microphone-levels', 'playback-meter']);
     // across docks: the status bar takes a tool
     expect(findTool(moveTool(layout, 'zoom-in', 'status', null), 'zoom-in')!.region).toBe('bottom');
     // nothing to do: before itself, where it already is, an unknown tool or bar
@@ -89,7 +94,7 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(moveTool(layout, 'nope', 'transport', null)).toBe(layout);
     expect(moveTool(layout, 'play', 'nope', null)).toBe(layout);
     // the input is never mutated
-    expect(findBar(layout, 'zoom')!.bar.tools).toContain('zoom-in');
+    expect(findBar(layout, 'view')!.bar.tools).toContain('zoom-in');
   });
 
   it('moveToolToNewBar pulls one tool into a new bar of its own — beside a bar, or on a NEW ROW', () => {
@@ -108,10 +113,10 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     const c = moveToolToNewBar(layout, 'zoom-in', { region: 'left', row: 0, beforeBarId: null });
     expect(c.left).toEqual([[{ id: 'bar-1', tools: ['zoom-in'] }]]);
     // a tool already alone keeps its bar: beside itself is no change, elsewhere it is a move of that bar
-    expect(moveToolToNewBar(layout, 'varispeed', { region: 'top', row: 0, beforeBarId: 'speed' })).toBe(layout);
-    expect(moveToolToNewBar(layout, 'varispeed', { region: 'top', row: 0, beforeBarId: 'time' })).toBe(layout);
-    expect(rows(moveToolToNewBar(layout, 'varispeed', { region: 'top', row: 0, beforeBarId: 'transport' }), 'top')[0][0]).toBe('speed');
-    expect(rows(moveToolToNewBar(layout, 'varispeed', { region: 'top', newRowAt: 1 }), 'top')[1]).toEqual(['speed']);
+    expect(moveToolToNewBar(a, 'record', { region: 'top', row: 0, beforeBarId: 'bar-1' })).toBe(a);
+    expect(moveToolToNewBar(a, 'record', { region: 'top', row: 0, beforeBarId: 'tools' })).toBe(a);
+    expect(rows(moveToolToNewBar(a, 'record', { region: 'top', row: 0, beforeBarId: 'transport' }), 'top')[0][0]).toBe('bar-1');
+    expect(rows(moveToolToNewBar(a, 'record', { region: 'top', newRowAt: 1 }), 'top')[1]).toEqual(['bar-1']);
     expect(moveToolToNewBar(layout, 'nope', { region: 'top', row: 0, beforeBarId: null })).toBe(layout);
   });
 

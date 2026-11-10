@@ -27,7 +27,7 @@
 .toolbar-dock__row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 0;
   /* EVERY ROW IS 56PX ("one toolbar is clearly bigger than the other. Each
      row can be 56px", 2026-11-09 — the tool rows were 48 and the status
      bar's 40): 14 above and below 28px controls; a tool taller than that
@@ -62,24 +62,10 @@
 .toolbar-dock__row-insert--start::after { top: 0; }
 .toolbar-dock__row-insert--end::after { top: -3px; }
 
-/* THE SPLIT BETWEEN TWO BARS RUNS THE ROW'S FULL HEIGHT (2026-11-10, "I
-   need the split between toolbars to be more obvious" — it was a 24px
-   tick in the row's middle, which read as a separator inside one bar):
-   the line reaches from the row's top edge to its bottom, meeting the
-   lines between rows, so every bar sits in its own cell */
-.toolbar-dock__divider {
-  width: 1px;
-  align-self: stretch;
-  margin: -14px 0;
-  background-color: var(--toolbar-divider);
-  flex-shrink: 0;
-}
-
-/* A bar: its grip, then its tools */
+/* A bar: its gutter (which is its grip), then its tools */
 .toolbar-dock__bar {
   display: flex;
   align-items: center;
-  gap: 8px;
   flex-shrink: 0;
   min-width: 0;
 }
@@ -98,21 +84,61 @@
 /* Everything in a row keeps its natural width — the dock packs rows */
 .toolbar-dock__tools > * { flex-shrink: 0; }
 
-/* The grip: the toolbar gripper's 24px, 14px glyph, primary colour */
+/* THE GUTTER IS THE GRIP (2026-11-10, "every toolbar has its own gripper…
+   look at how much space we're using"): the 17px between two bars — 8,
+   the 1px divider, 8 — is the later bar's handle. It runs the row's FULL
+   HEIGHT, as the divider did ("I need the split between toolbars to be
+   more obvious"), so every bar still sits in its own cell. At rest only
+   the line shows; on hover the dots take its place, with a grab cursor
+   and a faint fill for the 17×56 target. The first bar on a line has a
+   gutter with no line. */
 .toolbar-dock__grip {
-  display: inline-flex;
+  position: relative;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 28px;
+  width: 17px;
+  align-self: stretch;
+  margin: -14px 0;
+  flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+  transition: background-color 0.06s ease;
+}
+.toolbar-dock__grip-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 8px;
+  width: 1px;
+  background-color: var(--toolbar-divider);
+  transition: opacity 0.06s ease;
+}
+.toolbar-dock__grip-dots {
+  position: relative;
   font-size: 14px;
   line-height: 1;
   color: var(--toolbar-gripper-color, var(--toolbar-divider));
-  cursor: grab;
-  user-select: none;
-  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.06s ease;
 }
-.toolbar-dock__grip:active { cursor: grabbing; color: var(--toolbar-dock-accent); }
+.toolbar-dock__grip:hover,
+.toolbar-dock__bar--dragging .toolbar-dock__grip {
+  background-color: color-mix(in srgb, var(--toolbar-gripper-color) 6%, transparent);
+}
+.toolbar-dock__grip:hover .toolbar-dock__grip-dots,
+.toolbar-dock__bar--dragging .toolbar-dock__grip-dots,
+.toolbar-dock--editing .toolbar-dock__grip-dots { opacity: 1; }
+.toolbar-dock__grip:hover .toolbar-dock__grip-line,
+.toolbar-dock__bar--dragging .toolbar-dock__grip-line,
+.toolbar-dock--editing .toolbar-dock__grip-line { opacity: 0; }
+.toolbar-dock__grip:active { cursor: grabbing; }
+.toolbar-dock__grip:active .toolbar-dock__grip-dots { color: var(--toolbar-dock-accent); }
+@media (prefers-reduced-motion: reduce) {
+  .toolbar-dock__grip,
+  .toolbar-dock__grip-line,
+  .toolbar-dock__grip-dots { transition: none; }
+}
 
 /* The cog, at the end of the last row */
 .toolbar-dock__trailing { margin-left: auto; display: flex; align-items: center; gap: 8px; }
@@ -120,13 +146,23 @@
 /* WHERE A CONTAINER WOULD LAND — a whole bar dragged by its grip, or a
    NEW bar made for a tool pulled beside another (2026-11-10, "put a line
    … to show that a new container will be created"): the accent line runs
-   the row's FULL HEIGHT, as the dividers that bound a container do */
+   the row's FULL HEIGHT, as the dividers that bound a container do. Before
+   a bar it takes the place of that bar's gutter line; at a line's end it
+   sits half a gutter past the last bar. It takes no room either way. */
 .toolbar-dock__insert {
-  width: 2px;
-  align-self: stretch;
-  margin: -14px 0;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  width: 3px;
   background-color: var(--toolbar-dock-accent);
-  flex-shrink: 0;
+  pointer-events: none;
+}
+.toolbar-dock__insert--end {
+  position: relative;
+  left: auto;
+  align-self: stretch;
+  margin: -14px -3px -14px 7px;
 }
 .toolbar-dock__insert--refused { background-color: var(--toolbar-dock-refuse); }
 
@@ -164,17 +200,19 @@
 .toolbar-dock--vertical { width: 48px; align-items: stretch; }
 .toolbar-dock--vertical .toolbar-dock__row {
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   padding: 0 0 10px;
   min-height: 0;
   flex: 1;
 }
-.toolbar-dock--vertical .toolbar-dock__bar { flex-direction: column; gap: 6px; }
+.toolbar-dock--vertical .toolbar-dock__bar { flex-direction: column; align-items: center; }
 .toolbar-dock--vertical .toolbar-dock__tools { flex-direction: column; gap: 8px; }
 .toolbar-dock--vertical .toolbar-dock__tools .toolbar__button-group { flex-direction: column; }
-.toolbar-dock--vertical .toolbar-dock__grip { width: 28px; height: 18px; transform: rotate(90deg); }
-.toolbar-dock--vertical .toolbar-dock__divider { width: auto; height: 1px; margin: 0; }
-.toolbar-dock--vertical .toolbar-dock__insert { width: auto; height: 2px; margin: 0; }
+.toolbar-dock--vertical .toolbar-dock__grip { width: auto; height: 17px; margin: 0; }
+.toolbar-dock--vertical .toolbar-dock__grip-line { top: 8px; bottom: auto; left: 0; right: 0; width: auto; height: 1px; }
+.toolbar-dock--vertical .toolbar-dock__grip-dots { transform: rotate(90deg); }
+.toolbar-dock--vertical .toolbar-dock__insert { top: 7px; bottom: auto; left: 0; right: 0; width: auto; height: 3px; }
+.toolbar-dock--vertical .toolbar-dock__insert--end { position: relative; top: auto; margin: 7px 0 -10px; align-self: stretch; }
 .toolbar-dock--vertical .toolbar-dock__caret { width: 28px; height: 2px; margin: -4px 0; }
 .toolbar-dock--vertical .toolbar-dock__tool,
 .toolbar-dock--vertical .toolbar-dock__tool-body { flex-direction: column; }

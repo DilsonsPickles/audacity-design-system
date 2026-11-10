@@ -34,13 +34,18 @@ function renderDock(props: Partial<ToolbarDockProps> = {}) {
 }
 
 describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
-  it('draws each bar with a grip and its tools, a divider between bars, and nothing for a bar whose tools all draw nothing', () => {
+  it('draws each bar with its gutter — the grip — and its tools; the gutter of a bar after another carries the divider line; nothing for a bar whose tools all draw nothing', () => {
     const { container } = renderDock();
     const bars = Array.from(container.querySelectorAll('[data-toolbar-bar]'));
     expect(bars.map((b) => b.getAttribute('data-toolbar-bar'))).toEqual(['a', 'b']);
     expect(bars[0].querySelector('.toolbar-dock__grip')).toBeTruthy();
     expect(Array.from(bars[0].querySelectorAll('[data-toolbar-tool]')).map((t) => t.getAttribute('data-toolbar-tool'))).toEqual(['one', 'two']);
-    expect(container.querySelectorAll('.toolbar-dock__divider')).toHaveLength(1);
+    // THE GAP IS THE GRIP (2026-11-10): the first bar's gutter has no line, the second's does
+    expect(bars[0].querySelector('.toolbar-dock__grip')!.classList.contains('toolbar-dock__grip--leading')).toBe(true);
+    expect(bars[0].querySelector('.toolbar-dock__grip-line')).toBeNull();
+    expect(bars[1].querySelector('.toolbar-dock__grip > .toolbar-dock__grip-line')).toBeTruthy();
+    expect(bars[1].firstElementChild!.classList.contains('toolbar-dock__grip')).toBe(true);
+    expect(container.querySelector('.toolbar-dock__divider')).toBeNull();
     // At rest the tools are live: not inert, and a press on one is the tool's own
     expect(container.querySelector('[data-toolbar-tool="one"] .toolbar-dock__tool-body')!.hasAttribute('inert')).toBe(false);
   });
@@ -94,15 +99,14 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     );
     rerender(wrap({ editing: true, toolInsert: { barId: 'b', beforeToolId: null } }));
     expect(container.querySelector('[data-toolbar-bar="b"] .toolbar-dock__tools')!.lastElementChild!.className).toBe('toolbar-dock__caret');
-    // a new container before bar b: the line sits in the ROW, not in a bar
+    // a new container before bar b: the line takes the place of b's gutter line
     rerender(wrap({ editing: true, insert: { region: 'top', row: 0, beforeBarId: 'b' } }));
     const line = container.querySelector('.toolbar-dock__insert') as HTMLElement;
-    expect(line.parentElement!.classList.contains('toolbar-dock__row')).toBe(true);
-    expect(line.nextElementSibling!.className).toBe('toolbar-dock__divider');
+    expect(line.parentElement).toBe(container.querySelector('[data-toolbar-bar="b"] .toolbar-dock__grip'));
     expect(container.querySelector('.toolbar-dock__caret')).toBeNull();
     // …and at the row's end (before a bar that draws nothing is the end too)
     rerender(wrap({ editing: true, insert: { region: 'top', row: 0, beforeBarId: 'hidden' } }));
-    expect((container.querySelector('.toolbar-dock__insert') as HTMLElement).previousElementSibling!.getAttribute('data-toolbar-bar')).toBe('b');
+    expect((container.querySelector('.toolbar-dock__insert--end') as HTMLElement).previousElementSibling!.getAttribute('data-toolbar-bar')).toBe('b');
     rerender(wrap({ editing: true, insert: { region: 'top', row: 0, beforeBarId: null }, insertRefused: true }));
     const last = container.querySelector('.toolbar-dock__insert') as HTMLElement;
     expect(last.classList.contains('toolbar-dock__insert--refused')).toBe(true);
@@ -142,9 +146,9 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     line = container.querySelector('.toolbar-dock__row-insert') as HTMLElement;
     expect(line.classList.contains('toolbar-dock__row-insert--end')).toBe(true);
     expect(line.previousElementSibling).toBe(lines()[1]);
-    // beside a bar of the LAST row: the full-height line sits in that row's line
+    // beside a bar of the LAST row: the full-height line sits in that bar's gutter, in that row's line
     rerender(wrap({ insert: { region: 'top', row: 2, beforeBarId: 'c' } }));
-    expect((container.querySelector('.toolbar-dock__insert') as HTMLElement).parentElement).toBe(lines()[1]);
+    expect(lines()[1].contains(container.querySelector('.toolbar-dock__insert'))).toBe(true);
     // at the end of the first row, and after a named bar (a wrapped line's end)
     rerender(wrap({ insert: { region: 'top', row: 0, beforeBarId: null } }));
     expect((container.querySelector('.toolbar-dock__insert') as HTMLElement).previousElementSibling!.getAttribute('data-toolbar-bar')).toBe('b');
@@ -162,6 +166,6 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     );
     expect(container.querySelectorAll('.toolbar-dock__row')).toHaveLength(1);
     expect(Array.from(container.querySelectorAll('[data-toolbar-bar]')).map((b) => b.getAttribute('data-toolbar-bar'))).toEqual(['a', 'b', 'c']);
-    expect((container.querySelector('.toolbar-dock__insert') as HTMLElement).nextElementSibling!.className).toBe('toolbar-dock__divider');
+    expect((container.querySelector('.toolbar-dock__insert') as HTMLElement).parentElement).toBe(container.querySelector('[data-toolbar-bar="c"] .toolbar-dock__grip'));
   });
 });

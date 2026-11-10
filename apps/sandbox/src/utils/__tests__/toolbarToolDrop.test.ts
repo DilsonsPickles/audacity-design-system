@@ -88,7 +88,7 @@ describe('resolveToolDrop — join a bar, a new container beside one, or a new r
 
   it('BESIDE a bar — on its grip, or in the gap before it — the tool gets a NEW bar there, in that bar\'s row', () => {
     topDock();
-    // the gap between a and b, and b's grip (117..141)
+    // the gap between a and b, and b's gutter, its grip (117..134)
     expect(resolveToolDrop(110, 28, LAYOUT, null, true)).toEqual({ kind: 'new', region: 'top', placement: { region: 'top', row: 0, beforeBarId: 'b' }, refused: false });
     expect(resolveToolDrop(130, 28, LAYOUT, null, true)).toEqual({ kind: 'new', region: 'top', placement: { region: 'top', row: 0, beforeBarId: 'b' }, refused: false });
     // past the grip, b's own tools
@@ -132,7 +132,7 @@ describe('resolveToolDrop — join a bar, a new container beside one, or a new r
     ]);
     dock('right', rect(1000, 100, 0, 500), []);
     const row = rect(0, 100, 1000, 500);
-    // left: on the bar's grip (its top 18px) → a new bar above; among its tools → joins; below → the column's end
+    // left: on the bar's gutter (its top 17px) → a new bar above; among its tools → joins; below → the column's end
     expect(resolveToolDrop(20, 110, LAYOUT, row, true)).toEqual({ kind: 'new', region: 'left', placement: { region: 'left', row: 0, beforeBarId: 'v' }, refused: false });
     expect(resolveToolDrop(20, 150, LAYOUT, row, true)).toEqual({ kind: 'into', region: 'left', barId: 'v', beforeToolId: 'seven', refused: false });
     expect(resolveToolDrop(20, 400, LAYOUT, row, true)).toEqual({ kind: 'new', region: 'left', placement: { region: 'left', row: 0, beforeBarId: null }, refused: false });

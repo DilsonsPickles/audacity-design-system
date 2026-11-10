@@ -62,49 +62,50 @@ const statusBars = (): ToolbarBar[] => [
 
 const bar = (id: string, tools: string[]): ToolbarBar => ({ id, tools });
 
-/** The built-in workspaces as seed layouts — the bars TransportToolbar
- *  drew for each, in its order, in ONE row that wraps with the window
- *  (the hidden-tools list still gates each tool; a bar whose every tool
- *  is hidden draws nothing) */
+/** The built-in workspaces as seed layouts, in ONE row that wraps with
+ *  the window (the hidden-tools list still gates each tool; a bar whose
+ *  every tool is hidden draws nothing).
+ *
+ *  FEWER, BIGGER BARS (2026-11-10, "every toolbar has its own gripper…
+ *  look at how much space we're using"): the bars were TransportToolbar's
+ *  old groups, ten of them, two or three tools each, because a bar was
+ *  once the only thing that moved. A single tool moves now, so a bar is
+ *  just a grouping, and the seeds are AUDACITY 3-SIZED: transport; the
+ *  tools (modes); edit (actions); view (zoom and track height); time
+ *  (speed, timecode, tempo, signature, snap); meters. */
 export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout {
   const transport = bar('transport', ['play', 'stop', 'record', 'step-back', 'step-forward', 'loop']);
-  const readouts: ToolbarBar[] = [
-    bar('speed', ['varispeed']),
-    bar('time', ['timecode', 'bpm', 'time-signature']),
-    bar('snap', ['snapping']),
-    bar('meters', ['microphone-levels', 'playback-meter']),
-  ];
-  const trackHeight = bar('track-height', ['collapse-tracks', 'expand-tracks', 'fit-tracks-height']);
+  const trackHeight = ['collapse-tracks', 'expand-tracks', 'fit-tracks-height'];
+  const time = bar('time', ['varispeed', 'timecode', 'bpm', 'time-signature', 'snapping']);
+  const meters = bar('meters', ['microphone-levels', 'playback-meter']);
   let top: ToolbarBar[];
   switch (workspace) {
     case 'classic':
       top = [
         transport,
         bar('tools', ['automation', 'split', 'spectral-editing']),
-        bar('zoom', ['zoom-in', 'zoom-out', 'fit-selection', 'fit-project', 'zoom-toggle']),
-        trackHeight,
-        bar('edit', ['cut', 'copy', 'paste']),
-        bar('edit-audio', ['trim', 'silence']),
-        ...readouts,
+        bar('edit', ['cut', 'copy', 'paste', 'trim', 'silence']),
+        bar('view', ['zoom-in', 'zoom-out', 'fit-selection', 'fit-project', 'zoom-toggle', ...trackHeight]),
+        time,
+        meters,
       ];
       break;
     case 'spectral-editing':
       top = [
         transport,
-        bar('zoom', ['zoom-in', 'zoom-out', 'zoom-toggle']),
-        trackHeight,
-        bar('view', ['waveform-view']),
-        ...readouts,
+        bar('view', ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight, 'waveform-view']),
+        time,
+        meters,
       ];
       break;
     case 'modern':
       top = [
         transport,
         bar('tools', ['automation', 'split', 'spectral-editing']),
-        bar('zoom', ['zoom-in', 'zoom-out', 'zoom-toggle']),
-        trackHeight,
-        bar('edit-audio', ['trim', 'silence']),
-        ...readouts,
+        bar('edit', ['trim', 'silence']),
+        bar('view', ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight]),
+        time,
+        meters,
       ];
       break;
     case 'music':
@@ -112,10 +113,10 @@ export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout
       top = [
         transport,
         bar('tools', ['automation', 'split']),
-        bar('zoom', ['zoom-in', 'zoom-out', 'zoom-toggle']),
-        trackHeight,
-        bar('edit-audio', ['trim', 'silence']),
-        ...readouts,
+        bar('edit', ['trim', 'silence']),
+        bar('view', ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight]),
+        time,
+        meters,
       ];
       break;
   }

@@ -14,7 +14,9 @@ draggable, a tool JOINS a bar (short caret) or gets a NEW bar beside one
 model is docks of ROWS of bars; a bar (by its grip) or a tool (in the edit
 mode) dropped on the line between two rows, or at a horizontal dock's edge,
 gets a NEW ROW, shown by a horizontal accent line; a row lives while it
-holds a bar. NOT YET: the tray of
+holds a bar. GRIPS IN THE GAP, BUILT 2026-11-10: the 17px gutter between
+two bars is the later bar's grip (the line at rest, the dots on hover), and
+the seeds are six Audacity 3-sized bars instead of ten small ones. NOT YET: the tray of
 hidden tools, hold-to-enter, the keyboard Move-to menu, the Flexible space
 tool, floating bars, user-named workspaces. Questions 4–8 below are
 still the assistant's positions; increment 1 took 4 and 5 as stated.
@@ -271,6 +273,13 @@ not yet accepted or rejected:
   ("Yeah I meant I wanted the ability to create new rows. As long as there
   is a tool in each row, it can exist"). Stored flat layouts from the
   first cut are read as one row a dock.
+- 2026-11-10 — The grip is the GAP: the gutter between two bars is the
+  later bar's handle, dots on hover only; the default bars are merged into
+  six bigger ones (a bar is just a grouping now that single tools move).
+  Grips shown only in an edit mode were considered and kept in reserve:
+  "I'm trying to avoid having to enter a mode like this. But we can keep
+  that in our back pocket… we'll probably need it eventually for
+  accessibility users." Author ("Try 1 and 2").
 - 2026-11-10 — An empty dock shows nothing of its own during a drag; the
   side docks' drop zones are the dockable panels' overlay (a subtle band,
   the hovered one previewing the 48px footprint). Author ("don't show side

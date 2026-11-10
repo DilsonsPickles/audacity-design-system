@@ -68,7 +68,8 @@ const GROW_BAR_PACK_WIDTH = 160;
  * regions (2026-11-09, the custom toolbars design). A HORIZONTAL dock
  * draws each of its ROWS as a line of bars — a row too wide for the
  * window WRAPS onto further lines by measured width (Audacity 3's dock) —
- * with a divider between bars on a line and a line between rows
+ * with a divider between bars on a line (each bar's GRIP: the divider's
+ * gutter shows the dots on hover) and a line between rows
  * ("division lines between cols and rows"); a VERTICAL dock stacks every
  * bar in one column, each bar's tools in a column. The host renders the tools by
  * id and owns the layout and the drag; the dock only draws, measures and
@@ -110,13 +111,13 @@ export function ToolbarDock({
     for (const d of visible) {
       const el = barRefs.current.get(d.bar.id);
       const w = d.grow ? GROW_BAR_PACK_WIDTH : (el?.offsetWidth ?? 0);
-      const gap = line && line.row === d.row && line.ids.length ? 17 : 0; // divider 1 + 8 either side
-      if (!line || line.row !== d.row || (available > 0 && used + gap + w > available)) {
+      // (each bar's width carries its gutter: the grip is the gap)
+      if (!line || line.row !== d.row || (available > 0 && line.ids.length > 0 && used + w > available)) {
         line = { row: d.row, ids: [] };
         result.push(line);
         used = 0;
       }
-      used += (line.ids.length ? 17 : 0) + w;
+      used += w;
       line.ids.push(d.bar.id);
     }
     setLines((prev) => (sameLines(prev, result) ? prev : result));
@@ -153,7 +154,13 @@ export function ToolbarDock({
   // Where a dragged tool would JOIN a bar: a short caret among its tools
   const caret = <div className="toolbar-dock__caret" aria-hidden="true" />;
 
-  const renderBar = (d: (typeof visible)[number]) => (
+  // A bar: its GUTTER, which is its grip, then its tools. THE GAP BETWEEN
+  // TWO BARS IS THE LATER BAR'S GRIP (2026-11-10, "every toolbar has its
+  // own gripper… look at how much space we're using"): at rest the gutter
+  // shows only the 1px divider (nothing, for the first bar on a line); on
+  // hover the dots take the line's place with a grab cursor. No room of
+  // its own — 288px back on the default layout.
+  const renderBar = (d: (typeof visible)[number], leading: boolean, insertHere: boolean) => (
     <div
       key={d.bar.id}
       ref={(el) => { if (el) barRefs.current.set(d.bar.id, el); else barRefs.current.delete(d.bar.id); }}
@@ -161,12 +168,11 @@ export function ToolbarDock({
       data-toolbar-bar={d.bar.id}
     >
       <span
-        className="toolbar-dock__grip musescore-icon"
+        className={`toolbar-dock__grip${leading ? ' toolbar-dock__grip--leading' : ''}`}
         aria-hidden="true"
         role="presentation"
-        title="Move toolbar"
         onMouseDown={(e) => {
-          if (!onGripMouseDown) return;
+          if (!onGripMouseDown || e.button !== 0) return;
           const rect = barRefs.current.get(d.bar.id)?.getBoundingClientRect();
           if (!rect) return;
           e.preventDefault();
@@ -174,7 +180,9 @@ export function ToolbarDock({
           onGripMouseDown(d.bar.id, e, rect);
         }}
       >
-        {GRIP_GLYPH}
+        {!leading && <span className="toolbar-dock__grip-line" />}
+        <span className="toolbar-dock__grip-dots musescore-icon">{GRIP_GLYPH}</span>
+        {insertHere && indicator}
       </span>
       <div className="toolbar-dock__tools">
         {d.nodes.map((t) => (
@@ -203,8 +211,13 @@ export function ToolbarDock({
     </div>
   );
 
+  // Before a bar the line takes its gutter's place; at a line's end it
+  // sits a gutter's half past the last bar. Neither takes room.
   const indicator = (
-    <div className={`toolbar-dock__insert${insertRefused ? ' toolbar-dock__insert--refused' : ''}`} aria-hidden="true" />
+    <span className={`toolbar-dock__insert${insertRefused ? ' toolbar-dock__insert--refused' : ''}`} aria-hidden="true" />
+  );
+  const endIndicator = (
+    <span className={`toolbar-dock__insert toolbar-dock__insert--end${insertRefused ? ' toolbar-dock__insert--refused' : ''}`} aria-hidden="true" />
   );
 
   // The lines to draw: the packed lines when they still name every
@@ -287,14 +300,12 @@ export function ToolbarDock({
               if (!d) return null;
               return (
                 <React.Fragment key={id}>
-                  {insertBeforeId === id && indicator}
-                  {i > 0 && <div className="toolbar-dock__divider" aria-hidden="true" />}
-                  {renderBar(d)}
-                  {insertAfterId === id && indicator}
+                  {renderBar(d, i === 0, insertBeforeId === id)}
+                  {insertAfterId === id && endIndicator}
                 </React.Fragment>
               );
             })}
-            {insertEndOfLine === lineIndex && indicator}
+            {insertEndOfLine === lineIndex && endIndicator}
             {lineIndex === drawnLines.length - 1 && trailing && <div className="toolbar-dock__trailing">{trailing}</div>}
           </div>
         </React.Fragment>
