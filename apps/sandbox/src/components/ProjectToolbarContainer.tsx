@@ -34,7 +34,9 @@ export interface ProjectToolbarContainerProps {
 }
 
 /**
- * Wraps ProjectToolbar: the home/project/export/debug nav logic, the
+ * Wraps ProjectToolbar — since 2026-11-10 drawn on the HOME tab alone (its
+ * tabs, the way back); in the other views its pieces are tools in the
+ * toolbar docks (ProjectBarTools.tsx). Wraps ProjectToolbar: the home/project/export/debug nav logic, the
  * center action buttons (Mixer/Audio setup/Share/Get effects), the
  * workspace selector, and undo/redo. Moved verbatim from App.tsx.
  *
@@ -42,6 +44,41 @@ export interface ProjectToolbarContainerProps {
  * and `dispatch` from TracksContext rather than taking them as props,
  * following the pattern already used by AppContextMenus/AppDialogs.
  */
+export interface ProjectNavigationDeps {
+  setActiveMenuItem: React.Dispatch<React.SetStateAction<'home' | 'project' | 'export' | 'debug'>>;
+  setHomeTabKey: React.Dispatch<React.SetStateAction<number>>;
+  setIndexedDBProjects: React.Dispatch<React.SetStateAction<StoredProject[]>>;
+  currentProjectId: string | null;
+  createNewProject: () => Promise<string>;
+}
+
+/** What a press on a project tab does — Home reloads the project list,
+ *  Project makes a project when there is none, Debug opens the debug
+ *  panel. Shared by the bar (on Home) and the docks' tabs tool. */
+export function useProjectNavigation({ setActiveMenuItem, setHomeTabKey, setIndexedDBProjects, currentProjectId, createNewProject }: ProjectNavigationDeps) {
+  const { setIsDebugPanelOpen } = useDialogs();
+  return async (item: 'home' | 'project' | 'export' | 'debug') => {
+    setActiveMenuItem(item);
+    // Force HomeTab to remount and reload projects when navigating back to home
+    if (item === 'home') {
+      setHomeTabKey(prev => prev + 1);
+      // Load projects from IndexedDB
+      const projects = await getProjects();
+      setIndexedDBProjects(projects);
+    }
+    // Auto-create a new project if navigating to project tab with no active project
+    if (item === 'project' && !currentProjectId) {
+      await createNewProject();
+      // Reload projects list so HomeTab will have the fresh project when user navigates back
+      const projects = await getProjects();
+      setIndexedDBProjects(projects);
+    }
+    if (item === 'debug') {
+      setIsDebugPanelOpen(true);
+    }
+  };
+}
+
 export function ProjectToolbarContainer({
   activeMenuItem,
   setActiveMenuItem,
@@ -56,32 +93,14 @@ export function ProjectToolbarContainer({
   workspace,
   onWorkspacePick,
 }: ProjectToolbarContainerProps) {
-  const { setIsShareDialogOpen, setIsDebugPanelOpen } = useDialogs();
+  const { setIsShareDialogOpen } = useDialogs();
   const { dispatch } = useTracks();
+  const navigate = useProjectNavigation({ setActiveMenuItem, setHomeTabKey, setIndexedDBProjects, currentProjectId, createNewProject });
 
   return (
     <ProjectToolbar
       activeItem={activeMenuItem}
-      onMenuItemClick={async (item) => {
-        setActiveMenuItem(item);
-        // Force HomeTab to remount and reload projects when navigating back to home
-        if (item === 'home') {
-          setHomeTabKey(prev => prev + 1);
-          // Load projects from IndexedDB
-          const projects = await getProjects();
-          setIndexedDBProjects(projects);
-        }
-        // Auto-create a new project if navigating to project tab with no active project
-        if (item === 'project' && !currentProjectId) {
-          await createNewProject();
-          // Reload projects list so HomeTab will have the fresh project when user navigates back
-          const projects = await getProjects();
-          setIndexedDBProjects(projects);
-        }
-        if (item === 'debug') {
-          setIsDebugPanelOpen(true);
-        }
-      }}
+      onMenuItemClick={(item) => { void navigate(item); }}
       showDebugMenu={true}
       centerActions={activeMenuItem !== 'export' ? [
         ...(showMixer ? [{

@@ -30,7 +30,8 @@ import { useStatusInfo } from './hooks/useStatusInfo';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
 import { computeProjectEnd } from './hooks/handlers/navigationHandlers';
 import { TransportToolbarContainer, type TransportToolbarContainerProps } from './components/TransportToolbarContainer';
-import { ProjectToolbarContainer } from './components/ProjectToolbarContainer';
+import { ProjectToolbarContainer, useProjectNavigation } from './components/ProjectToolbarContainer';
+import { renderProjectTool, projectToolMeta, type ProjectBarToolsDeps } from './components/ProjectBarTools';
 const TokenReview = React.lazy(() =>
   import('./pages/TokenReview').then(m => ({ default: m.TokenReview }))
 );
@@ -83,7 +84,7 @@ import { AppToolbarDock, type ToolbarDockDrag } from './components/AppToolbarDoc
 import { useToolbarToolDrag } from './hooks/useToolbarToolDrag';
 import { DockZoneOverlay, edgeBand, innerBand, panelDockRects, sideBand } from './components/editor/DockZoneOverlay';
 import { renderStatusTool, statusToolMeta, type StatusBarToolsDeps } from './components/StatusBarTools';
-import { findBar, findTool, rowsOf, transportToolMeta, type ToolbarRegion } from '@audacity-ui/components';
+import { findBar, findTool, rowsOf, transportToolMeta, type ToolbarOrientation, type ToolbarRegion } from '@audacity-ui/components';
 import { useAudioDeviceMenu } from './hooks/useAudioDeviceMenu';
 import { useFocusDebugger } from './hooks/useFocusDebugger';
 import { HandleHintProvider, useHandleHint } from './contexts/HandleHintContext';
@@ -1170,6 +1171,30 @@ function CanvasDemoContent() {
       dispatch({ type: 'SET_TIME_SELECTION', payload: { ...state.timeSelection, startTime, endTime: newEnd } });
     },
   };
+  // THE PROJECT TOOLBAR'S PIECES are tools too (2026-11-10): the docks draw
+  // them beside the status bar's, through one renderer
+  const navigateProject = useProjectNavigation({ setActiveMenuItem, setHomeTabKey, setIndexedDBProjects, currentProjectId, createNewProject });
+  const projectToolDeps: ProjectBarToolsDeps = {
+    activeMenuItem,
+    onNavigate: (item) => { void navigateProject(item); },
+    showMixer,
+    onToggleMixer: () => setMixerPanelOpen((prev) => !prev),
+    onAudioSetup: (anchor) => setAudioSetupMenuAnchor(anchor),
+    onShareAudio: () => setIsShareDialogOpen(true),
+    onGetEffects: (anchorRect) => setMarketplaceModal({ open: true, anchorRect }),
+    workspace,
+    workspaceOptions: [
+      { value: 'music', label: 'Music' },
+      { value: 'classic', label: 'Classic' },
+      { value: 'modern', label: 'Modern' },
+      { value: 'spectral-editing', label: 'Spectral editing' },
+    ],
+    onWorkspacePick: (next) => handleWorkspacePick(next as Workspace),
+    onUndo: () => dispatch({ type: 'UNDO' }),
+    onRedo: () => dispatch({ type: 'REDO' }),
+  };
+  const renderAppTool = (id: string, o: ToolbarOrientation) => renderProjectTool(id, o, projectToolDeps) ?? renderStatusTool(id, o, statusToolDeps);
+  const appToolMeta = (id: string) => projectToolMeta(id) ?? statusToolMeta(id);
 
   const transportToolbarProps: TransportToolbarContainerProps = {
     transport: {
@@ -1293,7 +1318,9 @@ function CanvasDemoContent() {
           menuDefinitions={menuDefinitions}
         />
       )}
-      <ProjectToolbarContainer
+      {/* The project toolbar on HOME alone (its tabs, the way back); in the
+          other views its pieces are tools in the docks (2026-11-10) */}
+      {activeMenuItem === 'home' && <ProjectToolbarContainer
         activeMenuItem={activeMenuItem}
         setActiveMenuItem={setActiveMenuItem}
         setHomeTabKey={setHomeTabKey}
@@ -1306,14 +1333,14 @@ function CanvasDemoContent() {
         setMarketplaceModal={setMarketplaceModal}
         workspace={workspace}
         onWorkspacePick={handleWorkspacePick}
-      />
+      />}
       {/* The TOP DOCK: the tools, in the workspace's bars (2026-11-09) */}
       {activeMenuItem !== 'home' && (
         <AppToolbarDock
           region="top"
           rows={toolbarLayout.layout.top}
-          renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
-          extraToolMeta={statusToolMeta}
+          renderExtraTool={renderAppTool}
+          extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarResize={toolbarLayout.resizeBar}
           className="transport-toolbar"
@@ -1456,8 +1483,8 @@ function CanvasDemoContent() {
         <AppToolbarDock
           region="left"
           rows={toolbarLayout.layout.left}
-          renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
-          extraToolMeta={statusToolMeta}
+          renderExtraTool={renderAppTool}
+          extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarResize={toolbarLayout.resizeBar}
           tabGroupId="tool-dock-left"
@@ -1470,8 +1497,8 @@ function CanvasDemoContent() {
             <AppToolbarDock
               region="left-inner"
               rows={toolbarLayout.layout['left-inner'] ?? []}
-              renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
-              extraToolMeta={statusToolMeta}
+              renderExtraTool={renderAppTool}
+              extraToolMeta={appToolMeta}
               drag={dockDrag}
               onBarResize={toolbarLayout.resizeBar}
               tabGroupId="tool-dock-left"
@@ -1483,8 +1510,8 @@ function CanvasDemoContent() {
             <AppToolbarDock
               region="right-inner"
               rows={toolbarLayout.layout['right-inner'] ?? []}
-              renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
-              extraToolMeta={statusToolMeta}
+              renderExtraTool={renderAppTool}
+              extraToolMeta={appToolMeta}
               drag={dockDrag}
               onBarResize={toolbarLayout.resizeBar}
               tabGroupId="tool-dock-right"
@@ -1555,8 +1582,8 @@ function CanvasDemoContent() {
         <AppToolbarDock
           region="right"
           rows={toolbarLayout.layout.right}
-          renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
-          extraToolMeta={statusToolMeta}
+          renderExtraTool={renderAppTool}
+          extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarResize={toolbarLayout.resizeBar}
           tabGroupId="tool-dock-right"
@@ -1573,8 +1600,8 @@ function CanvasDemoContent() {
         <AppToolbarDock
           region="bottom"
           rows={toolbarLayout.layout.bottom}
-          renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
-          extraToolMeta={statusToolMeta}
+          renderExtraTool={renderAppTool}
+          extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarResize={toolbarLayout.resizeBar}
           className="selection-toolbar"

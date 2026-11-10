@@ -347,8 +347,9 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     const { container, getByText } = renderApp({
       toolbarLayouts: { classic: {
         top: [{ id: 'transport', tools: ['play', 'stop', 'record'] }, { id: 'zoom', tools: ['zoom-in', 'zoom-out'] }],
-        // (the cog in the status bar, so the top rows are the two bars alone)
-        bottom: [{ id: 'status', tools: ['status-cue', 'status-info'] }, { id: 'customise', tools: ['customise'] }], left: [], right: [],
+        // (the cog and the project tools in the status bar, so the top rows are the two bars alone)
+        bottom: [{ id: 'status', tools: ['status-cue', 'status-info'] }, { id: 'customise', tools: ['customise'] },
+          { id: 'project', tools: ['project-tabs', 'mixer-button', 'audio-setup', 'share-audio', 'get-effects', 'workspace', 'undo-redo'] }], left: [], right: [],
       } },
     });
     fireEvent.click(getByText('Project'));
@@ -445,7 +446,8 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     // A press that never travels is a click: nothing moves
     fireEvent.mouseDown(tool('record'), { clientX: 200, clientY: 30, button: 0 });
     fireEvent.mouseUp(document, { clientX: 201, clientY: 30 });
-    expect(barIds('top')[0]).toBe('transport');
+    // (the top dock opens with the project row since 2026-11-10: its tabs first)
+    expect(barIds('top')[0]).toBe('project-tabs');
     expect(tool('record').closest('[data-toolbar-bar]')!.getAttribute('data-toolbar-bar')).toBe('transport');
 
     // Pulled BESIDE the first bar (its grip's strip — jsdom measures every
@@ -455,11 +457,13 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     expect(dock('top').querySelector('.toolbar-dock__insert')).toBeTruthy(); // the new container's line
     expect(container.querySelector('.selection-toolbar__instruction-text')?.textContent).toBe('Release to give it a toolbar of its own');
     fireEvent.mouseUp(document, { clientX: 10, clientY: 10 });
-    await waitFor(() => expect(barIds('top').slice(0, 2)).toEqual(['bar-1', 'transport']));
+    // (jsdom measures nothing: the drop lands at the start of the top dock's
+    // last row, the transport's — the project row is above it)
+    await waitFor(() => { const ids = barIds('top'); expect(ids[ids.indexOf('transport') - 1]).toBe('bar-1'); });
     expect(tool('record').closest('[data-toolbar-bar]')!.getAttribute('data-toolbar-bar')).toBe('bar-1');
     expect(dock('top').querySelector('[data-toolbar-bar="transport"] [data-toolbar-tool="record"]')).toBeNull();
     const stored = () => JSON.parse(window.localStorage.getItem('audacity-preferences')!).toolbarLayouts?.classic;
-    expect(stored().top[0][0]).toEqual({ id: 'bar-1', tools: ['record'] });
+    expect(stored().top[1][0]).toEqual({ id: 'bar-1', tools: ['record'] });
 
     // …and another, to the bottom dock: as many containers as wanted
     fireEvent.mouseDown(tool('loop'), { clientX: 200, clientY: 30, button: 0 });
@@ -482,7 +486,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     const reset = menu.querySelector('[data-customise-reset]') as HTMLButtonElement;
     expect(reset.disabled).toBe(false);
     fireEvent.click(reset);
-    await waitFor(() => expect(barIds('top')[0]).toBe('transport'));
+    await waitFor(() => expect(barIds('top')[0]).toBe('project-tabs'));
     expect(tool('record').closest('[data-toolbar-bar]')!.getAttribute('data-toolbar-bar')).toBe('transport');
     expect(barIds('bottom')).toEqual(['status', 'selection']);
     expect(stored()).toBeUndefined();

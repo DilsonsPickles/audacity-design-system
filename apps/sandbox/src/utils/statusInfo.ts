@@ -121,7 +121,7 @@ export const STATUS_INFO_RULES: ReadonlyArray<StatusInfoRule> = [
   { selector: '.toolbar-dock__grip', line: 'Drag to move this toolbar' },
   { selector: '.toolbar-dock__resize', line: 'Drag to resize this toolbar, double-click for its natural size' },
   { selector: '.toolbar-dock__overflow', line: 'More tools' },
-  { selector: '.project-toolbar .tab', line: (el) => el.textContent?.trim() || null },
+  { selector: '.project-toolbar .tab, [data-project-tool="tabs"] .tab', line: (el) => el.textContent?.trim() || null },
   // The speed's VALUE is the cue's ("Playing at 110%"): said once, so
   // the control reads its name and keys, as a button does
   { selector: '[data-varispeed]', line: 'Playback speed (− / =)' },

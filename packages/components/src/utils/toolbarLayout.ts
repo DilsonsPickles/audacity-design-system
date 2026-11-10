@@ -88,6 +88,23 @@ export type BarPlacement =
  *  top dock's end (`withCustomiseTool`), so it can never be lost. */
 export const CUSTOMISE_TOOL_ID = 'customise';
 
+/** THE PROJECT TOOLBAR IS TOOLS (2026-11-10, user feedback on the "wasted
+ *  space" of the project toolbar → "I want to bring those into the toolbar
+ *  layout chaos"): the Home / Project / Export / Debug tabs, the Mixer /
+ *  Audio setup / Share audio / Get effects buttons, the workspace picker
+ *  and undo / redo are tools like the rest, seeded as a FIRST ROW of the
+ *  top dock that looks like the old bar — move them into the other rows to
+ *  win its 40px back. The tabs can never be lost (`withProjectTools`). */
+export const PROJECT_TAB_TOOL_ID = 'project-tabs';
+const projectBars = (): ToolbarBar[] => [
+  { id: 'project-tabs', tools: [PROJECT_TAB_TOOL_ID] },
+  { id: 'project-actions', tools: ['mixer-button', 'audio-setup', 'share-audio', 'get-effects'] },
+  { id: 'workspace', tools: ['workspace'] },
+  { id: 'history', tools: ['undo-redo'] },
+];
+/** Every project tool id */
+export const PROJECT_TOOL_IDS: ReadonlyArray<string> = projectBars().flatMap((b) => b.tools);
+
 /** The status bar's seed: the Figma Status/Info bar's two slots, then the
  *  selection timecodes and the duration */
 const statusBars = (): ToolbarBar[] => [
@@ -155,12 +172,13 @@ export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout
       ];
       break;
   }
-  return { top: [[...top, bar(CUSTOMISE_TOOL_ID, [CUSTOMISE_TOOL_ID])]], bottom: [statusBars()], left: [], right: [] };
+  return { top: [projectBars(), [...top, bar(CUSTOMISE_TOOL_ID, [CUSTOMISE_TOOL_ID])]], bottom: [statusBars()], left: [], right: [] };
 }
 
 /** The Export tab's toolbar (its own bars, not customisable) */
 export const EXPORT_TOOLBAR_LAYOUT: ToolbarLayout = {
-  top: [[
+  // (the project tabs first — the Export tab is still a place to leave)
+  top: [[bar('project-tabs', [PROJECT_TAB_TOOL_ID])], [
     bar('export-transport', ['play', 'stop', 'loop']),
     bar('export-share', ['export-share']),
     bar('export-actions', ['export-audio', 'export-loop-region']),
@@ -331,6 +349,23 @@ export function withCustomiseTool(layout: ToolbarLayout): ToolbarLayout {
   const item: ToolbarBar = { id, tools: [CUSTOMISE_TOOL_ID] };
   if (next.top.length === 0) next.top.push([item]);
   else next.top[next.top.length - 1].push(item);
+  return next;
+}
+
+/**
+ * A layout with every PROJECT tool somewhere: the same layout, or — one
+ * saved before they were tools — a copy with the missing ones as a new
+ * FIRST ROW of the top dock, in the old project toolbar's order.
+ */
+export function withProjectTools(layout: ToolbarLayout): ToolbarLayout {
+  const missing = PROJECT_TOOL_IDS.filter((id) => !findTool(layout, id));
+  if (missing.length === 0) return layout;
+  const taken = new Set(TOOLBAR_REGIONS.flatMap((r) => dockBars(layout, r).map((b) => b.id)));
+  const row = projectBars()
+    .map((b) => ({ id: taken.has(b.id) ? `${b.id}-1` : b.id, tools: b.tools.filter((t) => missing.includes(t)) }))
+    .filter((b) => b.tools.length > 0);
+  const next = cloneLayout(layout);
+  next.top.unshift(row);
   return next;
 }
 

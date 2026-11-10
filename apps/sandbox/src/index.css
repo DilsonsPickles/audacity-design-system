@@ -56,3 +56,8 @@ html.pan-active * {
 .dialog.go-to-dialog {
   min-width: 360px;
 }
+
+/* The project tabs as a dock tool (2026-11-10): the toolbar's 28px row,
+   not the old bar's 40 */
+.project-tabs { display: flex; align-items: center; gap: 2px; }
+.project-tabs .tab { height: 28px; }
