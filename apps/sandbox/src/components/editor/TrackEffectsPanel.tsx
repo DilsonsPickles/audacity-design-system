@@ -83,6 +83,8 @@ export interface TrackEffectsPanelProps {
   setEffectDialog: React.Dispatch<React.SetStateAction<EffectDialogState | null>>;
   setEffectsPanel: React.Dispatch<React.SetStateAction<EffectsPanelState | null>>;
   setMarketplaceModal: React.Dispatch<React.SetStateAction<MarketplaceModalState>>;
+  /** 'columns' in the bottom drawer: sections side by side (2026-11-10) */
+  layout?: 'stacked' | 'columns';
 }
 
 /** Sidebar panel showing the effects chain for the track whose effects
@@ -100,6 +102,7 @@ export function TrackEffectsPanel({
   setEffectDialog,
   setEffectsPanel,
   setMarketplaceModal,
+  layout,
 }: TrackEffectsPanelProps) {
   const dispatch = useTracksDispatch();
 
@@ -119,6 +122,7 @@ export function TrackEffectsPanel({
     <EffectsPanel
       isOpen={effectsPanel.isOpen}
       mode="embedded"
+      layout={layout}
       trackSection={{
         trackName: tracks[trackIndex]?.name || 'Track',
         effects: currentTrackEffects,

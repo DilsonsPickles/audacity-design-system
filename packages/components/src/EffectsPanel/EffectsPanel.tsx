@@ -124,6 +124,13 @@ export interface EffectsPanelProps {
   width?: number;
   /** Height for overlay mode (px) */
   height?: number;
+  /** How the two sections are arranged. 'stacked' (default): the track's
+   *  effects over the master's, a resize handle between — a side dock.
+   *  'columns' (2026-11-10, the effects panel docked in the BOTTOM DRAWER):
+   *  the two sections side by side, and each section's slots flowing down
+   *  and then ACROSS in 240px columns, so a short, wide space shows many
+   *  slots rather than one tall list stretched flat. */
+  layout?: 'stacked' | 'columns';
 }
 
 /**
@@ -351,8 +358,10 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
   top = 0,
   width,
   height,
+  layout = 'stacked',
 }) => {
   const { theme } = useTheme();
+  const columns = layout === 'columns';
   const [masterSectionHeight, setMasterSectionHeight] = React.useState(230); // Default master section height
   const [isResizingVertical, setIsResizingVertical] = React.useState(false);
   const contentRef = React.useRef<HTMLDivElement>(null);
@@ -481,8 +490,9 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
           </div>
         )}
 
-        {/* Vertical resize handle */}
-        {trackSection && masterSection && (
+        {/* Vertical resize handle (the stacked layout's; side by side, the
+            sections share the width) */}
+        {!columns && trackSection && masterSection && (
           <div
             className={`effects-panel__vertical-resize-handle ${isResizingVertical ? 'effects-panel__vertical-resize-handle--active' : ''}`}
             onMouseDown={handleVerticalResizeStart}
@@ -491,7 +501,7 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
 
         {/* Master Effects Section */}
         {masterSection && (
-          <div className="effects-panel__master-section" style={{ height: masterSectionHeight, minHeight: 140, flexShrink: 0 }}>
+          <div className="effects-panel__master-section" style={columns ? undefined : { height: masterSectionHeight, minHeight: 140, flexShrink: 0 }}>
             <MasterEffectsSection {...masterSection} />
           </div>
         )}
@@ -532,7 +542,7 @@ export const EffectsPanel: React.FC<EffectsPanelProps> = ({
     return (
       <div
         ref={panelRef}
-        className={`effects-panel effects-panel--embedded effects-panel__focusable-container ${className}`}
+        className={`effects-panel effects-panel--embedded effects-panel__focusable-container${columns ? ' effects-panel--columns' : ''} ${className}`}
         style={style}
         tabIndex={-1}
         onKeyDown={handleKeyDown}

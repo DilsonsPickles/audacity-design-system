@@ -8,7 +8,7 @@ import type { EffectSelectorMenuState } from '../../hooks/useContextMenuState';
 import { MacrosDockPanel } from './MacrosDockPanel';
 import { ClipPropertiesDockPanel } from './ClipPropertiesDockPanel';
 
-export type DrawerTabId = 'mixer' | 'piano-roll' | 'macros' | 'clip-properties';
+export type DrawerTabId = 'mixer' | 'piano-roll' | 'effects' | 'macros' | 'clip-properties';
 
 export interface EditorBottomDrawerProps {
   /** Same TracksState object EditorLayout reads today — passed through
@@ -39,6 +39,11 @@ export interface EditorBottomDrawerProps {
   setDrawerActiveTab: React.Dispatch<React.SetStateAction<DrawerTabId>>;
   drawerTabOrder: DrawerTabId[];
   setDrawerTabOrder: React.Dispatch<React.SetStateAction<DrawerTabId[]>>;
+  /** The Effects panel, when it is docked into this drawer (2026-11-10):
+   *  the host's TrackEffectsPanel in its columns layout; null otherwise */
+  effects?: React.ReactNode;
+  onCloseEffects?: () => void;
+  onEffectsMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   /** Whether the Macros panel is docked into this drawer */
   macrosOpen?: boolean;
   onCloseMacros?: () => void;
@@ -52,7 +57,7 @@ export interface EditorBottomDrawerProps {
    *  host pops it into its OS window mid-gesture, as the side docks do
    *  (2026-10-02 — the drawer had no way out but the kebab menu). Only
    *  the dockable tabs (Macros, Clip properties) tear; Mixer and Piano
-   *  roll live here. */
+   *  roll live here; Effects tears too since 2026-11-10. */
   onTabTearOff?: (
     tabId: string,
     e: { clientX: number; clientY: number; screenX: number; screenY: number; pointerId: number },
@@ -85,6 +90,9 @@ export function EditorBottomDrawer({
   setDrawerActiveTab,
   drawerTabOrder,
   setDrawerTabOrder,
+  effects,
+  onCloseEffects,
+  onEffectsMenuClick,
   macrosOpen,
   onCloseMacros,
   onMacrosMenuClick,
@@ -102,18 +110,21 @@ export function EditorBottomDrawer({
 
   const mixerOpen = showMixer && activeMenuItem !== 'export';
   const pianoRollOpen = state.pianoRollOpen && state.pianoRollTrackIndex !== null;
-  if (!mixerOpen && !pianoRollOpen && !macrosOpen && !clipPropertiesOpen) return null;
+  const effectsOpen = !!effects;
+  if (!mixerOpen && !pianoRollOpen && !effectsOpen && !macrosOpen && !clipPropertiesOpen) return null;
 
   // Build tabs for open panels, respecting user's drag order
   const allTabDefs: Record<string, PanelHeaderTab> = {
     mixer: { id: 'mixer', label: 'Mixer' },
     'piano-roll': { id: 'piano-roll', label: 'Piano roll' },
+    effects: { id: 'effects', label: 'Effects' },
     macros: { id: 'macros', label: 'Macro manager' },
     'clip-properties': { id: 'clip-properties', label: 'Clip properties' },
   };
   const openIds = new Set<string>();
   if (mixerOpen) openIds.add('mixer');
   if (pianoRollOpen) openIds.add('piano-roll');
+  if (effectsOpen) openIds.add('effects');
   if (macrosOpen) openIds.add('macros');
   if (clipPropertiesOpen) openIds.add('clip-properties');
   const tabs: PanelHeaderTab[] = drawerTabOrder
@@ -132,6 +143,8 @@ export function EditorBottomDrawer({
       window.dispatchEvent(new CustomEvent('close-mixer-panel'));
     } else if (tabId === 'piano-roll') {
       dispatch({ type: 'SET_PIANO_ROLL_OPEN', payload: { open: false } });
+    } else if (tabId === 'effects') {
+      onCloseEffects?.();
     } else if (tabId === 'macros') {
       onCloseMacros?.();
     } else if (tabId === 'clip-properties') {
@@ -162,9 +175,11 @@ export function EditorBottomDrawer({
         onTabChange={(tabId) => setDrawerActiveTab(tabId as DrawerTabId)}
         onTabReorder={(newTabs) => setDrawerTabOrder(newTabs.map(t => t.id) as DrawerTabId[])}
         onTabTearOff={onTabTearOff
-          ? (tabId, e) => { if (tabId === 'macros' || tabId === 'clip-properties') onTabTearOff(tabId, e); }
+          ? (tabId, e) => { if (tabId === 'effects' || tabId === 'macros' || tabId === 'clip-properties') onTabTearOff(tabId, e); }
           : undefined}
-        onMenuClick={activeTab === 'macros'
+        onMenuClick={activeTab === 'effects'
+          ? onEffectsMenuClick
+          : activeTab === 'macros'
           ? onMacrosMenuClick
           : activeTab === 'clip-properties'
           ? onClipPropertiesMenuClick
@@ -192,6 +207,8 @@ export function EditorBottomDrawer({
         tabGroupId="dock-tabs-end"
       />
 
+      {/* Effects content — the host's panel, in its columns layout */}
+      {activeTab === 'effects' && effects}
       {/* Macros content — same sandbox wiring as the side docks */}
       {activeTab === 'macros' && macrosOpen && <MacrosDockPanel placement="end" />}
       {activeTab === 'clip-properties' && clipPropertiesOpen && <ClipPropertiesDockPanel placement="end" layout="columns" />}

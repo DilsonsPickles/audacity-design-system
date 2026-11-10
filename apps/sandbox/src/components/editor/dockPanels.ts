@@ -8,8 +8,11 @@
  */
 export type DockPanelId = 'effects' | 'macros' | 'clip-properties';
 
-/** Where a panel can sit. Effects never docks bottom (it is not a
- *  drawer kind of panel); the others take all four. */
+/** Where a panel can sit — every panel takes all four. (Effects never
+ *  docked bottom until 2026-11-10, "the effects panel and macro manager
+ *  panels… should be able to live in the bottom panel if the user so
+ *  chooses": in the drawer it lays its sections side by side, the slots in
+ *  columns — EffectsPanel `layout="columns"`.) */
 export type PanelSide = 'left' | 'right' | 'bottom' | 'window';
 
 export const DOCK_PANEL_LABELS: Record<DockPanelId, string> = {
@@ -17,6 +20,3 @@ export const DOCK_PANEL_LABELS: Record<DockPanelId, string> = {
   macros: 'Macro manager',
   'clip-properties': 'Clip properties',
 };
-
-/** Panels that may dock into the bottom drawer */
-export const docksBottom = (panel: DockPanelId): boolean => panel !== 'effects';

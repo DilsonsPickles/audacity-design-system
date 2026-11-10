@@ -44,7 +44,7 @@ import { ClipPropertiesDockPanel } from './editor/ClipPropertiesDockPanel';
 import { useClipPropertiesHotkey } from '../hooks/useClipPropertiesHotkey';
 import { useFadeDialogHotkey } from '../hooks/useFadeDialogHotkey';
 import { usePlayheadClipHotkeys } from '../hooks/usePlayheadClipHotkeys';
-import { type DockPanelId, type PanelSide, DOCK_PANEL_LABELS, docksBottom } from './editor/dockPanels';
+import { type DockPanelId, type PanelSide, DOCK_PANEL_LABELS } from './editor/dockPanels';
 import { useTrackPanelHandlers } from '../hooks/useTrackPanelHandlers';
 import {
   findTrackControlPanelByIndex,
@@ -178,13 +178,13 @@ const STYLE_FLEX_ROW_OVERFLOW_HIDDEN: React.CSSProperties = { flex: 1, display: 
 function dockZoneAt(
   x: number,
   y: number,
-  panel: DockPanelId,
+  _panel: DockPanelId,
   rect: DOMRect,
 ): 'left' | 'right' | 'bottom' | null {
   if (y < rect.top || y > rect.bottom || x < rect.left || x > rect.right) return null;
   if (x <= rect.left + DOCK_ZONE_SIZE) return 'left';
   if (x >= rect.right - DOCK_ZONE_SIZE) return 'right';
-  if (docksBottom(panel) && y >= rect.bottom - DOCK_ZONE_SIZE) return 'bottom';
+  if (y >= rect.bottom - DOCK_ZONE_SIZE) return 'bottom';
   return null;
 }
 
@@ -259,7 +259,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   }>({ open: false, x: 0, y: 0, anchorRect: null });
   const [drawerHeight, setDrawerHeight] = React.useState(376);
   const [drawerActiveTab, setDrawerActiveTab] = React.useState<DrawerTabId>('mixer');
-  const [drawerTabOrder, setDrawerTabOrder] = React.useState<DrawerTabId[]>(['mixer', 'piano-roll', 'macros', 'clip-properties']);
+  const [drawerTabOrder, setDrawerTabOrder] = React.useState<DrawerTabId[]>(['mixer', 'piano-roll', 'effects', 'macros', 'clip-properties']);
 
   // Side docks — the left dock hosts Effects and (optionally) Macros as
   // tabs. The Macros panel opens floating by default; its tab's kebab menu
@@ -282,9 +282,10 @@ export function EditorLayout(props: EditorLayoutProps) {
   const [leftDockActiveTab, setLeftDockActiveTab] = React.useState<DockPanelId>('effects');
   const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'macros', 'clip-properties']);
   // Effects panel placement — docked left (the classic position), docked
-  // right, or floating in its own OS window, moved via its tab's kebab
-  // menu or by dragging its tab/header.
-  const [effectsPanelSide, setEffectsPanelSide] = React.useState<'left' | 'right' | 'window'>('left');
+  // right, in the BOTTOM DRAWER (2026-11-10, its sections side by side), or
+  // floating in its own OS window, moved via its tab's kebab menu or by
+  // dragging its tab/header.
+  const [effectsPanelSide, setEffectsPanelSide] = React.useState<PanelSide>('left');
   // The right dock hosts Effects and/or Macros as tabs, mirroring the left
   const [rightDockActiveTab, setRightDockActiveTab] = React.useState<DockPanelId>('macros');
   const [rightDockTabOrder, setRightDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'macros', 'clip-properties']);
@@ -295,6 +296,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   const effectsOpen = activeMenuItem !== 'export' && !!effectsPanel?.isOpen;
   const effectsDockedLeft = effectsOpen && effectsPanelSide === 'left';
   const effectsDockedRight = effectsOpen && effectsPanelSide === 'right';
+  const effectsDockedBottom = effectsOpen && effectsPanelSide === 'bottom';
   const effectsInWindow = effectsOpen && effectsPanelSide === 'window';
   const macrosDockedLeft = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'left';
   const macrosDockedRight = activeMenuItem !== 'export' && isMacrosPanelOpen && macrosPanelSide === 'right';
@@ -311,6 +313,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   React.useEffect(() => {
     if (effectsPanel?.isOpen && effectsPanelSide === 'left') setLeftDockActiveTab('effects');
     if (effectsPanel?.isOpen && effectsPanelSide === 'right') setRightDockActiveTab('effects');
+    if (effectsPanel?.isOpen && effectsPanelSide === 'bottom') setDrawerActiveTab('effects');
   }, [effectsPanel?.isOpen, effectsPanelSide]);
   React.useEffect(() => {
     if (isMacrosPanelOpen && macrosPanelSide === 'left') setLeftDockActiveTab('macros');
@@ -356,6 +359,11 @@ export function EditorLayout(props: EditorLayoutProps) {
     setDockMenu({ x: rect.right, y: rect.bottom, tab: 'macros' });
   };
 
+  const openEffectsDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setDockMenu({ x: rect.right, y: rect.bottom, tab: 'effects' });
+  };
+
   const openClipPropertiesDockMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setDockMenu({ x: rect.right, y: rect.bottom, tab: 'clip-properties' });
@@ -396,7 +404,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     const zone = dockZoneAt(x, y, panel, rowRect);
     if (!zone) return;
     if (panel === 'effects') {
-      if (zone !== 'bottom') setEffectsPanelSide(zone);
+      setEffectsPanelSide(zone);
     } else if (panel === 'macros') {
       setMacrosPanelSide(zone);
     } else {
@@ -1601,9 +1609,7 @@ export function EditorLayout(props: EditorLayoutProps) {
         right: { left: r.right - 280, top: r.top, width: 280, height: r.height },
         bottom: { left: r.left, top: r.bottom - bottomPreviewH, width: r.width, height: bottomPreviewH },
       };
-      const zones: Array<'left' | 'right' | 'bottom'> = docksBottom(panelDrag.panel)
-        ? ['left', 'right', 'bottom']
-        : ['left', 'right'];
+      const zones: Array<'left' | 'right' | 'bottom'> = ['left', 'right', 'bottom'];
       return (
         <DockZoneOverlay bands={zones.map((zone) => ({ zone, band: bandStyles[zone], preview: previewStyles[zone], active: panelDrag.zone === zone }))} />
       );
@@ -1624,6 +1630,7 @@ export function EditorLayout(props: EditorLayoutProps) {
         menuItems={[
           { label: 'Dock left', onClick: () => setEffectsPanelSide('left') },
           { label: 'Dock right', onClick: () => setEffectsPanelSide('right') },
+          { label: 'Dock bottom', onClick: () => setEffectsPanelSide('bottom') },
           { label: '', isDivider: true },
           { label: 'Close', onClick: () => setEffectsPanel(null) },
         ]}
@@ -1702,7 +1709,7 @@ export function EditorLayout(props: EditorLayoutProps) {
         const tab = dockMenu.tab;
         const side = tab === 'effects' ? effectsPanelSide : tab === 'macros' ? macrosPanelSide : clipPropertiesSide;
         const place = (next: PanelSide) => {
-          if (tab === 'effects') { if (next !== 'bottom') setEffectsPanelSide(next); }
+          if (tab === 'effects') setEffectsPanelSide(next);
           else if (tab === 'macros') setMacrosPanelSide(next);
           else setClipPropertiesSide(next);
           setDockMenu(null);
@@ -1717,7 +1724,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           <>
             {side !== 'left' && <ContextMenuItem label="Dock left" onClick={() => place('left')} />}
             {side !== 'right' && <ContextMenuItem label="Dock right" onClick={() => place('right')} />}
-            {docksBottom(tab) && side !== 'bottom' && <ContextMenuItem label="Dock bottom" onClick={() => place('bottom')} />}
+            {side !== 'bottom' && <ContextMenuItem label="Dock bottom" onClick={() => place('bottom')} />}
             {side !== 'window' && <ContextMenuItem label="Open in window" onClick={() => place('window')} />}
             <ContextMenuItem isDivider label="" />
             <ContextMenuItem label="Close" onClick={close} />
@@ -1729,6 +1736,24 @@ export function EditorLayout(props: EditorLayoutProps) {
     {/* Bottom Drawer — unified tabbed panel for Mixer, Piano Roll and (when
         docked bottom) Macros */}
     <EditorBottomDrawer
+      effects={effectsDockedBottom && effectsPanel ? (
+        <TrackEffectsPanel
+          effectsPanel={effectsPanel}
+          tracks={state.tracks}
+          masterEffects={state.masterEffects}
+          masterEffectsEnabled={state.masterEffectsEnabled}
+          museHubSignedIn={museHubSignedIn}
+          installedEffects={installedEffects}
+          disabledPluginIds={disabledPluginIds}
+          setEffectPicker={setEffectPicker}
+          setEffectDialog={setEffectDialog}
+          setEffectsPanel={setEffectsPanel}
+          setMarketplaceModal={setMarketplaceModal}
+          layout="columns"
+        />
+      ) : null}
+      onCloseEffects={() => setEffectsPanel(null)}
+      onEffectsMenuClick={openEffectsDockMenu}
       macrosOpen={macrosDockedBottom}
       onCloseMacros={() => setIsMacrosPanelOpen(false)}
       onMacrosMenuClick={openDockMenu}

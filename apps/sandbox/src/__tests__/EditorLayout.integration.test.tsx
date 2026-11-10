@@ -2403,6 +2403,20 @@ describe('Focus routing', () => {
     fireEvent.click(menuItem('Dock left')!);
     await waitFor(() => expect(container.querySelector('.side-panel--right')).toBeNull());
     expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy();
+
+    // …and into the BOTTOM DRAWER (2026-11-10): its Effects tab, the
+    // sections side by side; the side dock lets it go
+    fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
+    fireEvent.click(menuItem('Dock bottom')!);
+    await waitFor(() => expect(container.querySelector('.effects-panel--columns')).toBeTruthy());
+    expect(container.querySelectorAll('.effects-panel')).toHaveLength(1);
+    expect(Array.from(container.querySelectorAll('[role="tab"][aria-selected="true"]')).some((t) => t.textContent?.includes('Effects'))).toBe(true);
+    // Its menu offers the sides again, not the drawer it is in
+    fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
+    expect(menuItem('Dock bottom')).toBeUndefined();
+    fireEvent.click(menuItem('Dock left')!);
+    await waitFor(() => expect(container.querySelector('.effects-panel--columns')).toBeNull());
+    expect(container.querySelector('.effects-panel')).toBeTruthy();
   });
 
   it('tearing a docked tab pops the panel into its OS window mid-drag and docks on release', async () => {
