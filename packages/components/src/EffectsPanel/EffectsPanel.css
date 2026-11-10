@@ -333,7 +333,10 @@
 
 /* COLUMNS: the panel docked in the bottom drawer (2026-11-10) — the track
    and master sections side by side, a line between; in each, the slots
-   flow down, then across in 240px columns, the stack scrolling sideways */
+   flow down, then across in columns that SHARE THE SECTION'S WIDTH ("can
+   the effect slots fill the width?" — one column is the whole section,
+   more divide it, none under 240px; past that the stack scrolls sideways).
+   A slot row is the slot's 40px (24 + 8 above and below), 6 between. */
 .effects-panel--columns .effects-panel__content { flex-direction: row; }
 .effects-panel--columns .effects-panel__track-section,
 .effects-panel--columns .effects-panel__master-section {
@@ -343,11 +346,15 @@
 }
 .effects-panel--columns .effects-panel__master-section { border-left: 1px solid var(--ep-section-border); }
 .effects-panel--columns .effects-panel__effect-stack {
-  flex-wrap: wrap;
-  align-content: flex-start;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(auto-fill, 40px);
+  grid-auto-columns: minmax(240px, 1fr);
+  row-gap: 6px;
   column-gap: 16px;
+  align-content: start;
   overflow-x: auto;
   overflow-y: hidden;
   border-bottom: none;
 }
-.effects-panel--columns .effect-slot { width: 240px; }
+.effects-panel--columns .effect-slot { width: auto; min-width: 0; }
