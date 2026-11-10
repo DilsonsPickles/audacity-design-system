@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
-import { isVerticalRegion, type BarPlacement, type ToolbarBar, type ToolbarBarAxis, type ToolbarOrientation, type ToolbarRegion } from '../utils/toolbarLayout';
+import { isVerticalRegion, regionSide, type BarPlacement, type ToolbarBar, type ToolbarBarAxis, type ToolbarOrientation, type ToolbarRegion } from '../utils/toolbarLayout';
 import { Flyout } from '../Flyout';
 import '../assets/fonts/musescore-icon.css';
 import './ToolbarDock.css';
@@ -390,7 +390,7 @@ export function ToolbarDock({
             const r = e.currentTarget.getBoundingClientRect();
             setOverflowOpen({
               barId: d.bar.id,
-              x: vertical ? (region === 'right' ? r.left : r.right) : r.left + r.width / 2,
+              x: vertical ? (regionSide(region) === 'right' ? r.left : r.right) : r.left + r.width / 2,
               y: vertical ? r.top + r.height / 2 : (region === 'bottom' ? r.top : r.bottom),
             });
           }}
@@ -473,6 +473,8 @@ export function ToolbarDock({
   const classes = [
     'toolbar-dock',
     `toolbar-dock--${region}`,
+    // (an inner dock is styled as the side it faces from)
+    region !== regionSide(region) ? `toolbar-dock--${regionSide(region)} toolbar-dock--inner` : '',
     vertical ? 'toolbar-dock--vertical' : 'toolbar-dock--horizontal',
     empty ? 'toolbar-dock--empty' : '',
     editing ? 'toolbar-dock--editing' : '',
@@ -528,7 +530,7 @@ export function ToolbarDock({
           onClose={() => setOverflowOpen(null)}
           x={overflowOpen.x}
           y={overflowOpen.y}
-          direction={region === 'bottom' ? 'up' : region === 'left' ? 'right' : region === 'right' ? 'left' : 'down'}
+          direction={region === 'bottom' ? 'up' : regionSide(region) === 'left' ? 'right' : regionSide(region) === 'right' ? 'left' : 'down'}
           ariaLabel="More tools"
           className="toolbar-dock__overflow-flyout"
         >

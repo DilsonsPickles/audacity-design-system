@@ -5,7 +5,7 @@ import {
 } from '../toolbarLayout';
 
 /** A dock's rows as lists of bar ids */
-const rows = (l: ToolbarLayout, r: ToolbarRegion) => l[r].map((row) => row.map((b) => b.id));
+const rows = (l: ToolbarLayout, r: ToolbarRegion) => (l[r] ?? []).map((row) => row.map((b) => b.id));
 
 describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-10)', () => {
   it('every workspace seeds ONE row on top, transport first, and the status bar as the bottom dock\'s row', () => {
@@ -173,5 +173,18 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(withCustomiseTool(clash).top[0][1]).toEqual({ id: 'bar-1', tools: ['customise'] });
     expect(old.top).toHaveLength(2);
     expect(old.top[1]).toHaveLength(1); // not mutated
+  });
+
+  it('THE INNER DOCKS (2026-11-10): optional — a layout saved without them is still a layout and reads them as empty; bars move into them like any dock', () => {
+    const saved: ToolbarLayout = { top: [[{ id: 'a', tools: ['play'] }]], bottom: [], left: [], right: [] };
+    expect(isToolbarLayout(saved)).toBe(true);
+    expect(coerceToolbarLayout(saved)).toBe(saved);
+    expect(dockBars(saved, 'right-inner')).toEqual([]);
+    const moved = moveBar(saved, 'a', { region: 'right-inner', row: 0, beforeBarId: null });
+    expect(moved['right-inner']).toEqual([[{ id: 'a', tools: ['play'] }]]);
+    expect(findBar(moved, 'a')).toMatchObject({ region: 'right-inner', row: 0 });
+    expect(isToolbarLayout(moved)).toBe(true);
+    // a bad inner dock still fails
+    expect(isToolbarLayout({ ...saved, 'left-inner': 'x' })).toBe(false);
   });
 });

@@ -213,4 +213,21 @@ describe('resolveBarDrop — where a whole bar lands (the grip drag)', () => {
     expect(resolveBarDrop(24, 300, layout, row, true)).toEqual({ region: 'left', placement: { region: 'left', row: 0, beforeBarId: null }, refused: false });
     expect(resolveBarDrop(85, 120, layout, row, true)).toEqual({ region: 'left', placement: { region: 'left', row: 1, beforeBarId: 'm' }, refused: false });
   });
+
+  it('an EMPTY INNER dock takes the drop from its band on the open panel\'s inner edge (2026-11-10)', () => {
+    // a right panel dock at x 1000..1280
+    const panel = document.createElement('div');
+    panel.className = 'dock-panel side-panel--right';
+    panel.getBoundingClientRect = () => rect(1000, 100, 280, 600);
+    host = host ?? document.body.appendChild(document.createElement('div'));
+    host.appendChild(panel);
+    const row = rect(0, 100, 1400, 600);
+    const empty: ToolbarLayout = { top: [], bottom: [], left: [], right: [] };
+    // just left of the panel: the inner dock
+    expect(resolveBarDrop(960, 300, empty, row, true)).toEqual({ region: 'right-inner', placement: { region: 'right-inner', row: 0, beforeBarId: null }, refused: false });
+    // the window's right edge band is still the outer dock
+    expect(resolveBarDrop(1360, 300, empty, row, true)).toMatchObject({ region: 'right' });
+    // a bar with no vertical form is refused there too
+    expect(resolveBarDrop(960, 300, empty, row, false)).toMatchObject({ region: 'right-inner', refused: true });
+  });
 });

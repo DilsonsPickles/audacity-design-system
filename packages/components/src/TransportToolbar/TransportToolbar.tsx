@@ -235,7 +235,8 @@ function meterMeta(onBar: boolean, orientation: ToolbarOrientation): ToolMeta {
 function flyoutAnchor(el: HTMLElement | null, rect?: DOMRect): { x: number; y: number; direction: FlyoutDirection } | null {
   if (!el) return null;
   const r = rect ?? el.getBoundingClientRect();
-  const region = el.closest('[data-toolbar-dock]')?.getAttribute('data-toolbar-dock');
+  // (an inner dock opens as the side it faces from)
+  const region = el.closest('[data-toolbar-dock]')?.getAttribute('data-toolbar-dock')?.replace('-inner', '');
   if (region === 'left') return { x: r.right + 4, y: r.top + r.height / 2, direction: 'right' };
   if (region === 'right') return { x: r.left - 4, y: r.top + r.height / 2, direction: 'left' };
   if (region === 'bottom') return { x: r.left + r.width / 2, y: r.top - 4, direction: 'up' };

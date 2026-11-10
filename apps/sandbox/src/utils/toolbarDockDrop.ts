@@ -1,5 +1,5 @@
-import { findBar, isVerticalRegion, TOOLBAR_REGIONS, type BarPlacement, type ToolbarLayout, type ToolbarRegion } from '@audacity-ui/components';
-import { edgeZoneAt, sideZoneAt } from '../components/editor/DockZoneOverlay';
+import { findBar, isVerticalRegion, regionSide, rowsOf, TOOLBAR_REGIONS, type BarPlacement, type ToolbarLayout, type ToolbarRegion } from '@audacity-ui/components';
+import { edgeZoneAt, innerZoneAt, sideZoneAt } from '../components/editor/DockZoneOverlay';
 
 /** Near the window's top or bottom edge with no dock under the pointer,
  *  that edge's dock takes the drop (the old toolbar gripper's snap); the
@@ -58,7 +58,10 @@ export function locateDockSpot(x: number, y: number, layout: ToolbarLayout, edit
   if (!region) {
     const side = editorRow ? sideZoneAt(x, y, editorRow) : null;
     const edge = editorRow ? edgeZoneAt(x, y, editorRow) : null;
-    if (side) region = side;
+    // An EMPTY inner dock's band, on its open panel's inner edge (2026-11-10)
+    const inner = innerZoneAt(x, y);
+    if (inner && rowsOf(layout, inner).length === 0) region = inner;
+    else if (side) region = side;
     else if (edge && layout[edge].length === 0) region = edge;
     else {
       // Just below the top dock, or just above the bottom one: a new row
@@ -71,12 +74,13 @@ export function locateDockSpot(x: number, y: number, layout: ToolbarLayout, edit
         if (reached) return { region: r, vertical: false, dockEl: el, newRowAt: r === 'top' ? layout.top.length : 0, lineEl: null, row: 0 };
       }
       // …and just past a side dock's inner edge: a new column there
-      for (const r of ['left', 'right'] as const) {
+      for (const r of ['left', 'right', 'left-inner', 'right-inner'] as const) {
         const el = document.querySelector<HTMLElement>(`[data-toolbar-dock="${r}"]`);
         const rect = el?.getBoundingClientRect();
         if (!el || !rect || rect.width <= 0 || y < rect.top || y > rect.bottom) continue;
-        const reached = r === 'left' ? x > rect.right && x <= rect.right + ROW_REACH_PX : x < rect.left && x >= rect.left - ROW_REACH_PX;
-        if (reached) return { region: r, vertical: true, dockEl: el, newRowAt: r === 'left' ? layout.left.length : 0, lineEl: null, row: 0 };
+        const fromLeft = regionSide(r) === 'left';
+        const reached = fromLeft ? x > rect.right && x <= rect.right + ROW_REACH_PX : x < rect.left && x >= rect.left - ROW_REACH_PX;
+        if (reached) return { region: r, vertical: true, dockEl: el, newRowAt: fromLeft ? rowsOf(layout, r).length : 0, lineEl: null, row: 0 };
       }
       if (y < EDGE_SNAP_PX) region = 'top';
       else if (y > window.innerHeight - EDGE_SNAP_PX) region = 'bottom';
@@ -86,7 +90,7 @@ export function locateDockSpot(x: number, y: number, layout: ToolbarLayout, edit
   if (!TOOLBAR_REGIONS.includes(region)) return null;
   const vertical = isVerticalRegion(region);
   const dockEl = under ?? document.querySelector<HTMLElement>(`[data-toolbar-dock="${region}"]`);
-  const lastRow = Math.max(0, layout[region].length - 1);
+  const lastRow = Math.max(0, rowsOf(layout, region).length - 1);
   const lines = dockEl ? Array.from(dockEl.querySelectorAll<HTMLElement>('.toolbar-dock__row')) : [];
   if (lines.length === 0) return { region, vertical, dockEl, newRowAt: null, lineEl: null, row: lastRow };
   // A horizontal dock's lines run across, so the pointer's y picks one; a
@@ -101,8 +105,8 @@ export function locateDockSpot(x: number, y: number, layout: ToolbarLayout, edit
   if (vertical && dockEl) {
     const d = dockEl.getBoundingClientRect();
     if (d.width > 0) {
-      if (region === 'left' && x > d.right && x <= d.right + ROW_REACH_PX) return { region, vertical, dockEl, newRowAt: layout[region].length, lineEl: null, row: lastRow };
-      if (region === 'right' && x < d.left && x >= d.left - ROW_REACH_PX) return { region, vertical, dockEl, newRowAt: 0, lineEl: null, row: 0 };
+      if (regionSide(region) === 'left' && x > d.right && x <= d.right + ROW_REACH_PX) return { region, vertical, dockEl, newRowAt: rowsOf(layout, region).length, lineEl: null, row: lastRow };
+      if (regionSide(region) === 'right' && x < d.left && x >= d.left - ROW_REACH_PX) return { region, vertical, dockEl, newRowAt: 0, lineEl: null, row: 0 };
     }
   }
 
@@ -137,7 +141,7 @@ export function placeBefore(layout: ToolbarLayout, region: ToolbarRegion, barId:
 export function placeAfterLine(layout: ToolbarLayout, region: ToolbarRegion, lastBarId: string, fallbackRow: number): { placement: BarPlacement; lineEndAfter?: string } {
   const home = findBar(layout, lastBarId);
   if (!home || home.region !== region) return { placement: { region, row: fallbackRow, beforeBarId: null } };
-  const next = layout[region][home.row][home.index + 1];
+  const next = rowsOf(layout, region)[home.row][home.index + 1];
   return next
     ? { placement: { region, row: home.row, beforeBarId: next.id }, lineEndAfter: lastBarId }
     : { placement: { region, row: home.row, beforeBarId: null } };

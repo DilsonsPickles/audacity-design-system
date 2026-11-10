@@ -22,9 +22,24 @@
  * items to also be customisable"): its cue, info line, selection timecodes
  * and duration are tools like any other, seeded as two bars.
  */
-export type ToolbarRegion = 'top' | 'bottom' | 'left' | 'right';
+/** The window's four edges, plus — since 2026-11-10, "I should be able to
+ *  put the vertical meters on the left of a panel if I so choose" — a
+ *  dock on each PANEL dock's INNER edge, between it and the canvas:
+ *  'left-inner' (right of the left panels), 'right-inner' (left of the
+ *  right panels). Nesting from the window's edge inward is then: outer
+ *  toolbar dock, panel dock, inner toolbar dock, canvas. */
+export type ToolbarRegion = 'top' | 'bottom' | 'left' | 'right' | 'left-inner' | 'right-inner';
 
-export const TOOLBAR_REGIONS: ReadonlyArray<ToolbarRegion> = ['top', 'bottom', 'left', 'right'];
+export const TOOLBAR_REGIONS: ReadonlyArray<ToolbarRegion> = ['top', 'bottom', 'left', 'right', 'left-inner', 'right-inner'];
+
+/** The two inner docks — optional in a layout (one saved before them has
+ *  neither; read as empty) */
+export type InnerToolbarRegion = 'left-inner' | 'right-inner';
+
+/** The edge a region's dock faces from: an inner dock is a left / right
+ *  dock for its orientation, flyouts and drops */
+export const regionSide = (region: ToolbarRegion): 'top' | 'bottom' | 'left' | 'right' =>
+  region === 'left-inner' ? 'left' : region === 'right-inner' ? 'right' : region;
 
 export interface ToolbarBar {
   /** Stable id — a seed's name ("transport") or "bar-<n>" for one the user made */
@@ -44,14 +59,17 @@ export type ToolbarBarAxis = 'width' | 'height';
 
 export type ToolbarRow = ToolbarBar[];
 
-export type ToolbarLayout = Record<ToolbarRegion, ToolbarRow[]>;
+export type ToolbarLayout = Record<Exclude<ToolbarRegion, InnerToolbarRegion>, ToolbarRow[]> & Partial<Record<InnerToolbarRegion, ToolbarRow[]>>;
+
+/** A dock's rows (an inner dock a layout lacks is empty) */
+export const rowsOf = (layout: ToolbarLayout, region: ToolbarRegion): ToolbarRow[] => layout[region] ?? [];
 
 export type ToolbarWorkspace = 'classic' | 'spectral-editing' | 'modern' | 'music';
 
 /** The orientation a dock renders its tools in */
 export type ToolbarOrientation = 'horizontal' | 'vertical';
 
-export const isVerticalRegion = (region: ToolbarRegion): boolean => region === 'left' || region === 'right';
+export const isVerticalRegion = (region: ToolbarRegion): boolean => regionSide(region) === 'left' || regionSide(region) === 'right';
 
 /**
  * Where a bar goes: INTO an existing row, before a bar of it (null = the
@@ -154,14 +172,15 @@ export const EXPORT_TOOLBAR_LAYOUT: ToolbarLayout = {
 
 /** Every bar of a dock, in order, whatever row it is in */
 export function dockBars(layout: ToolbarLayout, region: ToolbarRegion): ToolbarBar[] {
-  return layout[region].flat();
+  return rowsOf(layout, region).flat();
 }
 
 export function findBar(layout: ToolbarLayout, barId: string): { region: ToolbarRegion; row: number; index: number; bar: ToolbarBar } | null {
   for (const region of TOOLBAR_REGIONS) {
-    for (let row = 0; row < layout[region].length; row++) {
-      const index = layout[region][row].findIndex((b) => b.id === barId);
-      if (index >= 0) return { region, row, index, bar: layout[region][row][index] };
+    const rows = rowsOf(layout, region);
+    for (let row = 0; row < rows.length; row++) {
+      const index = rows[row].findIndex((b) => b.id === barId);
+      if (index >= 0) return { region, row, index, bar: rows[row][index] };
     }
   }
   return null;
@@ -170,8 +189,9 @@ export function findBar(layout: ToolbarLayout, barId: string): { region: Toolbar
 /** The bar holding a tool, or null */
 export function findTool(layout: ToolbarLayout, toolId: string): { region: ToolbarRegion; row: number; bar: ToolbarBar; index: number } | null {
   for (const region of TOOLBAR_REGIONS) {
-    for (let row = 0; row < layout[region].length; row++) {
-      for (const b of layout[region][row]) {
+    const rows = rowsOf(layout, region);
+    for (let row = 0; row < rows.length; row++) {
+      for (const b of rows[row]) {
         const index = b.tools.indexOf(toolId);
         if (index >= 0) return { region, row, bar: b, index };
       }
@@ -190,23 +210,26 @@ export function nextBarId(layout: ToolbarLayout): string {
 
 const cloneLayout = (layout: ToolbarLayout): ToolbarLayout => {
   const next = {} as ToolbarLayout;
-  for (const r of TOOLBAR_REGIONS) next[r] = layout[r].map((row) => row.map((b) => ({ ...b, tools: [...b.tools] })));
+  for (const r of TOOLBAR_REGIONS) next[r] = rowsOf(layout, r).map((row) => row.map((b) => ({ ...b, tools: [...b.tools] })));
   return next;
 };
 
-const sameLayout = (a: ToolbarLayout, b: ToolbarLayout): boolean => TOOLBAR_REGIONS.every((r) =>
-  a[r].length === b[r].length && a[r].every((row, i) =>
-    row.length === b[r][i].length && row.every((x, j) => {
-      const y = b[r][i][j];
+const sameLayout = (a: ToolbarLayout, b: ToolbarLayout): boolean => TOOLBAR_REGIONS.every((r) => {
+  const ra = rowsOf(a, r);
+  const rb = rowsOf(b, r);
+  return ra.length === rb.length && ra.every((row, i) =>
+    row.length === rb[i].length && row.every((x, j) => {
+      const y = rb[i][j];
       return x.id === y.id && x.width === y.width && x.height === y.height
         && x.tools.length === y.tools.length && x.tools.every((t, k) => t === y.tools[k]);
-    })));
+    }));
+});
 
 /** Bars with no tools are dropped, then rows with no bars; empty docks stay */
 export function normaliseLayout(layout: ToolbarLayout): ToolbarLayout {
   const next = {} as ToolbarLayout;
   for (const r of TOOLBAR_REGIONS) {
-    next[r] = layout[r].map((row) => row.filter((b) => b.tools.length > 0)).filter((row) => row.length > 0);
+    next[r] = rowsOf(layout, r).map((row) => row.filter((b) => b.tools.length > 0)).filter((row) => row.length > 0);
   }
   return next;
 }
@@ -214,7 +237,7 @@ export function normaliseLayout(layout: ToolbarLayout): ToolbarLayout {
 /** Put `item` where the placement says, in a layout whose emptied bars and
  *  rows are STILL IN PLACE (so row indices mean what the caller saw) */
 function place(next: ToolbarLayout, item: ToolbarBar, placement: BarPlacement): void {
-  const rows = next[placement.region];
+  const rows = next[placement.region] ?? (next[placement.region] = []);
   if ('newRowAt' in placement) {
     rows.splice(Math.max(0, Math.min(placement.newRowAt, rows.length)), 0, [item]);
     return;
@@ -237,10 +260,10 @@ export function moveBar(layout: ToolbarLayout, barId: string, placement: BarPlac
   // "Before itself" means before whatever follows it
   let target = placement;
   if (!('newRowAt' in placement) && placement.beforeBarId === barId) {
-    target = { ...placement, beforeBarId: layout[found.region][found.row][found.index + 1]?.id ?? null };
+    target = { ...placement, beforeBarId: rowsOf(layout, found.region)[found.row][found.index + 1]?.id ?? null };
   }
   const next = cloneLayout(layout);
-  const [moved] = next[found.region][found.row].splice(found.index, 1);
+  const [moved] = rowsOf(next, found.region)[found.row].splice(found.index, 1);
   place(next, moved, target);
   const result = normaliseLayout(next);
   return sameLayout(result, layout) ? layout : result;
@@ -255,7 +278,7 @@ export function moveBar(layout: ToolbarLayout, barId: string, placement: BarPlac
 export function moveTool(layout: ToolbarLayout, toolId: string, barId: string, beforeToolId: string | null): ToolbarLayout {
   if (!findTool(layout, toolId) || !findBar(layout, barId) || beforeToolId === toolId) return layout;
   const next = cloneLayout(layout);
-  for (const r of TOOLBAR_REGIONS) for (const row of next[r]) for (const b of row) b.tools = b.tools.filter((t) => t !== toolId);
+  for (const r of TOOLBAR_REGIONS) for (const row of rowsOf(next, r)) for (const b of row) b.tools = b.tools.filter((t) => t !== toolId);
   const target = findBar(next, barId)!.bar;
   const at = beforeToolId === null ? -1 : target.tools.indexOf(beforeToolId);
   if (at < 0) target.tools.push(toolId);
@@ -318,9 +341,8 @@ const isBar = (b: unknown): b is ToolbarBar =>
 export function isToolbarLayout(value: unknown): value is ToolbarLayout {
   if (!value || typeof value !== 'object') return false;
   const v = value as Record<string, unknown>;
-  return TOOLBAR_REGIONS.every((r) => Array.isArray(v[r]) && (v[r] as unknown[]).every(
-    (row) => Array.isArray(row) && row.every(isBar),
-  ));
+  return TOOLBAR_REGIONS.every((r) => (v[r] === undefined && (r === 'left-inner' || r === 'right-inner'))
+    || (Array.isArray(v[r]) && (v[r] as unknown[]).every((row) => Array.isArray(row) && row.every(isBar))));
 }
 
 /**
@@ -333,6 +355,8 @@ export function coerceToolbarLayout(value: unknown): ToolbarLayout | null {
   const v = value as Record<string, unknown>;
   const next = {} as ToolbarLayout;
   for (const r of TOOLBAR_REGIONS) {
+    // (an inner dock a layout lacks stays absent: read as empty)
+    if (v[r] === undefined && (r === 'left-inner' || r === 'right-inner')) continue;
     const dock = v[r];
     if (!Array.isArray(dock)) return null;
     if (dock.every(isBar)) next[r] = dock.length ? [dock as ToolbarBar[]] : [];

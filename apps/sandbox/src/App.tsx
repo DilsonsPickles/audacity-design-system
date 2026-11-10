@@ -81,9 +81,9 @@ import { useToolbarLayout } from './hooks/useToolbarLayout';
 import { useToolbarBarDrag } from './hooks/useToolbarBarDrag';
 import { AppToolbarDock, type ToolbarDockDrag } from './components/AppToolbarDock';
 import { useToolbarToolDrag } from './hooks/useToolbarToolDrag';
-import { DockZoneOverlay, edgeBand, sideBand } from './components/editor/DockZoneOverlay';
+import { DockZoneOverlay, edgeBand, innerBand, panelDockRects, sideBand } from './components/editor/DockZoneOverlay';
 import { renderStatusTool, statusToolMeta, type StatusBarToolsDeps } from './components/StatusBarTools';
-import { findBar, findTool, transportToolMeta, type ToolbarRegion } from '@audacity-ui/components';
+import { findBar, findTool, rowsOf, transportToolMeta, type ToolbarRegion } from '@audacity-ui/components';
 import { useAudioDeviceMenu } from './hooks/useAudioDeviceMenu';
 import { useFocusDebugger } from './hooks/useFocusDebugger';
 import { HandleHintProvider, useHandleHint } from './contexts/HandleHintContext';
@@ -412,7 +412,7 @@ function CanvasDemoContent() {
   const setRecordingMeterOnBar = (on: boolean) => updatePreference('recordingMeterOnToolbar', on);
   const toolInSideDock = (toolId: string) => {
     const region = findTool(toolbarLayout.layout, toolId)?.region;
-    return region === 'left' || region === 'right';
+    return region === 'left' || region === 'right' || region === 'left-inner' || region === 'right-inner';
   };
   const meterOrientation: 'flyout' | 'horizontal' | 'vertical' = !meterOnBar ? 'flyout'
     : toolInSideDock('playback-meter') ? 'vertical' : 'horizontal';
@@ -1466,6 +1466,32 @@ function CanvasDemoContent() {
         />
         <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <EditorLayout
+          innerLeftToolbarDock={(
+            <AppToolbarDock
+              region="left-inner"
+              rows={toolbarLayout.layout['left-inner'] ?? []}
+              renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
+              extraToolMeta={statusToolMeta}
+              drag={dockDrag}
+              onBarResize={toolbarLayout.resizeBar}
+              tabGroupId="tool-dock-left"
+              ariaLabel="Toolbar dock beside the left panels"
+              style={selectionToolbarStyle}
+            />
+          )}
+          innerRightToolbarDock={(
+            <AppToolbarDock
+              region="right-inner"
+              rows={toolbarLayout.layout['right-inner'] ?? []}
+              renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
+              extraToolMeta={statusToolMeta}
+              drag={dockDrag}
+              onBarResize={toolbarLayout.resizeBar}
+              tabGroupId="tool-dock-right"
+              ariaLabel="Toolbar dock beside the right panels"
+              style={selectionToolbarStyle}
+            />
+          )}
           activeMenuItem={activeMenuItem}
           trackMenuTriggerRef={trackMenuTriggerRef}
           scrollX={scrollX}
@@ -1571,19 +1597,33 @@ function CanvasDemoContent() {
           (2026-11-10). The hovered band previews the dock's footprint. */}
       {sideDrag?.rowRect && (() => {
         const r = sideDrag.rowRect;
-        const all: ToolbarRegion[] = sideDrag.fits ? ['left', 'right', 'top', 'bottom'] : ['top', 'bottom'];
-        const zones = all.filter((zone) => toolbarLayout.layout[zone].length === 0);
-        const preview: Record<ToolbarRegion, React.CSSProperties> = {
-          left: { left: r.left, top: r.top, width: 48, height: r.height },
-          right: { left: r.right - 48, top: r.top, width: 48, height: r.height },
-          top: { left: r.left, top: r.top, width: r.width, height: 44 },
-          bottom: { left: r.left, top: r.bottom - 44, width: r.width, height: 44 },
+        // (an inner dock's band, on its OPEN panel's inner edge, 2026-11-10)
+        const panels = panelDockRects();
+        const all: ToolbarRegion[] = sideDrag.fits ? ['left', 'right', 'left-inner', 'right-inner', 'top', 'bottom'] : ['top', 'bottom'];
+        const zones = all
+          .filter((zone) => (zone === 'left-inner' ? panels.left : zone === 'right-inner' ? panels.right : true))
+          .filter((zone) => rowsOf(toolbarLayout.layout, zone).length === 0);
+        const preview = (zone: ToolbarRegion): React.CSSProperties => {
+          switch (zone) {
+            case 'left': return { left: r.left, top: r.top, width: 48, height: r.height };
+            case 'right': return { left: r.right - 48, top: r.top, width: 48, height: r.height };
+            case 'left-inner': return { left: panels.left!.right, top: panels.left!.top, width: 48, height: panels.left!.height };
+            case 'right-inner': return { left: panels.right!.left - 48, top: panels.right!.top, width: 48, height: panels.right!.height };
+            case 'top': return { left: r.left, top: r.top, width: r.width, height: 44 };
+            case 'bottom': default: return { left: r.left, top: r.bottom - 44, width: r.width, height: 44 };
+          }
+        };
+        const band = (zone: ToolbarRegion): React.CSSProperties => {
+          if (zone === 'left' || zone === 'right') return sideBand(r, zone);
+          if (zone === 'left-inner') return innerBand(panels.left!, zone);
+          if (zone === 'right-inner') return innerBand(panels.right!, zone);
+          return edgeBand(r, zone);
         };
         return (
           <DockZoneOverlay bands={zones.map((zone) => ({
             zone,
-            band: zone === 'left' || zone === 'right' ? sideBand(r, zone) : edgeBand(r, zone),
-            preview: preview[zone],
+            band: band(zone),
+            preview: preview(zone),
             active: sideDrag.region === zone,
           }))} />
         );

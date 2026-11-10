@@ -79,3 +79,30 @@ export function edgeZoneAt(x: number, y: number, rect: DOMRect): 'top' | 'bottom
   if (y >= rect.bottom - DOCK_ZONE_SIZE) return 'bottom';
   return null;
 }
+
+/** The open PANEL docks' rects (the left / right DockPanel), or null */
+export function panelDockRects(): { left: DOMRect | null; right: DOMRect | null } {
+  if (typeof document === 'undefined') return { left: null, right: null };
+  const rect = (side: 'left' | 'right') => {
+    const r = document.querySelector('.dock-panel.side-panel--' + side)?.getBoundingClientRect();
+    return r && r.width > 0 ? r : null;
+  };
+  return { left: rect('left'), right: rect('right') };
+}
+
+/** The band for an EMPTY INNER toolbar dock (2026-11-10): along its panel
+ *  dock's inner edge, on the canvas side — only while that panel is open */
+export function innerBand(panel: DOMRect, side: 'left-inner' | 'right-inner', inset = 4): React.CSSProperties {
+  return side === 'left-inner'
+    ? { left: panel.right + inset, top: panel.top + inset, width: DOCK_ZONE_SIZE - inset * 2, height: panel.height - inset * 2 }
+    : { left: panel.left - DOCK_ZONE_SIZE + inset, top: panel.top + inset, width: DOCK_ZONE_SIZE - inset * 2, height: panel.height - inset * 2 };
+}
+
+/** Is the point in an inner dock's band? */
+export function innerZoneAt(x: number, y: number, panels = panelDockRects()): 'left-inner' | 'right-inner' | null {
+  const l = panels.left;
+  if (l && y >= l.top && y <= l.bottom && x > l.right && x <= l.right + DOCK_ZONE_SIZE) return 'left-inner';
+  const r = panels.right;
+  if (r && y >= r.top && y <= r.bottom && x < r.left && x >= r.left - DOCK_ZONE_SIZE) return 'right-inner';
+  return null;
+}

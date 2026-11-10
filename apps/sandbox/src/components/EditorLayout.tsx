@@ -59,6 +59,12 @@ import {
 } from '../utils/focusRouting';
 
 export interface EditorLayoutProps {
+  /** The TOOLBAR DOCKS on the panel docks' inner edges, between each panel
+   *  dock and the canvas (2026-11-10, "I should be able to put the vertical
+   *  meters on the left of a panel"): the host's, drawn here so they sit
+   *  inside the panels */
+  innerLeftToolbarDock?: React.ReactNode;
+  innerRightToolbarDock?: React.ReactNode;
   // Active menu
   activeMenuItem: 'home' | 'project' | 'export' | 'debug';
 
@@ -196,6 +202,8 @@ function dockZoneAt(
 export function EditorLayout(props: EditorLayoutProps) {
   const { state, dispatch } = useTracks();
   const {
+    innerLeftToolbarDock,
+    innerRightToolbarDock,
     activeMenuItem,
     trackMenuTriggerRef,
     scrollX, scrollY, onScroll, onTrackHeaderScroll,
@@ -859,6 +867,8 @@ export function EditorLayout(props: EditorLayoutProps) {
           {activeLeftDockTab === 'clip-properties' && propsDockedLeft && <ClipPropertiesDockPanel placement="start" />}
         </DockPanel>
       )}
+      {/* The toolbar dock on the left panels' inner edge (2026-11-10) */}
+      {innerLeftToolbarDock}
 
       {/* Track Control Side Panel - Hidden on export tab */}
       {activeMenuItem !== 'export' && (
@@ -1631,6 +1641,8 @@ export function EditorLayout(props: EditorLayoutProps) {
 
       {/* Right dock — Effects and Macros as tabs, mirroring the left.
           Hidden on export tab. */}
+      {/* The toolbar dock on the right panels' inner edge (2026-11-10) */}
+      {innerRightToolbarDock}
       {rightDockTabs.length > 0 && (
         <DockPanel
           position="right"
