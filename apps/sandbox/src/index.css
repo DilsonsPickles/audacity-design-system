@@ -57,7 +57,11 @@ html.pan-active * {
   min-width: 360px;
 }
 
-/* The project tabs as a dock tool (2026-11-10): the toolbar's 28px row,
-   not the old bar's 40 */
-.project-tabs { display: flex; align-items: center; gap: 2px; }
-.project-tabs .tab { height: 28px; }
+/* The project tabs as a dock tool (2026-11-10): FULL HEIGHT, so they read
+   as tabs ("can we make the tabs full height? so they actually look like
+   tabs?") — the strip reaches through the row's 8px padding to its top and
+   bottom edges (the grip's own trick, -8px margins), so the active tab's
+   underline sits on the row's bottom edge; it takes the controls' 28px in
+   the layout, so the row stays 44 */
+.project-tabs { display: flex; align-items: stretch; gap: 2px; height: 44px; margin: -8px 0; }
+.project-tabs .tab { height: 100%; box-sizing: border-box; }
