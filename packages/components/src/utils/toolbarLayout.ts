@@ -100,7 +100,8 @@ const projectBars = (): ToolbarBar[] => [
   { id: 'project-tabs', tools: [PROJECT_TAB_TOOL_ID] },
   { id: 'project-actions', tools: ['mixer-button', 'audio-setup', 'share-audio', 'get-effects'] },
   { id: 'workspace', tools: ['workspace'] },
-  { id: 'history', tools: ['undo-redo'] },
+  // (two tools since 2026-11-10, "undo and redo can be two separate buttons")
+  { id: 'history', tools: ['undo', 'redo'] },
 ];
 /** Every project tool id */
 export const PROJECT_TOOL_IDS: ReadonlyArray<string> = projectBars().flatMap((b) => b.tools);
@@ -357,7 +358,15 @@ export function withCustomiseTool(layout: ToolbarLayout): ToolbarLayout {
  * saved before they were tools — a copy with the missing ones as a new
  * FIRST ROW of the top dock, in the old project toolbar's order.
  */
-export function withProjectTools(layout: ToolbarLayout): ToolbarLayout {
+export function withProjectTools(input: ToolbarLayout): ToolbarLayout {
+  // The combined 'undo-redo' tool of the first cut becomes the pair, in place
+  let layout = input;
+  if (findTool(layout, 'undo-redo')) {
+    layout = cloneLayout(layout);
+    for (const r of TOOLBAR_REGIONS) for (const row of rowsOf(layout, r)) for (const b of row) {
+      b.tools = b.tools.flatMap((t) => (t === 'undo-redo' ? ['undo', 'redo'] : [t]));
+    }
+  }
   const missing = PROJECT_TOOL_IDS.filter((id) => !findTool(layout, id));
   if (missing.length === 0) return layout;
   const taken = new Set(TOOLBAR_REGIONS.flatMap((r) => dockBars(layout, r).map((b) => b.id)));

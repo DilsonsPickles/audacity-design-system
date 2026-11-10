@@ -349,7 +349,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
         top: [{ id: 'transport', tools: ['play', 'stop', 'record'] }, { id: 'zoom', tools: ['zoom-in', 'zoom-out'] }],
         // (the cog and the project tools in the status bar, so the top rows are the two bars alone)
         bottom: [{ id: 'status', tools: ['status-cue', 'status-info'] }, { id: 'customise', tools: ['customise'] },
-          { id: 'project', tools: ['project-tabs', 'mixer-button', 'audio-setup', 'share-audio', 'get-effects', 'workspace', 'undo-redo'] }], left: [], right: [],
+          { id: 'project', tools: ['project-tabs', 'mixer-button', 'audio-setup', 'share-audio', 'get-effects', 'workspace', 'undo', 'redo'] }], left: [], right: [],
       } },
     });
     fireEvent.click(getByText('Project'));

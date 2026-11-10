@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dropdown, GhostButton, Tab, type ToolMeta, type ToolbarOrientation } from '@audacity-ui/components';
+import { Dropdown, GhostButton, Tab, ToolButton, type ToolMeta, type ToolbarOrientation } from '@audacity-ui/components';
 
 type MenuItem = 'home' | 'project' | 'export' | 'debug';
 
@@ -30,7 +30,7 @@ const TABS: ReadonlyArray<{ id: MenuItem; label: string }> = [
 /**
  * THE PROJECT TOOLBAR'S PIECES AS TOOLS (2026-11-10, "bring those into the
  * toolbar layout chaos"): the tabs, the four actions, the workspace picker
- * and undo / redo, drawn wherever the docks put them. The ids are seeded
+ * and undo and redo, drawn wherever the docks put them. The ids are seeded
  * by components' defaultToolbarLayout as the top dock's first row. In a
  * side dock the actions and the history are their icons alone; the tabs
  * and the workspace picker have no vertical form. Null for any other id.
@@ -70,13 +70,13 @@ export function renderProjectTool(id: string, orientation: ToolbarOrientation, d
           <Dropdown value={deps.workspace} width="162px" options={[...deps.workspaceOptions]} onChange={deps.onWorkspacePick} />
         </div>
       );
-    case 'undo-redo':
-      return (
-        <div style={{ display: 'inline-flex', flexDirection: vertical ? 'column' : 'row', gap: 4 }} data-project-tool="history">
-          <GhostButton icon="undo" ariaLabel="Undo" size="medium" onClick={() => deps.onUndo()} />
-          <GhostButton icon="redo" ariaLabel="Redo" size="medium" onClick={() => deps.onRedo()} />
-        </div>
-      );
+    // Two tools, each the toolbar's standard icon button (2026-11-10, "undo
+    // and redo can be two separate buttons. Make them use the standard icon
+    // button that the other tools do")
+    case 'undo':
+      return <ToolButton icon="undo" ariaLabel="Undo" onClick={() => deps.onUndo()} />;
+    case 'redo':
+      return <ToolButton icon="redo" ariaLabel="Redo" onClick={() => deps.onRedo()} />;
     default:
       return null;
   }
@@ -86,7 +86,7 @@ export function renderProjectTool(id: string, orientation: ToolbarOrientation, d
 export function projectToolMeta(id: string): ToolMeta | undefined {
   switch (id) {
     case 'project-tabs': case 'workspace': return { vertical: false };
-    case 'mixer-button': case 'audio-setup': case 'share-audio': case 'get-effects': case 'undo-redo': return { vertical: true };
+    case 'mixer-button': case 'audio-setup': case 'share-audio': case 'get-effects': case 'undo': case 'redo': return { vertical: true };
     default: return undefined;
   }
 }

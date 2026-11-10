@@ -19,10 +19,10 @@ describe('CustomiseToolbarMenu — the cog\'s popover (2026-10-07)', () => {
     const rows = [...menu.querySelectorAll('[role="menuitemcheckbox"]')];
     expect(rows.map((r) => r.getAttribute('data-customise-tool'))).toEqual([...CUSTOMISE_TOOLBAR_TOOL_IDS]);
     // the project toolbar's buttons first (2026-11-10), then the transport
-    expect(rows.slice(0, 6).map((r) => r.getAttribute('data-customise-tool'))).toEqual(['mixer-button', 'audio-setup', 'share-audio', 'get-effects', 'workspace', 'undo-redo']);
+    expect(rows.slice(0, 7).map((r) => r.getAttribute('data-customise-tool'))).toEqual(['mixer-button', 'audio-setup', 'share-audio', 'get-effects', 'workspace', 'undo', 'redo']);
     expect(rows[0].textContent).toContain('Mixer');
     expect(menu.querySelector('[data-customise-tool="project-tabs"]')).toBeNull(); // the way back to Home is never hidden
-    expect(rows[6].textContent).toContain('Play');
+    expect(rows[7].textContent).toContain('Play');
     expect(rows[0].getAttribute('aria-checked')).toBe('true');
     const zoomIn = menu.querySelector('[data-customise-tool="zoom-in"]') as HTMLElement;
     expect(zoomIn.getAttribute('aria-checked')).toBe('false');

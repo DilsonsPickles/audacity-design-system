@@ -47,8 +47,13 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     // the tabs moved into the transport row: only the rest come back, and the tabs stay put
     const moved = moveBar(full, 'project-tabs', { region: 'top', row: 1, beforeBarId: 'transport' });
     expect(withProjectTools(moved)).toBe(moved);
-    const partial = moveTool(moved, 'undo-redo', 'transport', null);
+    const partial = moveTool(moved, 'undo', 'transport', null);
     expect(withProjectTools(partial)).toBe(partial);
+    // the first cut's combined 'undo-redo' becomes the pair, in place
+    const combined: ToolbarLayout = { top: [[{ id: 'h', tools: ['play', 'undo-redo'] }]], bottom: [], left: [], right: [] };
+    const split = withProjectTools(combined);
+    expect(findBar(split, 'h')!.bar.tools).toEqual(['play', 'undo', 'redo']);
+    expect(findTool(split, 'undo-redo')).toBeNull();
   });
 
   it('moveBar moves a bar within its row, between docks, and before itself is no change', () => {
