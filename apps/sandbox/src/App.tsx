@@ -83,7 +83,7 @@ import { AppToolbarDock, type ToolbarDockDrag } from './components/AppToolbarDoc
 import { useToolbarToolDrag } from './hooks/useToolbarToolDrag';
 import { DockZoneOverlay, sideBand } from './components/editor/DockZoneOverlay';
 import { renderStatusTool, statusToolMeta, type StatusBarToolsDeps } from './components/StatusBarTools';
-import { transportToolMeta } from '@audacity-ui/components';
+import { findBar, transportToolMeta } from '@audacity-ui/components';
 import { useAudioDeviceMenu } from './hooks/useAudioDeviceMenu';
 import { useFocusDebugger } from './hooks/useFocusDebugger';
 import { HandleHintProvider, useHandleHint } from './contexts/HandleHintContext';
@@ -340,14 +340,15 @@ function CanvasDemoContent() {
   const [timelineFormat, setTimelineFormat] = React.useState<'minutes-seconds' | 'beats-measures'>('minutes-seconds');
   const [bpm, setBpm] = React.useState(120);
 
-  // THE TOOLBAR LAYOUT (2026-11-09, custom toolbars): four docks of bars
-  // with persistent grips, one layout per workspace, in the preferences;
-  // a grip drag moves a whole bar between docks and along a row
+  // THE TOOLBAR LAYOUT (2026-11-09, custom toolbars): four docks of ROWS
+  // of bars with persistent grips, one layout per workspace, in the
+  // preferences; a grip drag moves a whole bar between docks, along a
+  // row, or onto a new row (2026-11-10)
   const toolbarLayout = useToolbarLayout(workspace, activeMenuItem);
   const barDrag = useToolbarBarDrag({
     layout: toolbarLayout.layout,
     barFitsVertical: (barId) => {
-      const bar = [...toolbarLayout.layout.top, ...toolbarLayout.layout.bottom, ...toolbarLayout.layout.left, ...toolbarLayout.layout.right].find((b) => b.id === barId);
+      const bar = findBar(toolbarLayout.layout, barId)?.bar;
       return !!bar && bar.tools.every((id) => (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true);
     },
     onDrop: toolbarLayout.moveBarTo,
@@ -1123,9 +1124,9 @@ function CanvasDemoContent() {
     // will do — and, with a tool in hand, what this release will do
     infoText: toolbarEditing
       ? (toolDrag.target?.refused ? 'This tool has no vertical form'
-        : toolDrag.target?.kind === 'new' ? 'Release to give it a toolbar of its own'
+        : toolDrag.target?.kind === 'new' ? ('newRowAt' in toolDrag.target.placement ? 'Release to give it a row of its own' : 'Release to give it a toolbar of its own')
         : toolDrag.target?.kind === 'into' ? 'Release to add it to this toolbar'
-        : 'Drag a tool onto a toolbar to add it, or beside one for a toolbar of its own. Escape when done')
+        : 'Drag a tool onto a toolbar, beside one, or between rows. Escape when done')
       : handleHint
         ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled })
         : (statusInfo.text ?? (showFocusDebug ? focusedElement : 'Click and drag to select audio')),
@@ -1287,7 +1288,7 @@ function CanvasDemoContent() {
       {activeMenuItem !== 'home' && (
         <AppToolbarDock
           region="top"
-          bars={toolbarLayout.layout.top}
+          rows={toolbarLayout.layout.top}
           renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
           extraToolMeta={statusToolMeta}
           drag={dockDrag}
@@ -1431,7 +1432,7 @@ function CanvasDemoContent() {
         {/* The LEFT DOCK (2026-11-09): bars stacked beside the tracks */}
         <AppToolbarDock
           region="left"
-          bars={toolbarLayout.layout.left}
+          rows={toolbarLayout.layout.left}
           renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
           extraToolMeta={statusToolMeta}
           drag={dockDrag}
@@ -1503,7 +1504,7 @@ function CanvasDemoContent() {
         {/* The RIGHT DOCK, before the meters' columns, which keep the far edge */}
         <AppToolbarDock
           region="right"
-          bars={toolbarLayout.layout.right}
+          rows={toolbarLayout.layout.right}
           renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
           extraToolMeta={statusToolMeta}
           drag={dockDrag}
@@ -1546,7 +1547,7 @@ function CanvasDemoContent() {
       {activeMenuItem !== 'home' && (
         <AppToolbarDock
           region="bottom"
-          bars={toolbarLayout.layout.bottom}
+          rows={toolbarLayout.layout.bottom}
           renderExtraTool={(id, o) => renderStatusTool(id, o, statusToolDeps)}
           extraToolMeta={statusToolMeta}
           drag={dockDrag}

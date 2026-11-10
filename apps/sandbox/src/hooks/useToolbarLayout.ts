@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import {
-  defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, isToolbarLayout, moveBar, moveTool, moveToolToNewBar, normaliseLayout, usePreferences,
-  type ToolbarLayout, type ToolbarRegion, type ToolbarWorkspace,
+  coerceToolbarLayout, defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, moveBar, moveTool, moveToolToNewBar, normaliseLayout, usePreferences,
+  type BarPlacement, type ToolbarLayout, type ToolbarWorkspace,
 } from '@audacity-ui/components';
 
 export interface UseToolbarLayoutReturn {
@@ -10,12 +10,12 @@ export interface UseToolbarLayoutReturn {
   layout: ToolbarLayout;
   /** The user has a layout of their own for this workspace */
   customised: boolean;
-  /** Move a whole bar (the grip drag) */
-  moveBarTo: (barId: string, region: ToolbarRegion, index: number) => void;
+  /** Move a whole bar (the grip drag): beside a bar of a row, or onto a new row */
+  moveBarTo: (barId: string, placement: BarPlacement) => void;
   /** Move one tool into a bar, before a tool or at its end (the edit mode) */
   moveToolInto: (toolId: string, barId: string, beforeToolId: string | null) => void;
-  /** Pull one tool out into a new bar of its own */
-  moveToolToNewBar: (toolId: string, region: ToolbarRegion, beforeBarId: string | null) => void;
+  /** Pull one tool out into a new bar of its own, in a row or on a new one */
+  moveToolToNewBar: (toolId: string, placement: BarPlacement) => void;
   /** Back to the workspace's seed */
   resetLayout: () => void;
 }
@@ -26,13 +26,14 @@ export interface UseToolbarLayoutReturn {
  * seeds (`defaultToolbarLayout`); a user's rearrangement is stored in the
  * preferences blob under `toolbarLayouts[workspace]`, so switching
  * workspaces swaps the whole layout and each keeps its own. The Export
- * tab draws its own fixed bars. A stored layout that is not a layout
- * (an older blob) is ignored.
+ * tab draws its own fixed bars. A stored layout from the first cut (each
+ * dock a flat list of bars, 2026-11-09) is read as one row a dock;
+ * anything else that is not a layout is ignored.
  */
 export function useToolbarLayout(workspace: ToolbarWorkspace, activeMenuItem: string): UseToolbarLayoutReturn {
   const { preferences, updatePreference } = usePreferences();
   const stored = preferences.toolbarLayouts?.[workspace];
-  const custom = isToolbarLayout(stored) ? stored : null;
+  const custom = useMemo(() => coerceToolbarLayout(stored), [stored]);
   const layout = useMemo(() => {
     if (activeMenuItem === 'export') return EXPORT_TOOLBAR_LAYOUT;
     return normaliseLayout(custom ?? defaultToolbarLayout(workspace));
@@ -47,14 +48,14 @@ export function useToolbarLayout(workspace: ToolbarWorkspace, activeMenuItem: st
     updatePreference('toolbarLayouts', { ...(preferences.toolbarLayouts ?? {}), [workspace]: next });
   }, [activeMenuItem, custom, preferences.toolbarLayouts, updatePreference, workspace]);
 
-  const moveBarTo = useCallback((barId: string, region: ToolbarRegion, index: number) => {
-    edit((base) => moveBar(base, barId, region, index));
+  const moveBarTo = useCallback((barId: string, placement: BarPlacement) => {
+    edit((base) => moveBar(base, barId, placement));
   }, [edit]);
   const moveToolInto = useCallback((toolId: string, barId: string, beforeToolId: string | null) => {
     edit((base) => moveTool(base, toolId, barId, beforeToolId));
   }, [edit]);
-  const moveToolToNew = useCallback((toolId: string, region: ToolbarRegion, beforeBarId: string | null) => {
-    edit((base) => moveToolToNewBar(base, toolId, region, beforeBarId));
+  const moveToolToNew = useCallback((toolId: string, placement: BarPlacement) => {
+    edit((base) => moveToolToNewBar(base, toolId, placement));
   }, [edit]);
 
   const resetLayout = useCallback(() => {

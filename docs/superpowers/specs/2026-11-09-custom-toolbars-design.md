@@ -10,7 +10,11 @@ workspace in the preferences. See the CLAUDE.md rule "THE TOOLBARS ARE DOCKS
 OF BARS WITH PERSISTENT GRIPS". Increment 2, FIRST PASS, BUILT 2026-11-10:
 the edit mode from the cog's "Rearrange tools…" — tools inert and
 draggable, a tool JOINS a bar (short caret) or gets a NEW bar beside one
-(full-height line), Reset layout, Done / Escape. NOT YET: the tray of
+(full-height line), Reset layout, Done / Escape. ROWS, BUILT 2026-11-10: the
+model is docks of ROWS of bars; a bar (by its grip) or a tool (in the edit
+mode) dropped on the line between two rows, or at a horizontal dock's edge,
+gets a NEW ROW, shown by a horizontal accent line; a row lives while it
+holds a bar. NOT YET: the tray of
 hidden tools, hold-to-enter, the keyboard Move-to menu, the Flexible space
 tool, floating bars, user-named workspaces. Questions 4–8 below are
 still the assistant's positions; increment 1 took 4 and 5 as stated.
@@ -257,9 +261,16 @@ not yet accepted or rejected:
   pulled BESIDE a bar shows a line for the new container, distinct from the
   caret for joining a bar. Author ("Let me create as many containers as I
   want right?", "put a line horizontally to show that a new container will
-  be created"). OPEN: whether "horizontally" meant a new ROW in the top
-  dock — built as the boundary line (vertical on a row, horizontal in a
-  side dock); row breaks are not in the model.
+  be created"). First built as the boundary line between bars (vertical
+  on a row); the author meant a new ROW — next entry.
+- 2026-11-10 — ROWS are the user's: a dock is a list of rows, a row a list
+  of bars; a row is made by dropping a bar or a tool on the line between
+  rows (or a dock's edge), shown by a horizontal line, and it exists for
+  as long as it holds a tool. No "add row" command, no empty rows. A row
+  wider than the window still wraps; a wrap is not a row boundary. Author
+  ("Yeah I meant I wanted the ability to create new rows. As long as there
+  is a tool in each row, it can exist"). Stored flat layouts from the
+  first cut are read as one row a dock.
 - 2026-11-10 — An empty dock shows nothing of its own during a drag; the
   side docks' drop zones are the dockable panels' overlay (a subtle band,
   the hovered one previewing the 48px footprint). Author ("don't show side

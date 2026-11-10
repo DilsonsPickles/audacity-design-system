@@ -1,12 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
-import type { ToolbarLayout, ToolbarRegion } from '@audacity-ui/components';
+import type { BarPlacement, ToolbarLayout } from '@audacity-ui/components';
 import { resolveToolDrop, type ToolDropTarget } from '../utils/toolbarToolDrop';
 
 export interface UseToolbarToolDragDeps {
   layout: ToolbarLayout;
   toolFitsVertical: (toolId: string) => boolean;
   onMoveInto: (toolId: string, barId: string, beforeToolId: string | null) => void;
-  onMoveToNewBar: (toolId: string, region: ToolbarRegion, beforeBarId: string | null) => void;
+  onMoveToNewBar: (toolId: string, placement: BarPlacement) => void;
 }
 
 export interface UseToolbarToolDragReturn {
@@ -25,8 +25,8 @@ const DRAG_THRESHOLD_PX = 4;
 /**
  * A TOOL'S DRAG, in the layout's edit mode (2026-11-10, custom toolbars):
  * a press on a tool lifts it; a ghost of its size follows the pointer;
- * `resolveToolDrop` says whether the release would JOIN a bar or make a
- * NEW one beside it; the release does that. Self-cleaning document
+ * `resolveToolDrop` says whether the release would JOIN a bar, make a
+ * NEW one beside it, or make one on a NEW ROW; the release does that. Self-cleaning document
  * listeners, as the bar's grip drag.
  */
 export function useToolbarToolDrag({ layout, toolFitsVertical, onMoveInto, onMoveToNewBar }: UseToolbarToolDragDeps): UseToolbarToolDragReturn {
@@ -81,7 +81,7 @@ export function useToolbarToolDrag({ layout, toolFitsVertical, onMoveInto, onMov
       setRowRect(null);
       if (!final || final.refused) return;
       if (final.kind === 'into') intoRef.current(toolId, final.barId, final.beforeToolId);
-      else newRef.current(toolId, final.region, final.beforeBarId);
+      else newRef.current(toolId, final.placement);
     };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);

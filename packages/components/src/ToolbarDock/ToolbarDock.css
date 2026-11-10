@@ -44,6 +44,24 @@
   margin: 0;
 }
 
+/* A NEW ROW WOULD BE MADE HERE (2026-11-10, "I wanted the ability to
+   create new rows"): a horizontal accent line across the dock, on the
+   line between two rows or at the dock's outer edge. It takes no room,
+   so nothing shifts under the pointer */
+.toolbar-dock__row-insert { position: relative; height: 0; z-index: 2; pointer-events: none; }
+.toolbar-dock__row-insert::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -1px;
+  height: 3px;
+  border-radius: 1px;
+  background-color: var(--toolbar-dock-accent);
+}
+.toolbar-dock__row-insert--start::after { top: 0; }
+.toolbar-dock__row-insert--end::after { top: -3px; }
+
 /* THE SPLIT BETWEEN TWO BARS RUNS THE ROW'S FULL HEIGHT (2026-11-10, "I
    need the split between toolbars to be more obvious" — it was a 24px
    tick in the row's middle, which read as a separator inside one bar):

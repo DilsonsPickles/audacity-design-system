@@ -1,7 +1,7 @@
 import React from 'react';
 import { ToolbarButtonGroup } from '../Toolbar/Toolbar';
 import { ToolbarDock, type ToolMeta } from '../ToolbarDock';
-import { defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, type ToolbarLayout, type ToolbarOrientation } from '../utils/toolbarLayout';
+import { defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, type BarPlacement, type ToolbarLayout, type ToolbarOrientation } from '../utils/toolbarLayout';
 import { TransportButton } from '../TransportButton';
 import { ToolButton } from '../ToolButton';
 import { ToggleToolButton } from '../ToggleToolButton';
@@ -834,13 +834,13 @@ export function TransportTools({
 }
 
 export interface TransportToolbarLayoutProps extends TransportToolbarProps {
-  /** The top dock's bars; absent = the workspace's seed (the Export tab
+  /** The top dock's rows; absent = the workspace's seed (the Export tab
    *  always draws its own) */
   layout?: ToolbarLayout;
   /** A press on a bar's grip — the host's drag */
   onBarGripMouseDown?: (barId: string, event: React.MouseEvent, barRect: DOMRect) => void;
   draggingBarId?: string | null;
-  insertAt?: number | null;
+  insert?: BarPlacement | null;
   insertRefused?: boolean;
 }
 
@@ -850,15 +850,15 @@ export interface TransportToolbarLayoutProps extends TransportToolbarProps {
  * host's). The sandbox places its own docks inside TransportTools instead.
  */
 export function TransportToolbar(props: TransportToolbarLayoutProps) {
-  const { layout, onBarGripMouseDown, draggingBarId, insertAt, insertRefused, ...rest } = props;
-  const bars = (rest.activeMenuItem === 'export' ? EXPORT_TOOLBAR_LAYOUT : (layout ?? defaultToolbarLayout(rest.workspace))).top;
+  const { layout, onBarGripMouseDown, draggingBarId, insert, insertRefused, ...rest } = props;
+  const rows = (rest.activeMenuItem === 'export' ? EXPORT_TOOLBAR_LAYOUT : (layout ?? defaultToolbarLayout(rest.workspace))).top;
   return (
     <TransportTools {...rest}>
       <TransportTopDock
-        bars={bars}
+        rows={rows}
         onBarGripMouseDown={onBarGripMouseDown}
         draggingBarId={draggingBarId}
-        insertAt={insertAt}
+        insert={insert}
         insertRefused={insertRefused}
       />
     </TransportTools>
@@ -866,11 +866,11 @@ export function TransportToolbar(props: TransportToolbarLayoutProps) {
 }
 
 /** The top dock drawn from the context: the tools, the cog at its end */
-export function TransportTopDock({ bars, onBarGripMouseDown, draggingBarId, insertAt, insertRefused }: {
-  bars: ReadonlyArray<ToolbarLayout['top'][number]>;
+export function TransportTopDock({ rows, onBarGripMouseDown, draggingBarId, insert, insertRefused }: {
+  rows: ToolbarLayout['top'];
   onBarGripMouseDown?: (barId: string, event: React.MouseEvent, barRect: DOMRect) => void;
   draggingBarId?: string | null;
-  insertAt?: number | null;
+  insert?: BarPlacement | null;
   insertRefused?: boolean;
 }) {
   const { renderTool, toolMeta, settingsCog, hidden } = useTransportTools();
@@ -878,12 +878,12 @@ export function TransportTopDock({ bars, onBarGripMouseDown, draggingBarId, inse
   return (
     <ToolbarDock
       region="top"
-      bars={bars}
+      rows={rows}
       renderTool={renderTool}
       toolMeta={toolMeta}
       onGripMouseDown={onBarGripMouseDown}
       draggingBarId={draggingBarId}
-      insertAt={insertAt}
+      insert={insert}
       insertRefused={insertRefused}
       trailing={settingsCog}
       className="transport-toolbar"

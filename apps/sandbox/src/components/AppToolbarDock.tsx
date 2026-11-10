@@ -1,5 +1,5 @@
 import React from 'react';
-import { ToolbarDock, useTransportTools, type ToolbarBar, type ToolbarRegion, type ToolMeta, type ToolbarOrientation } from '@audacity-ui/components';
+import { ToolbarDock, useTransportTools, type ToolbarRegion, type ToolbarRow, type ToolMeta, type ToolbarOrientation } from '@audacity-ui/components';
 import type { ToolbarDropTarget } from '../hooks/useToolbarBarDrag';
 import type { ToolDropTarget } from '../utils/toolbarToolDrop';
 
@@ -17,7 +17,8 @@ export interface ToolbarDockDrag {
 
 export interface AppToolbarDockProps {
   region: ToolbarRegion;
-  bars: ReadonlyArray<ToolbarBar>;
+  /** The dock's rows of bars */
+  rows: ReadonlyArray<ToolbarRow>;
   /** The host's own tools (the status bar's), asked before the transport's */
   renderExtraTool?: (id: string, orientation: ToolbarOrientation) => React.ReactNode;
   extraToolMeta?: (id: string) => ToolMeta | undefined;
@@ -37,30 +38,30 @@ export interface AppToolbarDockProps {
  * One of the app's four docks (2026-11-09, custom toolbars): a ToolbarDock
  * drawing its bars from the TransportTools registry, plus whatever tools
  * the host adds (the status bar's). The drag's target shows here as the
- * insertion indicator or the empty dock's zone.
+ * insertion line (beside a bar, or across the dock for a new row).
  */
 export function AppToolbarDock({
-  region, bars, renderExtraTool, extraToolMeta, drag,
+  region, rows, renderExtraTool, extraToolMeta, drag,
   trailing, showSettingsCog = false, className, tabGroupId, ariaLabel, style, dataAttrs,
 }: AppToolbarDockProps) {
   const { renderTool, toolMeta, hidden, settingsCog } = useTransportTools();
   if (hidden) return null;
-  // A whole bar's landing, or a NEW bar's for a tool pulled beside one:
-  // both are a container arriving, and wear the full-height line
+  // A whole bar's landing, or a NEW bar's for a tool pulled beside one or
+  // onto a new row: all are a container arriving, and wear the dock's
+  // line — full-height beside a bar, horizontal for a new row
   const here = drag.barTarget?.region === region ? drag.barTarget : null;
   const tool = drag.toolTarget?.region === region ? drag.toolTarget : null;
-  const newBarAt = tool?.kind === 'new'
-    ? (tool.beforeBarId === null ? bars.length : Math.max(0, bars.findIndex((b) => b.id === tool.beforeBarId)))
-    : null;
+  const arriving = here ?? (tool?.kind === 'new' ? tool : null);
   const dock = (
     <ToolbarDock
       region={region}
-      bars={bars}
+      rows={rows}
       renderTool={(id, o) => renderExtraTool?.(id, o) ?? renderTool(id, o)}
       toolMeta={(id) => extraToolMeta?.(id) ?? toolMeta(id)}
       onGripMouseDown={drag.onGripMouseDown}
       draggingBarId={drag.draggingBarId}
-      insertAt={here ? here.index : newBarAt}
+      insert={arriving?.placement ?? null}
+      insertAfterBarId={arriving?.lineEndAfter ?? null}
       insertRefused={here?.refused ?? tool?.refused ?? false}
       editing={drag.editing}
       onToolMouseDown={drag.onToolMouseDown}

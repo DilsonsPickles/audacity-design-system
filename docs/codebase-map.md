@@ -82,8 +82,8 @@ Behavior is locked by `__tests__/tracksReducer.characterization.test.ts` and `__
 | `useTrackKeyboardHandlers.ts` | Track-level vertical navigation + selection keyboard handling |
 | `useCmdArrowMove.ts` | Cmd/Ctrl-release overlap resolution for Cmd+Arrow clip moves — listens for keyup, reconciles final clip positions against neighbors |
 | `useToolbarLayout.ts` | The toolbar layout per workspace (preferences `toolbarLayouts`; seeds from `defaultToolbarLayout`) — custom toolbars, 2026-11-09 |
-| `useToolbarBarDrag.ts` | A bar's grip drag between the four docks: ghost, drop target, edge fallback |
-| `useToolbarToolDrag.ts` | A tool's drag in the toolbars' edit mode (2026-11-10); the landing is `utils/toolbarToolDrop.ts` `resolveToolDrop` — join a bar, or a new bar beside one |
+| `useToolbarBarDrag.ts` | A bar's grip drag between the four docks: ghost and drop target; the landing is `utils/toolbarDockDrop.ts` `resolveBarDrop` (in a row beside a bar, or a NEW ROW — `locateDockSpot`, shared with the tool drag; rows 2026-11-10) |
+| `useToolbarToolDrag.ts` | A tool's drag in the toolbars' edit mode (2026-11-10); the landing is `utils/toolbarToolDrop.ts` `resolveToolDrop` — join a bar, a new bar beside one, or a new bar on a new row |
 | `useKeyboardShortcuts.ts` | **Keyboard routing hub** — delegates to domain handlers below |
 
 **EditorLayout effect hooks** (extracted from EditorLayout; each a self-contained `useEffect`):

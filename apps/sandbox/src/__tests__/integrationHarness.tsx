@@ -112,11 +112,12 @@ const PREFERENCES_STORAGE_KEY = 'audacity-preferences';
  * Callers must `vi.mock('@audacity-ui/audio', () => audioMockFactory())`
  * at the top of their test file BEFORE importing this function.
  */
-export function renderApp(): RenderResult & { audioSpies: AudioSpies } {
+export function renderApp(storedPreferences: Record<string, unknown> = {}): RenderResult & { audioSpies: AudioSpies } {
   window.localStorage.clear();
+  // (`storedPreferences`: what a returning user's blob already holds)
   window.localStorage.setItem(
     PREFERENCES_STORAGE_KEY,
-    JSON.stringify({ showWelcomeDialog: false }),
+    JSON.stringify({ showWelcomeDialog: false, ...storedPreferences }),
   );
   installJsdomStubs();
   const manager = getLastAudioManager();

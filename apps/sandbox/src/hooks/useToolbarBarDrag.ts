@@ -1,20 +1,14 @@
 import { useCallback, useRef, useState } from 'react';
-import { findBar, isVerticalRegion, TOOLBAR_REGIONS, type ToolbarLayout, type ToolbarRegion } from '@audacity-ui/components';
-import { sideZoneAt } from '../components/editor/DockZoneOverlay';
+import type { BarPlacement, ToolbarLayout } from '@audacity-ui/components';
+import { resolveBarDrop, type BarDropTarget } from '../utils/toolbarDockDrop';
 
-export interface ToolbarDropTarget {
-  region: ToolbarRegion;
-  /** Before the bar at this index among the dock's bars (length = the end) */
-  index: number;
-  /** The bar has no vertical form and the dock is a side dock */
-  refused: boolean;
-}
+export type ToolbarDropTarget = BarDropTarget;
 
 export interface UseToolbarBarDragDeps {
   layout: ToolbarLayout;
   /** Does every tool of this bar have a vertical form? */
   barFitsVertical: (barId: string) => boolean;
-  onDrop: (barId: string, region: ToolbarRegion, index: number) => void;
+  onDrop: (barId: string, placement: BarPlacement) => void;
 }
 
 export interface UseToolbarBarDragReturn {
@@ -31,17 +25,13 @@ export interface UseToolbarBarDragReturn {
   onGripMouseDown: (barId: string, e: React.MouseEvent, barRect: DOMRect) => void;
 }
 
-/** Near the window's top or bottom edge with no dock under the pointer,
- *  that edge's dock takes the drop (the old toolbar gripper's snap); the
- *  SIDES are the editor row's bands, `sideZoneAt` */
-const EDGE_SNAP_PX = 72;
-
 /**
  * A BAR'S GRIP DRAG (2026-11-09, custom toolbars — "persistent grippers"):
  * a press on a bar's grip lifts the whole bar; a ghost of its size follows
  * the pointer; the dock under the pointer shows where the bar would land
- * (between two bars, at a row's end, or an empty dock opened as a zone);
- * the release moves it there. A bar with no vertical form is refused by a
+ * (`resolveBarDrop`: between two bars, at a line's end, on a NEW ROW — the
+ * line between rows or a dock's edge — or an empty side dock's band); the
+ * release moves it there. A bar with no vertical form is refused by a
  * side dock, the indicator saying so. Self-cleaning document listeners
  * (attached on the press, removed on the release), as the old gripper's.
  */
@@ -71,47 +61,7 @@ export function useToolbarBarDrag({ layout, barFitsVertical, onDrop }: UseToolba
     setRowRect(row);
     setGhost({ x: barRect.left, y: barRect.top, width: barRect.width, height: barRect.height });
     let target: ToolbarDropTarget | null = null;
-    const home = findBar(layoutRef.current, barId);
-
-    const resolve = (x: number, y: number): ToolbarDropTarget | null => {
-      // (jsdom has no elementsFromPoint: the edges below stand in there)
-      const stack: Element[] = typeof document.elementsFromPoint === 'function' ? document.elementsFromPoint(x, y) : [];
-      const under = stack.find((el) => el.closest('[data-toolbar-dock]'))?.closest<HTMLElement>('[data-toolbar-dock]') ?? null;
-      let region = under?.getAttribute('data-toolbar-dock') as ToolbarRegion | null;
-      if (!region) {
-        // No dock under the pointer: an EMPTY side dock is 0 wide, so its
-        // band along the editor row's edge stands in (the panels' zones,
-        // DOCK_ZONE_SIZE wide); else the window's top and bottom edges
-        const side = row ? sideZoneAt(x, y, row) : null;
-        if (side) region = side;
-        else if (y < EDGE_SNAP_PX) region = 'top';
-        else if (y > window.innerHeight - EDGE_SNAP_PX) region = 'bottom';
-        else return null;
-      }
-      if (!TOOLBAR_REGIONS.includes(region)) return null;
-      const refused = isVerticalRegion(region) && !fits;
-      const dockEl = under ?? document.querySelector<HTMLElement>(`[data-toolbar-dock="${region}"]`);
-      const bars = layoutRef.current[region];
-      let index = bars.length;
-      if (dockEl) {
-        const vertical = isVerticalRegion(region);
-        // The first bar whose middle is past the pointer, on the row the
-        // pointer is on (a horizontal dock), is where the bar goes before
-        for (let i = 0; i < bars.length; i++) {
-          const el = dockEl.querySelector<HTMLElement>(`[data-toolbar-bar="${bars[i].id.replace(/"/g, '')}"]`);
-          if (!el) continue;
-          const r = el.getBoundingClientRect();
-          if (vertical) {
-            if (y < r.top + r.height / 2) { index = i; break; }
-          } else {
-            const onRow = y >= r.top && y <= r.bottom;
-            const rowAbove = y < r.top;
-            if (rowAbove || (onRow && x < r.left + r.width / 2)) { index = i; break; }
-          }
-        }
-      }
-      return { region, index, refused };
-    };
+    const resolve = (x: number, y: number) => resolveBarDrop(x, y, layoutRef.current, row, fits);
 
     const onMove = (ev: MouseEvent) => {
       setGhost({ x: ev.clientX - offsetX, y: ev.clientY - offsetY, width: barRect.width, height: barRect.height });
@@ -126,9 +76,9 @@ export function useToolbarBarDrag({ layout, barFitsVertical, onDrop }: UseToolba
       setDropTarget(null);
       setGhost(null);
       setRowRect(null);
+      // (a drop that changes nothing — beside itself — is the layout's to ignore)
       if (!final || final.refused) return;
-      if (home && home.region === final.region && (final.index === home.index || final.index === home.index + 1)) return;
-      onDropRef.current(barId, final.region, final.index);
+      onDropRef.current(barId, final.placement);
     };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);

@@ -321,7 +321,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     // …and its tools came with it
     expect(dock('bottom').querySelector('[aria-label="Play"]')).toBeTruthy();
     const stored = () => JSON.parse(window.localStorage.getItem('audacity-preferences')!).toolbarLayouts.classic;
-    expect(stored().bottom.map((b: { id: string }) => b.id)).toContain('transport');
+    expect(stored().bottom.flat().map((b: { id: string }) => b.id)).toContain('transport');
 
     // Released in the middle of the window, away from every dock: nothing moves
     fireEvent.mouseDown(grip(), { clientX: 300, clientY: 300, button: 0 });
@@ -332,7 +332,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     fireEvent.mouseDown(grip(), { clientX: 100, clientY: 100, button: 0 });
     fireEvent.mouseUp(document, { clientX: 100, clientY: 10 });
     await waitFor(() => expect(dock('top').contains(bar())).toBe(true));
-    expect(stored().top.map((b: { id: string }) => b.id)).toContain('transport');
+    expect(stored().top.flat().map((b: { id: string }) => b.id)).toContain('transport');
 
     // The status bar's bars draw wherever they go: the Selection bar to the top dock
     const selectionGrip = dock('bottom').querySelector('[data-toolbar-bar="selection"] .toolbar-dock__grip') as HTMLElement;
@@ -340,6 +340,57 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     fireEvent.mouseUp(document, { clientX: 100, clientY: 10 });
     await waitFor(() => expect(dock('top').querySelector('[data-toolbar-bar="selection"] [aria-label="Selection start"]')).toBeTruthy());
     expect(dock('bottom').querySelector('[data-toolbar-bar="selection"]')).toBeNull();
+  });
+
+  it('A NEW ROW (2026-11-10): a bar dropped on a row\'s edge gets a row of its own, the horizontal line saying so; the row goes when its last bar leaves; a flat stored layout is read as one row', async () => {
+    // The first cut stored each dock as a flat list of bars
+    const { container, getByText } = renderApp({
+      toolbarLayouts: { classic: {
+        top: [{ id: 'transport', tools: ['play', 'stop', 'record'] }, { id: 'zoom', tools: ['zoom-in', 'zoom-out'] }],
+        bottom: [{ id: 'status', tools: ['status-cue', 'status-info'] }], left: [], right: [],
+      } },
+    });
+    fireEvent.click(getByText('Project'));
+    await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
+    const dock = (region: string) => container.querySelector(`[data-toolbar-dock="${region}"]`) as HTMLElement;
+    const lines = () => Array.from(dock('top').querySelectorAll('.toolbar-dock__row')).map((l) =>
+      Array.from(l.querySelectorAll('[data-toolbar-bar]')).map((b) => b.getAttribute('data-toolbar-bar')));
+    const grip = (id: string) => container.querySelector(`[data-toolbar-bar="${id}"] .toolbar-dock__grip`) as HTMLElement;
+    expect(lines()).toEqual([['transport', 'zoom']]);
+
+    // jsdom measures nothing: give the top dock's one line its 56px, and
+    // the document a dock under the pointer there
+    const rectOf = (top: number, height: number) => ({ left: 0, top, width: 1000, height, right: 1000, bottom: top + height, x: 0, y: top, toJSON() { return {}; } }) as DOMRect;
+    const firstLine = dock('top').querySelector('.toolbar-dock__row') as HTMLElement;
+    firstLine.getBoundingClientRect = () => rectOf(0, 56);
+    const doc = document as Document & { elementsFromPoint?: (x: number, y: number) => Element[] };
+    doc.elementsFromPoint = (_x, y) => (y <= 56 ? [dock('top')] : []);
+    try {
+      // The zoom bar, to the row's bottom edge: the line across the dock, then a second row
+      fireEvent.mouseDown(grip('zoom'), { clientX: 200, clientY: 28, button: 0 });
+      fireEvent.mouseMove(document, { clientX: 200, clientY: 52 });
+      expect(dock('top').querySelector('.toolbar-dock__row-insert')).toBeTruthy();
+      expect(dock('top').querySelector('.toolbar-dock__insert')).toBeNull();
+      fireEvent.mouseUp(document, { clientX: 200, clientY: 52 });
+      await waitFor(() => expect(lines()).toEqual([['transport'], ['zoom']]));
+      expect(dock('top').querySelector('.toolbar-dock__row-insert')).toBeNull();
+      expect(dock('top').querySelectorAll('.toolbar-dock__row-divider')).toHaveLength(1);
+      const stored = () => JSON.parse(window.localStorage.getItem('audacity-preferences')!).toolbarLayouts.classic;
+      expect(stored().top.map((row: Array<{ id: string }>) => row.map((b) => b.id))).toEqual([['transport'], ['zoom']]);
+
+      // …and above everything: the transport bar to the dock's top edge
+      fireEvent.mouseDown(grip('zoom'), { clientX: 200, clientY: 28, button: 0 });
+      fireEvent.mouseUp(document, { clientX: 200, clientY: 4 });
+      await waitFor(() => expect(lines()).toEqual([['zoom'], ['transport']]));
+
+      // Back into the other row (its middle): the row it left is gone
+      fireEvent.mouseDown(grip('transport'), { clientX: 200, clientY: 28, button: 0 });
+      fireEvent.mouseUp(document, { clientX: 200, clientY: 28 });
+      await waitFor(() => expect(lines()).toEqual([['zoom', 'transport']]));
+      expect(stored().top).toHaveLength(1);
+    } finally {
+      delete doc.elementsFromPoint;
+    }
   });
 
   it('EDIT MODE: the cog\'s "Rearrange tools…" makes the tools inert and draggable; a tool pulled beside a bar gets a toolbar of its own; Escape leaves; Reset layout restores (2026-11-10)', async () => {
@@ -387,7 +438,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     expect(tool('record').closest('[data-toolbar-bar]')!.getAttribute('data-toolbar-bar')).toBe('bar-1');
     expect(dock('top').querySelector('[data-toolbar-bar="transport"] [data-toolbar-tool="record"]')).toBeNull();
     const stored = () => JSON.parse(window.localStorage.getItem('audacity-preferences')!).toolbarLayouts?.classic;
-    expect(stored().top[0]).toEqual({ id: 'bar-1', tools: ['record'] });
+    expect(stored().top[0][0]).toEqual({ id: 'bar-1', tools: ['record'] });
 
     // …and another, to the bottom dock: as many containers as wanted
     fireEvent.mouseDown(tool('loop'), { clientX: 200, clientY: 30, button: 0 });
