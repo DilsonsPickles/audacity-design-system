@@ -16,6 +16,8 @@ export interface ProjectBarToolsDeps {
   onWorkspacePick: (next: string) => void;
   onUndo: () => void;
   onRedo: () => void;
+  /** The tools hidden in Customise toolbar (the tabs cannot be) */
+  hidden: ReadonlySet<string>;
 }
 
 const TABS: ReadonlyArray<{ id: MenuItem; label: string }> = [
@@ -35,6 +37,8 @@ const TABS: ReadonlyArray<{ id: MenuItem; label: string }> = [
  */
 export function renderProjectTool(id: string, orientation: ToolbarOrientation, deps: ProjectBarToolsDeps): React.ReactNode {
   const vertical = orientation === 'vertical';
+  // Hidden in Customise toolbar: drawn nowhere (the tabs are never hidden)
+  if (id !== 'project-tabs' && deps.hidden.has(id)) return null;
   const action = (icon: React.ComponentProps<typeof GhostButton>['icon'], label: string, onClick: (e: React.MouseEvent<HTMLButtonElement>) => void) => (
     <GhostButton icon={icon} ariaLabel={label} label={vertical ? undefined : label} size={vertical ? 'medium' : undefined} onClick={onClick} />
   );

@@ -36,6 +36,18 @@ const DIVIDER: CustomiseToolbarDivider = { kind: 'divider' };
 
 /** The design's list, in its order and groups, with its glyphs */
 export const CUSTOMISE_TOOLBAR_ENTRIES: ReadonlyArray<CustomiseToolbarEntry> = [
+  // THE PROJECT TOOLBAR'S BUTTONS, tools since 2026-11-10 ("all these
+  // buttons need to be added to the customise toolbar flyout") — the
+  // Home / Project / Export / Debug tabs are not here: they are the way
+  // back to Home and cannot be hidden
+  tool('mixer-button', 'Mixer', '', undefined, 'mixer'),
+  tool('audio-setup', 'Audio setup', '', undefined, 'cog'),
+  tool('share-audio', 'Share audio', '', undefined, 'cloud'),
+  tool('get-effects', 'Get effects', '', undefined, 'plugins'),
+  DIVIDER,
+  tool('workspace', 'Workspace', '', undefined, 'workspace'),
+  tool('undo-redo', 'Undo / redo', '', undefined, 'undo'),
+  DIVIDER,
   tool('play', 'Play', '', '#74BE59'),
   tool('stop', 'Stop', ''),
   tool('record', 'Record', '', '#F08080'),

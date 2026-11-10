@@ -1192,6 +1192,7 @@ function CanvasDemoContent() {
     onWorkspacePick: (next) => handleWorkspacePick(next as Workspace),
     onUndo: () => dispatch({ type: 'UNDO' }),
     onRedo: () => dispatch({ type: 'REDO' }),
+    hidden: new Set(preferences.toolbarHiddenTools),
   };
   const renderAppTool = (id: string, o: ToolbarOrientation) => renderProjectTool(id, o, projectToolDeps) ?? renderStatusTool(id, o, statusToolDeps);
   const appToolMeta = (id: string) => projectToolMeta(id) ?? statusToolMeta(id);
