@@ -71,7 +71,7 @@ html.pan-active * {
   display: flex;
   align-items: stretch;
   flex-shrink: 0;
-  height: 40px;
+  height: 32px;
   box-sizing: border-box;
   background: var(--app-title-bar-bg);
   border-bottom: 1px solid var(--app-title-bar-border);

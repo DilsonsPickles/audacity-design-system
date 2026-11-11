@@ -165,7 +165,7 @@ function createWindow(url) {
     // carries the tabs and is the window's drag region. Other platforms
     // keep the native frame.
     ...(process.platform === 'darwin'
-      ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 14, y: 14 } }
+      ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 12, y: 10 } }
       : {}),
     webPreferences: {
       // The sandbox is pure browser code; we never expose Node APIs to
