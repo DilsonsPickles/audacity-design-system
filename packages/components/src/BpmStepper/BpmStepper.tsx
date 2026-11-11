@@ -3,13 +3,17 @@
  *
  * Shows the value as bold Lato digits on the dark TimeCode surface, the
  * `TimeCodeUnit` "bpm" suffix, and a vertical up/down arrow pair on the
- * right edge. Click the number to type a new value; press Enter to commit
- * or Escape to cancel. Arrow buttons step by `step` (default 1) with
+ * right edge. THE DIGITS ARE THE TIMECODE'S CELLS (2026-11-11): the value
+ * zero-padded to three, a click on a digit edits that digit, and a
+ * DOUBLE-CLICK on the face types a new value (Enter commits, Escape
+ * cancels), as the main timecode does. Arrow buttons step by `step` (default 1) with
  * accelerate-on-hold so dragging the arrows feels live.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { TimeCodeUnit } from '../TimeCode/TimeCodeUnit';
+import { TimeCodeNumber, padDigits } from '../TimeCode/TimeCodeNumber';
+import { TimeCodeNumberField } from '../TimeCode/TimeCodeNumberField';
 import { useValueContextMenu } from '../hooks/useValueContextMenu';
 import './BpmStepper.css';
 
@@ -45,7 +49,6 @@ export function BpmStepper({
   const { theme } = useTheme();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
   const holdTimerRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
 
@@ -77,20 +80,10 @@ export function BpmStepper({
 
   const beginEdit = () => {
     if (disabled) return;
-    setDraft(String(value));
+    setDraft(padDigits(value, 3));
     setEditing(true);
   };
 
-  useEffect(() => {
-    if (editing) {
-      // Defer to next paint so the input is mounted before we focus it.
-      const id = requestAnimationFrame(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      });
-      return () => cancelAnimationFrame(id);
-    }
-  }, [editing]);
 
   const stepBy = (direction: 1 | -1) => onChange(clamp(value + direction * step));
   // Right-click: "Enter value…" (the display's own typed field) / "Reset to
@@ -147,38 +140,21 @@ export function BpmStepper({
       onContextMenu={valueMenu.onContextMenu}
     >
       {valueMenu.menu}
-      <div className="bpm-stepper__display">
+      <div className="bpm-stepper__display" onDoubleClick={(e) => { e.preventDefault(); beginEdit(); }}>
         {editing ? (
-          <input
-            ref={inputRef}
+          <TimeCodeNumberField
             className="bpm-stepper__input"
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ''))}
-            onBlur={commitDraft}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                commitDraft();
-              } else if (e.key === 'Escape') {
-                e.preventDefault();
-                cancelEdit();
-              }
-            }}
+            ariaLabel="Type a tempo"
+            draft={draft}
+            digits={3}
+            onDraftChange={setDraft}
+            onCommit={commitDraft}
+            onCancel={() => cancelEdit()}
           />
         ) : (
-          <button
-            type="button"
-            className="bpm-stepper__digits"
-            onClick={beginEdit}
-            disabled={disabled}
-            tabIndex={-1}
-            aria-hidden="true"
-          >
-            {value}
-          </button>
+          <span className="bpm-stepper__cells" aria-hidden="true">
+            <TimeCodeNumber value={value} digits={3} min={min} max={max} onChange={(n) => onChange(clamp(n))} disabled={disabled} />
+          </span>
         )}
         <TimeCodeUnit unit="bpm" />
       </div>

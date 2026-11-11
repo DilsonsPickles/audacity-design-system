@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { createMeterBallistics, dbToMeterPercent, meterPercentToDb, type MeterBallistics } from '../utils/meterBallistics';
 import { effectiveTrackMuted } from '../utils/trackFolders';
 import { getAudioPlaybackManager, AudioPlaybackManager } from '@audacity-ui/audio';
-import { VARISPEED_DEFAULT_SPEED, VARISPEED_MIN, VARISPEED_MAX, stepVarispeed, stepVarispeedCoarse, formatVarispeedPercent, announce } from '@audacity-ui/components';
+import { VARISPEED_DEFAULT_SPEED, VARISPEED_MIN, VARISPEED_MAX, stepVarispeed, stepVarispeedJump, formatVarispeedPercent, announce } from '@audacity-ui/components';
 import type { TracksState, TracksAction } from '../contexts/TracksContext';
 import type { RecordingManager } from '../utils/RecordingManager';
 
@@ -69,7 +69,7 @@ export interface UsePlaybackControlsReturn {
   setVarispeedOn: (on: boolean) => void;
   /** − / = : the speed a tenth slower (−1) or faster (+1); coarse (Shift):
    *  to the next round stop that way */
-  stepPlaybackSpeed: (notches: number, coarse?: boolean) => void;
+  stepPlaybackSpeed: (notches: number, fine?: boolean) => void;
   /** 0 : 100% ↔ the last speed that was not 100% */
   togglePlaybackSpeed: () => void;
 }
@@ -144,12 +144,14 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
   // the last speed that was not (half speed before any was set). They
   // work mid-play, as the slider does, and say the new speed to a screen
   // reader, since the keys can be pressed with the focus anywhere.
-  // With Shift the step is COARSE: to the next round stop that way (1, 25,
-  // 50, 100, 150 … 300%) instead of a tenth
-  const stepPlaybackSpeed = useCallback((notches: number, coarse = false) => {
-    setVarispeed(coarse
-      ? stepVarispeedCoarse(varispeedRef.current, notches > 0 ? 1 : -1)
-      : stepVarispeed(varispeedRef.current, notches));
+  // SINCE 2026-11-11 THE BARE KEYS JUMP ("can we make - and = shortcuts
+  // make bigger jumps? Like 2x and 3x for = and 0.5 0.25 for -?"): to the
+  // next stop that way, 25 · 50 · 100 · 200 · 300%; with Shift the step is
+  // FINE — the tenth that was the bare keys' until then
+  const stepPlaybackSpeed = useCallback((notches: number, fine = false) => {
+    setVarispeed(fine
+      ? stepVarispeed(varispeedRef.current, notches)
+      : stepVarispeedJump(varispeedRef.current, notches > 0 ? 1 : -1));
     announce(`Speed ${formatVarispeedPercent(varispeedRef.current)}`);
   }, [setVarispeed]);
   const togglePlaybackSpeed = useCallback(() => {

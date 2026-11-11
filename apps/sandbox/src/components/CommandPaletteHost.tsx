@@ -46,7 +46,7 @@ export function CommandPaletteHost({ menuDefinitions, os, onSpeedStep, onSpeedTo
   os?: 'macos' | 'windows';
   /** The speed keys' handlers (− / = / 0), listed here because the in-app
    *  menu bar has no Transport menu to carry them */
-  onSpeedStep?: (notches: number, coarse?: boolean) => void;
+  onSpeedStep?: (notches: number, fine?: boolean) => void;
   onSpeedToggle?: () => void;
 }) {
   const { isCommandPaletteOpen, setIsCommandPaletteOpen } = useDialogs();

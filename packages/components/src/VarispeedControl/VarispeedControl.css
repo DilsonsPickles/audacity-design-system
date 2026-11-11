@@ -60,3 +60,15 @@
   cursor: default;
   box-sizing: border-box;
 }
+
+/* "Speed" is the 0 key's toggle: pressable, so it says so */
+.varispeed-timecode__toggle,
+.varispeed-timecode__toggle .timecode-unit {
+  cursor: pointer;
+}
+
+/* THE TIMECODE FORM (2026-11-11) — BpmStepper's look; the name sits a
+   little apart from the number, as a unit does after one */
+.varispeed-timecode__name {
+  padding-right: 4px;
+}

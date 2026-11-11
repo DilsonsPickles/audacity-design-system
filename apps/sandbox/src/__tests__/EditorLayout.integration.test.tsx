@@ -1744,17 +1744,17 @@ describe('Selection playback', () => {
     expect(info()).toBe('Click and drag to select audio');
     // A speed key: the cue takes the speed, and the info line does not repeat it
     fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
-    await waitFor(() => expect(cue()).toBe('Stopped · 110%'));
+    await waitFor(() => expect(cue()).toBe('Stopped · 200%'));
     expect(info()).toBe('Click and drag to select audio');
     // Playing at speed
     audioSpies.play.mockClear();
     fireEvent.keyDown(document.body, { key: ' ' });
     await waitFor(() => expect(audioSpies.play).toHaveBeenCalled());
-    await waitFor(() => expect(cue()).toBe('Playing at 110%'));
+    await waitFor(() => expect(cue()).toBe('Playing at 200%'));
     expect(info()).toBe('Click and drag to select audio');
     audioSpies.getIsPlaying.mockReturnValue(true);
     fireEvent.keyDown(document.body, { key: ' ' });
-    await waitFor(() => expect(cue()).toBe('Stopped · 110%'));
+    await waitFor(() => expect(cue()).toBe('Stopped · 200%'));
     audioSpies.getIsPlaying.mockReturnValue(false);
     // Hovering the Play-at-Speed control names it and its keys, not its value
     const control = container.querySelector('[data-varispeed]') as HTMLElement;
@@ -1771,7 +1771,7 @@ describe('Selection playback', () => {
     });
     fireEvent.click(row);
     await waitFor(() => expect(container.querySelector('[data-varispeed-display]')).toBeNull());
-    expect(cue()).toBe('Stopped · 110%');
+    expect(cue()).toBe('Stopped · 200%');
     // 100% is off: the cue is bare again
     fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });
     await waitFor(() => expect(cue()).toBe('Stopped'));
@@ -1873,60 +1873,60 @@ describe('Selection playback', () => {
     audioSpies.getCurrentPosition.mockReset();
   });
 
-  it('− / = step the playback speed a tenth and 0 swaps 100% with the last speed (2026-11-05)', async () => {
+  it('− / = jump the speed to the next stop, Shift a tenth, and 0 swaps 100% with the last speed (2026-11-05; jumps 2026-11-11)', async () => {
     const rendered = renderApp();
     const { container, audioSpies } = rendered;
     await gotoProject(rendered);
-    const readout = () => (container.querySelector('[data-varispeed-display]') as HTMLElement).textContent;
+    // The timecode form (the default) says its value in aria-valuetext
+    const readout = () => (container.querySelector('[data-varispeed-timecode]') as HTMLElement).getAttribute('aria-valuetext');
     expect(readout()).toBe('100%');
-    // − slower: a tenth per press, and the engine hears each
+    // − : 50%, 25%, and there it stays
     fireEvent.keyDown(document.body, { key: '-', code: 'Minus' });
-    await waitFor(() => expect(readout()).toBe('90%'));
-    expect(audioSpies.setVarispeed).toHaveBeenLastCalledWith(0.9);
-    // Two presses before a render step from where the last one landed
+    await waitFor(() => expect(readout()).toBe('50%'));
+    expect(audioSpies.setVarispeed).toHaveBeenLastCalledWith(0.5);
+    fireEvent.keyDown(document.body, { key: '-', code: 'Minus' });
+    await waitFor(() => expect(readout()).toBe('25%'));
+    fireEvent.keyDown(document.body, { key: '-', code: 'Minus' });
+    expect(readout()).toBe('25%');
+    // = : back through 50% and 100% to 200%, 300%, and there it stays
     fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
     fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
-    await waitFor(() => expect(readout()).toBe('110%'));
+    await waitFor(() => expect(readout()).toBe('100%'));
+    fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
+    await waitFor(() => expect(readout()).toBe('200%'));
+    fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
+    await waitFor(() => expect(readout()).toBe('300%'));
+    fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
+    expect(readout()).toBe('300%');
     // 0: back to 100%, and again to the speed it left
     fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });
     await waitFor(() => expect(readout()).toBe('100%'));
     fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });
-    await waitFor(() => expect(readout()).toBe('110%'));
-    // The zoom chord is not a speed key
-    fireEvent.keyDown(document.body, { key: '=', code: 'Equal', metaKey: true });
-    expect(readout()).toBe('110%');
-    // Shift: the big step, to the next round stop that way — and through 100%
+    await waitFor(() => expect(readout()).toBe('300%'));
+    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });
+    await waitFor(() => expect(readout()).toBe('100%'));
+    // Shift: the fine step, a tenth — and a jump from between the stops
     fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
-    await waitFor(() => expect(readout()).toBe('150%'));
+    await waitFor(() => expect(readout()).toBe('110%'));
     fireEvent.keyDown(document.body, { key: '_', code: 'Minus', shiftKey: true });
     await waitFor(() => expect(readout()).toBe('100%'));
-    fireEvent.keyDown(document.body, { key: '_', code: 'Minus', shiftKey: true });
-    await waitFor(() => expect(readout()).toBe('50%'));
-    fireEvent.keyDown(document.body, { key: '_', code: 'Minus', shiftKey: true });
-    await waitFor(() => expect(readout()).toBe('25%'));
-    // …and down to the slider's floor, 1%, where it stays
-    fireEvent.keyDown(document.body, { key: '_', code: 'Minus', shiftKey: true });
-    await waitFor(() => expect(readout()).toBe('1%'));
-    fireEvent.keyDown(document.body, { key: '_', code: 'Minus', shiftKey: true });
-    expect(readout()).toBe('1%');
+    fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
+    await waitFor(() => expect(readout()).toBe('110%'));
+    fireEvent.keyDown(document.body, { key: '-', code: 'Minus' });
+    await waitFor(() => expect(readout()).toBe('100%'));
+    // The zoom chord is not a speed key
+    fireEvent.keyDown(document.body, { key: '=', code: 'Equal', metaKey: true });
+    expect(readout()).toBe('100%');
     // Shift+0 is not the toggle
     fireEvent.keyDown(document.body, { key: ')', code: 'Digit0', shiftKey: true });
-    expect(readout()).toBe('1%');
-    // Back to where the rest of the test expects it
-    fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
-    fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
-    fireEvent.keyDown(document.body, { key: '+', code: 'Equal', shiftKey: true });
-    fireEvent.keyDown(document.body, { key: '=', code: 'Equal' });
-    await waitFor(() => expect(readout()).toBe('110%'));
+    expect(readout()).toBe('100%');
     // A text field keeps its own − = 0
     const field = document.createElement('input');
     field.type = 'text';
     container.appendChild(field);
     fireEvent.keyDown(field, { key: '-', code: 'Minus' });
-    expect(readout()).toBe('110%');
+    expect(readout()).toBe('100%');
     field.remove();
-    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });
-    await waitFor(() => expect(readout()).toBe('100%'));
   });
 
   it('Skip to start / Skip to end move the playhead to 0 and to the project end', async () => {

@@ -43,3 +43,32 @@
 .timecode-digit--readonly:hover {
   background-color: var(--timecode-bg);
 }
+
+/* THE TYPED ENTRY OF A TimeCodeNumber (2026-11-11): the draft in the digit
+   cells, a transparent input over them taking the keys */
+.timecode-number-field {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.timecode-number-field__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font-size: 16px;
+  cursor: text;
+}
+
+.timecode-number-field__input::selection {
+  background: transparent;
+}

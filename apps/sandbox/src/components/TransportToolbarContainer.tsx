@@ -18,7 +18,7 @@ export type TransportToolbarContainerTransport = Pick<TransportToolbarProps,
   | 'envelopeMode' | 'spectrogramMode' | 'splitMode' | 'onToggleEnvelope' | 'onToggleSpectrogram' | 'onToggleSplit'
   | 'onZoomIn' | 'onZoomOut' | 'onZoomToSelection' | 'onZoomToFitProject' | 'onZoomToggle' | 'onCollapseTracks' | 'onExpandTracks' | 'onFitTracksToHeight'
   | 'onShareClick' | 'onExportAudioClick' | 'onExportLoopRegionClick'
-  | 'varispeed' | 'varispeedOn' | 'onVarispeedChange' | 'onVarispeedDial' | 'onVarispeedToggle'
+  | 'varispeed' | 'varispeedOn' | 'onVarispeedChange' | 'onVarispeedDial' | 'onVarispeedToggle' | 'varispeedStyle'
   | 'getMicrophoneLevelDb' | 'microphoneGain' | 'onMicrophoneGainChange' | 'onMicrophoneLevelsOpen'
   | 'recordingMeterOrientation' | 'onRecordingMeterOrientationChange'
 >;

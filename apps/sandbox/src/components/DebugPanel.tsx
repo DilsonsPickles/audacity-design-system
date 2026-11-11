@@ -64,6 +64,10 @@ export interface DebugPanelProps {
   useSplitRecordButton: boolean;
   onUseSplitRecordButtonChange: (value: boolean) => void;
 
+  // Play-at-speed: the slider form instead of the timecode (2026-11-11)
+  useVarispeedSlider: boolean;
+  onUseVarispeedSliderChange: (value: boolean) => void;
+
   // Mixer
   showMixer: boolean;
   onShowMixerChange: (value: boolean) => void;
@@ -170,6 +174,8 @@ export function DebugPanel({
   cutMode,
   onCutModeChange,
   useSplitRecordButton,
+  useVarispeedSlider,
+  onUseVarispeedSliderChange,
   onUseSplitRecordButtonChange,
   showMixer,
   onShowMixerChange,
@@ -460,6 +466,26 @@ export function DebugPanel({
             label="Use split record button"
             checked={useSplitRecordButton}
             onChange={onUseSplitRecordButtonChange}
+          />
+        </div>
+
+        {/* Play-at-Speed Section — the timecode form is the default; the
+            slider + readout is kept for comparison (2026-11-11) */}
+        <div>
+          <h3 style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            fontWeight: 600,
+            lineHeight: '20px',
+            color: '#14151a',
+            margin: '0 0 12px 0',
+          }}>
+            Play-at-Speed
+          </h3>
+          <LabeledCheckbox
+            label="Use play-at-speed slider"
+            checked={useVarispeedSlider}
+            onChange={onUseVarispeedSliderChange}
           />
         </div>
 

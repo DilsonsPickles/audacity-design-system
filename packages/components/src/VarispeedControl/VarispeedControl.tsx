@@ -102,6 +102,17 @@ export const stepVarispeedCoarse = (speed: number, direction: 1 | -1): number =>
   if (direction > 0) return VARISPEED_COARSE_STOPS.find((stop) => stop > speed + EPS) ?? speed;
   return [...VARISPEED_COARSE_STOPS].reverse().find((stop) => stop < speed - EPS) ?? speed;
 };
+/** THE KEYS' JUMPS (2026-11-11, "can we make - and = shortcuts make
+ *  bigger jumps? Like 2x and 3x for = and 0.5 0.25 for -?"): bare − and =
+ *  go to the next of these stops that way — 100% → 200% → 300% up,
+ *  100% → 50% → 25% down — from any speed (110% goes up to 200%, down to
+ *  100%); past the last stop that way the speed stays where it is. */
+export const VARISPEED_JUMP_STOPS: ReadonlyArray<number> = [0.25, 0.5, 1, 2, 3];
+export const stepVarispeedJump = (speed: number, direction: 1 | -1): number => {
+  const EPS = 0.0005;
+  if (direction > 0) return VARISPEED_JUMP_STOPS.find((stop) => stop > speed + EPS) ?? speed;
+  return [...VARISPEED_JUMP_STOPS].reverse().find((stop) => stop < speed - EPS) ?? speed;
+};
 /** The detent: a mouse drag this close to 1× lands on 1× (the 0.9–1.1 band) */
 export const DETENT_SPEED = 0.1;
 

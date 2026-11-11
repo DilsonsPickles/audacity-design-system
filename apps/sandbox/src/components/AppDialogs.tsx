@@ -126,6 +126,8 @@ export interface AppDialogsProps {
   setProfile: (id: string) => void;
   useSplitRecordButton: boolean;
   setUseSplitRecordButton: React.Dispatch<React.SetStateAction<boolean>>;
+  useVarispeedSlider: boolean;
+  setUseVarispeedSlider: React.Dispatch<React.SetStateAction<boolean>>;
   showMixer: boolean;
   setShowMixer: React.Dispatch<React.SetStateAction<boolean>>;
   // Active menu item (for debug panel close)
@@ -185,6 +187,7 @@ export function AppDialogs(props: AppDialogsProps) {
     showInspector, setShowInspector,
     activeProfile, profiles, setProfile,
     useSplitRecordButton, setUseSplitRecordButton,
+    useVarispeedSlider, setUseVarispeedSlider,
     showMixer, setShowMixer,
     setActiveMenuItem,
   } = props;
@@ -1177,6 +1180,8 @@ export function AppDialogs(props: AppDialogsProps) {
         onCutModeChange={(mode) => dispatch({ type: 'SET_CUT_MODE', payload: mode })}
         useSplitRecordButton={useSplitRecordButton}
         onUseSplitRecordButtonChange={setUseSplitRecordButton}
+        useVarispeedSlider={useVarispeedSlider}
+        onUseVarispeedSliderChange={setUseVarispeedSlider}
         showMixer={showMixer}
         onShowMixerChange={setShowMixer}
         trackSelectionMode={trackSelectionMode}

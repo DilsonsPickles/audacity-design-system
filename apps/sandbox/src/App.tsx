@@ -323,6 +323,8 @@ function CanvasDemoContent() {
   const controlPointStyle: EnvelopePointStyleKey = 'solidGreenSimple';
   const [spectrogramScale, setSpectrogramScale] = React.useState<SpectrogramScale>('mel');
   const [useSplitRecordButton, setUseSplitRecordButton] = React.useState(false);
+  // Play-at-speed's slider form, behind a Debug toggle — the timecode form is the default (2026-11-11)
+  const [useVarispeedSlider, setUseVarispeedSlider] = React.useState(false);
   const [rollInTimeEnabled, setRollInTimeEnabled] = React.useState(false);
   const [snapEnabled, setSnapEnabled] = React.useState(false);
   const [snapMode, setSnapMode] = React.useState<import('@audacity-ui/components').SnapMode>('musical');
@@ -1237,6 +1239,7 @@ function CanvasDemoContent() {
         scrollPlayheadIntoView();
       },
       useSplitRecordButton,
+      varispeedStyle: useVarispeedSlider ? 'slider' : 'timecode',
       rollInTimeEnabled,
       onToggleRollInTime: () => setRollInTimeEnabled(!rollInTimeEnabled),
       timeSelection: state.timeSelection,
@@ -1801,6 +1804,8 @@ function CanvasDemoContent() {
         profiles={profiles}
         setProfile={setProfile}
         useSplitRecordButton={useSplitRecordButton}
+        useVarispeedSlider={useVarispeedSlider}
+        setUseVarispeedSlider={setUseVarispeedSlider}
         setUseSplitRecordButton={setUseSplitRecordButton}
         showMixer={showMixer}
         setShowMixer={setShowMixer}

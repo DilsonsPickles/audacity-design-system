@@ -124,9 +124,11 @@ export const STATUS_INFO_RULES: ReadonlyArray<StatusInfoRule> = [
   { selector: '.project-toolbar .tab, [data-project-tool="tabs"] .tab', line: (el) => el.textContent?.trim() || null },
   // The speed's VALUE is the cue's ("Playing at 110%"): said once, so
   // the control reads its name and keys, as a button does
+  // "Speed" on the timecode form is the 0 key (2026-11-11)
+  { selector: '[data-varispeed-timecode] [data-varispeed-label]', line: 'Switch between 100% and the last speed (0)' },
   { selector: '[data-varispeed]', line: 'Playback speed (− / =)' },
   { selector: '.bpm-stepper', line: (el) => {
-    const bpm = el.querySelector('.bpm-stepper__digits')?.textContent?.trim();
+    const bpm = el.getAttribute('aria-valuenow');
     return bpm ? `Tempo: ${bpm} bpm` : 'Tempo';
   } },
   { selector: '.time-signature-selector', line: 'Time signature' },

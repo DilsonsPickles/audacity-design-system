@@ -13,7 +13,7 @@ import { Button } from '../Button';
 import { Icon } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
 import { CustomiseToolbarMenu } from '../CustomiseToolbarMenu';
-import { VarispeedControl } from '../VarispeedControl';
+import { VarispeedControl, VarispeedTimecode } from '../VarispeedControl';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { Checkbox } from '../Checkbox';
 import { MasterMeter } from '../MasterMeter';
@@ -59,6 +59,9 @@ export interface TransportToolbarProps {
   onVarispeedDial?: (speed: number) => void;
   /** The chip's press and the 1× preset */
   onVarispeedToggle?: (on: boolean) => void;
+  /** Which form play-at-speed takes: the timecode (the default since
+   *  2026-11-11) or the slider + readout, behind a Debug panel toggle */
+  varispeedStyle?: 'timecode' | 'slider';
 
   // Playback
   isPlaying: boolean;
@@ -373,7 +376,7 @@ function SplitRecordButton({
 export function TransportTools({
   activeMenuItem, workspace,
   hiddenTools = [], onToggleToolVisibility,
-  varispeed = 1, varispeedOn = false, onVarispeedChange, onVarispeedDial, onVarispeedToggle,
+  varispeed = 1, varispeedOn = false, onVarispeedChange, onVarispeedDial, onVarispeedToggle, varispeedStyle = 'timecode',
   isPlaying, isRecording, onPlay, onStop, onRecord, onSkipToStart, onSkipToEnd, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime, snapEnabled = false, onToggleSnap, snapSubdivision = 1, onSnapSubdivisionChange, snapTriplet = false, onToggleSnapTriplet, snapMode = 'musical', onSnapModeChange,
   loopRegionEnabled, loopRegionStart, loopRegionEnd,
   setLoopRegionEnabled, setLoopRegionStart, setLoopRegionEnd,
@@ -618,7 +621,9 @@ export function TransportTools({
       // among the transport buttons (the Figma "1.1 - Simple slider"
       // third row, 2026-10-15)
       case 'varispeed': return show('varispeed') && onVarispeedChange
-        ? <VarispeedControl speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onDial={onVarispeedDial ?? onVarispeedChange} />
+        ? varispeedStyle === 'timecode'
+          ? <VarispeedTimecode speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onToggle={onVarispeedToggle ? () => onVarispeedToggle(!varispeedOn) : undefined} />
+          : <VarispeedControl speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onDial={onVarispeedDial ?? onVarispeedChange} />
         : null;
       case 'timecode': return show('timecode')
         ? <TimeCode value={currentTime} format={timeCodeFormat} onChange={onTimeCodeChange} ariaLabel="Playhead position" onFormatChange={onTimeCodeFormatChange} />

@@ -152,3 +152,22 @@ describe('stepVarispeedCoarse — the big step (2026-11-05)', () => {
     expect(stepVarispeedCoarse(0.01, 1)).toBe(0.25);
   });
 });
+
+describe('stepVarispeedJump — the bare − / = keys (2026-11-11)', () => {
+  it('goes 100 → 200 → 300% up and 100 → 50 → 25% down, and stays at the ends', async () => {
+    const { stepVarispeedJump } = await import('../VarispeedControl');
+    expect(stepVarispeedJump(1, 1)).toBe(2);
+    expect(stepVarispeedJump(2, 1)).toBe(3);
+    expect(stepVarispeedJump(3, 1)).toBe(3);
+    expect(stepVarispeedJump(1, -1)).toBe(0.5);
+    expect(stepVarispeedJump(0.5, -1)).toBe(0.25);
+    expect(stepVarispeedJump(0.25, -1)).toBe(0.25);
+  });
+  it('from between the stops it goes to the next one that way', async () => {
+    const { stepVarispeedJump } = await import('../VarispeedControl');
+    expect(stepVarispeedJump(1.1, 1)).toBe(2);
+    expect(stepVarispeedJump(1.1, -1)).toBe(1);
+    expect(stepVarispeedJump(0.1, 1)).toBe(0.25);
+    expect(stepVarispeedJump(0.1, -1)).toBe(0.1);
+  });
+});

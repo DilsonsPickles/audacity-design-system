@@ -79,7 +79,7 @@ export interface UseKeyboardShortcutsOptions {
   onToggleMixer?: () => void;
   /** − / = : playback speed a tenth slower (−1) or faster (+1); with
    *  Shift (coarse) to the next round stop that way */
-  onSpeedStep?: (notches: number, coarse?: boolean) => void;
+  onSpeedStep?: (notches: number, fine?: boolean) => void;
   /** 0 : playback speed 100% ↔ the last speed that was not 100% */
   onSpeedToggle?: () => void;
   onZoomIn?: () => void;
@@ -551,10 +551,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       //     brackets (VLC's) the clip edges; the real build's
       //     play-speed-inc / play-speed-dec ship unbound. A focused fade
       //     handle stops its own 0 (reset the curve) before it gets here.
-      //     SHIFT makes the step a BIG one (the same day, "perhaps shift +
-      //     - and = can make bigger jumps?"): to the next round stop that
-      //     way — 1, 25, 50, 100, 150 … 300% — as Shift is the bigger step on
-      //     the handles' arrows and the seek. Shift+0 is nothing.
+      //     SINCE 2026-11-11 THE BARE KEYS JUMP to the next stop that way
+      //     (25 · 50 · 100 · 200 · 300%) and SHIFT is the FINE step, a tenth
+      //     ("can we make - and = shortcuts make bigger jumps? Like 2x and
+      //     3x for = and 0.5 0.25 for -?"). Shift+0 is nothing.
       if (!e.metaKey && !e.ctrlKey && !e.altKey && (onSpeedStep || onSpeedToggle)) {
         const slower = e.code === 'Minus' || e.code === 'NumpadSubtract' || (!e.code && (e.key === '-' || e.key === '_'));
         const faster = e.code === 'Equal' || e.code === 'NumpadAdd' || (!e.code && (e.key === '=' || e.key === '+'));

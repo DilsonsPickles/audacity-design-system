@@ -64,6 +64,14 @@
   cursor: default;
 }
 
+/* The digit cells (2026-11-11): TimeCodeDigit's own, 1px apart as the
+   main timecode's are */
+.bpm-stepper__cells {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
 /* Active edit field reuses the digits visual + accent treatment from
    TimeCodeDigit's --active state. */
 .bpm-stepper__input {
