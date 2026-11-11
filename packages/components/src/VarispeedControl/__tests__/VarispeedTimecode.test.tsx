@@ -90,3 +90,15 @@ describe('VarispeedTimecode — play-at-speed as a timecode (2026-11-11)', () =>
     expect(bare.onChange).toHaveBeenLastCalledWith(1);
   });
 });
+
+describe('VarispeedTimecode — the lamp (2026-11-11)', () => {
+  it('marks itself active off 100% and carries the amber for "Speed"', () => {
+    const on = render(<ThemeProvider><VarispeedTimecode speed={0.5} enabled onChange={() => {}} /></ThemeProvider>);
+    const root = on.container.querySelector('[data-varispeed-timecode]') as HTMLElement;
+    expect(root.getAttribute('data-varispeed-active')).toBe('true');
+    expect(root.style.getPropertyValue('--varispeed-lamp')).not.toBe('');
+    cleanup();
+    const off = render(<ThemeProvider><VarispeedTimecode speed={1} enabled={false} onChange={() => {}} /></ThemeProvider>);
+    expect(off.container.querySelector('[data-varispeed-timecode]')?.hasAttribute('data-varispeed-active')).toBe(false);
+  });
+});

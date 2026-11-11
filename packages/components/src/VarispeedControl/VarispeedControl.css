@@ -67,6 +67,14 @@
   cursor: pointer;
 }
 
+/* THE LAMP (2026-11-11, "perhaps we make the speed title… change colour
+   when it's not set to 100"): "Speed" lights amber while play-at-speed is
+   on; the digits stay white, as BPM's and the timecode's are */
+.varispeed-timecode[data-varispeed-active] .varispeed-timecode__name,
+.varispeed-timecode[data-varispeed-active] .varispeed-timecode__name:hover {
+  color: var(--varispeed-lamp);
+}
+
 /* THE TIMECODE FORM (2026-11-11) — BpmStepper's look; the name sits a
    little apart from the number, as a unit does after one */
 .varispeed-timecode__name {
