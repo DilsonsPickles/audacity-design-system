@@ -1,5 +1,5 @@
 import React from 'react';
-import { WelcomeDialog, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, Dialog, DialogFooter, SignInActionBar, LabeledInput, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, PreferencesModal, PluginBrowserDialog, MacroBuilderDialog, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, VSTEffectOptionsDialog, AlertDialog, toast, type PreferencesState, type StoredProject } from '@audacity-ui/components';
+import { WelcomeDialog, EffectDialog, EffectHeader, EffectDialogContextMenu, AmplifyEffect, ReverbEffect, Dialog, DialogFooter, SignInActionBar, LabeledInput, Button, LabeledCheckbox, ContextMenuItem, SaveProjectModal, PreferencesModal, PluginBrowserDialog, MacroBuilderDialog, ExportModal, ExportSettings, LabelEditor, PluginManagerDialog, Plugin, VSTEffectOptionsDialog, AlertDialog, toast, useTheme, type PreferencesState, type StoredProject } from '@audacity-ui/components';
 import { EFFECT_REGISTRY } from '@audacity-ui/core';
 import type { AccessibilityProfile } from '@audacity-ui/core';
 import { useTracks } from '../contexts/useTracks';
@@ -136,6 +136,7 @@ export interface AppDialogsProps {
 }
 
 export function AppDialogs(props: AppDialogsProps) {
+  const { theme } = useTheme();
   const { state, dispatch } = useTracks();
   const { tracks, masterEffects } = state;
   const { audioManagerRef } = usePlayback();
@@ -779,12 +780,16 @@ export function AppDialogs(props: AppDialogsProps) {
           onMouseLeave={() => setAudioSetupMenuAnchor(null)}
         >
           <div
+            // The theme's menu surface and border, as ContextMenu's (2026-11-11,
+            // "the audio setup flyout is not rendering in dark mode" — it was
+            // a fixed white box with a light grey border)
             style={{
-              background: '#fff',
-              border: '1px solid #d0d0d0',
+              background: theme.background.menu.background,
+              border: `1px solid ${theme.border.default}`,
               borderRadius: '4px',
               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
               padding: '4px 0',
+              colorScheme: 'inherit',
             }}
           >
             <ContextMenuItem
@@ -831,7 +836,7 @@ export function AppDialogs(props: AppDialogsProps) {
               hasSubmenu
               onClick={() => {}}
             />
-            <div style={{ borderTop: '1px solid #e0e0e0', margin: '4px 0' }} />
+            <div style={{ borderTop: `1px solid ${theme.border.divider}`, margin: '4px 0' }} />
             <ContextMenuItem
               label="Rescan audio devices"
               onClick={() => {
