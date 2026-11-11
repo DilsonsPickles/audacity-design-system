@@ -73,9 +73,9 @@ export function VarispeedTimecode({ speed, enabled, onChange, onToggle }: Varisp
     '--timecode-unit-hover-bg': '#4a5068',
     '--timecode-unit-hover-text': '#f4f5f9',
     '--focus-color': theme.border.focus,
-    // THE LAMP (2026-11-11): "Speed" lit in the secondary accent while the
-    // speed is not 100% — the master track's amber, a varispeed lamp on the LCD
-    '--varispeed-lamp': theme.accent.secondary,
+    // THE LAMP (2026-11-11): "Speed" lit in the ACCENT (blue) while the
+    // speed is not 100% — a lamp on the LCD (amber first, "perhaps the accent colour instead")
+    '--varispeed-lamp': theme.accent.primary,
   } as React.CSSProperties;
 
   const percent = formatVarispeedPercent(speed);
