@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Dropdown, useTheme } from '@audacity-ui/components';
+import { Button, ContextMenu, ContextMenuItem, GhostButton, useTheme } from '@audacity-ui/components';
 import { ProjectTabs, type ProjectBarToolsDeps } from './ProjectBarTools';
 
 /**
@@ -24,6 +24,13 @@ export const TRAFFIC_LIGHTS_PX = 76;
 // out of the window's drag region so they take clicks.
 export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: { deps: ProjectBarToolsDeps; insetForTrafficLights: boolean; vibrancy?: boolean }) {
   const { activeMenuItem, onNavigate, projectTitle } = deps;
+  // THE WORKSPACE IS MUSESCORE'S "Workspace: Default" (2026-11-11, "can we
+  // do workspace: Default like MSS does?" → in the title bar, same spot):
+  // ONE flat button — the workspace icon and "Workspace: <name>" — opening
+  // a menu of the workspaces, the current one checked. It replaced a
+  // "Workspace" label beside a dropdown.
+  const [workspaceMenu, setWorkspaceMenu] = React.useState<{ x: number; y: number } | null>(null);
+  const workspaceName = deps.workspaceOptions.find((o) => o.value === deps.workspace)?.label ?? deps.workspace;
   const { theme } = useTheme();
   return (
     <div
@@ -43,19 +50,36 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
           : `color-mix(in srgb, ${theme.background.toolbar}, black 10%)`,
         '--app-title-bar-active': theme.background.toolbar,
         '--app-title-bar-border': theme.border.onSurface,
-        '--app-title-bar-text': theme.foreground.text.primary,
         paddingLeft: insetForTrafficLights ? TRAFFIC_LIGHTS_PX : 0,
       } as React.CSSProperties}
     >
       <ProjectTabs activeMenuItem={activeMenuItem} onNavigate={onNavigate} projectTitle={projectTitle} />
       {activeMenuItem !== 'home' && (
         <div className="app-title-bar__end" data-app-title-bar-end>
-          {/* 24px, as the small Share button is ("let's try 24px button and
-              dropdown", 2026-11-11) */}
           {!deps.hidden.has('workspace') && (
             <div className="project-workspace" data-project-tool="workspace">
-              <span className="app-title-bar__label">Workspace</span>
-              <Dropdown size="small" value={deps.workspace} width="140px" options={[...deps.workspaceOptions]} onChange={deps.onWorkspacePick} />
+              <GhostButton
+                icon="workspace"
+                size="compact"
+                label={`Workspace: ${workspaceName}`}
+                ariaLabel={`Workspace: ${workspaceName}`}
+                active={workspaceMenu !== null}
+                onClick={(e) => {
+                  const r = e.currentTarget.getBoundingClientRect();
+                  setWorkspaceMenu((open) => (open ? null : { x: r.left, y: r.bottom + 4 }));
+                }}
+              />
+              <ContextMenu isOpen={workspaceMenu !== null} onClose={() => setWorkspaceMenu(null)} x={workspaceMenu?.x ?? 0} y={workspaceMenu?.y ?? 0} portalTo={typeof document === 'undefined' ? null : document.body}>
+                {deps.workspaceOptions.map((o) => (
+                  <ContextMenuItem
+                    key={o.value}
+                    label={o.label}
+                    checked={o.value === deps.workspace}
+                    onClick={() => deps.onWorkspacePick(o.value)}
+                    onClose={() => setWorkspaceMenu(null)}
+                  />
+                ))}
+              </ContextMenu>
             </div>
           )}
           {!deps.hidden.has('share-audio') && (

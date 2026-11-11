@@ -67,6 +67,12 @@
   padding: 0 12px;
   border-radius: 4px;
 }
+/* …at the compact size it keeps its 24px (2026-11-11, the title bar's
+   "Workspace: Classic" button beside the 24px Share) */
+.ghost-button--compact.ghost-button--with-label {
+  height: 24px;
+  padding: 0 8px;
+}
 
 .ghost-button__label {
   font-family: Inter, system-ui, -apple-system, sans-serif;

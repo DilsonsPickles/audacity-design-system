@@ -107,15 +107,4 @@ html.pan-active * {
   align-items: center;
   gap: 8px;
 }
-/* NO OUTLINE on the title bar's dropdown (2026-11-11, "optical illusion
-   from dropdown with outline. Remove outline from dropdown"): its border
-   made the 24px trigger read taller than the 24px button beside it. In
-   every state — keyboard focus still gets the app's focus frame. */
-.app-title-bar__end .dropdown .dropdown__trigger {
-  border-color: transparent !important;
-}
-.app-title-bar__label {
-  font-size: 12px;
-  white-space: nowrap;
-  color: var(--app-title-bar-text);
-}
+
