@@ -12,8 +12,7 @@
 import React from 'react';
 import { Icon, type IconName } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
-import triangleSvg from '../assets/customise-toolbar/triangle.svg';
-import dividerSvg from '../assets/customise-toolbar/divider.svg';
+import { useTheme } from '../ThemeProvider';
 import './CustomiseToolbarMenu.css';
 
 export interface CustomiseToolbarTool {
@@ -129,6 +128,20 @@ export interface CustomiseToolbarMenuProps {
 
 export function CustomiseToolbarMenu({ isOpen, onClose, anchor, hiddenTools, onToggleTool, entries = CUSTOMISE_TOOLBAR_ENTRIES, onRearrange, onResetLayout, resetLayoutDisabled = false }: CustomiseToolbarMenuProps) {
   const hidden = React.useMemo(() => new Set(hiddenTools), [hiddenTools]);
+  // THE THEME'S COLOURS (2026-11-11, "fix the dark mode customise toolbar
+  // flyout"): the text, the icons, the hover, the triangle and the dividers
+  // were the light theme's — fallbacks, and two SVG assets with the light
+  // greys baked in — and the scrollbar was the light scheme's white strip.
+  // All of them read the theme now; the triangle and the dividers are drawn
+  // here in its colours, and the menu's colour-scheme follows its surface.
+  const { theme } = useTheme();
+  const menuBg = theme.background.menu.background;
+  const themeStyle = {
+    '--context-menu-text': theme.foreground.text.primary,
+    '--customise-toolbar-icon': theme.foreground.icon.primary,
+    '--context-menu-item-hover-bg': theme.background.surface.hover,
+    colorScheme: isDarkColor(menuBg) ? 'dark' : 'light',
+  } as React.CSSProperties;
   const anchorX = anchor ? (anchor.left + anchor.right) / 2 : 0;
   const viewportW = typeof window === 'undefined' ? Infinity : window.innerWidth;
   const viewportH = typeof window === 'undefined' ? Infinity : window.innerHeight;
@@ -158,20 +171,24 @@ export function CustomiseToolbarMenu({ isOpen, onClose, anchor, hiddenTools, onT
   return (
     // Portaled to the body: the cog may sit in any dock now, and an
     // ancestor that is a containing block for fixed elements would shift it
-    <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} className={`customise-toolbar${above ? ' customise-toolbar--above' : ''}`} portalTo={typeof document === 'undefined' ? null : document.body}>
-      <img
+    <ContextMenu isOpen={isOpen} onClose={onClose} x={x} y={y} className={`customise-toolbar${above ? ' customise-toolbar--above' : ''}`} style={themeStyle} portalTo={typeof document === 'undefined' ? null : document.body}>
+      {/* The design's triangle, drawn in the theme's border and surface */}
+      <svg
         className="customise-toolbar__triangle"
-        src={triangleSvg}
-        alt=""
         width={TRIANGLE_W}
         height={TRIANGLE_H}
+        viewBox="0 0 16 9"
+        aria-hidden="true"
         style={{ right: triangleRight }}
-      />
+      >
+        <path d="M8 0L16 8H0Z" fill="var(--context-menu-border)" />
+        <path d="M8 2L15 9H1Z" fill="var(--context-menu-bg)" />
+      </svg>
       <div ref={mainRef} className="customise-toolbar__main" role="menu" aria-label="Customise toolbar" data-customise-toolbar style={{ maxHeight }}>
         <div className="customise-toolbar__header">Customise toolbar</div>
         <div className="customise-toolbar__list">
           {entries.map((entry, i) => entry.kind === 'divider' ? (
-            <img key={`d${i}`} className="customise-toolbar__divider" src={dividerSvg} alt="" height={8} />
+            <span key={`d${i}`} className="customise-toolbar__divider" aria-hidden="true" />
           ) : (
             <button
               key={entry.id}
@@ -212,3 +229,15 @@ export function CustomiseToolbarMenu({ isOpen, onClose, anchor, hiddenTools, onT
 }
 
 export default CustomiseToolbarMenu;
+
+/** Whether a #rrggbb colour is dark (its relative luminance under a half) */
+function isDarkColor(color: string): boolean {
+  const m = /^#?([0-9a-f]{6})$/i.exec(color.trim());
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.5;
+}

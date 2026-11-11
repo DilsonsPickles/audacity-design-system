@@ -77,6 +77,7 @@
 
 .customise-toolbar__eye,
 .customise-toolbar__icon {
+  color: var(--customise-toolbar-icon, currentColor);
   flex: 0 0 32px;
   width: 32px;
   height: 32px;
@@ -104,6 +105,18 @@
   width: 100%;
   height: 8px;
   flex-shrink: 0;
+  position: relative;
+}
+/* The divider's 1px line, in the theme's divider colour (2026-11-11 — it
+   was an SVG with the light theme's grey baked in) */
+.customise-toolbar__divider::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 1px;
+  background: var(--context-menu-divider-bg);
 }
 
 /* The foot of the menu (2026-11-10, custom toolbars): the layout's two
