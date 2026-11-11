@@ -167,7 +167,7 @@ function createWindow(url) {
     ...(process.platform === 'darwin'
       ? {
           titleBarStyle: 'hiddenInset',
-          trafficLightPosition: { x: 12, y: 8 },
+          trafficLightPosition: { x: 12, y: 12 },
           // THE TITLE BAR IS GLASS (2026-11-11, "try vibrancy on the title
           // bar"): the native under-window material, which shows only
           // where the page is transparent — the renderer leaves the bar's

@@ -74,8 +74,9 @@ export type IconName =
 
 // Unicode mappings for MusescoreIcon font
 const ICON_MAP: Record<IconName, string> = {
-  /* DRAWN below (the font has no house); kept empty here */
-  home: '',
+  /* The Home tab's house — the font's U+F3A6 (2026-11-11, "F3A6 is home
+     icon"; a drawn house stood in for an hour) */
+  home: '\uF3A6',
   mixer: '\uF41B',
   menu: '\uEF13',
   gripper: '\uF3A2',
@@ -219,14 +220,6 @@ const svgProps = {
 } as const;
 const bar = <rect x="2.5" y="6.5" width="11" height="3" rx="0.5" />;
 const DRAWN_ICONS: Partial<Record<IconName, React.ReactNode>> = {
-  // The Home tab's house (2026-11-11, the Figma-style tabs) — the font has none
-  home: (
-    <svg {...svgProps}>
-      <path d="M2 7.5L8 2.5L14 7.5" />
-      <path d="M3.5 6.5V13.5H12.5V6.5" />
-      <path d="M6.5 13.5V10H9.5V13.5" />
-    </svg>
-  ),
   'track-collapse': (
     <svg {...svgProps}>
       {bar}

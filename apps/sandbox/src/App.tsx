@@ -1340,10 +1340,10 @@ function CanvasDemoContent() {
     <TransportToolbarContainer {...transportToolbarProps}>
     <div style={{
       display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw',
-      // Over the window's vibrancy (macOS): the title bar's 32px stay
+      // Over the window's vibrancy (macOS): the title bar's 40px stay
       // see-through, everything below is the app's solid surface
       ...(window.electronShell?.titleBarVibrancy
-        ? { background: `linear-gradient(to bottom, transparent 32px, ${baseTheme.background.surface.default} 32px)` }
+        ? { background: `linear-gradient(to bottom, transparent 40px, ${baseTheme.background.surface.default} 40px)` }
         : {}),
     }}>
       {customTitleBar && (

@@ -7,7 +7,7 @@ import { ProjectTabs, type ProjectBarToolsDeps } from './ProjectBarTools';
  * the electron window's three dots. Like the Figma header where the project
  * tab header is part of the application shell"): on macOS the desktop shell
  * hides the native title bar (main.cjs, titleBarStyle 'hiddenInset') and
- * this 32px row takes its place — the traffic lights inset over its left
+ * this 40px row takes its place — the traffic lights inset over its left
  * end (TRAFFIC_LIGHTS_PX keeps them clear), then the Home and project tabs,
  * Figma's document tabs. The row is the window's DRAG REGION; the tabs are
  * not (`-webkit-app-region: no-drag`), so they take clicks. A double-click

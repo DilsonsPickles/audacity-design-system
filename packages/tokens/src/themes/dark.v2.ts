@@ -7,20 +7,28 @@
 
 import { ThemeTokens } from '../tokens.v2';
 
+// THE DARK THEME IS ONE SLATE FAMILY (2026-11-11, "why doesn't effects menu
+// match rest of dark theme? Neither does preferences"): the app's chrome —
+// toolbar #2E353C, the track rail #252B31, the canvas #171F25 — leans blue,
+// and the surfaces, dialogs, menus, tables, tabs, borders and controls were an
+// older NEUTRAL grey family (#25262b, #2c2e33, #373a40…), so every panel and
+// dialog built on them sat beside the chrome in a different grey. Each neutral
+// grey was moved to the slate tone of the same brightness (the rail's lean:
+// green +6, blue +12); the inverse text/icon (dark on light) kept theirs.
 export const darkTheme: ThemeTokens = {
   background: {
     surface: {
-      default: '#25262b',        // Main toolbar/panel background (dark gray)
-      elevated: '#2c2e33',       // Dialogs, menus, dropdowns (slightly lighter)
-      subtle: '#1a1b1e',         // Track headers, subtle containers (darker)
-      inset: '#1f2024',          // Recessed content areas (project grids, list containers)
-      hover: '#2e3035',          // Interactive surface hover
+      default: '#252B31',        // Main toolbar/panel background (dark gray)
+      elevated: '#2C333A',       // Dialogs, menus, dropdowns (slightly lighter)
+      subtle: '#1A1F24',         // Track headers, subtle containers (darker)
+      inset: '#1F242A',          // Recessed content areas (project grids, list containers)
+      hover: '#2F363D',          // Interactive surface hover
     },
 
     dialog: {
-      header: '#25262b',         // Dialog header background
-      body: '#25262b',           // Dialog body/content background
-      footer: '#25262b',         // Dialog footer background
+      header: '#252B31',         // Dialog header background
+      body: '#252B31',           // Dialog body/content background
+      footer: '#252B31',         // Dialog footer background
     },
 
     canvas: {
@@ -31,7 +39,7 @@ export const darkTheme: ThemeTokens = {
         hover: 'rgba(255, 255, 255, 0.05)',  // Track hover
       },
       grid: {
-        major: '#2d2f34',        // Major grid lines
+        major: '#2D343B',        // Major grid lines
         minor: '#22232',         // Minor grid lines
       },
     },
@@ -48,47 +56,47 @@ export const darkTheme: ThemeTokens = {
           idle: '#515A63',       // Secondary button (medium gray)
           hover: '#5B656F',      // Lighter on hover
           active: '#46505A',     // Darker when pressed
-          disabled: '#2e3035',   // Very dark gray
+          disabled: '#2F363D',   // Very dark gray
         },
         ghost: {
           idle: 'transparent',   // No background
-          hover: '#2e3035',      // Subtle gray on hover
-          active: '#373a40',     // Slightly lighter when pressed
+          hover: '#2F363D',      // Subtle gray on hover
+          active: '#373E46',     // Slightly lighter when pressed
           disabled: 'transparent', // No background when disabled
         },
       },
 
       input: {
-        idle: '#25262b',         // Dark input background
-        hover: '#2c2e33',        // Slightly lighter on hover
-        focus: '#2c2e33',        // Slightly lighter when focused
-        disabled: '#1a1b1e',     // Very dark when disabled
+        idle: '#252B31',         // Dark input background
+        hover: '#2C333A',        // Slightly lighter on hover
+        focus: '#2C333A',        // Slightly lighter when focused
+        disabled: '#1A1F24',     // Very dark when disabled
         error: '#3d1f1f',        // Dark red tint for errors
       },
 
       checkbox: {
-        idle: '#25262b',         // Dark background
-        hover: '#2c2e33',        // Slightly lighter on hover
-        pressed: '#373a40',      // Even lighter when pressed
+        idle: '#252B31',         // Dark background
+        hover: '#2C333A',        // Slightly lighter on hover
+        pressed: '#373E46',      // Even lighter when pressed
         checked: '#4a90e2',      // Blue when checked
         checkedHover: '#5ba3ff', // Lighter blue on hover
-        disabled: '#1a1b1e',     // Very dark when disabled
+        disabled: '#1A1F24',     // Very dark when disabled
       },
 
       radio: {
-        idle: '#25262b',         // Dark background
-        hover: '#2c2e33',        // Slightly lighter on hover
-        pressed: '#373a40',      // Even lighter when pressed
+        idle: '#252B31',         // Dark background
+        hover: '#2C333A',        // Slightly lighter on hover
+        pressed: '#373E46',      // Even lighter when pressed
         selected: '#4a90e2',     // Blue when selected
         selectedHover: '#5ba3ff', // Lighter blue on hover
-        disabled: '#1a1b1e',     // Very dark when disabled
+        disabled: '#1A1F24',     // Very dark when disabled
       },
 
       toggle: {
         off: {
           idle: '#4b5563',       // Medium gray when off
-          hover: '#5f6369',      // Lighter on hover
-          disabled: '#2e3035',   // Very dark gray
+          hover: '#5F676F',      // Lighter on hover
+          disabled: '#2F363D',   // Very dark gray
         },
         on: {
           idle: '#4a90e2',       // Blue when on
@@ -107,12 +115,12 @@ export const darkTheme: ThemeTokens = {
         },
         handle: {
           background: '#2a2d32', // Elevated surface color
-          border: '#6b6f76',     // Handle stroke (contrast-matched to light theme)
+          border: '#6B737B',     // Handle stroke (contrast-matched to light theme)
         },
       },
 
       fader: {
-        track: '#373a40',        // Medium gray track
+        track: '#373E46',        // Medium gray track
         thumb: {
           idle: '#4a90e2',       // Blue thumb
           hover: '#5ba3ff',      // Lighter on hover
@@ -123,27 +131,27 @@ export const darkTheme: ThemeTokens = {
 
       panKnob: {
         face: '#2a2d32',         // Elevated surface color (chrome UI)
-        border: '#6b6f76',       // Border stroke
-        gauge: '#373a40',        // Background gauge track
+        border: '#6B737B',       // Border stroke
+        gauge: '#373E46',        // Background gauge track
       },
 
       scrollbar: {
-        track: '#1a1b1e',        // Very dark track
+        track: '#1A1F24',        // Very dark track
         thumb: {
           idle: '#4b5563',       // Medium gray thumb
-          hover: '#5f6369',      // Lighter on hover
+          hover: '#5F676F',      // Lighter on hover
           pressed: '#6b7280',    // Even lighter when pressed
         },
       },
 
       timecode: {
         idle: '#171F25',         // Timecode chip background in dark mode
-        hover: '#2c2e33',        // Slightly lighter on hover
+        hover: '#2C333A',        // Slightly lighter on hover
         active: '#4a90e2',       // Blue when active/editing
       },
 
       meter: {
-        background: '#1a1b1e',   // Very dark background
+        background: '#1A1F24',   // Very dark background
         fill: '#22c55e',         // Green fill (brighter in dark theme)
         peak: '#ef4444',         // Red peak indicator
         rms: 'rgba(255, 255, 255, 0.25)', // RMS overlay (white at 25% opacity)
@@ -151,44 +159,44 @@ export const darkTheme: ThemeTokens = {
     },
 
     menu: {
-      background: '#2c2e33',     // Dark menu background
+      background: '#2C333A',     // Dark menu background
       item: {
         idle: 'transparent',     // No background for items
-        hover: '#373a40',        // Medium gray on hover
-        pressed: '#4c5058',      // Lighter when pressed
+        hover: '#373E46',        // Medium gray on hover
+        pressed: '#4C545D',      // Lighter when pressed
         active: '#1e3a5f',       // Dark blue tint for active item
       },
-      separator: '#373a40',      // Medium gray separator
+      separator: '#373E46',      // Medium gray separator
     },
 
     table: {
-      background: '#25262b',     // Dark table background
+      background: '#252B31',     // Dark table background
       header: {
-        background: '#2c2e33',   // Slightly lighter header
+        background: '#2C333A',   // Slightly lighter header
         text: '#e4e5e7',         // Light text
-        border: '#373a40',       // Border color
+        border: '#373E46',       // Border color
       },
       row: {
         idle: 'transparent',     // No background for rows
-        hover: '#2c2e33',        // Slightly lighter on hover
+        hover: '#2C333A',        // Slightly lighter on hover
         selected: '#1e3a5f',     // Dark blue tint when selected
-        alternate: '#282930',    // Slightly lighter for striped rows
+        alternate: '#282E35',    // Slightly lighter for striped rows
         text: '#e4e5e7',         // Light text
-        border: '#373a40',       // Medium gray border
+        border: '#373E46',       // Medium gray border
       },
       cell: {
         idle: 'transparent',     // No background for cells
-        hover: '#2c2e33',        // Slightly lighter on hover
+        hover: '#2C333A',        // Slightly lighter on hover
         selected: '#1e3a5f',     // Dark blue tint when selected
         text: '#e4e5e7',         // Light text
         textSecondary: '#9ca3af', // Medium gray for secondary text
-        border: '#373a40',       // Medium gray border
+        border: '#373E46',       // Medium gray border
       },
     },
 
     tab: {
-      idle: '#25262b',           // Default surface color
-      hover: '#2c2e33',          // Slightly lighter hover
+      idle: '#252B31',           // Default surface color
+      hover: '#2C333A',          // Slightly lighter hover
       selected: '#2a3447',       // Subtle blue tint
       selectedBorder: '#677CE4', // Accent blue
     },
@@ -207,7 +215,7 @@ export const darkTheme: ThemeTokens = {
     },
 
     panel: {
-      ruler: '#1f2024',          // Vertical ruler (dark, sits over canvas)
+      ruler: '#1F242A',          // Vertical ruler (dark, sits over canvas)
       timeline: '#252B31',       // Horizontal timeline ruler
     },
 
@@ -246,22 +254,22 @@ export const darkTheme: ThemeTokens = {
   },
 
   border: {
-    default: '#373a40',          // Standard border color
-    subtle: '#2d2f34',           // Subtle border
-    emphasis: '#4c5058',         // Emphasized border
+    default: '#373E46',          // Standard border color
+    subtle: '#2D343B',           // Subtle border
+    emphasis: '#4C545D',         // Emphasized border
     focus: '#60a5fa',            // Light blue focus ring
     error: '#ef4444',            // Red error border
     success: '#22c55e',          // Green success border
     warning: '#f59e0b',          // Amber warning border
-    divider: '#2d2f34',          // Divider/separator color
+    divider: '#4F5760',          // Divider/separator color — ~1.6:1 on the toolbar, as the light theme's #BFC0C7 is on its own (2026-11-11, "dark mode toolbar dividers are really hard to see": it was #2D343B, the toolbar's own grey)
     onElevated: '#373E44',       // Border on elevated surfaces (timeline ruler, dialogs)
     onSurface: '#434A50',        // Border on default surfaces (toolbars, panels)
     input: {
-      idle: '#4c5058',           // Input border default
-      hover: '#5f6369',          // Lighter on hover
+      idle: '#4C545D',           // Input border default
+      hover: '#5F676F',          // Lighter on hover
       focus: '#60a5fa',          // Light blue when focused
       error: '#ef4444',          // Red for errors
-      disabled: '#2d2f34',       // Dark gray when disabled
+      disabled: '#2D343B',       // Dark gray when disabled
     },
     control: {
       radio: '#9ca3af',          // Radio button border (lighter in dark theme)
@@ -470,17 +478,17 @@ export const darkTheme: ThemeTokens = {
         timeSelectionWaveformRms: '#929ADB', 
       },
       border: {
-        normal: '#4c5058',       // Medium gray border (normal mode)
+        normal: '#4C545D',       // Medium gray border (normal mode)
         envelope: '#6a6a8a',     // Purple-gray border (envelope mode)
         selected: '#ffffff',     // White border when selected
       },
     },
 
     timeline: {
-      background: '#1a1b1e',     // Very dark ruler background
+      background: '#1A1F24',     // Very dark ruler background
       text: '#9ca3af',           // Medium gray text
       tickMajor: '#4b5563',      // Medium gray major ticks
-      tickMinor: '#373a40',      // Darker gray minor ticks
+      tickMinor: '#373E46',      // Darker gray minor ticks
       playhead: '#ef4444',       // Red playhead cursor
       playheadShadow: '#dc2626', // Darker red shadow
       loopRegionFill: 'rgba(103, 124, 228, 0.2)', // accent.primary fill (active)
@@ -525,7 +533,7 @@ export const darkTheme: ThemeTokens = {
 
     pianoRoll: {
       laneWhite: '#1d1e21',          // Match canvas track idle background
-      laneBlack: '#1a1b1e',          // Match canvas default background
+      laneBlack: '#1A1F24',          // Match canvas default background
       gridMeasure: 'rgba(255,255,255,0.20)',
       gridBeat: 'rgba(255,255,255,0.10)',
       gridSubdivision: 'rgba(255,255,255,0.04)',
