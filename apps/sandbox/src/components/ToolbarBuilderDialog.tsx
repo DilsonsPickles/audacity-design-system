@@ -2,8 +2,9 @@ import React from 'react';
 import {
   Button, Checkbox, Dialog, DialogFooter, Icon, SearchField, useTheme, usePreferences,
   CUSTOMISE_TOOLBAR_ENTRIES, CUSTOMISE_TOOL_ID, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID,
-  TOOLBAR_REGIONS, addToolToNewBar, findTool, insertTool, moveBar, moveTool, moveToolToNewBar, removeTool, rowsOf,
-  type ToolbarLayout, type ToolbarRegion,
+  TOOLBAR_REGIONS, addEmptyBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertTool, isToolSeparator,
+  moveBar, moveTool, nextBarId, removeBar, removeTool, renameBar, rowsOf,
+  type BarPlacement, type ToolbarBar, type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
 
 /**
@@ -14,10 +15,13 @@ import {
  * LAYOUT on the right as a tree (dock → row → toolbar → tool, every tool with
  * its shown / hidden checkbox, the Customise list's eye), and between them
  * Add » / « Remove; beside the tree ▲ / ▼ (a tool within its toolbar, a
- * toolbar within its row), New toolbar and New row (the selected tool into a
- * container of its own — a container lives while it holds a tool, so there
- * is no empty one to make). Every edit is the layout model's own
- * (`insertTool`, `removeTool`, `moveTool`, `moveBar`, `moveToolToNewBar`, `addToolToNewBar`),
+ * toolbar within its row; a tool at a toolbar's end steps into the next
+ * one), New toolbar and New row (an EMPTY toolbar, named, to fill — since
+ * 2026-11-11, "I don't mind the user creating empty toolbars"), Add
+ * separator (a GROUP line inside a toolbar, MuseScore's "Add separator
+ * line"), Rename and Delete toolbar. A toolbar is what its grip moves; what
+ * is inside it changes HERE. Every edit is the layout model's own
+ * (`insertTool`, `removeTool`, `moveTool`, `moveBar`, `addEmptyBar`, `insertSeparator`, `renameBar`, `removeBar`, `addToolToNewBar`),
  * the drag gestures' rules, applied AT ONCE so the toolbars behind change as
  * you go; CANCEL (and Escape) put the stored layouts and the hidden list back
  * as they were when the dialog opened; OK keeps them. The project tools, the
@@ -91,13 +95,24 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
   const [query, setQuery] = React.useState('');
   const [leftSel, setLeftSel] = React.useState<string | null>(null);
   const [sel, setSel] = React.useState<Selection>(null);
+  const [renaming, setRenaming] = React.useState<{ barId: string; text: string } | null>(null);
+  // COLLAPSED tree nodes (2026-11-11, "can we collapse the toolbars in the
+  // customise toolbars modal?"): docks, rows and toolbars fold away; kept
+  // across opens for the session
+  const [collapsed, setCollapsed] = React.useState<ReadonlySet<string>>(() => new Set());
+  const toggleCollapsed = (key: string, to?: boolean) => setCollapsed((prev) => {
+    const next = new Set(prev);
+    const fold = to ?? !next.has(key);
+    if (fold) next.add(key); else next.delete(key);
+    return next;
+  });
 
   // The snapshot Cancel restores, taken when the dialog opens
   const snapshotRef = React.useRef<{ layouts: typeof preferences.toolbarLayouts; hidden: string[] } | null>(null);
   React.useEffect(() => {
     if (!isOpen) return;
     snapshotRef.current = { layouts: preferences.toolbarLayouts, hidden: [...(preferences.toolbarHiddenTools ?? [])] };
-    setSel(null); setLeftSel(null); setQuery('');
+    setSel(null); setLeftSel(null); setQuery(''); setRenaming(null);
     // Only at open
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -119,22 +134,36 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
   };
 
   // ── The tree, flattened in reading order (every level expanded) ──
-  type Row = { key: string; level: number; label: string; sel: Exclude<Selection, null>; toolId?: string };
+  type Row = { key: string; level: number; label: string; sel: Exclude<Selection, null>; toolId?: string; barId?: string; empty?: boolean; parents: string[]; hasChildren: boolean };
   const regions = TOOLBAR_REGIONS.filter((r) => rowsOf(layout, r).length > 0 || r === 'top' || r === 'bottom' || r === 'left' || r === 'right');
   const treeRows: Row[] = [];
   for (const region of regions) {
-    treeRows.push({ key: `d:${region}`, level: 1, label: REGION_NAMES[region], sel: { kind: 'dock', region } });
-    rowsOf(layout, region).forEach((row, rowIndex) => {
-      treeRows.push({ key: `r:${region}:${rowIndex}`, level: 2, label: region === 'left' || region === 'right' || region.endsWith('inner') ? `Column ${rowIndex + 1}` : `Row ${rowIndex + 1}`, sel: { kind: 'row', region, row: rowIndex } });
-      row.forEach((bar, barIndex) => {
-        treeRows.push({ key: `b:${bar.id}`, level: 3, label: `Toolbar ${barIndex + 1}`, sel: { kind: 'bar', barId: bar.id } });
-        bar.tools.forEach((t) => treeRows.push({ key: `t:${t}`, level: 4, label: toolName(t), sel: { kind: 'tool', toolId: t }, toolId: t }));
+    const dKey = `d:${region}`;
+    const dockRows = rowsOf(layout, region);
+    treeRows.push({ key: dKey, level: 1, label: REGION_NAMES[region], sel: { kind: 'dock', region }, parents: [], hasChildren: dockRows.length > 0 });
+    dockRows.forEach((row, rowIndex) => {
+      const rKey = `r:${region}:${rowIndex}`;
+      treeRows.push({ key: rKey, level: 2, label: region === 'left' || region === 'right' || region.endsWith('inner') ? `Column ${rowIndex + 1}` : `Row ${rowIndex + 1}`, sel: { kind: 'row', region, row: rowIndex }, parents: [dKey], hasChildren: row.length > 0 });
+      row.forEach((bar) => {
+        const bKey = `b:${bar.id}`;
+        treeRows.push({ key: bKey, level: 3, label: barDisplayName(bar), sel: { kind: 'bar', barId: bar.id }, barId: bar.id, empty: bar.tools.length === 0, parents: [dKey, rKey], hasChildren: bar.tools.length > 0 });
+        bar.tools.forEach((t) => treeRows.push({ key: `t:${t}`, level: 4, label: isToolSeparator(t) ? 'Separator' : toolName(t), sel: { kind: 'tool', toolId: t }, toolId: t, parents: [dKey, rKey, bKey], hasChildren: false }));
       });
     });
   }
+  /** The rows a collapsed ancestor does not hide */
+  const shownRows = treeRows.filter((r) => !r.parents.some((p) => collapsed.has(p)));
   const selKey = sel === null ? null
     : sel.kind === 'dock' ? `d:${sel.region}` : sel.kind === 'row' ? `r:${sel.region}:${sel.row}`
     : sel.kind === 'bar' ? `b:${sel.barId}` : `t:${sel.toolId}`;
+  // A selection inside a folded node (an Add into a collapsed toolbar, a
+  // New toolbar in a collapsed row) unfolds its ancestors, so it is seen
+  const selParents = treeRows.find((r) => r.key === selKey)?.parents.join('|') ?? '';
+  React.useEffect(() => {
+    if (!selParents) return;
+    const ps = selParents.split('|');
+    setCollapsed((prev) => (ps.some((p) => prev.has(p)) ? new Set([...prev].filter((k) => !ps.includes(k))) : prev));
+  }, [selKey, selParents]);
 
   // ── What the buttons can do with the selection ──
   const selTool = sel?.kind === 'tool' ? findTool(layout, sel.toolId) : null;
@@ -168,35 +197,102 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     if (sel?.kind !== 'tool' || UNREMOVABLE.has(sel.toolId)) return;
     const id = sel.toolId;
     editLayout((l) => removeTool(l, id));
-    setLeftSel(id); setSel(null);
+    if (!isToolSeparator(id)) setLeftSel(id);
+    setSel(null);
   };
-  const canUp = selTool ? selTool.index > 0 : selBar ? selBar.index > 0 : false;
-  const canDown = selTool ? selTool.index < selTool.bar.tools.length - 1 : selBar ? selBar.index < selBar.bars.length - 1 : false;
+  // Every toolbar in the tree's order, for a tool stepping between them
+  const allBars: Array<{ region: ToolbarRegion; row: number; bar: ToolbarBar }> = TOOLBAR_REGIONS.flatMap((region) =>
+    rowsOf(layout, region).flatMap((row, i) => row.map((bar) => ({ region, row: i, bar }))));
+  const barAt = selTool ? allBars.findIndex((b) => b.bar.id === selTool.bar.id) : -1;
+  const canUp = selTool ? selTool.index > 0 || barAt > 0 : selBar ? selBar.index > 0 : false;
+  const canDown = selTool ? selTool.index < selTool.bar.tools.length - 1 || barAt < allBars.length - 1 : selBar ? selBar.index < selBar.bars.length - 1 : false;
   const move = (dir: -1 | 1) => {
-    if (selTool) {
+    if (selTool && sel?.kind === 'tool') {
       const tools = selTool.bar.tools;
-      const before = dir < 0 ? tools[selTool.index - 1] : tools[selTool.index + 2] ?? null;
-      const id = (sel as { toolId: string }).toolId;
-      editLayout((l) => moveTool(l, id, selTool.bar.id, before));
+      const id = sel.toolId;
+      const inside = dir < 0 ? selTool.index > 0 : selTool.index < tools.length - 1;
+      if (inside) {
+        const before = dir < 0 ? tools[selTool.index - 1] : tools[selTool.index + 2] ?? null;
+        editLayout((l) => moveTool(l, id, selTool.bar.id, before));
+      } else {
+        // Past its toolbar's end: into the next toolbar, at its near end
+        const target = allBars[barAt + dir];
+        if (!target) return;
+        editLayout((l) => moveTool(l, id, target.bar.id, dir < 0 ? null : target.bar.tools[0] ?? null));
+      }
     } else if (selBar) {
       const before = dir < 0 ? selBar.bars[selBar.index - 1].id : selBar.bars[selBar.index + 2]?.id ?? null;
       const barId = selBar.bars[selBar.index].id;
       editLayout((l) => moveBar(l, barId, { region: selBar.region, row: selBar.row, beforeBarId: before }));
     }
   };
-  const canNewBar = !!selTool && selTool.bar.tools.length > 1;
-  const newBar = () => {
-    if (!selTool || sel?.kind !== 'tool') return;
-    const rows = rowsOf(layout, selTool.region)[selTool.row];
-    const at = rows.findIndex((b) => b.id === selTool.bar.id);
-    const id = sel.toolId;
-    editLayout((l) => moveToolToNewBar(l, id, { region: selTool.region, row: selTool.row, beforeBarId: rows[at + 1]?.id ?? null }));
+
+  /** The toolbar the selection is in or is */
+  const selBarId = sel?.kind === 'bar' ? sel.barId : selTool ? selTool.bar.id : null;
+  /** A fresh name, "Toolbar 1", "Toolbar 2", … not already in use */
+  const freshName = () => {
+    const names = new Set(allBars.map((b) => barDisplayName(b.bar)));
+    let n = 1;
+    while (names.has(`Toolbar ${n}`)) n++;
+    return `Toolbar ${n}`;
   };
-  const canNewRow = !!selTool;
+  const addBarAt = (placement: BarPlacement) => {
+    const id = nextBarId(layout);
+    editLayout((l) => addEmptyBar(l, placement, freshName()));
+    setSel({ kind: 'bar', barId: id });
+  };
+  /** NEW TOOLBAR: an empty one after the selected toolbar (or the selected
+   *  tool's), at the end of a selected row, on a new row of a selected dock,
+   *  else at the end of the top dock */
+  const newBar = () => {
+    const located = selBarId ? allBars.find((b) => b.bar.id === selBarId) : null;
+    if (located) {
+      const row = rowsOf(layout, located.region)[located.row];
+      const at = row.findIndex((b) => b.id === located.bar.id);
+      addBarAt({ region: located.region, row: located.row, beforeBarId: row[at + 1]?.id ?? null });
+    } else if (sel?.kind === 'row') addBarAt({ region: sel.region, row: sel.row, beforeBarId: null });
+    else if (sel?.kind === 'dock') addBarAt({ region: sel.region, newRowAt: rowsOf(layout, sel.region).length });
+    else {
+      const rows = rowsOf(layout, 'top');
+      addBarAt(rows.length ? { region: 'top', row: rows.length - 1, beforeBarId: null } : { region: 'top', newRowAt: 0 });
+    }
+  };
+  /** NEW ROW: an empty toolbar on a row of its own, after the selection's row */
   const newRow = () => {
-    if (!selTool || sel?.kind !== 'tool') return;
-    const id = sel.toolId;
-    editLayout((l) => moveToolToNewBar(l, id, { region: selTool.region, newRowAt: selTool.row + 1 }));
+    const located = selBarId ? allBars.find((b) => b.bar.id === selBarId) : null;
+    if (located) addBarAt({ region: located.region, newRowAt: located.row + 1 });
+    else if (sel?.kind === 'row') addBarAt({ region: sel.region, newRowAt: sel.row + 1 });
+    else if (sel?.kind === 'dock') addBarAt({ region: sel.region, newRowAt: rowsOf(layout, sel.region).length });
+    else addBarAt({ region: 'top', newRowAt: rowsOf(layout, 'top').length });
+  };
+  /** ADD SEPARATOR: a group line after the selected tool, or at the end of
+   *  the selected toolbar */
+  const canSeparator = selBarId !== null;
+  const addSeparator = () => {
+    if (!selBarId) return;
+    const before = selTool ? selTool.bar.tools[selTool.index + 1] ?? null : null;
+    editLayout((l) => insertSeparator(l, selBarId, before));
+  };
+  /** DELETE TOOLBAR: its tools go onto no toolbar; a toolbar holding a tool
+   *  that cannot be removed cannot go either */
+  const canDeleteBar = sel?.kind === 'bar' && !!selBar && !selBar.bars[selBar.index].tools.some((t) => UNREMOVABLE.has(t));
+  const deleteBar = () => {
+    if (!canDeleteBar || sel?.kind !== 'bar') return;
+    const id = sel.barId;
+    editLayout((l) => removeBar(l, id));
+    setSel(null);
+  };
+  const canRename = sel?.kind === 'bar';
+  const startRename = () => {
+    if (sel?.kind !== 'bar') return;
+    const bar = allBars.find((b) => b.bar.id === sel.barId)?.bar;
+    if (bar) setRenaming({ barId: bar.id, text: barDisplayName(bar) });
+  };
+  const commitRename = () => {
+    if (!renaming) return;
+    const { barId, text } = renaming;
+    editLayout((l) => renameBar(l, barId, text));
+    setRenaming(null);
   };
 
   // ── The left list ──
@@ -217,7 +313,11 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     borderRadius: 4,
     background: theme.background.control.input.idle,
     overflow: 'auto',
-    height: 360,
+    // RESPONSIVE (2026-11-11, "make the customise toolbars modal
+    // responsive because you want to use it big"): the panes take the
+    // window's height — drag its edges, or maximise it
+    flex: '1 1 0',
+    minHeight: 120,
     outline: 'none',
   };
   const rowStyle = (selected: boolean, level = 0): React.CSSProperties => ({
@@ -235,6 +335,8 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
       onClose={cancel}
       os={os}
       width={820}
+      maximizable
+      className="toolbar-builder-dialog"
       footer={
         <DialogFooter
           primaryText="OK"
@@ -245,9 +347,9 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
         />
       }
     >
-      <div data-toolbar-builder style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr auto', gap: 12, alignItems: 'start', color: theme.foreground.text.primary, fontSize: 12 }}>
+      <div data-toolbar-builder style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) auto minmax(260px, 1.4fr) auto', gap: 12, alignItems: 'stretch', gridTemplateRows: 'minmax(0, 1fr)', height: '100%', boxSizing: 'border-box', color: theme.foreground.text.primary, fontSize: 12 }}>
         {/* Tools */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, minHeight: 0 }}>
           <span>Tools</span>
           <SearchField value={query} onChange={setQuery} onClear={() => setQuery('')} placeholder="Search tools" />
           <div
@@ -283,13 +385,13 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
         </div>
 
         {/* Add / Remove */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 160 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 160, alignSelf: 'start' }}>
           <Button variant="secondary" size="default" disabled={!canAdd} onClick={add}>Add »</Button>
           <Button variant="secondary" size="default" disabled={!canRemove} onClick={remove}>« Remove</Button>
         </div>
 
         {/* Toolbars */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, minHeight: 0 }}>
           <span>Toolbars</span>
           <span style={{ ...muted, height: 28, display: 'flex', alignItems: 'center' }}>Tick a tool to show it, untick to hide it</span>
           <div
@@ -298,22 +400,56 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
             tabIndex={0}
             style={paneStyle}
             onKeyDown={(e) => {
-              walk(e, treeRows.map((r) => r.key), selKey, (k) => setSel(treeRows.find((r) => r.key === k)!.sel));
-              if (e.key === ' ' && sel?.kind === 'tool') { e.preventDefault(); toggleHidden(sel.toolId); }
+              walk(e, shownRows.map((r) => r.key), selKey, (k) => setSel(treeRows.find((r) => r.key === k)!.sel));
+              // ← folds the selected node, or steps to its parent; → unfolds it, or steps to its first child
+              const current = shownRows.find((r) => r.key === selKey);
+              if (current && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                const open = current.hasChildren && !collapsed.has(current.key);
+                if (e.key === 'ArrowLeft') {
+                  if (open) toggleCollapsed(current.key, true);
+                  else if (current.parents.length) setSel(treeRows.find((r) => r.key === current.parents[current.parents.length - 1])!.sel);
+                } else if (current.hasChildren) {
+                  if (!open) toggleCollapsed(current.key, false);
+                  else { const child = shownRows[shownRows.indexOf(current) + 1]; if (child) setSel(child.sel); }
+                }
+              }
+              if (e.key === ' ' && sel?.kind === 'tool' && !isToolSeparator(sel.toolId)) { e.preventDefault(); toggleHidden(sel.toolId); }
+              if (e.key === 'F2' && canRename) { e.preventDefault(); startRename(); }
               if ((e.key === 'Delete' || e.key === 'Backspace') && canRemove) { e.preventDefault(); remove(); }
+              else if ((e.key === 'Delete' || e.key === 'Backspace') && canDeleteBar) { e.preventDefault(); deleteBar(); }
             }}
           >
-            {treeRows.map((r) => (
+            {shownRows.map((r) => (
               <div
                 key={r.key}
                 role="treeitem"
                 aria-level={r.level}
+                aria-expanded={r.hasChildren ? !collapsed.has(r.key) : undefined}
                 aria-selected={selKey === r.key}
                 data-builder-node={r.key}
                 style={{ ...rowStyle(selKey === r.key, r.level - 1), fontWeight: r.level === 1 ? 600 : 400 }}
                 onClick={() => setSel(r.sel)}
               >
-                {r.toolId ? (
+                {r.level < 4 && (
+                  <span
+                    data-builder-twisty={r.key}
+                    aria-hidden="true"
+                    onClick={(e) => { e.stopPropagation(); if (r.hasChildren) toggleCollapsed(r.key); }}
+                    style={{ display: 'inline-flex', width: 16, justifyContent: 'center', flexShrink: 0, marginLeft: -4, cursor: r.hasChildren ? 'pointer' : 'default', visibility: r.hasChildren ? 'visible' : 'hidden', color: theme.foreground.icon.secondary ?? theme.foreground.text.secondary }}
+                  >
+                    <span style={{ display: 'inline-flex', transform: collapsed.has(r.key) ? undefined : 'rotate(90deg)', transition: 'transform 0.06s ease' }}>
+                      <Icon name="chevron-right" size={12} />
+                    </span>
+                  </span>
+                )}
+                {r.toolId && isToolSeparator(r.toolId) ? (
+                  <span data-builder-separator style={{ ...muted, display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <span style={{ flex: '0 0 24px', height: 1, background: theme.border.divider }} />
+                    Separator
+                    <span style={{ flex: 1, height: 1, background: theme.border.divider }} />
+                  </span>
+                ) : r.toolId ? (
                   <>
                     <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                       <Checkbox
@@ -326,8 +462,34 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
                     <ToolGlyph id={r.toolId} />
                     <span style={hidden.has(r.toolId) ? muted : undefined}>{r.label}</span>
                   </>
+                ) : r.barId && renaming?.barId === r.barId ? (
+                  <input
+                    autoFocus
+                    aria-label="Toolbar name"
+                    data-builder-rename
+                    value={renaming.text}
+                    onChange={(e) => setRenaming({ barId: renaming.barId, text: e.target.value })}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      e.stopPropagation();
+                      if (e.key === 'Enter') { e.preventDefault(); commitRename(); }
+                      if (e.key === 'Escape') { e.preventDefault(); setRenaming(null); }
+                    }}
+                    onBlur={commitRename}
+                    style={{ font: 'inherit', height: 22, padding: '0 4px', flex: 1, color: theme.foreground.text.primary, background: theme.background.control.input.idle, border: `1px solid ${theme.border.focus}`, borderRadius: 2 }}
+                  />
                 ) : (
-                  <span style={r.level === 1 ? undefined : muted}>{r.label}</span>
+                  <span
+                    style={r.level === 1 || r.level === 3 ? undefined : muted}
+                    onDoubleClick={r.barId ? (e) => { e.stopPropagation(); setSel(r.sel); setRenaming({ barId: r.barId!, text: r.label }); } : undefined}
+                  >
+                    {r.label}
+                    {r.empty && <span style={muted}> (empty)</span>}
+                    {r.barId && collapsed.has(r.key) && (() => {
+                      const n = allBars.find((b) => b.bar.id === r.barId)?.bar.tools.filter((t) => !isToolSeparator(t)).length ?? 0;
+                      return n > 0 ? <span style={muted}>{` · ${n} ${n === 1 ? 'tool' : 'tools'}`}</span> : null;
+                    })()}
+                  </span>
                 )}
               </div>
             ))}
@@ -335,11 +497,16 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
         </div>
 
         {/* Order and containers */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 72 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 72, alignSelf: 'start' }}>
           <Button variant="secondary" size="default" disabled={!canUp} onClick={() => move(-1)}>▲ Up</Button>
           <Button variant="secondary" size="default" disabled={!canDown} onClick={() => move(1)}>▼ Down</Button>
-          <Button variant="secondary" size="default" disabled={!canNewBar} onClick={newBar}>New toolbar</Button>
-          <Button variant="secondary" size="default" disabled={!canNewRow} onClick={newRow}>New row</Button>
+          <span style={{ height: 8 }} />
+          <Button variant="secondary" size="default" onClick={newBar}>New toolbar</Button>
+          <Button variant="secondary" size="default" onClick={newRow}>New row</Button>
+          <Button variant="secondary" size="default" disabled={!canSeparator} onClick={addSeparator}>Add separator</Button>
+          <span style={{ height: 8 }} />
+          <Button variant="secondary" size="default" disabled={!canRename} onClick={startRename}>Rename…</Button>
+          <Button variant="secondary" size="default" disabled={!canDeleteBar} onClick={deleteBar}>Delete toolbar</Button>
         </div>
       </div>
     </Dialog>

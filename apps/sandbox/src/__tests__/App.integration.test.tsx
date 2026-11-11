@@ -299,17 +299,16 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
 
     const dock = (region: string) => container.querySelector(`[data-toolbar-dock="${region}"]`) as HTMLElement;
-    const bar = () => container.querySelector('[data-toolbar-bar="transport"]') as HTMLElement;
+    const bar = () => container.querySelector('[data-toolbar-bar="main"]') as HTMLElement;
     const grip = () => bar().querySelector('.toolbar-dock__grip') as HTMLElement;
 
-    // The seed: the transport bar on the top dock (the old toolbar's
-    // class and tab group kept), the status bar as the bottom dock with
-    // its own two bars
+    // The seed (2026-11-11): ONE toolbar a dock — the main toolbar on top
+    // (the old toolbar's class and tab group kept), the status bar below
     expect(dock('top').classList.contains('transport-toolbar')).toBe(true);
     expect(dock('top').contains(bar())).toBe(true);
     expect(dock('bottom').classList.contains('selection-toolbar')).toBe(true);
     expect(dock('bottom').querySelector('[data-toolbar-bar="status"] .selection-toolbar__status-text')?.textContent).toBe('Stopped');
-    expect(dock('bottom').querySelector('[data-toolbar-bar="selection"] [aria-label="Selection start"]')).toBeTruthy();
+    expect(dock('bottom').querySelector('[data-toolbar-bar="status"] [aria-label="Selection start"]')).toBeTruthy();
 
     // Drag to the bottom edge: jsdom measures nothing, so the window's
     // edge stands in for the dock under the pointer (the old gripper's snap)
@@ -321,7 +320,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     // …and its tools came with it
     expect(dock('bottom').querySelector('[aria-label="Play"]')).toBeTruthy();
     const stored = () => JSON.parse(window.localStorage.getItem('audacity-preferences')!).toolbarLayouts.classic;
-    expect(stored().bottom.flat().map((b: { id: string }) => b.id)).toContain('transport');
+    expect(stored().bottom.flat().map((b: { id: string }) => b.id)).toContain('main');
 
     // Released in the middle of the window, away from every dock: nothing moves
     fireEvent.mouseDown(grip(), { clientX: 300, clientY: 300, button: 0 });
@@ -332,14 +331,14 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     fireEvent.mouseDown(grip(), { clientX: 100, clientY: 100, button: 0 });
     fireEvent.mouseUp(document, { clientX: 100, clientY: 10 });
     await waitFor(() => expect(dock('top').contains(bar())).toBe(true));
-    expect(stored().top.flat().map((b: { id: string }) => b.id)).toContain('transport');
+    expect(stored().top.flat().map((b: { id: string }) => b.id)).toContain('main');
 
-    // The status bar's bars draw wherever they go: the Selection bar to the top dock
-    const selectionGrip = dock('bottom').querySelector('[data-toolbar-bar="selection"] .toolbar-dock__grip') as HTMLElement;
-    fireEvent.mouseDown(selectionGrip, { clientX: 100, clientY: 100, button: 0 });
+    // The status bar draws wherever it goes: to the top dock
+    const statusGrip = dock('bottom').querySelector('[data-toolbar-bar="status"] .toolbar-dock__grip') as HTMLElement;
+    fireEvent.mouseDown(statusGrip, { clientX: 100, clientY: 100, button: 0 });
     fireEvent.mouseUp(document, { clientX: 100, clientY: 10 });
-    await waitFor(() => expect(dock('top').querySelector('[data-toolbar-bar="selection"] [aria-label="Selection start"]')).toBeTruthy());
-    expect(dock('bottom').querySelector('[data-toolbar-bar="selection"]')).toBeNull();
+    await waitFor(() => expect(dock('top').querySelector('[data-toolbar-bar="status"] [aria-label="Selection start"]')).toBeTruthy());
+    expect(dock('bottom').querySelector('[data-toolbar-bar="status"]')).toBeNull();
   });
 
   it('A NEW ROW (2026-11-10): a bar dropped on a row\'s edge gets a row of its own, the horizontal line saying so; the row goes when its last bar leaves; a flat stored layout is read as one row', async () => {
@@ -415,7 +414,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     await waitFor(() => expect(document.body.querySelector('[data-customise-toolbar]')).toBeTruthy());
   });
 
-  it('THE TOOLBAR BUILDER: the cog\'s "Rearrange tools…" opens it; Remove, Add, hide and New toolbar apply live; Cancel puts it all back; Reset layout restores (2026-11-11)', async () => {
+  it('THE TOOLBAR BUILDER: the cog\'s "Rearrange tools…" opens it; Remove, Add, hide, New toolbar (empty) and Add separator apply live; Cancel puts it all back; Reset layout restores (2026-11-11)', async () => {
     const { container, getByText } = renderApp();
     fireEvent.click(getByText('Untitled project'));
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
@@ -441,7 +440,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     let b = await openBuilder();
     // No in-place edit mode any more: the tools stay live behind it
     expect(container.querySelector('.toolbar-dock--editing')).toBeNull();
-    expect(barOf('record')).toBe('transport');
+    expect(barOf('record')).toBe('main');
 
     // Remove: off the toolbar, and the left list says so
     fireEvent.click(b.querySelector('[data-builder-node="t:record"]')!);
@@ -453,12 +452,35 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     fireEvent.click(b.querySelector('[data-builder-tool="record"]')!);
     fireEvent.click(b.querySelector('[data-builder-node="t:loop"]')!);
     fireEvent.click(button(b, 'Add'));
-    await waitFor(() => expect(barOf('record')).toBe('transport'));
+    await waitFor(() => expect(barOf('record')).toBe('main'));
 
-    // New toolbar: the selected tool into one of its own
+    // New toolbar: an EMPTY one after the selection's, selected, which the
+    // dock draws as its slot (2026-11-11); Add then fills it
     fireEvent.click(b.querySelector('[data-builder-node="t:record"]')!);
     fireEvent.click(button(b, 'New toolbar'));
-    await waitFor(() => expect(barOf('record')).not.toBe('transport'));
+    await waitFor(() => expect(container.querySelector('[data-toolbar-empty]')).toBeTruthy());
+    expect(b.querySelector('[aria-selected="true"][data-builder-node^="b:"]')?.textContent).toContain('(empty)');
+    fireEvent.click(b.querySelector('[data-builder-tool="record"]')!);
+    fireEvent.click(button(b, 'Add'));
+    await waitFor(() => expect(barOf('record')).not.toBe('main'));
+    expect(container.querySelector('[data-toolbar-empty]')).toBeNull();
+
+    // Add separator: a group line inside the transport toolbar
+    const seps = () => container.querySelectorAll('[data-toolbar-bar="main"] .toolbar-dock__separator').length;
+    const before = seps();
+    fireEvent.click(b.querySelector('[data-builder-node="t:play"]')!);
+    fireEvent.click(button(b, 'Add separator'));
+    await waitFor(() => expect(seps()).toBe(before + 1));
+    expect(tool('play')!.nextElementSibling?.querySelector('.toolbar-dock__separator')).toBeTruthy();
+
+    // FOLDING (2026-11-11): a toolbar folds away with its count; → unfolds it
+    fireEvent.click(b.querySelector('[data-builder-twisty="b:main"]')!);
+    await waitFor(() => expect(b.querySelector('[data-builder-node="t:loop"]')).toBeNull());
+    expect(b.querySelector('[data-builder-node="b:main"]')!.getAttribute('aria-expanded')).toBe('false');
+    expect(b.querySelector('[data-builder-node="b:main"]')!.textContent).toMatch(/\d+ tools/);
+    fireEvent.click(b.querySelector('[data-builder-node="b:main"]')!);
+    fireEvent.keyDown(b.querySelector('[role="tree"]')!, { key: 'ArrowRight' });
+    await waitFor(() => expect(b.querySelector('[data-builder-node="t:loop"]')).toBeTruthy());
 
     // Untick: hidden
     const box = b.querySelector('[data-builder-node="t:loop"] [role="checkbox"], [data-builder-node="t:loop"] input[type="checkbox"]') as HTMLElement;
@@ -468,7 +490,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     // Cancel: everything as it was when the dialog opened
     fireEvent.click(getByText('Cancel'));
     await waitFor(() => expect(document.body.querySelector('[data-toolbar-builder]')).toBeNull());
-    await waitFor(() => expect(barOf('record')).toBe('transport'));
+    await waitFor(() => expect(barOf('record')).toBe('main'));
     expect(tool('loop')).toBeTruthy();
     expect(stored()).toBeUndefined();
 
@@ -476,14 +498,16 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     b = await openBuilder();
     fireEvent.click(b.querySelector('[data-builder-node="t:record"]')!);
     fireEvent.click(button(b, 'New toolbar'));
-    await waitFor(() => expect(barOf('record')).not.toBe('transport'));
+    fireEvent.click(b.querySelector('[data-builder-tool="record"]')!);
+    fireEvent.click(button(b, 'Add'));
+    await waitFor(() => expect(barOf('record')).not.toBe('main'));
     fireEvent.click(getByText('OK'));
     await waitFor(() => expect(document.body.querySelector('[data-toolbar-builder]')).toBeNull());
-    expect(barOf('record')).not.toBe('transport');
+    expect(barOf('record')).not.toBe('main');
     expect(stored()).toBeTruthy();
     b = await openBuilder();
     fireEvent.click(getByText('Reset layout'));
-    await waitFor(() => expect(barOf('record')).toBe('transport'));
+    await waitFor(() => expect(barOf('record')).toBe('main'));
     fireEvent.click(getByText('OK'));
     expect(stored()).toBeUndefined();
   });

@@ -127,3 +127,13 @@ html.pan-active * {
   background: var(--app-title-bar-divider);
   pointer-events: none;
 }
+
+/* THE TOOLBAR BUILDER'S WINDOW (2026-11-11, "make the customise toolbars
+   modal responsive because you want to use it big"): a definite height to
+   start from, so the two panes fill it and scroll inside; drag its edges or
+   maximise it to make it bigger (the Dialog's own resize sets the height
+   inline and wins) */
+.dialog.toolbar-builder-dialog:not(.dialog--maximized) {
+  height: min(640px, calc(100vh - 32px));
+}
+.dialog.toolbar-builder-dialog .dialog__body { min-height: 0; }

@@ -140,7 +140,7 @@
   font-size: 14px;
   line-height: 1;
   color: var(--toolbar-gripper-color, var(--toolbar-divider));
-  opacity: 0;
+  opacity: 0.55;
   transition: opacity 0.06s ease;
 }
 .toolbar-dock__grip:hover,
@@ -150,9 +150,14 @@
 .toolbar-dock__grip:hover .toolbar-dock__grip-dots,
 .toolbar-dock__bar--dragging .toolbar-dock__grip-dots,
 .toolbar-dock--editing .toolbar-dock__grip-dots { opacity: 1; }
-.toolbar-dock__grip:hover .toolbar-dock__grip-line,
-.toolbar-dock__bar--dragging .toolbar-dock__grip-line,
-.toolbar-dock--editing .toolbar-dock__grip-line { opacity: 0; }
+/* EVERY TOOLBAR WEARS ITS GRIPPER (2026-11-11, "the separator has got to
+   be full height and then each individual toolbar will have the nice
+   pronounced gripper"): the dots show at rest on every toolbar, the first
+   on a line included, full strength on hover; the boundary line is gone —
+   the gripper says where a toolbar starts, the full-height SEPARATOR (below)
+   splits a toolbar into groups. The line element stays, hidden, for a
+   revert. */
+.toolbar-dock__grip-line { opacity: 0; }
 .toolbar-dock__grip:active { cursor: grabbing; }
 .toolbar-dock__grip:active .toolbar-dock__grip-dots { color: var(--toolbar-dock-accent); }
 @media (prefers-reduced-motion: reduce) {
@@ -329,3 +334,45 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 .toolbar-dock--vertical .toolbar-dock__tool,
 .toolbar-dock--vertical .toolbar-dock__tool-body { flex-direction: column; }
 .toolbar-dock--vertical .toolbar-dock__trailing { margin-left: 0; margin-top: auto; }
+
+/* TOOL GROUPS (2026-11-11): a separator inside a toolbar — a 1px line, 16px
+   tall in a row (16px wide in a column), in the divider colour, with the
+   tools' 8px either side; never the full-height line between toolbars */
+.toolbar-dock__separator {
+  display: block;
+  width: 1px;
+  height: 16px;
+  background: var(--toolbar-divider);
+}
+.toolbar-dock--vertical .toolbar-dock__separator { width: 16px; height: 1px; }
+
+/* AN EMPTY TOOLBAR: a dashed slot the tools' height, so it shows and its
+   grip can move it; filled from the toolbar builder */
+.toolbar-dock__empty {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px dashed var(--toolbar-divider);
+  border-radius: 3px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0.7;
+}
+.toolbar-dock--vertical .toolbar-dock__empty { height: auto; padding: 8px 4px; writing-mode: vertical-rl; }
+
+/* THE SEPARATOR RUNS THE ROW'S FULL HEIGHT (2026-11-11), through the row's
+   8px padding as the gripper does; a column's runs its full width */
+.toolbar-dock__tools { align-self: stretch; }
+.toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) {
+  align-self: stretch;
+  margin: -8px 0;
+}
+.toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) > .toolbar-dock__tool-body { align-self: stretch; }
+.toolbar-dock__tool-body > .toolbar-dock__separator { height: auto; align-self: stretch; }
+.toolbar-dock--vertical .toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) { margin: 0; align-self: stretch; }
+.toolbar-dock--vertical .toolbar-dock__tool-body > .toolbar-dock__separator { width: auto; height: 1px; }
+
+/* A WRAPPED TOOLBAR'S LATER SEGMENTS (2026-11-11): the same toolbar, so the
+   gripper is quieter there; it still moves the whole toolbar */
+.toolbar-dock__grip--continued .toolbar-dock__grip-dots { opacity: 0.2; }

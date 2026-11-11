@@ -1,43 +1,67 @@
 import { describe, it, expect } from 'vitest';
 import {
-  coerceToolbarLayout, defaultToolbarLayout, dockBars, findBar, findTool, moveBar, moveTool, moveToolToNewBar, nextBarId,
+  coerceToolbarLayout, defaultToolbarLayout, dockBars, findBar, findTool, moveBar, moveTool, moveToolToNewBar, nextBarId, insertSeparator, isToolSeparator, addEmptyBar, removeBar, renameBar, barDisplayName,
   normaliseLayout, isToolbarLayout, setBarSize, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, type ToolbarLayout, type ToolbarRegion,
 } from '../toolbarLayout';
 
 /** A seed WITHOUT the project row (2026-11-10, the project toolbar's
  *  tools seeded as the top dock's first row): the move tests below were
  *  written against the transport row being row 0 */
+/** (Since 2026-11-11 the seed is ONE toolbar a dock, its groups split by
+ *  separators; this fixture splits it back into the 2026-11-10 shape — a
+ *  toolbar per group, the project ones left out, the status bar two — so
+ *  the move and size tests keep their named bars.) */
+const GROUP_IDS: Array<[string, string]> = [
+  ['play', 'transport'], ['automation', 'tools'], ['undo', 'edit'], ['zoom-in', 'view'],
+  ['timecode', 'time'], ['playback-meter', 'meters'], ['customise', 'customise'],
+  ['status-cue', 'status'], ['selection-timecodes', 'selection'],
+];
+const groupsOf = (tools: string[]): string[][] => tools.reduce<string[][]>((acc, t) => {
+  if (isToolSeparator(t)) acc.push([]); else acc[acc.length - 1].push(t);
+  return acc;
+}, [[]]);
+const asBars = (tools: string[]) => groupsOf(tools).flatMap((g) => {
+  const id = GROUP_IDS.find(([t]) => g.includes(t))?.[1];
+  return id ? [{ id, tools: g }] : [];
+});
 const seedWithoutProjectRow = (ws: Parameters<typeof defaultToolbarLayout>[0]): ToolbarLayout => {
   const l = defaultToolbarLayout(ws);
-  return { ...l, top: l.top.slice(1) };
+  return { top: [asBars(l.top[0][0].tools)], bottom: [asBars(l.bottom[0][0].tools)], left: [], right: [] };
 };
 
 /** A dock's rows as lists of bar ids */
 const rows = (l: ToolbarLayout, r: ToolbarRegion) => (l[r] ?? []).map((row) => row.map((b) => b.id));
 
 describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-10)', () => {
-  it('every workspace seeds the PROJECT row, then ONE tools row, on top, and the status bar as the bottom dock\'s row', () => {
+  it('every workspace seeds ONE TOOLBAR AT THE TOP AND ONE AT THE BOTTOM, the groups split by separators (2026-11-11)', () => {
     for (const ws of ['classic', 'spectral-editing', 'modern', 'music'] as const) {
       const layout = defaultToolbarLayout(ws);
-      expect(layout.top).toHaveLength(2);
-      // (since 2026-11-11: Audio setup in the meters bar, Undo / Redo in the edit bar, Share a bar of its own)
-      expect(rows(layout, 'top')[0]).toEqual(['project-tabs', 'project-actions', 'workspace', 'share']);
-      expect(findBar(layout, 'project-actions')?.bar.tools).toEqual(['mixer-button', 'get-effects']);
-      expect(findBar(layout, 'meters')?.bar.tools[0]).toBe('audio-setup');
-      expect(findBar(layout, 'edit')?.bar.tools.slice(0, 2)).toEqual(['undo', 'redo']);
-      expect(layout.top[1][0].id).toBe('transport');
-      expect(layout.top[1][0].tools).toEqual(['play', 'stop', 'record', 'step-back', 'step-forward', 'loop']);
-      expect(rows(layout, 'bottom')).toEqual([['status', 'selection']]);
+      expect(rows(layout, 'top')).toEqual([['main']]);
+      expect(rows(layout, 'bottom')).toEqual([['status']]);
       expect(layout.left).toEqual([]);
       expect(layout.right).toEqual([]);
       expect(isToolbarLayout(layout)).toBe(true);
+      const groups = groupsOf(layout.top[0][0].tools);
+      // the project tools first (drawing nothing where the title bar has them), the cog last
+      expect(groups.slice(0, 4)).toEqual([['project-tabs'], ['mixer-button', 'get-effects'], ['workspace'], ['share-audio']]);
+      expect(groups[4]).toEqual(['play', 'stop', 'record', 'step-back', 'step-forward', 'loop']);
+      expect(groups[groups.length - 1]).toEqual(['customise']);
+      expect(groups[groups.length - 2]).toEqual(['audio-setup', 'microphone-levels', 'playback-meter']);
+      expect(groupsOf(layout.bottom[0][0].tools)).toEqual([['status-cue', 'status-info'], ['selection-timecodes', 'selection-duration']]);
+      // separator ids are unique across the layout
+      const seps = [...layout.top[0][0].tools, ...layout.bottom[0][0].tools].filter(isToolSeparator);
+      expect(new Set(seps).size).toBe(seps.length);
+      // the guards leave the seed as it is
+      expect(withProjectTools(layout)).toBe(layout);
+      expect(withCustomiseTool(layout)).toBe(layout);
+      expect(withProjectRowMoves(layout)).toBe(layout);
     }
-    // FEWER, BIGGER BARS (2026-11-10): six on the classic workspace, then the cog
-    expect(dockBars(seedWithoutProjectRow('classic'), 'top').map((b) => b.id)).toEqual(['transport', 'tools', 'edit', 'view', 'time', 'meters', 'customise']);
-    expect(findBar(defaultToolbarLayout('classic'), 'edit')?.bar.tools).toEqual(['undo', 'redo', 'cut', 'copy', 'paste', 'trim', 'silence']);
-    expect(findBar(defaultToolbarLayout('classic'), 'time')?.bar.tools).toEqual(['varispeed', 'timecode', 'bpm', 'time-signature', 'snapping']);
+    const classic = seedWithoutProjectRow('classic');
+    expect(dockBars(classic, 'top').map((b) => b.id)).toEqual(['transport', 'tools', 'edit', 'view', 'time', 'meters', 'customise']);
+    expect(findBar(classic, 'edit')?.bar.tools).toEqual(['undo', 'redo', 'cut', 'copy', 'paste', 'trim', 'silence']);
+    expect(findBar(classic, 'time')?.bar.tools).toEqual(['varispeed', 'timecode', 'bpm', 'time-signature', 'snapping']);
     // music has no spectral view
-    expect(findBar(defaultToolbarLayout('music'), 'tools')?.bar.tools).toEqual(['automation', 'split']);
+    expect(findBar(seedWithoutProjectRow('music'), 'tools')?.bar.tools).toEqual(['automation', 'split']);
   });
 
   it('THE PROJECT TOOLS (2026-11-10): a layout saved without them gets the missing ones as a new first row of the top dock; one that has them moved elsewhere keeps them there', () => {
@@ -50,7 +74,7 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(rows(fixed, 'top').slice(1)).toEqual(rows(old, 'top'));
     expect(PROJECT_TOOL_IDS.every((id) => findTool(fixed, id))).toBe(true);
     // the tabs moved into the transport row: only the rest come back, and the tabs stay put
-    const moved = moveBar(full, 'project-tabs', { region: 'top', row: 1, beforeBarId: 'transport' });
+    const moved = moveBar(fixed, 'project-tabs', { region: 'top', row: 1, beforeBarId: 'transport' });
     expect(withProjectTools(moved)).toBe(moved);
     const partial = moveTool(moved, 'undo', 'transport', null);
     expect(withProjectTools(partial)).toBe(partial);
@@ -104,7 +128,7 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(rows(moveBar(layout, 'view', { region: 'bottom', newRowAt: 0 }), 'bottom')).toEqual([['view'], ['status', 'selection']]);
   });
 
-  it('moveTool moves one tool into a bar before another tool or at its end, and drops a bar it empties', () => {
+  it('moveTool moves one tool into a bar before another tool or at its end, and KEEPS a bar it empties (empty toolbars stay, 2026-11-11)', () => {
     const layout = seedWithoutProjectRow('classic');
     // zoom-in into the transport bar, before Stop
     const a = moveTool(layout, 'zoom-in', 'transport', 'stop');
@@ -118,7 +142,7 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     const lone = moveTool(layout, 'microphone-levels', 'time', null);
     expect(findBar(lone, 'meters')!.bar.tools).toEqual(['audio-setup', 'playback-meter']);
     const b = moveTool(moveTool(lone, 'playback-meter', 'time', null), 'audio-setup', 'time', null);
-    expect(findBar(b, 'meters')).toBeNull();
+    expect(findBar(b, 'meters')?.bar.tools).toEqual([]);
     expect(findBar(b, 'time')!.bar.tools.slice(-3)).toEqual(['microphone-levels', 'playback-meter', 'audio-setup']);
     // across docks: the status bar takes a tool
     expect(findTool(moveTool(layout, 'zoom-in', 'status', null), 'zoom-in')!.region).toBe('bottom');
@@ -154,13 +178,14 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(moveToolToNewBar(layout, 'nope', { region: 'top', row: 0, beforeBarId: null })).toBe(layout);
   });
 
-  it('normaliseLayout drops bars with no tools and rows with no bars; a flat stored layout becomes one row; the wrong shape is refused', () => {
+  it('normaliseLayout keeps EMPTY toolbars (2026-11-11) and drops rows with no bars; a flat stored layout becomes one row; the wrong shape is refused', () => {
     const layout = seedWithoutProjectRow('classic');
     layout.top[0].push({ id: 'empty', tools: [] });
+    layout.top.push([]);
     layout.top.push([{ id: 'empty-2', tools: [] }]);
     const clean = normaliseLayout(layout);
-    expect(findBar(clean, 'empty')).toBeNull();
-    expect(clean.top).toHaveLength(1);
+    expect(findBar(clean, 'empty')?.bar.tools).toEqual([]);
+    expect(clean.top).toHaveLength(2);
     // the first cut stored each dock as a flat list of bars
     const flat = { top: [{ id: 'a', tools: ['play'] }, { id: 'b', tools: ['stop'] }], bottom: [], left: [], right: [{ id: 'c', tools: ['loop'] }] };
     expect(isToolbarLayout(flat)).toBe(false);
@@ -268,5 +293,40 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(isToolbarLayout(moved)).toBe(true);
     // a bad inner dock still fails
     expect(isToolbarLayout({ ...saved, 'left-inner': 'x' })).toBe(false);
+  });
+
+  it('TOOL GROUPS AND EMPTY TOOLBARS (2026-11-11): separators, an empty toolbar, rename, delete', () => {
+    const base = seedWithoutProjectRow('classic');
+    // a separator after the first transport tool, ids unique per layout
+    const first = findBar(base, 'transport')!.bar.tools[0];
+    const second = findBar(base, 'transport')!.bar.tools[1];
+    const one = insertSeparator(base, 'transport', second);
+    expect(findBar(one, 'transport')!.bar.tools.slice(0, 3)).toEqual([first, 'separator-1', second]);
+    const two = insertSeparator(one, 'transport', null);
+    const tTools = findBar(two, 'transport')!.bar.tools;
+    expect(tTools[tTools.length - 1]).toBe('separator-2');
+    expect(isToolSeparator('separator-2')).toBe(true);
+    expect(isToolSeparator('play')).toBe(false);
+    expect(insertSeparator(base, 'no-such-bar', null)).toBe(base);
+    // an empty toolbar, named, on a new row
+    const id = nextBarId(two);
+    const withEmpty = addEmptyBar(two, { region: 'top', newRowAt: two.top.length }, 'Toolbar 1');
+    expect(findBar(withEmpty, id)?.bar).toEqual({ id, tools: [], name: 'Toolbar 1' });
+    expect(withEmpty.top).toHaveLength(two.top.length + 1);
+    // names: the user's, the seed's, else "Toolbar"
+    expect(barDisplayName(findBar(withEmpty, id)!.bar)).toBe('Toolbar 1');
+    expect(barDisplayName(findBar(withEmpty, 'transport')!.bar)).toBe('Transport');
+    expect(barDisplayName({ id: 'bar-9', tools: [] })).toBe('Toolbar');
+    const renamed = renameBar(withEmpty, 'transport', 'Play');
+    expect(barDisplayName(findBar(renamed, 'transport')!.bar)).toBe('Play');
+    expect(findBar(renameBar(renamed, 'transport', '  '), 'transport')!.bar.name).toBeUndefined();
+    expect(renameBar(withEmpty, 'transport', null)).toBe(withEmpty);
+    // a tool moves into the empty toolbar; deleting a toolbar puts its tools on none
+    const filled = moveTool(withEmpty, 'loop', id, null);
+    expect(findBar(filled, id)!.bar.tools).toEqual(['loop']);
+    const gone = removeBar(filled, id);
+    expect(findBar(gone, id)).toBeNull();
+    expect(findTool(gone, 'loop')).toBeNull();
+    expect(gone.top).toHaveLength(two.top.length);
   });
 });

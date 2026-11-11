@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
-import { isVerticalRegion, regionSide, type BarPlacement, type ToolbarBar, type ToolbarBarAxis, type ToolbarOrientation, type ToolbarRegion } from '../utils/toolbarLayout';
+import { isVerticalRegion, regionSide, type BarPlacement, type ToolbarBar, type ToolbarBarAxis, type ToolbarOrientation, type ToolbarRegion, isToolSeparator } from '../utils/toolbarLayout';
 import { Flyout } from '../Flyout';
 import '../assets/fonts/musescore-icon.css';
 import './ToolbarDock.css';
@@ -143,9 +143,13 @@ export function ToolbarDock({
   const relayouts = useRef({ count: 0, resetQueued: false, warned: false });
   const mayRelayout = () => {
     const r = relayouts.current;
-    if (!r.resetQueued && typeof requestAnimationFrame === 'function') {
+    // (reset on the next TASK, not the next frame: a hidden or backgrounded
+    // window runs no animation frames, and the budget never came back — the
+    // dock stopped laying out. A runaway loop is synchronous, inside one
+    // commit, so a task boundary still catches it.)
+    if (!r.resetQueued) {
       r.resetQueued = true;
-      requestAnimationFrame(() => { r.count = 0; r.resetQueued = false; });
+      setTimeout(() => { r.count = 0; r.resetQueued = false; }, 0);
     }
     r.count += 1;
     if (r.count <= MAX_RELAYOUTS_PER_FRAME) return true;
@@ -161,6 +165,9 @@ export function ToolbarDock({
   const endPadRef = useRef(ROW_END_PAD);
   // The room a line has, from the last pack (a sized bar never exceeds it)
   const availableRef = useRef(0);
+  // …and as state, for a toolbar that wraps at its separators to re-split
+  // when the dock's width changes
+  const [lineRoom, setLineRoom] = useState(0);
   const [overflowOpen, setOverflowOpen] = useState<{ barId: string; x: number; y: number } | null>(null);
   const sizeKey = (id: string) => `${orientation}:${id}`;
   const stretchy = (id: string) => { const m = toolMeta?.(id, orientation); return !!(m?.grow || m?.stretch); };
@@ -187,13 +194,48 @@ export function ToolbarDock({
   };
 
   // Draw each bar's tools once; a bar with nothing to draw is skipped
+  // A SEPARATOR is the dock's own (a thin line between groups): none at a
+  // toolbar's ends, none doubled where the tools between are hidden. An
+  // EMPTY toolbar draws a small slot, so it can be seen and moved; one
+  // whose tools are all hidden draws nothing (2026-11-11)
   const drawn = rows.flatMap((row, rowIndex) => row.map((bar) => {
-    const nodes = bar.tools.map((id) => ({ id, node: renderTool(id, orientation) })).filter((t) => t.node !== null && t.node !== undefined && t.node !== false);
+    const raw = bar.tools.map((id) => ({
+      id,
+      node: isToolSeparator(id)
+        ? <span className="toolbar-dock__separator" data-toolbar-separator={id} aria-hidden="true" />
+        : renderTool(id, orientation),
+    })).filter((t) => t.node !== null && t.node !== undefined && t.node !== false);
+    const nodes = raw.filter((t, i) => !isToolSeparator(t.id) || (
+      i > 0 && !isToolSeparator(raw[i - 1].id) && raw.slice(i + 1).some((n) => !isToolSeparator(n.id))
+    ));
+    if (bar.tools.length === 0) {
+      nodes.push({ id: EMPTY_SLOT_ID, node: <span className="toolbar-dock__empty" data-toolbar-empty={bar.id}>Empty toolbar</span> });
+    }
     const grow = nodes.some((t) => toolMeta?.(t.id, orientation)?.grow);
     const size = sizeOf(bar);
     const overflow = overflowOf(nodes.map((t) => t.id), size);
-    return { bar, nodes, grow, row: rowIndex, size, overflow };
-  }));
+    const whole = { bar, nodes, grow, row: rowIndex, size, overflow, key: bar.id, continued: false, split: false };
+    // A TOOLBAR WRAPS AT ITS SEPARATORS (2026-11-11 — with one toolbar a
+    // dock, a narrow window would otherwise cut its end off): wider than a
+    // line, its GROUPS are drawn as SEGMENTS, each starting at a group
+    // boundary, which the lines then pack like toolbars; the segments after
+    // the first carry the toolbar's grip (it moves the whole toolbar) and no
+    // resize edge. A sized toolbar keeps its overflow button instead.
+    if (vertical || size !== undefined || grow || lineRoom <= 0 || naturalOf(nodes.map((t) => t.id)) <= lineRoom) return [whole];
+    const groups: Array<typeof nodes> = [[]];
+    for (const t of nodes) {
+      if (isToolSeparator(t.id)) groups.push([t]); else groups[groups.length - 1].push(t);
+    }
+    const segments: Array<typeof nodes> = [];
+    for (const g of groups) {
+      const last = segments[segments.length - 1];
+      if (last && naturalOf([...last, ...g].map((t) => t.id)) <= lineRoom) last.push(...g);
+      else segments.push(isToolSeparator(g[0]?.id ?? '') ? g.slice(1) : g);
+    }
+    return segments.filter((seg) => seg.length > 0).map((seg, i) => ({
+      ...whole, nodes: seg, key: i === 0 ? bar.id : `${bar.id}~${i + 1}`, continued: i > 0, split: true,
+    }));
+  }).flat());
   const visible = drawn.filter((d) => d.nodes.length > 0);
 
   // Measure the tools drawn at their natural size; a change re-renders
@@ -267,11 +309,12 @@ export function ToolbarDock({
     endPadRef.current = endPad;
     const available = root.clientWidth - endPad;
     availableRef.current = available;
+    if (available > 0 && available !== lineRoom && mayRelayout()) setLineRoom(available);
     const result: DockLine[] = [];
     let line: DockLine | null = null;
     let used = 0;
     for (const d of visible) {
-      const el = barRefs.current.get(d.bar.id);
+      const el = barRefs.current.get(d.key);
       const w = d.grow && d.size === undefined ? GROW_BAR_PACK_WIDTH : (el?.offsetWidth ?? 0);
       // (each bar's width carries its gutter: the grip is the gap)
       if (!line || line.row !== d.row || (available > 0 && line.ids.length > 0 && used + w > available)) {
@@ -280,10 +323,10 @@ export function ToolbarDock({
         used = 0;
       }
       used += w;
-      line.ids.push(d.bar.id);
+      line.ids.push(d.key);
     }
     setLines((prev) => (sameLines(prev, result) || !mayRelayout() ? prev : result));
-  }, [vertical, visible, trailing, trailingWidth]);
+  }, [vertical, visible, trailing, trailingWidth, lineRoom]);
 
   useLayoutEffect(() => { pack(); }, [pack]);
   useEffect(() => {
@@ -326,14 +369,15 @@ export function ToolbarDock({
   // its own — 288px back on the default layout.
   const renderBar = (d: (typeof visible)[number], leading: boolean, insertHere: boolean) => (
     <div
-      key={d.bar.id}
-      ref={(el) => { if (el) barRefs.current.set(d.bar.id, el); else barRefs.current.delete(d.bar.id); }}
+      key={d.key}
+      ref={(el) => { if (el) barRefs.current.set(d.key, el); else barRefs.current.delete(d.key); }}
       className={`toolbar-dock__bar${d.grow ? ' toolbar-dock__bar--grow' : ''}${d.size !== undefined ? ' toolbar-dock__bar--sized' : ''}${draggingBarId === d.bar.id ? ' toolbar-dock__bar--dragging' : ''}`}
       style={d.size !== undefined ? { [axis]: d.size } : undefined}
-      data-toolbar-bar={d.bar.id}
+      data-toolbar-bar={d.continued ? undefined : d.bar.id}
+      data-toolbar-bar-continued={d.continued ? d.bar.id : undefined}
     >
       <span
-        className={`toolbar-dock__grip${leading ? ' toolbar-dock__grip--leading' : ''}`}
+        className={`toolbar-dock__grip${leading ? ' toolbar-dock__grip--leading' : ''}${d.continued ? ' toolbar-dock__grip--continued' : ''}`}
         aria-hidden="true"
         role="presentation"
         onMouseDown={(e) => {
@@ -398,7 +442,7 @@ export function ToolbarDock({
           <span className="musescore-icon" aria-hidden="true">{'\uF39B'}</span>
         </button>
       )}
-      {onBarResize && (
+      {onBarResize && !d.split && (
         // THE RESIZE EDGE: the bar's trailing edge (bottom, in a column),
         // over the first 6px of whatever follows — the next bar's gutter,
         // whose line divides "resize the bar before" from "move the bar
@@ -426,17 +470,17 @@ export function ToolbarDock({
   // The lines to draw: the packed lines when they still name every
   // visible bar in its row, else one line a row (a bar came or went since
   // the pack); a side dock is one column of everything
-  const byId = new Map(visible.map((d) => [d.bar.id, d]));
+  const byId = new Map(visible.map((d) => [d.key, d]));
   const oneLineARow: DockLine[] = [];
   for (const d of visible) {
     const last = oneLineARow[oneLineARow.length - 1];
-    if (last && last.row === d.row) last.ids.push(d.bar.id);
-    else oneLineARow.push({ row: d.row, ids: [d.bar.id] });
+    if (last && last.row === d.row) last.ids.push(d.key);
+    else oneLineARow.push({ row: d.row, ids: [d.key] });
   }
   const packed = lines.flatMap((l) => l.ids);
   const usePacked = !vertical && lines.length > 0 && packed.length === visible.length
     && lines.every((l) => l.ids.every((id) => byId.get(id)?.row === l.row))
-    && packed.every((id, i) => id === visible[i].bar.id);
+    && packed.every((id, i) => id === visible[i].key);
   const drawnLines: DockLine[] = usePacked ? lines : oneLineARow;
 
   // WHERE A CONTAINER WOULD LAND. Beside a bar: the full-height line
@@ -546,6 +590,9 @@ export function ToolbarDock({
     </div>
   );
 }
+
+/** The id an empty toolbar's slot is drawn under */
+const EMPTY_SLOT_ID = '__empty-toolbar';
 
 /** One drawn line of bars: the row it belongs to, and its bars */
 interface DockLine { row: number; ids: string[] }

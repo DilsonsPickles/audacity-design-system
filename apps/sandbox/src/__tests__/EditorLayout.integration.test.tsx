@@ -408,16 +408,22 @@ async function addTrackType(
 // two independent close paths.
 // ---------------------------------------------------------------------------
 
+/** THE MIXER BUTTON IS HIDDEN BY DEFAULT since 2026-11-11 (Customise toolbar
+ *  brings it back), so the tests open the mixer by its key, M */
+function openMixer() {
+  (document.activeElement as HTMLElement | null)?.blur?.();
+  fireEvent.keyDown(document.body, { key: 'm', code: 'KeyM' });
+}
+
 describe('Bottom drawer', () => {
   it('opens with one mixer channel per non-label track; a MIDI track focus opens Piano roll as a second tab; both close paths remove the drawer', async () => {
     const rendered = renderApp();
-    const { container, getByText, findByLabelText } = rendered;
+    const { container, getByText } = rendered;
     await gotoProject(rendered);
     await generateTracks(container, getByText);
 
     // --- Open Mixer via the real toolbar button ---
-    const mixerButton = await findByLabelText('Mixer');
-    fireEvent.click(mixerButton);
+    openMixer();
 
     const panelHeader = await waitFor(() => {
       const el = container.querySelector('.panel-header');
@@ -506,11 +512,11 @@ describe('Bottom drawer', () => {
 
   it('resizes via PanelHeader top-edge drag (document mousemove/mouseup), clamped to the 144px floor', async () => {
     const rendered = renderApp();
-    const { container, getByText, findByLabelText } = rendered;
+    const { container, getByText } = rendered;
     await gotoProject(rendered);
     await generateTracks(container, getByText);
 
-    fireEvent.click(await findByLabelText('Mixer'));
+    openMixer();
     const panelHeader = await waitFor(() => {
       const el = container.querySelector('.panel-header');
       if (!el) throw new Error('drawer did not open');
@@ -2470,7 +2476,7 @@ describe('Focus routing', () => {
 
   it('THE MIXER DOCKS LEFT OR RIGHT (2026-11-10): from the drawer to a side dock and back, by its tab menu', async () => {
     const rendered = renderApp();
-    const { container, findByLabelText } = rendered;
+    const { container } = rendered;
     await gotoProject(rendered);
     await addTrackType(container, 'Mono');
     const menuItem = (label: string) =>
@@ -2479,7 +2485,7 @@ describe('Focus routing', () => {
     const mixerMenu = () => container.querySelector('button[aria-label="Mixer menu"]') as HTMLElement;
 
     // It starts in the drawer
-    fireEvent.click(await findByLabelText('Mixer'));
+    openMixer();
     await waitFor(() => expect(container.querySelector('[data-drawer-group] .mixer-panel, [data-drawer-group] [class*="mixer"]')).toBeTruthy());
     expect(mixerMenu()).toBeTruthy();
 
@@ -2506,7 +2512,7 @@ describe('Focus routing', () => {
 
   it('THE DRAWER IS A ROW OF PANELS (2026-11-10): Mixer and Effects side by side, each its own panel, and back into one', async () => {
     const rendered = renderApp();
-    const { container, findByLabelText } = rendered;
+    const { container } = rendered;
     await gotoProject(rendered);
     await addTrackType(container, 'Mono');
     const menuItem = (label: string) =>
@@ -2516,7 +2522,7 @@ describe('Focus routing', () => {
       Array.from(g.querySelectorAll('[role="tab"]')).map((t) => t.textContent?.replace(/[^A-Za-z ]/g, '').trim()));
 
     // The mixer opens the drawer; Effects docks into it, joining the mixer's panel
-    fireEvent.click(await findByLabelText('Mixer'));
+    openMixer();
     const effectsButton = Array.from(container.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Effects')!;
     fireEvent.click(effectsButton);
     await waitFor(() => expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy());

@@ -24,7 +24,7 @@ import { TimerRecordWaitDialog } from './components/TimerRecordWaitDialog';
 import { useTimerRecord } from './hooks/useTimerRecord';
 import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
-import { KeyboardMap, SHORTCUT_ROWS } from '@audacity-ui/components';
+import { KeyboardMap, SHORTCUT_ROWS, isToolSeparator } from '@audacity-ui/components';
 import { transportStatusText } from './utils/transportStatus';
 import { useStatusInfo } from './hooks/useStatusInfo';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
@@ -355,7 +355,7 @@ function CanvasDemoContent() {
     layout: toolbarLayout.layout,
     barFitsVertical: (barId) => {
       const bar = findBar(toolbarLayout.layout, barId)?.bar;
-      return !!bar && bar.tools.every((id) => (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true);
+      return !!bar && bar.tools.every((id) => isToolSeparator(id) || (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true);
     },
     onDrop: toolbarLayout.moveBarTo,
   });

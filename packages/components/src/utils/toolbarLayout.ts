@@ -52,7 +52,33 @@ export interface ToolbarBar {
   width?: number;
   /** The user's HEIGHT for this bar in a vertical dock, px; absent = natural */
   height?: number;
+  /** The user's NAME for the toolbar (the builder's Rename, 2026-11-11);
+   *  absent = `barDisplayName`'s default for its id */
+  name?: string;
 }
+
+/**
+ * TOOLBARS AND GROUPS (2026-11-11, "we're kinda dancing around toolgroups and
+ * toolbars", then MuseScore's "Add separator line" — "I don't mind having
+ * toolbars as things that can be moved around with the grip. But if you want
+ * to change what's inside, you gotta go via the tool we're building"): a BAR
+ * is a TOOLBAR — the unit moved by its grip, which may be EMPTY and may be
+ * NAMED; a SEPARATOR item in its tools splits it into GROUPS (a thin line, no
+ * grip, not movable on its own). Separators are tool ids with this prefix,
+ * unique per layout (`separator-1`, …), so every id-addressed edit works on
+ * them unchanged.
+ */
+export const TOOL_SEPARATOR_PREFIX = 'separator-';
+export const isToolSeparator = (id: string): boolean => id.startsWith(TOOL_SEPARATOR_PREFIX);
+
+/** The default toolbars' names, by seed id */
+const SEED_BAR_NAMES: Record<string, string> = {
+  'project-tabs': 'Tabs', 'project-actions': 'Project', workspace: 'Workspace', share: 'Share', history: 'History',
+  transport: 'Transport', tools: 'Tools', edit: 'Edit', view: 'View', time: 'Time', meters: 'Meters',
+  customise: 'Customise', status: 'Status bar', selection: 'Selection', main: 'Main toolbar',
+};
+/** What a toolbar is called: its own name, else its seed's, else "Toolbar" */
+export const barDisplayName = (bar: ToolbarBar): string => bar.name ?? SEED_BAR_NAMES[bar.id] ?? 'Toolbar';
 
 /** Which of a bar's sizes a dock uses */
 export type ToolbarBarAxis = 'width' | 'height';
@@ -135,66 +161,80 @@ const statusBars = (): ToolbarBar[] => [
 
 const bar = (id: string, tools: string[]): ToolbarBar => ({ id, tools });
 
-/** The built-in workspaces as seed layouts, in ONE row that wraps with
- *  the window (the hidden-tools list still gates each tool; a bar whose
- *  every tool is hidden draws nothing).
+/** ONE toolbar from GROUPS: the groups' tools in order with a separator
+ *  between each (`separator-1`, … unique within the seed) */
+const groupedBar = (id: string, groups: string[][], counter: { n: number }): ToolbarBar => ({
+  id,
+  tools: groups.filter((g) => g.length > 0).flatMap((g, i) => (i === 0 ? g : [`${TOOL_SEPARATOR_PREFIX}${++counter.n}`, ...g])),
+});
+
+/** The built-in workspaces as seed layouts.
  *
- *  FEWER, BIGGER BARS (2026-11-10, "every toolbar has its own gripper…
- *  look at how much space we're using"): the bars were TransportToolbar's
- *  old groups, ten of them, two or three tools each, because a bar was
- *  once the only thing that moved. A single tool moves now, so a bar is
- *  just a grouping, and the seeds are AUDACITY 3-SIZED: transport; the
- *  tools (modes); edit (actions); view (zoom and track height); time
- *  (speed, timecode, tempo, signature, snap); meters. */
+ *  ONE TOOLBAR AT THE TOP AND ONE AT THE BOTTOM, THE TOOLS SEPARATED
+ *  (2026-11-11, "our default layout should be one toolbar at the top, and
+ *  one at the bottom. Tools are then separated. That's how we start" — once
+ *  a toolbar could hold GROUPS split by separators, MuseScore's model): a
+ *  toolbar is the thing its grip moves, a group is a run of tools between
+ *  separators, and the user makes more toolbars when they want them. The
+ *  groups are the Audacity 3-sized ones of 2026-11-10: the project tools
+ *  (each drawing nothing where the desktop title bar has them), transport,
+ *  the tools (modes), edit, view (zoom and track height), time (speed,
+ *  timecode, tempo, signature, snap), meters, then the cog. A separator
+ *  next to a group that draws nothing is not drawn. (2026-11-10 to -11 the
+ *  groups were toolbars of their own, ten before that, in two rows.) */
 export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout {
-  const transport = bar('transport', ['play', 'stop', 'record', 'step-back', 'step-forward', 'loop']);
+  const transport = ['play', 'stop', 'record', 'step-back', 'step-forward', 'loop'];
   const trackHeight = ['collapse-tracks', 'expand-tracks', 'fit-tracks-height'];
-  const time = bar('time', ['varispeed', 'timecode', 'bpm', 'time-signature', 'snapping']);
-  const meters = bar('meters', ['audio-setup', 'microphone-levels', 'playback-meter']);
-  let top: ToolbarBar[];
+  const time = ['varispeed', 'timecode', 'bpm', 'time-signature', 'snapping'];
+  const meters = ['audio-setup', 'microphone-levels', 'playback-meter'];
+  let groups: string[][];
   switch (workspace) {
     case 'classic':
-      top = [
+      groups = [
         transport,
-        bar('tools', ['automation', 'split', 'spectral-editing']),
-        bar('edit', ['undo', 'redo', 'cut', 'copy', 'paste', 'trim', 'silence']),
-        bar('view', ['zoom-in', 'zoom-out', 'fit-selection', 'fit-project', 'zoom-toggle', ...trackHeight]),
+        ['automation', 'split', 'spectral-editing'],
+        ['undo', 'redo', 'cut', 'copy', 'paste', 'trim', 'silence'],
+        ['zoom-in', 'zoom-out', 'fit-selection', 'fit-project', 'zoom-toggle', ...trackHeight],
         time,
         meters,
       ];
       break;
     case 'spectral-editing':
-      top = [
+      groups = [
         transport,
-        bar('edit', ['undo', 'redo']),
-        bar('view', ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight, 'waveform-view']),
+        ['undo', 'redo'],
+        ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight, 'waveform-view'],
         time,
         meters,
       ];
       break;
     case 'modern':
-      top = [
+      groups = [
         transport,
-        bar('tools', ['automation', 'split', 'spectral-editing']),
-        bar('edit', ['undo', 'redo', 'trim', 'silence']),
-        bar('view', ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight]),
+        ['automation', 'split', 'spectral-editing'],
+        ['undo', 'redo', 'trim', 'silence'],
+        ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight],
         time,
         meters,
       ];
       break;
     case 'music':
     default:
-      top = [
+      groups = [
         transport,
-        bar('tools', ['automation', 'split']),
-        bar('edit', ['undo', 'redo', 'trim', 'silence']),
-        bar('view', ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight]),
+        ['automation', 'split'],
+        ['undo', 'redo', 'trim', 'silence'],
+        ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight],
         time,
         meters,
       ];
       break;
   }
-  return { top: [projectBars(), [...top, bar(CUSTOMISE_TOOL_ID, [CUSTOMISE_TOOL_ID])]], bottom: [statusBars()], left: [], right: [] };
+  const counter = { n: 0 };
+  const project = projectBars().map((b) => b.tools);
+  const top = groupedBar('main', [...project, ...groups, [CUSTOMISE_TOOL_ID]], counter);
+  const bottom = groupedBar('status', statusBars().map((b) => b.tools), counter);
+  return { top: [[top]], bottom: [[bottom]], left: [], right: [] };
 }
 
 /** The Export tab's toolbar (its own bars, not customisable) */
@@ -269,7 +309,9 @@ const sameLayout = (a: ToolbarLayout, b: ToolbarLayout): boolean => TOOLBAR_REGI
 export function normaliseLayout(layout: ToolbarLayout): ToolbarLayout {
   const next = {} as ToolbarLayout;
   for (const r of TOOLBAR_REGIONS) {
-    next[r] = rowsOf(layout, r).map((row) => row.filter((b) => b.tools.length > 0)).filter((row) => row.length > 0);
+    // An EMPTY TOOLBAR STAYS (2026-11-11 — a toolbar is a container the
+    // user can make and fill); a row with no toolbar in it goes
+    next[r] = rowsOf(layout, r).map((row) => [...row]).filter((row) => row.length > 0);
   }
   return next;
 }
@@ -355,10 +397,51 @@ export function addToolToNewBar(layout: ToolbarLayout, toolId: string, placement
   return normaliseLayout(next);
 }
 
+/** A fresh separator id for this layout */
+export function nextSeparatorId(layout: ToolbarLayout): string {
+  const taken = new Set(TOOLBAR_REGIONS.flatMap((r) => dockBars(layout, r).flatMap((b) => b.tools)));
+  let n = 1;
+  while (taken.has(`${TOOL_SEPARATOR_PREFIX}${n}`)) n++;
+  return `${TOOL_SEPARATOR_PREFIX}${n}`;
+}
+
+/** A SEPARATOR into a toolbar, before `beforeToolId` (null = its end) */
+export function insertSeparator(layout: ToolbarLayout, barId: string, beforeToolId: string | null): ToolbarLayout {
+  if (!findBar(layout, barId)) return layout;
+  return insertTool(layout, nextSeparatorId(layout), barId, beforeToolId);
+}
+
+/** A NEW EMPTY TOOLBAR at a placement (the builder's New toolbar / New row) */
+export function addEmptyBar(layout: ToolbarLayout, placement: BarPlacement, name?: string): ToolbarLayout {
+  const next = cloneLayout(layout);
+  place(next, { id: nextBarId(layout), tools: [], ...(name ? { name } : {}) }, placement);
+  return normaliseLayout(next);
+}
+
+/** DELETE a toolbar; its tools go onto no toolbar, and its row with it when
+ *  it was the row's last */
+export function removeBar(layout: ToolbarLayout, barId: string): ToolbarLayout {
+  if (!findBar(layout, barId)) return layout;
+  const next = cloneLayout(layout);
+  for (const r of TOOLBAR_REGIONS) next[r] = rowsOf(next, r).map((row) => row.filter((b) => b.id !== barId));
+  return normaliseLayout(next);
+}
+
+/** NAME a toolbar (null or blank = back to its default name) */
+export function renameBar(layout: ToolbarLayout, barId: string, name: string | null): ToolbarLayout {
+  const found = findBar(layout, barId);
+  const clean = name?.trim() || undefined;
+  if (!found || found.bar.name === clean) return layout;
+  const next = cloneLayout(layout);
+  const bar = findBar(next, barId)!.bar;
+  if (clean) bar.name = clean; else delete bar.name;
+  return next;
+}
+
 /**
  * REMOVE a tool from the layout — onto no toolbar (the toolbar builder's
- * Remove, 2026-11-11). Its bar goes when it was the last tool, and the row
- * with it. A tool the layout's guards put back (the cog, the project tools)
+ * Remove, 2026-11-11). Its bar STAYS, empty, when it was the last tool
+ * (empty toolbars are the user's to delete). A tool the layout's guards put back (the cog, the project tools)
  * should be HIDDEN instead; this does not stop a caller.
  */
 export function removeTool(layout: ToolbarLayout, toolId: string): ToolbarLayout {
@@ -453,7 +536,8 @@ export function withProjectTools(input: ToolbarLayout): ToolbarLayout {
 export function withProjectRowMoves(input: ToolbarLayout): ToolbarLayout {
   let layout = input;
   const audio = findTool(layout, 'audio-setup');
-  if (audio && audio.bar.tools.includes('share-audio')) {
+  // (the old first row's bar — never a toolbar that also holds the transport, as the 2026-11-11 seed does)
+  if (audio && audio.bar.tools.includes('share-audio') && !audio.bar.tools.includes('play')) {
     const meterBar = TOOLBAR_REGIONS.flatMap((r) => dockBars(layout, r))
       .find((b) => b.tools.includes('playback-meter') || b.tools.includes('microphone-levels'));
     if (meterBar) layout = moveTool(layout, 'audio-setup', meterBar.id, meterBar.tools[0] ?? null);
@@ -473,8 +557,11 @@ export function withProjectRowMoves(input: ToolbarLayout): ToolbarLayout {
       .find((b) => b !== undo.bar && (b.tools.includes('cut') || b.tools.includes('trim') || b.tools.includes('silence')));
     if (editBar) {
       const first = editBar.tools[0] ?? null;
+      const historyId = undo.bar.id;
       layout = moveTool(layout, 'redo', editBar.id, first);
       layout = moveTool(layout, 'undo', editBar.id, 'redo');
+      // (empty toolbars stay since 2026-11-11: the emptied history bar is dropped here)
+      if (findBar(layout, historyId)?.bar.tools.length === 0) layout = removeBar(layout, historyId);
     }
   }
   return layout;

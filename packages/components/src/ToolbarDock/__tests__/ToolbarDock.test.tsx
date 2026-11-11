@@ -308,4 +308,21 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('did not settle'));
     } finally { w.mockRestore(); warn.mockRestore(); }
   });
+
+  it('TOOL GROUPS (2026-11-11): a separator draws a line between groups, never at a toolbar\'s ends nor doubled; an EMPTY toolbar draws its slot; one whose tools are all hidden draws nothing', () => {
+    const { container } = renderDock({
+      rows: [[
+        { id: 'a', tools: ['separator-1', 'one', 'separator-2', 'gone', 'separator-3', 'two', 'separator-4'] },
+        { id: 'empty', tools: [] },
+        { id: 'hidden', tools: ['gone', 'separator-5'] },
+      ]],
+    });
+    const a = container.querySelector('[data-toolbar-bar="a"]')!;
+    const tools = Array.from(a.querySelectorAll('[data-toolbar-tool]')).map((t) => t.getAttribute('data-toolbar-tool'));
+    expect(tools).toEqual(['one', 'separator-2', 'two']);
+    expect(a.querySelectorAll('.toolbar-dock__separator')).toHaveLength(1);
+    expect(container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-empty="empty"]')?.textContent).toBe('Empty toolbar');
+    expect(container.querySelector('[data-toolbar-bar="hidden"]')).toBeNull();
+  });
 });
+
