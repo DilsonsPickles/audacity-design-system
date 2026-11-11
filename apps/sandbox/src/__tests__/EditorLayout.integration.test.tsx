@@ -1456,6 +1456,52 @@ describe('Selection playback', () => {
     expect((panels()[0] as HTMLElement).style.height).toBe('114px');
   });
 
+  it('the track menu\'s height items act on EVERY SELECTED track when opened from one of them, and on that row alone otherwise (2026-11-11)', async () => {
+    const rendered = renderApp();
+    const { container } = rendered;
+    await gotoProject(rendered);
+    for (const n of [1, 2, 3]) {
+      await addTrackType(container, 'Mono');
+      await waitFor(() => expect(trackPanelNames(container)).toContain(`Mono ${n}`));
+    }
+    const panels = () => container.querySelectorAll('.track-control-side-panel__track');
+    const heads = () => container.querySelectorAll<HTMLElement>('[aria-label*="track controls"]');
+    const height = (i: number) => (panels()[i] as HTMLElement).style.height;
+    const heightItem = (row: number, label: string) => {
+      fireEvent.click(trackMenuButton(container, row));
+      const parent = Array.from(container.querySelectorAll('[role="menuitem"]')).find((el) => el.textContent?.trim().startsWith('Track height'))!;
+      fireEvent.click(parent);
+      fireEvent.click(menuItem(container, label));
+    };
+
+    // Select tracks 0 and 1 (click, then Cmd+click)
+    fireEvent.click(heads()[0]);
+    fireEvent.click(heads()[1], { metaKey: true });
+
+    // From a selected row: both selected tracks collapse, track 2 does not
+    heightItem(1, 'Collapse');
+    await waitFor(() => {
+      expect(height(0)).toBe('44px');
+      expect(height(1)).toBe('44px');
+    });
+    expect(height(2)).toBe('114px');
+
+    // From a row OUTSIDE the selection: that row alone
+    heightItem(2, 'Collapse');
+    await waitFor(() => expect(height(2)).toBe('44px'));
+    heightItem(2, 'Reset height');
+    await waitFor(() => expect(height(2)).toBe('114px'));
+    expect(height(0)).toBe('44px');
+    expect(height(1)).toBe('44px');
+
+    // Expand from the other selected row brings both back
+    heightItem(0, 'Expand');
+    await waitFor(() => {
+      expect(height(0)).toBe('114px');
+      expect(height(1)).toBe('114px');
+    });
+  });
+
   it('Option+Cmd+C collapses the SELECTED tracks and Option+Cmd+X expands them, the others untouched (2026-10-08)', async () => {
     const rendered = renderApp();
     const { container } = rendered;

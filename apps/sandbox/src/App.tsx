@@ -797,21 +797,30 @@ function CanvasDemoContent() {
     fitTracksToHeightFor(resolveTracksImOn());
   }, [fitTracksToHeightFor, resolveTracksImOn]);
   // THE TRACK'S OWN MENU (2026-10-22, the design brief: "single-track
-  // height control belongs in this menu"): the same three edits for ONE
-  // named track — the menu knows which row it was opened from, so there
-  // is no "track I'm on" to resolve.
+  // height control belongs in this menu"): the same edits for the row the
+  // menu was opened from — AND, SINCE 2026-11-11, FOR EVERY SELECTED TRACK
+  // WHEN THAT ROW IS ONE OF THEM ("if I have multiple tracks selected and
+  // I right click and do a track height resize, it should effect all
+  // selected tracks"): the drag's rule (a selected track's edge resizes
+  // every selected track) and the clip edits' — a row outside the
+  // selection is acted on alone. The resize edge's double-click reset
+  // comes through here too, so it follows the same rule.
+  const heightMenuTargets = React.useCallback((index: number): number[] => {
+    const selected = state.selectedTrackIndices ?? [];
+    return selected.includes(index) ? [...selected].sort((a, b) => a - b) : [index];
+  }, [state.selectedTrackIndices]);
   const handleCollapseTrack = React.useCallback((index: number) => {
-    applyHeightUpdates(collapseTracks(state.tracks, [index], heightMemoryRef.current));
-  }, [state.tracks, applyHeightUpdates]);
+    applyHeightUpdates(collapseTracks(state.tracks, heightMenuTargets(index), heightMemoryRef.current));
+  }, [state.tracks, applyHeightUpdates, heightMenuTargets]);
   const handleExpandTrack = React.useCallback((index: number) => {
-    applyHeightUpdates(expandTracks(state.tracks, [index], heightMemoryRef.current));
-  }, [state.tracks, applyHeightUpdates]);
+    applyHeightUpdates(expandTracks(state.tracks, heightMenuTargets(index), heightMemoryRef.current));
+  }, [state.tracks, applyHeightUpdates, heightMenuTargets]);
   const handleFitTrackToHeight = React.useCallback((index: number) => {
-    fitTracksToHeightFor([index]);
-  }, [fitTracksToHeightFor]);
+    fitTracksToHeightFor(heightMenuTargets(index));
+  }, [fitTracksToHeightFor, heightMenuTargets]);
   const handleResetTrackHeight = React.useCallback((index: number) => {
-    applyHeightUpdates(resetTracks(state.tracks, [index], heightMemoryRef.current));
-  }, [state.tracks, applyHeightUpdates]);
+    applyHeightUpdates(resetTracks(state.tracks, heightMenuTargets(index), heightMemoryRef.current));
+  }, [state.tracks, applyHeightUpdates, heightMenuTargets]);
 
   // Seek while playing (Audacity 3's arrows): ← / → a second, Shift
   // fifteen — a capture listener of its own, ahead of the chain below
