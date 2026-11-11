@@ -327,6 +327,13 @@ function setApplicationMenu() {
         { label: 'Manage Macros…', click: send('tools:manage-macros') },
       ],
     },
+    // Help › Debug panel… (2026-11-11 — the Debug tab moved here)
+    {
+      label: 'Help',
+      submenu: [
+        { label: 'Debug Panel…', click: send('help:debug-panel') },
+      ],
+    },
     {
       label: 'Window',
       submenu: [

@@ -44,6 +44,7 @@ export function useElectronMenuBridge(options: UseElectronMenuBridgeOptions): vo
     'effect:manage-plugins': () => menuByLabel.get('Manage Plugins...')?.(),
     'generate:tone': () => menuByLabel.get('Tone...')?.(),
     'tools:manage-macros': () => menuByLabel.get('Manage macros...')?.(),
+    'help:debug-panel': () => menuByLabel.get('Debug panel...')?.(),
   };
 
   React.useEffect(() => {

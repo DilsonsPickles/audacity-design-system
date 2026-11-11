@@ -7,7 +7,7 @@ import { GhostButton } from '../GhostButton';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { ToolbarGroup } from '../ToolbarGroup';
-import type { IconName } from '../Icon';
+import { Icon, type IconName } from '../Icon';
 import './ProjectToolbar.css';
 
 export interface ProjectToolbarWorkspaceOption {
@@ -93,6 +93,13 @@ export interface ProjectToolbarProps {
    * Whether to show the debug menu item
    */
   showDebugMenu?: boolean;
+  /** The Export tab (default true; the sandbox hides it since 2026-11-11) */
+  showExportTab?: boolean;
+  /** 'document': Figma-style tabs — Home a house icon, Project the
+   *  project's icon and title (2026-11-11) */
+  tabStyle?: 'text' | 'document';
+  /** The Project tab's text in the document style */
+  projectTitle?: string;
   /**
    * Optional className for custom styling
    */
@@ -125,6 +132,9 @@ export function ProjectToolbar({
   rightContent,
   trailingContent,
   showDebugMenu = false,
+  showExportTab = true,
+  tabStyle = 'text',
+  projectTitle,
   className = '',
 }: ProjectToolbarProps) {
   const { theme } = useTheme();
@@ -178,8 +188,11 @@ export function ProjectToolbar({
   } as React.CSSProperties;
 
   const totalMenuItems = useMemo(() => {
-    return showDebugMenu ? 4 : 3;
-  }, [showDebugMenu]);
+    return 2 + (showExportTab ? 1 : 0) + (showDebugMenu ? 1 : 0);
+  }, [showDebugMenu, showExportTab]);
+  const exportIndex = showExportTab ? 2 : -1;
+  const debugIndex = showDebugMenu ? 2 + (showExportTab ? 1 : 0) : -1;
+  const doc = tabStyle === 'document';
 
   // Use tab group hooks for each menu item with shared state
   const homeTab = useTabGroup({
@@ -202,7 +215,7 @@ export function ProjectToolbar({
 
   const exportTab = useTabGroup({
     groupId: 'project-toolbar',
-    itemIndex: 2,
+    itemIndex: Math.max(0, exportIndex),
     totalItems: totalMenuItems,
     itemRefs: leftGroupRef,
     activeIndex: activeTabIndex,
@@ -211,7 +224,7 @@ export function ProjectToolbar({
 
   const debugTab = useTabGroup({
     groupId: 'project-toolbar',
-    itemIndex: 3,
+    itemIndex: Math.max(0, debugIndex),
     totalItems: totalMenuItems,
     itemRefs: leftGroupRef,
     activeIndex: activeTabIndex,
@@ -334,6 +347,9 @@ export function ProjectToolbar({
         <Tab
           ref={(el) => (leftGroupRef.current[0] = el)}
           label="Home"
+          icon={doc ? <Icon name="home" size={16} /> : undefined}
+          iconOnly={doc}
+          variant={doc ? 'document' : 'default'}
           isActive={activeItem === 'home'}
           onClick={() => onMenuItemClick?.('home')}
           tabIndex={homeTab.tabIndex}
@@ -343,7 +359,9 @@ export function ProjectToolbar({
         />
         <Tab
           ref={(el) => (leftGroupRef.current[1] = el)}
-          label="Project"
+          label={doc ? (projectTitle || 'Untitled project') : 'Project'}
+          icon={doc ? <Icon name="waveform" size={16} /> : undefined}
+          variant={doc ? 'document' : 'default'}
           isActive={activeItem === 'project'}
           onClick={() => onMenuItemClick?.('project')}
           tabIndex={projectTab.tabIndex}
@@ -351,8 +369,9 @@ export function ProjectToolbar({
           onFocus={projectTab.onFocus}
           onBlur={projectTab.onBlur}
         />
-        <Tab
-          ref={(el) => (leftGroupRef.current[2] = el)}
+        {showExportTab && <Tab
+          ref={(el) => (leftGroupRef.current[exportIndex] = el)}
+          variant={doc ? 'document' : 'default'}
           label="Export"
           isActive={activeItem === 'export'}
           onClick={() => onMenuItemClick?.('export')}
@@ -360,10 +379,11 @@ export function ProjectToolbar({
           onKeyDown={exportTab.onKeyDown}
           onFocus={exportTab.onFocus}
           onBlur={exportTab.onBlur}
-        />
+        />}
         {showDebugMenu && (
           <Tab
-            ref={(el) => (leftGroupRef.current[3] = el)}
+            ref={(el) => (leftGroupRef.current[debugIndex] = el)}
+            variant={doc ? 'document' : 'default'}
             label="Debug"
             isActive={activeItem === 'debug'}
             onClick={() => onMenuItemClick?.('debug')}

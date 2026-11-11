@@ -155,6 +155,7 @@ function CanvasDemoContent() {
     isTimerRecordOpen, setIsTimerRecordOpen,
     setIsCommandPaletteOpen,
     isKeyboardMapOpen, setIsKeyboardMapOpen,
+    setIsDebugPanelOpen,
     setIsExportModalOpen, setIsLabelEditorOpen,
     setIsPluginManagerOpen,
     setAlertDialogOpen,
@@ -1107,6 +1108,7 @@ function CanvasDemoContent() {
     setIsGoToOpen,
     setIsTimerRecordOpen,
     setIsKeyboardMapOpen,
+    setIsDebugPanelOpen,
     setMixerPanelOpen,
     effectsPanel,
     setEffectsPanel,
@@ -1185,10 +1187,14 @@ function CanvasDemoContent() {
   };
   // THE PROJECT TOOLBAR'S PIECES are tools too (2026-11-10): the docks draw
   // them beside the status bar's, through one renderer
+  // The open project's title — the Project tab's text (2026-11-11, the
+  // Figma-style tabs)
+  const projectTitle = indexedDBProjects.find((p) => p.id === currentProjectId)?.title;
   const navigateProject = useProjectNavigation({ setActiveMenuItem, setHomeTabKey, setIndexedDBProjects, currentProjectId, createNewProject });
   const projectToolDeps: ProjectBarToolsDeps = {
     activeMenuItem,
     onNavigate: (item) => { void navigateProject(item); },
+    projectTitle,
     showMixer,
     onToggleMixer: () => setMixerPanelOpen((prev) => !prev),
     onAudioSetup: (anchor) => setAudioSetupMenuAnchor(anchor),
@@ -1343,6 +1349,7 @@ function CanvasDemoContent() {
         setIndexedDBProjects={setIndexedDBProjects}
         currentProjectId={currentProjectId}
         createNewProject={createNewProject}
+        projectTitle={projectTitle}
         showMixer={showMixer}
         setMixerPanelOpen={setMixerPanelOpen}
         setAudioSetupMenuAnchor={setAudioSetupMenuAnchor}

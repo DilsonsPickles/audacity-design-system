@@ -194,12 +194,12 @@ async function retrying(fn: () => Promise<void>, attempts = 3): Promise<void> {
 /**
  * Boots the app straight to the Project tab, past the point every seam
  * below needs (timeline ruler + track panel rendered). Mirrors the
- * `fireEvent.click(getByText('Project')); await waitFor(...)` sequence
+ * `fireEvent.click(getByText('Untitled project')); await waitFor(...)` sequence
  * repeated in App.integration.test.tsx.
  */
 async function gotoProject(rendered: ReturnType<typeof renderApp>): Promise<void> {
   const { container, getByText } = rendered;
-  fireEvent.click(getByText('Project'));
+  fireEvent.click(getByText('Untitled project'));
   await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
 
   // Navigating to Project with no currentProjectId fires an ASYNC chain
@@ -226,7 +226,7 @@ async function gotoProject(rendered: ReturnType<typeof renderApp>): Promise<void
 }
 
 /**
- * Drives the real Debug -> "Generate Tracks" -> Close flow (same UI path
+ * Drives the real Help › Debug panel… -> "Generate Tracks" -> Close flow (same UI path
  * App's own DebugPanel exposes) to seed N deterministic tracks: 4 audio
  * tracks named "Track 1".."Track 4" with ids 1..4, one clip each with ids
  * 1, 11, 21, 31 (clip id = trackIterationIndex*10+1 — see AppDialogs.tsx
@@ -237,7 +237,9 @@ async function gotoProject(rendered: ReturnType<typeof renderApp>): Promise<void
  */
 async function generateTracks(container: HTMLElement, getByText: (text: string) => HTMLElement): Promise<void> {
   await retrying(async () => {
-    fireEvent.click(getByText('Debug'));
+    // Help › Debug panel… (the Debug tab's job since 2026-11-11)
+    fireEvent.click(getByText('Help'));
+    fireEvent.click(getByText('Debug panel...'));
     const overlay = await waitFor(() => {
       const el = container.querySelector('.dialog-overlay');
       if (!el) throw new Error('Debug dialog did not open');
@@ -1500,7 +1502,7 @@ describe('Selection playback', () => {
       expect(height(0)).toBe('114px');
       expect(height(1)).toBe('114px');
     });
-  });
+  }, 40000); // three added tracks: near the default 20s under load
 
   it('Option+Cmd+C collapses the SELECTED tracks and Option+Cmd+X expands them, the others untouched (2026-10-08)', async () => {
     const rendered = renderApp();

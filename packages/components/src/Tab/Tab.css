@@ -47,3 +47,45 @@
   white-space: pre;
   margin: 0;
 }
+
+/* THE DOCUMENT TABS (2026-11-11, "shake up the tab layout and do a more
+   Figma style"): Figma's file tabs — full height, an icon then the name,
+   a 1px divider after each, the active tab a lighter surface in the
+   primary text with NO underline, the rest in the secondary text */
+.tab--document {
+  height: 100%;
+  gap: 8px;
+  padding: 0 16px;
+  border: 0;
+  border-right: 1px solid var(--tab-divider);
+  border-radius: 0;
+  color: var(--tab-text-inactive);
+}
+
+.tab--document:hover:not(.tab--active) {
+  border: 0;
+  border-right: 1px solid var(--tab-divider);
+  background-color: var(--tab-hover);
+  color: var(--tab-text);
+}
+
+.tab--document.tab--active {
+  border: 0;
+  border-right: 1px solid var(--tab-divider);
+  background-color: var(--tab-bg-active);
+  color: var(--tab-text);
+}
+
+.tab--document.tab--icon-only {
+  padding: 0 14px;
+}
+
+.tab__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab--document .tab__label {
+  line-height: 16px;
+}

@@ -19,6 +19,8 @@ export interface UseMenuDefinitionsOptions {
   setIsGoToOpen: (open: boolean) => void;
   setIsTimerRecordOpen: (open: boolean) => void;
   setIsKeyboardMapOpen: (open: boolean) => void;
+  /** Help › Debug panel… (2026-11-11) */
+  setIsDebugPanelOpen?: (open: boolean) => void;
   setMixerPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
   effectsPanel: EffectsPanelState | null;
   setEffectsPanel: React.Dispatch<React.SetStateAction<EffectsPanelState | null>>;
@@ -70,6 +72,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     setIsGoToOpen,
     setIsTimerRecordOpen,
     setIsKeyboardMapOpen,
+    setIsDebugPanelOpen,
     setMixerPanelOpen,
     effectsPanel,
     setEffectsPanel,
@@ -174,6 +177,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onGroupClips: () => dispatch({ type: 'GROUP_SELECTED_CLIPS' }),
     onUngroupClips: () => { for (const groupId of selectedClipGroupIds.ids) dispatch({ type: 'UNGROUP_CLIPS', payload: { groupId } }); },
     onOpenKeyboardMap: () => setIsKeyboardMapOpen(true),
+    onOpenDebugPanel: setIsDebugPanelOpen ? () => setIsDebugPanelOpen(true) : undefined,
     onToggleMixer: () => setMixerPanelOpen((prev) => !prev),
     effectsPanelOpen: effectsPanel?.isOpen ?? false,
     showRmsInWaveform,

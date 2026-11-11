@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dropdown, GhostButton, Tab, ToolButton, type ToolMeta, type ToolbarOrientation } from '@audacity-ui/components';
+import { Dropdown, GhostButton, Icon, Tab, ToolButton, type ToolMeta, type ToolbarOrientation } from '@audacity-ui/components';
 
 type MenuItem = 'home' | 'project' | 'export' | 'debug';
 
@@ -18,13 +18,18 @@ export interface ProjectBarToolsDeps {
   onRedo: () => void;
   /** The tools hidden in Customise toolbar (the tabs cannot be) */
   hidden: ReadonlySet<string>;
+  /** The open project's title, the Project tab's text (2026-11-11) */
+  projectTitle?: string;
 }
 
+// THE TABS ARE FIGMA'S DOCUMENT TABS (2026-11-11, "can we hide 'Export'
+// tab and put debug somewhere else? I want to shake up the tab layout and
+// do a more Figma style"): Home a house alone, then the open project — its
+// icon and its title. Export is hidden (its tab's page and fixed layout
+// stay in the code); Debug is Help › Debug panel…, and so in the palette.
 const TABS: ReadonlyArray<{ id: MenuItem; label: string }> = [
   { id: 'home', label: 'Home' },
   { id: 'project', label: 'Project' },
-  { id: 'export', label: 'Export' },
-  { id: 'debug', label: 'Debug' },
 ];
 
 /**
@@ -48,7 +53,15 @@ export function renderProjectTool(id: string, orientation: ToolbarOrientation, d
         // ("Main menu": F6's section walk and the status bar find it by name)
         <div className="project-tabs" role="group" aria-label="Main menu" data-project-tool="tabs">
           {TABS.map((t) => (
-            <Tab key={t.id} label={t.label} isActive={deps.activeMenuItem === t.id} onClick={() => deps.onNavigate(t.id)} />
+            <Tab
+              key={t.id}
+              variant="document"
+              label={t.id === 'project' ? (deps.projectTitle || 'Untitled project') : t.label}
+              icon={<Icon name={t.id === 'home' ? 'home' : 'waveform'} size={16} />}
+              iconOnly={t.id === 'home'}
+              isActive={deps.activeMenuItem === t.id}
+              onClick={() => deps.onNavigate(t.id)}
+            />
           ))}
         </div>
       );

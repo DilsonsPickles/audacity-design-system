@@ -21,6 +21,8 @@ export interface MenuDefinitionDeps {
   onGroupClips: () => void;
   onUngroupClips: () => void;
   onOpenKeyboardMap: () => void;
+  /** Help › Debug panel… — the Debug tab's job since 2026-11-11 */
+  onOpenDebugPanel?: () => void;
   /** View › Mixer (M): the mixer panel on / off */
   onToggleMixer: () => void;
   onOpenPreferences: () => void;
@@ -266,5 +268,9 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
     Effect: effectMenuItems,
     Generate: generateMenuItems,
     Tools: toolsMenuItems,
+    // DEBUG IS A HELP ITEM (2026-11-11, "can we hide 'Export' tab and put
+    // debug somewhere else?"): the Debug tab went with the Figma-style
+    // tabs; the panel opens from here, and so from the command palette
+    ...(deps.onOpenDebugPanel ? { Help: [{ label: 'Debug panel...', onClick: deps.onOpenDebugPanel }] } : {}),
   };
 }

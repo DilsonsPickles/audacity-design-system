@@ -16,6 +16,8 @@ export interface ProjectToolbarContainerProps {
   setIndexedDBProjects: React.Dispatch<React.SetStateAction<StoredProject[]>>;
   currentProjectId: string | null;
   createNewProject: () => Promise<string>;
+  /** The open project's title, the Project tab's text (2026-11-11) */
+  projectTitle?: string;
 
   // Center actions
   showMixer: boolean;
@@ -86,6 +88,7 @@ export function ProjectToolbarContainer({
   setIndexedDBProjects,
   currentProjectId,
   createNewProject,
+  projectTitle,
   showMixer,
   setMixerPanelOpen,
   setAudioSetupMenuAnchor,
@@ -101,7 +104,11 @@ export function ProjectToolbarContainer({
     <ProjectToolbar
       activeItem={activeMenuItem}
       onMenuItemClick={(item) => { void navigate(item); }}
-      showDebugMenu={true}
+      // Figma-style tabs; Export hidden, Debug in Help (2026-11-11)
+      showDebugMenu={false}
+      showExportTab={false}
+      tabStyle="document"
+      projectTitle={projectTitle}
       centerActions={activeMenuItem !== 'export' ? [
         ...(showMixer ? [{
           icon: 'mixer' as const,

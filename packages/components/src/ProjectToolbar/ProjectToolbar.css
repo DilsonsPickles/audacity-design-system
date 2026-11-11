@@ -77,3 +77,12 @@
 .project-toolbar.project-toolbar--has-trailing {
   padding-right: 12px;
 }
+
+/* Document-style tabs (2026-11-11) run the bar's full height, Figma's,
+   and start 16px in — where the docks' tabs start, after their grip — so
+   the tabs hold still between Home and a project */
+.project-toolbar__left:has(.tab--document) {
+  align-self: stretch;
+  align-items: stretch;
+  padding-left: 16px;
+}

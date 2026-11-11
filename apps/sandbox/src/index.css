@@ -63,5 +63,5 @@ html.pan-active * {
    bottom edges (the grip's own trick, -8px margins), so the active tab's
    underline sits on the row's bottom edge; it takes the controls' 28px in
    the layout, so the row stays 44 */
-.project-tabs { display: flex; align-items: stretch; gap: 2px; height: 44px; margin: -8px 0; }
+.project-tabs { display: flex; align-items: stretch; gap: 0; height: 44px; margin: -8px 0; }
 .project-tabs .tab { height: 100%; box-sizing: border-box; }
