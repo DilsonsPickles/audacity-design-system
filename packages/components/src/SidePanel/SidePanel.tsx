@@ -46,6 +46,8 @@ export interface SidePanelProps {
    * Called when panel is resized
    */
   onResize?: (width: number) => void;
+  /** The width at the end of a resize drag — once, at the release (2026-11-11) */
+  onResizeEnd?: (width: number) => void;
 }
 
 export const SidePanel: React.FC<SidePanelProps> = ({
@@ -58,10 +60,12 @@ export const SidePanel: React.FC<SidePanelProps> = ({
   className = '',
   style,
   onResize,
+  onResizeEnd,
 }) => {
   const [currentWidth, setCurrentWidth] = React.useState(width);
   const [isResizing, setIsResizing] = React.useState(false);
   const panelRef = React.useRef<HTMLDivElement>(null);
+  const lastWidthRef = React.useRef(width);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!resizable) return;
@@ -88,11 +92,13 @@ export const SidePanel: React.FC<SidePanelProps> = ({
       newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
 
       setCurrentWidth(newWidth);
+      lastWidthRef.current = newWidth;
       onResize?.(newWidth);
     };
 
     const handleMouseUp = () => {
       setIsResizing(false);
+      onResizeEnd?.(lastWidthRef.current);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -102,7 +108,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, position, minWidth, maxWidth, onResize]);
+  }, [isResizing, position, minWidth, maxWidth, onResize, onResizeEnd]);
 
   return (
     <div

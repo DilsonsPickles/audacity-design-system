@@ -79,6 +79,8 @@ export interface TrackControlSidePanelProps {
    */
   resizable?: boolean;
 
+  /** The panel's width, px (the starting width when resizable) */
+  width?: number;
   /**
    * Minimum width when resizing (px)
    */
@@ -103,6 +105,8 @@ export interface TrackControlSidePanelProps {
    * Called when panel is resized
    */
   onResize?: (width: number) => void;
+  /** The width at the end of a resize drag (2026-11-11) */
+  onResizeEnd?: (width: number) => void;
 
   /**
    * Called when a track is resized
@@ -297,11 +301,13 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   groupLayout,
   groupMenu,
   resizable = false,
+  width = 280,
   minWidth = 280,
   maxWidth = 280,
   trackHeights = [],
   focusedTrackIndex = null,
   onResize,
+  onResizeEnd,
   onTrackResize,
   onAddTrack,
   onAddTrackType,
@@ -721,11 +727,12 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   return (
     <SidePanel
       position="left"
-      width={280}
+      width={width}
       resizable={resizable}
       minWidth={minWidth}
       maxWidth={maxWidth}
       onResize={onResize}
+      onResizeEnd={onResizeEnd}
       className={`track-control-side-panel ${className}`}
       style={style}
     >

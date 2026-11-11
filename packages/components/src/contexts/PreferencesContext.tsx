@@ -89,6 +89,8 @@ export interface PreferencesState {
    *  vertical by the dock their toolbar is in), or only in their button's
    *  flyout — kept with the layouts, since where a meter is persists */
   playbackMeterOnToolbar: boolean;
+  /** The track header panel's width, px — dragged by its edge (2026-11-11) */
+  trackPanelWidth: number;
   recordingMeterOnToolbar: boolean;
 
   // Spectral Display
@@ -171,6 +173,7 @@ const defaultPreferences: PreferencesState = {
   // defaults, so an old profile must read it as absent)
   toolbarLayouts: {},
   playbackMeterOnToolbar: true,
+  trackPanelWidth: 280,
   recordingMeterOnToolbar: false,
 
   // Spectral Display
@@ -210,6 +213,7 @@ export interface AppearancePrefsValue {
   theme: PreferencesState['theme'];
   clipStyle: PreferencesState['clipStyle'];
   labelTextSizePt: PreferencesState['labelTextSizePt'];
+  trackPanelWidth: PreferencesState['trackPanelWidth'];
   updatePreference: PreferencesContextValue['updatePreference'];
 }
 
@@ -281,9 +285,10 @@ export function PreferencesProvider({ children }: PreferencesProviderProps) {
       theme: preferences.theme,
       clipStyle: preferences.clipStyle,
       labelTextSizePt: preferences.labelTextSizePt,
+      trackPanelWidth: preferences.trackPanelWidth,
       updatePreference,
     }),
-    [preferences.theme, preferences.clipStyle, preferences.labelTextSizePt, updatePreference]
+    [preferences.theme, preferences.clipStyle, preferences.labelTextSizePt, preferences.trackPanelWidth, updatePreference]
   );
 
   const editingBehaviorValue = useMemo<EditingBehaviorPrefsValue>(

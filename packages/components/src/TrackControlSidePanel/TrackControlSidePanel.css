@@ -118,6 +118,14 @@
   max-width: 100%;
 }
 
+/* THE TRACK HEADERS FILL THE PANEL'S WIDTH (2026-11-11, "track headers
+   should fill width" — the panel resizes now, and the cards kept the 268px
+   they were drawn at for the fixed 280 panel); the volume slider takes the
+   extra room */
+.track-control-side-panel__track .track-control-panel {
+  width: 100%;
+}
+
 /* Track colour picker (shared with TrackContextMenu) */
 .track-context-menu__colour-row {
   display: flex;
