@@ -157,10 +157,16 @@ function createWindow(url) {
     minHeight: 320,
     title: 'Audacity 4',
     backgroundColor: '#1D1D1F',
-    // Default native title bar — the renderer's own toolbar lives just
-    // under it. Frameless / titleBarStyle: 'hiddenInset' is a future
-    // polish step once the in-app chrome is reworked to host its own
-    // window controls.
+    // THE APP DRAWS ITS OWN TITLE BAR ON macOS (2026-11-11, "a custom app
+    // header which includes the electron window's three dots. Like the
+    // Figma header where the project tab header is part of the
+    // application shell"): the native bar is hidden, the traffic lights
+    // stay, inset over the renderer's 40px title bar (AppTitleBar), which
+    // carries the tabs and is the window's drag region. Other platforms
+    // keep the native frame.
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 14, y: 14 } }
+      : {}),
     webPreferences: {
       // The sandbox is pure browser code; we never expose Node APIs to
       // it. Keeps the renderer untrusted and matches the assumptions of

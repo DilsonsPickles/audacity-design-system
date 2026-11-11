@@ -65,3 +65,25 @@ html.pan-active * {
    the layout, so the row stays 44 */
 .project-tabs { display: flex; align-items: stretch; gap: 0; height: 44px; margin: -8px 0; }
 .project-tabs .tab { height: 100%; box-sizing: border-box; }
+
+/* THE APP'S OWN TITLE BAR (2026-11-11) — AppTitleBar.tsx */
+.app-title-bar {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  height: 40px;
+  box-sizing: border-box;
+  background: var(--app-title-bar-bg);
+  border-bottom: 1px solid var(--app-title-bar-border);
+  -webkit-app-region: drag;
+  user-select: none;
+}
+.app-title-bar .project-tabs {
+  height: auto;
+  margin: 0;
+  -webkit-app-region: no-drag;
+}
+/* The tabs' divider runs on the bar's left edge too, after the lights */
+.app-title-bar .project-tabs .tab:first-child {
+  border-left: 1px solid var(--app-title-bar-border);
+}

@@ -8,6 +8,9 @@ declare global {
   interface Window {
     electronShell?: {
       openNewWindow: () => void;
+      /** The window has no native title bar: the app draws one, with the
+       *  traffic lights inset over its left end (macOS, 2026-11-11) */
+      customTitleBar?: boolean;
       /** The microphone's OS permission (2026-11-04) */
       microphoneAccessStatus?: () => Promise<MicrophoneAccessStatus>;
       /** Prompts while undetermined; resolves to whether access was granted */

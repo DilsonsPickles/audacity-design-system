@@ -46,6 +46,7 @@ const OAuthCallback = React.lazy(() =>
   import('./components/OAuthCallback').then(m => ({ default: m.OAuthCallback }))
 );
 import { RecordingManager } from './utils/RecordingManager';
+import { AppTitleBar, hasCustomTitleBar } from './components/AppTitleBar';
 import { computeFitTrackHeight, buildNewTrack } from './utils/trackManagement';
 import { handlePaste } from './hooks/handlers/clipboardHandlers';
 import type { TrackType } from '@audacity-ui/components';
@@ -1187,6 +1188,9 @@ function CanvasDemoContent() {
   };
   // THE PROJECT TOOLBAR'S PIECES are tools too (2026-11-10): the docks draw
   // them beside the status bar's, through one renderer
+  // The app's own title bar (2026-11-11): the desktop shell on macOS, or a
+  // browser preview by localStorage — read once, it cannot change live
+  const [customTitleBar] = React.useState(hasCustomTitleBar);
   // The open project's title — the Project tab's text (2026-11-11, the
   // Figma-style tabs)
   const projectTitle = indexedDBProjects.find((p) => p.id === currentProjectId)?.title;
@@ -1195,6 +1199,7 @@ function CanvasDemoContent() {
     activeMenuItem,
     onNavigate: (item) => { void navigateProject(item); },
     projectTitle,
+    tabsInTitleBar: customTitleBar,
     showMixer,
     onToggleMixer: () => setMixerPanelOpen((prev) => !prev),
     onAudioSetup: (anchor) => setAudioSetupMenuAnchor(anchor),
@@ -1334,6 +1339,14 @@ function CanvasDemoContent() {
     <LoopRegionProvider value={loopRegion}>
     <TransportToolbarContainer {...transportToolbarProps}>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
+      {customTitleBar && (
+        <AppTitleBar
+          activeMenuItem={activeMenuItem}
+          onNavigate={(item) => { void navigateProject(item); }}
+          projectTitle={projectTitle}
+          insetForTrafficLights={!!window.electronShell?.customTitleBar}
+        />
+      )}
       {!IS_ELECTRON && (
         <ApplicationHeader
           os={preferences.operatingSystem}
@@ -1342,7 +1355,7 @@ function CanvasDemoContent() {
       )}
       {/* The project toolbar on HOME alone (its tabs, the way back); in the
           other views its pieces are tools in the docks (2026-11-10) */}
-      {activeMenuItem === 'home' && <ProjectToolbarContainer
+      {activeMenuItem === 'home' && !customTitleBar && <ProjectToolbarContainer
         activeMenuItem={activeMenuItem}
         setActiveMenuItem={setActiveMenuItem}
         setHomeTabKey={setHomeTabKey}

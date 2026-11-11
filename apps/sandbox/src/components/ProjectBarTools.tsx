@@ -20,6 +20,28 @@ export interface ProjectBarToolsDeps {
   hidden: ReadonlySet<string>;
   /** The open project's title, the Project tab's text (2026-11-11) */
   projectTitle?: string;
+  /** The tabs live in the app's title bar (AppTitleBar), not the docks */
+  tabsInTitleBar?: boolean;
+}
+
+/** The Home and project tabs — the docks' tabs tool and the title bar's */
+export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle }: Pick<ProjectBarToolsDeps, 'activeMenuItem' | 'onNavigate' | 'projectTitle'>) {
+  return (
+    // ("Main menu": F6's section walk and the status bar find it by name)
+    <div className="project-tabs" role="group" aria-label="Main menu" data-project-tool="tabs">
+      {TABS.map((t) => (
+        <Tab
+          key={t.id}
+          variant="document"
+          label={t.id === 'project' ? (projectTitle || 'Untitled project') : t.label}
+          icon={<Icon name={t.id === 'home' ? 'home' : 'waveform'} size={16} />}
+          iconOnly={t.id === 'home'}
+          isActive={activeMenuItem === t.id}
+          onClick={() => onNavigate(t.id)}
+        />
+      ))}
+    </div>
+  );
 }
 
 // THE TABS ARE FIGMA'S DOCUMENT TABS (2026-11-11, "can we hide 'Export'
@@ -49,22 +71,8 @@ export function renderProjectTool(id: string, orientation: ToolbarOrientation, d
   );
   switch (id) {
     case 'project-tabs':
-      return (
-        // ("Main menu": F6's section walk and the status bar find it by name)
-        <div className="project-tabs" role="group" aria-label="Main menu" data-project-tool="tabs">
-          {TABS.map((t) => (
-            <Tab
-              key={t.id}
-              variant="document"
-              label={t.id === 'project' ? (deps.projectTitle || 'Untitled project') : t.label}
-              icon={<Icon name={t.id === 'home' ? 'home' : 'waveform'} size={16} />}
-              iconOnly={t.id === 'home'}
-              isActive={deps.activeMenuItem === t.id}
-              onClick={() => deps.onNavigate(t.id)}
-            />
-          ))}
-        </div>
-      );
+      // In the title bar instead when the app draws one (2026-11-11)
+      return deps.tabsInTitleBar ? null : <ProjectTabs activeMenuItem={deps.activeMenuItem} onNavigate={deps.onNavigate} projectTitle={deps.projectTitle} />;
     case 'mixer-button':
       return deps.showMixer ? action('mixer', 'Mixer', () => deps.onToggleMixer()) : null;
     case 'audio-setup':
