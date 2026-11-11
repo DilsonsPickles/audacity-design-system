@@ -119,7 +119,9 @@ export function BpmStepper({
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       stepBy(-1);
-    } else if (e.key === 'Enter' || e.key === ' ') {
+    } else if (e.key === 'Enter') {
+      // ENTER ONLY — Space is the app's Play, wherever the focus is (2026-11-11:
+      // a click on "Speed" left the focus here and Space opened the typing)
       e.preventDefault();
       beginEdit();
     }

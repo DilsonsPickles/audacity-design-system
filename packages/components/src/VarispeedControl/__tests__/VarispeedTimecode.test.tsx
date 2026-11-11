@@ -127,3 +127,16 @@ describe('VarispeedTimecode — "Preserve pitch" in the right-click menu (2026-1
     expect([...document.body.querySelectorAll('.context-menu-item')].some((el) => el.textContent?.includes('Preserve pitch'))).toBe(false);
   });
 });
+
+describe('VarispeedTimecode — Space is Play, not typing (2026-11-11)', () => {
+  it('Space on the focused control opens nothing and is left to the app; Enter types', () => {
+    const { container } = render(<ThemeProvider><VarispeedTimecode speed={0.5} enabled onChange={() => {}} /></ThemeProvider>);
+    const root = container.querySelector('[data-varispeed-timecode]') as HTMLElement;
+    const space = new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true });
+    root.dispatchEvent(space);
+    expect(space.defaultPrevented).toBe(false);
+    expect(root.querySelector('.bpm-stepper__input')).toBeNull();
+    fireEvent.keyDown(root, { key: 'Enter' });
+    expect(root.querySelector('.bpm-stepper__input')).not.toBeNull();
+  });
+});
