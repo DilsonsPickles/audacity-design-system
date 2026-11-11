@@ -50,6 +50,10 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
           : `color-mix(in srgb, ${theme.background.toolbar}, black 10%)`,
         '--app-title-bar-active': theme.background.toolbar,
         '--app-title-bar-border': theme.border.onSurface,
+        // The short dividers between the right-hand controls: the text
+        // colour at 20%, so they read on the bar in either theme (the
+        // border colour is lighter than the bar in light mode)
+        '--app-title-bar-divider': `color-mix(in srgb, ${theme.foreground.text.primary} 20%, transparent)`,
         paddingLeft: insetForTrafficLights ? TRAFFIC_LIGHTS_PX : 0,
       } as React.CSSProperties}
     >

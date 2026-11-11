@@ -97,7 +97,7 @@ html.pan-active * {
 .app-title-bar__end {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 17px;
   margin-left: auto;
   padding: 0 12px;
   -webkit-app-region: no-drag;
@@ -108,3 +108,22 @@ html.pan-active * {
   gap: 8px;
 }
 
+
+/* SHORT VERTICAL DIVIDERS between the title bar's right-hand controls
+   (2026-11-11, "see how they use little vertical dividers too" — MuseScore's
+   status bar): a 1px line, 16px tall, centred in the 17px gap before each
+   control after the first */
+.app-title-bar__end > * + * {
+  position: relative;
+}
+.app-title-bar__end > * + *::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  width: 1px;
+  height: 16px;
+  transform: translateY(-50%);
+  background: var(--app-title-bar-divider);
+  pointer-events: none;
+}
