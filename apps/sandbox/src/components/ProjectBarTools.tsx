@@ -77,6 +77,8 @@ export function renderProjectTool(id: string, orientation: ToolbarOrientation, d
     case 'mixer-button':
       return deps.showMixer ? action('mixer', 'Mixer', () => deps.onToggleMixer()) : null;
     case 'audio-setup':
+      // In the title bar instead when the app draws one (2026-11-11)
+      if (deps.tabsInTitleBar) return null;
       // AN ICON BUTTON BESIDE THE METERS since 2026-11-11 — the toolbar's
       // standard 28px button, as its neighbours the mic and volume are;
       // its name stays "Audio setup" for the screen reader and status bar

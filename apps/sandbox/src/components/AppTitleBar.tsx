@@ -56,6 +56,21 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
       <ProjectTabs activeMenuItem={activeMenuItem} onNavigate={onNavigate} projectTitle={projectTitle} />
       {activeMenuItem !== 'home' && (
         <div className="app-title-bar__end" data-app-title-bar-end>
+          {/* AUDIO SETUP in the same style (the same day, "can we also try
+              doing the audio setup in that style?"): a flat cog-and-label
+              button, opening the Audio setup menu under it */}
+          {!deps.hidden.has('audio-setup') && (
+            <GhostButton
+              icon="cog"
+              size="compact"
+              label="Audio setup"
+              ariaLabel="Audio setup"
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                deps.onAudioSetup({ x: r.left, y: r.bottom + 4 });
+              }}
+            />
+          )}
           {!deps.hidden.has('workspace') && (
             <div className="project-workspace" data-project-tool="workspace">
               <GhostButton
