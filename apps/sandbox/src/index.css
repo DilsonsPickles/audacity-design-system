@@ -83,6 +83,12 @@ html.pan-active * {
   margin: 0;
   -webkit-app-region: no-drag;
 }
+/* The active tab is the primary surface, and covers the bar's bottom
+   border so it runs into the toolbar below */
+.app-title-bar .tab--document.tab--active {
+  background-color: var(--app-title-bar-active);
+  margin-bottom: -1px;
+}
 /* The tabs' divider runs on the bar's left edge too, after the lights */
 .app-title-bar .project-tabs .tab:first-child {
   border-left: 1px solid var(--app-title-bar-border);

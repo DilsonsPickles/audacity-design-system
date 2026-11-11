@@ -25,7 +25,12 @@ export function AppTitleBar({ activeMenuItem, onNavigate, projectTitle, insetFor
       className="app-title-bar"
       data-app-title-bar
       style={{
-        '--app-title-bar-bg': theme.background.toolbar,
+        // The bar a step DARKER than the toolbar below; the ACTIVE tab the
+        // primary surface the toolbar is, so it reads as joined to it, as
+        // Figma's does ("try making the bg of the bar darker and the active
+        // tab bg-primary", the same day)
+        '--app-title-bar-bg': theme.background.surface.elevated,
+        '--app-title-bar-active': theme.background.surface.default,
         '--app-title-bar-border': theme.border.onSurface,
         paddingLeft: insetForTrafficLights ? TRAFFIC_LIGHTS_PX : 0,
       } as React.CSSProperties}
