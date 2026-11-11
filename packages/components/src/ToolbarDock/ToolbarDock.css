@@ -89,6 +89,21 @@
 /* Everything in a row keeps its natural width — the dock packs rows */
 .toolbar-dock__tools > * { flex-shrink: 0; }
 
+/* ICON BUTTONS SIT 4PX APART (2026-11-11, "tighten up spacing between icon
+   buttons that are in the same toolbar"): where two icon buttons are
+   neighbours in a bar the 8px gap closes to 4; anything else — a readout,
+   a dropdown, a meter — keeps its 8 on either side. Stacked in a side dock,
+   the same between their rows. */
+.toolbar-dock__tool:has(> .toolbar-dock__tool-body > :is(.tool-button, .transport-button, .toggle-tool-button))
+  + .toolbar-dock__tool:has(> .toolbar-dock__tool-body > :is(.tool-button, .transport-button, .toggle-tool-button)) {
+  margin-left: -4px;
+}
+.toolbar-dock--vertical .toolbar-dock__tool:has(> .toolbar-dock__tool-body > :is(.tool-button, .transport-button, .toggle-tool-button))
+  + .toolbar-dock__tool:has(> .toolbar-dock__tool-body > :is(.tool-button, .transport-button, .toggle-tool-button)) {
+  margin-left: 0;
+  margin-top: -4px;
+}
+
 /* THE GUTTER IS THE GRIP (2026-11-10, "every toolbar has its own gripper…
    look at how much space we're using"): the 17px between two bars — 8,
    the 1px divider, 8 — is the later bar's handle. It runs the row's FULL
