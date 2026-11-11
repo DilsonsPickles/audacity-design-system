@@ -1,16 +1,17 @@
 import React from 'react';
 import { Icon } from '../Icon';
 import { ToolButton } from '../ToolButton';
+import { useTheme } from '../ThemeProvider';
 import './ProjectThumbnail.css';
 
 // Audacity logo SVG (grayscale headphones)
 const AudacityLogo = () => (
   <svg width="64" height="65" viewBox="0 0 64 65" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <path d="M63.75 48.1044C63.75 55.9076 57.2768 62.2334 49.2916 62.2334C41.3065 62.2334 34.8333 55.9076 34.8333 48.1044C34.8333 40.3012 41.3065 33.9755 49.2916 33.9755C57.2768 33.9755 63.75 40.3012 63.75 48.1044Z" fill="#C0C5CE"/>
-    <path d="M32.1542 0C19.0551 0 8.43626 10.7189 8.43624 23.9412C8.43625 25.8815 8.66529 28.4361 9.09693 30.2427H10.113C9.92834 29.1257 9.83141 27.3059 9.83141 26.1289C9.83144 15.7589 17.3272 7.35236 26.5735 7.35229C35.8199 7.35229 43.3155 15.7589 43.3155 26.1289C43.3155 27.1144 43.2477 29.0844 43.1173 30.0289H55.3356C55.6869 28.39 55.8721 25.6862 55.8721 23.9412C55.8721 10.7189 45.2532 1.73515e-05 32.1542 0Z" fill="#C0C5CE"/>
-    <path d="M0.25 48.1044C0.25 56.0106 6.58251 62.4199 14.3941 62.4199V33.789C6.58251 33.789 0.25 40.1983 0.25 48.1044Z" fill="#C0C5CE"/>
-    <path d="M27.4195 31.1503L32.6764 48.1044L27.4195 64.976L22.4723 48.1044L27.4195 31.1503Z" fill="#C0C5CE"/>
-    <path d="M19.9817 39.0219L22.7734 48.1044L19.9817 57.31L16.5873 48.1044L19.9817 39.0219Z" fill="#C0C5CE"/>
+    <path d="M63.75 48.1044C63.75 55.9076 57.2768 62.2334 49.2916 62.2334C41.3065 62.2334 34.8333 55.9076 34.8333 48.1044C34.8333 40.3012 41.3065 33.9755 49.2916 33.9755C57.2768 33.9755 63.75 40.3012 63.75 48.1044Z" fill="currentColor"/>
+    <path d="M32.1542 0C19.0551 0 8.43626 10.7189 8.43624 23.9412C8.43625 25.8815 8.66529 28.4361 9.09693 30.2427H10.113C9.92834 29.1257 9.83141 27.3059 9.83141 26.1289C9.83144 15.7589 17.3272 7.35236 26.5735 7.35229C35.8199 7.35229 43.3155 15.7589 43.3155 26.1289C43.3155 27.1144 43.2477 29.0844 43.1173 30.0289H55.3356C55.6869 28.39 55.8721 25.6862 55.8721 23.9412C55.8721 10.7189 45.2532 1.73515e-05 32.1542 0Z" fill="currentColor"/>
+    <path d="M0.25 48.1044C0.25 56.0106 6.58251 62.4199 14.3941 62.4199V33.789C6.58251 33.789 0.25 40.1983 0.25 48.1044Z" fill="currentColor"/>
+    <path d="M27.4195 31.1503L32.6764 48.1044L27.4195 64.976L22.4723 48.1044L27.4195 31.1503Z" fill="currentColor"/>
+    <path d="M19.9817 39.0219L22.7734 48.1044L19.9817 57.31L16.5873 48.1044L19.9817 39.0219Z" fill="currentColor"/>
   </svg>
 );
 
@@ -96,8 +97,26 @@ export function ProjectThumbnail({
     }
   };
 
+  // THE THEME'S COLOURS (2026-11-11, "gotta fix dark mode thumbnails too"):
+  // the CSS read global variables nothing set, so every card fell back to
+  // the light theme's — a light card, dark captions on the dark Home page,
+  // and a light-grey placeholder logo
+  const { theme } = useTheme();
+  const themeStyle = {
+    '--background-surface-elevated': theme.background.surface.elevated,
+    '--border-default': theme.border.default,
+    '--border-focus': theme.border.focus,
+    '--foreground-text-primary': theme.foreground.text.primary,
+    '--foreground-icon-primary': theme.foreground.icon.primary,
+    '--foreground-icon-inverse': theme.foreground.icon.inverse,
+    '--project-thumbnail-logo': theme.foreground.icon.disabled,
+  } as React.CSSProperties;
+
   return (
-    <div className={`project-thumbnail ${isNewProject ? 'project-thumbnail--new' : ''} ${isCurrent ? 'project-thumbnail--current' : ''} ${className}`}>
+    <div
+      className={`project-thumbnail ${isNewProject ? 'project-thumbnail--new' : ''} ${isCurrent ? 'project-thumbnail--current' : ''} ${className}`}
+      style={themeStyle}
+    >
       <button
         className="project-thumbnail__button"
         onClick={onClick}

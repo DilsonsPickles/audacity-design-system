@@ -55,6 +55,7 @@
 }
 
 .project-thumbnail__placeholder {
+  color: var(--project-thumbnail-logo, #C0C5CE);
   width: 64px;
   height: 62px;
   display: flex;
