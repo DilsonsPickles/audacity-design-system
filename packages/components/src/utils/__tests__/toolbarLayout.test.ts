@@ -26,7 +26,7 @@ const asBars = (tools: string[]) => groupsOf(tools).flatMap((g) => {
 });
 const seedWithoutProjectRow = (ws: Parameters<typeof defaultToolbarLayout>[0]): ToolbarLayout => {
   const l = defaultToolbarLayout(ws);
-  return { top: [asBars(l.top[0][0].tools)], bottom: [asBars(l.bottom[0][0].tools)], left: [], right: [] };
+  return { top: [asBars(l.top[1][0].tools)], bottom: [asBars(l.bottom[0][0].tools)], left: [], right: [] };
 };
 
 /** A dock's rows as lists of bar ids */
@@ -36,20 +36,23 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
   it('every workspace seeds ONE TOOLBAR AT THE TOP AND ONE AT THE BOTTOM, the groups split by separators (2026-11-11)', () => {
     for (const ws of ['classic', 'spectral-editing', 'modern', 'music'] as const) {
       const layout = defaultToolbarLayout(ws);
-      expect(rows(layout, 'top')).toEqual([['main']]);
+      // THE TITLE BAR a toolbar of its own, first; then the main toolbar
+      expect(rows(layout, 'top')).toEqual([['title'], ['main']]);
+      expect(layout.top[0][0].tools).toEqual(['project-tabs', 'audio-setup', 'workspace', 'share-audio']);
+      expect(barDisplayName(layout.top[0][0])).toBe('Title bar');
       expect(rows(layout, 'bottom')).toEqual([['status']]);
       expect(layout.left).toEqual([]);
       expect(layout.right).toEqual([]);
       expect(isToolbarLayout(layout)).toBe(true);
-      const groups = groupsOf(layout.top[0][0].tools);
-      // the project tools first (drawing nothing where the title bar has them), the cog last
-      expect(groups.slice(0, 4)).toEqual([['project-tabs'], ['mixer-button', 'get-effects'], ['workspace'], ['share-audio']]);
-      expect(groups[4]).toEqual(['play', 'stop', 'record', 'step-back', 'step-forward', 'loop']);
+      const groups = groupsOf(layout.top[1][0].tools);
+      // Mixer and Get effects first (hidden by default), the cog last
+      expect(groups[0]).toEqual(['mixer-button', 'get-effects']);
+      expect(groups[1]).toEqual(['play', 'stop', 'record', 'step-back', 'step-forward', 'loop']);
       expect(groups[groups.length - 1]).toEqual(['customise']);
-      expect(groups[groups.length - 2]).toEqual(['audio-setup', 'microphone-levels', 'playback-meter']);
+      expect(groups[groups.length - 2]).toEqual(['microphone-levels', 'playback-meter']);
       expect(groupsOf(layout.bottom[0][0].tools)).toEqual([['status-cue', 'status-info'], ['selection-timecodes', 'selection-duration']]);
       // separator ids are unique across the layout
-      const seps = [...layout.top[0][0].tools, ...layout.bottom[0][0].tools].filter(isToolSeparator);
+      const seps = [...layout.top[1][0].tools, ...layout.bottom[0][0].tools].filter(isToolSeparator);
       expect(new Set(seps).size).toBe(seps.length);
       // the guards leave the seed as it is
       expect(withProjectTools(layout)).toBe(layout);
@@ -138,12 +141,12 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(findBar(moveTool(layout, 'zoom-in', 'transport', null), 'transport')!.bar.tools.slice(-1)).toEqual(['zoom-in']);
     // within its own bar: reorder
     expect(findBar(moveTool(layout, 'loop', 'transport', 'play'), 'transport')!.bar.tools[0]).toBe('loop');
-    // a bar that holds one tool: moving it out drops the bar
+    // moving every tool out leaves the bar, empty (2026-11-11)
     const lone = moveTool(layout, 'microphone-levels', 'time', null);
-    expect(findBar(lone, 'meters')!.bar.tools).toEqual(['audio-setup', 'playback-meter']);
-    const b = moveTool(moveTool(lone, 'playback-meter', 'time', null), 'audio-setup', 'time', null);
+    expect(findBar(lone, 'meters')!.bar.tools).toEqual(['playback-meter']);
+    const b = moveTool(lone, 'playback-meter', 'time', null);
     expect(findBar(b, 'meters')?.bar.tools).toEqual([]);
-    expect(findBar(b, 'time')!.bar.tools.slice(-3)).toEqual(['microphone-levels', 'playback-meter', 'audio-setup']);
+    expect(findBar(b, 'time')!.bar.tools.slice(-2)).toEqual(['microphone-levels', 'playback-meter']);
     // across docks: the status bar takes a tool
     expect(findTool(moveTool(layout, 'zoom-in', 'status', null), 'zoom-in')!.region).toBe('bottom');
     // nothing to do: before itself, where it already is, an unknown tool or bar

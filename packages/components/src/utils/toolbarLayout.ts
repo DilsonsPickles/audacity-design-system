@@ -75,7 +75,7 @@ export const isToolSeparator = (id: string): boolean => id.startsWith(TOOL_SEPAR
 const SEED_BAR_NAMES: Record<string, string> = {
   'project-tabs': 'Tabs', 'project-actions': 'Project', workspace: 'Workspace', share: 'Share', history: 'History',
   transport: 'Transport', tools: 'Tools', edit: 'Edit', view: 'View', time: 'Time', meters: 'Meters',
-  customise: 'Customise', status: 'Status bar', selection: 'Selection', main: 'Main toolbar',
+  customise: 'Customise', status: 'Status bar', title: 'Title bar', selection: 'Selection', main: 'Main toolbar',
 };
 /** What a toolbar is called: its own name, else its seed's, else "Toolbar" */
 export const barDisplayName = (bar: ToolbarBar): string => bar.name ?? SEED_BAR_NAMES[bar.id] ?? 'Toolbar';
@@ -132,12 +132,8 @@ export const PROJECT_TAB_TOOL_ID = 'project-tabs';
  *  them; Customise toolbar brings the buttons back). In the desktop app the
  *  tabs, the workspace picker and Share live in the title bar, so this row
  *  draws nothing and is gone. */
-const projectBars = (): ToolbarBar[] => [
-  { id: 'project-tabs', tools: [PROJECT_TAB_TOOL_ID] },
-  { id: 'project-actions', tools: ['mixer-button', 'get-effects'] },
-  { id: 'workspace', tools: ['workspace'] },
-  { id: 'share', tools: ['share-audio'] },
-];
+// (the 2026-11-11 first row — tabs | Mixer, Get effects | Workspace | Share —
+// was seeded until the Title bar toolbar the same day: TITLE_BAR_TOOLS, below)
 /** The first row as it was seeded from 2026-11-10 — where a layout that
  *  lacks a project tool gets it back (`withProjectTools`) */
 const legacyProjectBars = (): ToolbarBar[] => [
@@ -149,6 +145,15 @@ const legacyProjectBars = (): ToolbarBar[] => [
 ];
 /** Every project tool id */
 export const PROJECT_TOOL_IDS: ReadonlyArray<string> = legacyProjectBars().flatMap((b) => b.tools);
+/** THE TITLE BAR TOOLBAR (2026-11-11, "the top bar with home, project tab
+ *  and audio setup / workspace / share audio probably want to be listed as
+ *  their own special toolbar"): its id, and the tools it holds, in the
+ *  order the desktop window's title bar draws them. In the desktop app the
+ *  window's title bar draws them (the dock draws nothing for them); in the
+ *  browser build it is the top dock's first row. The builder lists it on
+ *  its own, fixed: its tools can be shown or hidden, never moved */
+export const TITLE_BAR_ID = 'title';
+export const TITLE_BAR_TOOLS: ReadonlyArray<string> = [PROJECT_TAB_TOOL_ID, 'audio-setup', 'workspace', 'share-audio'];
 /** The project tools hidden by default (Customise toolbar brings them back) */
 export const PROJECT_TOOLS_HIDDEN_BY_DEFAULT: ReadonlyArray<string> = ['mixer-button', 'get-effects'];
 
@@ -186,7 +191,7 @@ export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout
   const transport = ['play', 'stop', 'record', 'step-back', 'step-forward', 'loop'];
   const trackHeight = ['collapse-tracks', 'expand-tracks', 'fit-tracks-height'];
   const time = ['varispeed', 'timecode', 'bpm', 'time-signature', 'snapping'];
-  const meters = ['audio-setup', 'microphone-levels', 'playback-meter'];
+  const meters = ['microphone-levels', 'playback-meter'];
   let groups: string[][];
   switch (workspace) {
     case 'classic':
@@ -231,10 +236,12 @@ export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout
       break;
   }
   const counter = { n: 0 };
-  const project = projectBars().map((b) => b.tools);
-  const top = groupedBar('main', [...project, ...groups, [CUSTOMISE_TOOL_ID]], counter);
+  // The title bar a toolbar of its own, fixed; Mixer and Get effects (hidden
+  // by default) lead the main toolbar
+  const title: ToolbarBar = { id: TITLE_BAR_ID, tools: [...TITLE_BAR_TOOLS] };
+  const main = groupedBar('main', [['mixer-button', 'get-effects'], ...groups, [CUSTOMISE_TOOL_ID]], counter);
   const bottom = groupedBar('status', statusBars().map((b) => b.tools), counter);
-  return { top: [[top]], bottom: [[bottom]], left: [], right: [] };
+  return { top: [[title], [main]], bottom: [[bottom]], left: [], right: [] };
 }
 
 /** The Export tab's toolbar (its own bars, not customisable) */
@@ -537,7 +544,7 @@ export function withProjectRowMoves(input: ToolbarLayout): ToolbarLayout {
   let layout = input;
   const audio = findTool(layout, 'audio-setup');
   // (the old first row's bar — never a toolbar that also holds the transport, as the 2026-11-11 seed does)
-  if (audio && audio.bar.tools.includes('share-audio') && !audio.bar.tools.includes('play')) {
+  if (audio && audio.bar.id !== TITLE_BAR_ID && audio.bar.tools.includes('share-audio') && !audio.bar.tools.includes('play')) {
     const meterBar = TOOLBAR_REGIONS.flatMap((r) => dockBars(layout, r))
       .find((b) => b.tools.includes('playback-meter') || b.tools.includes('microphone-levels'));
     if (meterBar) layout = moveTool(layout, 'audio-setup', meterBar.id, meterBar.tools[0] ?? null);

@@ -494,6 +494,29 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     expect(tool('loop')).toBeTruthy();
     expect(stored()).toBeUndefined();
 
+    // MULTI-SELECT (2026-11-11): ⌘-click picks several; Remove takes them all;
+    // Shift-click a range; New toolbar gathers picked tools into it
+    b = await openBuilder();
+    fireEvent.click(b.querySelector('[data-builder-node="t:cut"]')!);
+    fireEvent.click(b.querySelector('[data-builder-node="t:copy"]')!, { metaKey: true });
+    expect(b.querySelectorAll('[role="treeitem"][aria-selected="true"]')).toHaveLength(2);
+    fireEvent.click(button(b, 'Remove'));
+    await waitFor(() => expect(tool('cut')).toBeNull());
+    expect(tool('copy')).toBeNull();
+    fireEvent.click(b.querySelector('[data-builder-node="t:play"]')!);
+    fireEvent.click(b.querySelector('[data-builder-node="t:stop"]')!, { shiftKey: true });
+    fireEvent.click(button(b, 'New toolbar'));
+    await waitFor(() => expect(barOf('play')).not.toBe('main'));
+    expect(barOf('stop')).toBe(barOf('play'));
+    // ANY TOOLBAR CAN BE DELETED — the main one too; the cog comes back
+    fireEvent.click(b.querySelector('[data-builder-node="b:main"]')!);
+    fireEvent.click(button(b, 'Delete toolbar'));
+    await waitFor(() => expect(container.querySelector('[data-toolbar-bar="main"]')).toBeNull());
+    expect(tool('record')).toBeNull();
+    expect(tool('customise')).toBeTruthy();
+    fireEvent.click(getByText('Cancel'));
+    await waitFor(() => expect(barOf('record')).toBe('main'));
+
     // OK keeps an edit; Reset layout puts the workspace's own bars back
     b = await openBuilder();
     fireEvent.click(b.querySelector('[data-builder-node="t:record"]')!);

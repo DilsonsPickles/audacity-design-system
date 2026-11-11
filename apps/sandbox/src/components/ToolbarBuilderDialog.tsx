@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Button, Checkbox, Dialog, DialogFooter, Icon, SearchField, useTheme, usePreferences,
   CUSTOMISE_TOOLBAR_ENTRIES, CUSTOMISE_TOOL_ID, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID,
-  TOOLBAR_REGIONS, addEmptyBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertTool, isToolSeparator,
+  TOOLBAR_REGIONS, TITLE_BAR_ID, addEmptyBar, findBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertTool, isToolSeparator,
   moveBar, moveTool, nextBarId, removeBar, removeTool, renameBar, rowsOf,
   type BarPlacement, type ToolbarBar, type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
@@ -94,7 +94,17 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
   const hidden = React.useMemo(() => new Set(preferences.toolbarHiddenTools ?? []), [preferences.toolbarHiddenTools]);
   const [query, setQuery] = React.useState('');
   const [leftSel, setLeftSel] = React.useState<string | null>(null);
-  const [sel, setSel] = React.useState<Selection>(null);
+  const [sel, setSelRaw] = React.useState<Selection>(null);
+  // MULTI-SELECTION (2026-11-11, "let me multi-select things in the right
+  // hand panel"): the picked tree keys, the primary `sel` among them —
+  // ⌘/Ctrl-click toggles, Shift-click and Shift+↑↓ take a range; Remove,
+  // Delete toolbar, the checkboxes and Space act on every picked item, and
+  // New toolbar gathers two or more picked tools into it
+  const [picked, setPicked] = React.useState<ReadonlySet<string>>(() => new Set());
+  const keyOf = (x: Exclude<Selection, null>) =>
+    x.kind === 'dock' ? `d:${x.region}` : x.kind === 'row' ? `r:${x.region}:${x.row}` : x.kind === 'bar' ? `b:${x.barId}` : `t:${x.toolId}`;
+  /** Select ONE item (every plain gesture) */
+  const setSel = (x: Selection) => { setSelRaw(x); setPicked(new Set(x ? [keyOf(x)] : [])); };
   const [renaming, setRenaming] = React.useState<{ barId: string; text: string } | null>(null);
   // COLLAPSED tree nodes (2026-11-11, "can we collapse the toolbars in the
   // customise toolbars modal?"): docks, rows and toolbars fold away; kept
@@ -134,17 +144,31 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
   };
 
   // ── The tree, flattened in reading order (every level expanded) ──
-  type Row = { key: string; level: number; label: string; sel: Exclude<Selection, null>; toolId?: string; barId?: string; empty?: boolean; parents: string[]; hasChildren: boolean };
+  type Row = { key: string; level: number; label: string; sel: Exclude<Selection, null>; toolId?: string; barId?: string; empty?: boolean; parents: string[]; hasChildren: boolean; fixed?: boolean };
   const regions = TOOLBAR_REGIONS.filter((r) => rowsOf(layout, r).length > 0 || r === 'top' || r === 'bottom' || r === 'left' || r === 'right');
   const treeRows: Row[] = [];
+  // THE TITLE BAR, its own special toolbar, listed first and FIXED: its
+  // tools can be shown or hidden, never moved, added to, renamed or deleted
+  // (the desktop window's title bar draws them in a fixed place)
+  const titleBar = findBar(layout, TITLE_BAR_ID)?.bar;
+  if (titleBar) {
+    const key = `b:${TITLE_BAR_ID}`;
+    treeRows.push({ key, level: 1, label: 'Title bar', sel: { kind: 'bar', barId: TITLE_BAR_ID }, barId: TITLE_BAR_ID, parents: [], hasChildren: titleBar.tools.length > 0, fixed: true });
+    titleBar.tools.forEach((t) => treeRows.push({ key: `t:${t}`, level: 2, label: toolName(t), sel: { kind: 'tool', toolId: t }, toolId: t, parents: [key], hasChildren: false, fixed: true }));
+  }
   for (const region of regions) {
     const dKey = `d:${region}`;
     const dockRows = rowsOf(layout, region);
-    treeRows.push({ key: dKey, level: 1, label: REGION_NAMES[region], sel: { kind: 'dock', region }, parents: [], hasChildren: dockRows.length > 0 });
+    const shownRowsOfDock = dockRows.filter((row) => row.some((b) => b.id !== TITLE_BAR_ID));
+    treeRows.push({ key: dKey, level: 1, label: REGION_NAMES[region], sel: { kind: 'dock', region }, parents: [], hasChildren: shownRowsOfDock.length > 0 });
+    let rowNumber = 0;
     dockRows.forEach((row, rowIndex) => {
+      if (!row.some((b) => b.id !== TITLE_BAR_ID)) return;
+      rowNumber += 1;
       const rKey = `r:${region}:${rowIndex}`;
-      treeRows.push({ key: rKey, level: 2, label: region === 'left' || region === 'right' || region.endsWith('inner') ? `Column ${rowIndex + 1}` : `Row ${rowIndex + 1}`, sel: { kind: 'row', region, row: rowIndex }, parents: [dKey], hasChildren: row.length > 0 });
+      treeRows.push({ key: rKey, level: 2, label: region === 'left' || region === 'right' || region.endsWith('inner') ? `Column ${rowNumber}` : `Row ${rowNumber}`, sel: { kind: 'row', region, row: rowIndex }, parents: [dKey], hasChildren: row.length > 0 });
       row.forEach((bar) => {
+        if (bar.id === TITLE_BAR_ID) return;
         const bKey = `b:${bar.id}`;
         treeRows.push({ key: bKey, level: 3, label: barDisplayName(bar), sel: { kind: 'bar', barId: bar.id }, barId: bar.id, empty: bar.tools.length === 0, parents: [dKey, rKey], hasChildren: bar.tools.length > 0 });
         bar.tools.forEach((t) => treeRows.push({ key: `t:${t}`, level: 4, label: isToolSeparator(t) ? 'Separator' : toolName(t), sel: { kind: 'tool', toolId: t }, toolId: t, parents: [dKey, rKey, bKey], hasChildren: false }));
@@ -164,6 +188,33 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     const ps = selParents.split('|');
     setCollapsed((prev) => (ps.some((p) => prev.has(p)) ? new Set([...prev].filter((k) => !ps.includes(k))) : prev));
   }, [selKey, selParents]);
+  /** Shift: everything shown between the anchor (the primary) and this key */
+  const pickRange = (key: string) => {
+    const keys = shownRows.map((r) => r.key);
+    const from = selKey ? keys.indexOf(selKey) : -1;
+    const to = keys.indexOf(key);
+    if (to < 0) return;
+    if (from < 0) { setSel(treeRows.find((r) => r.key === key)!.sel); return; }
+    const [a, b] = from <= to ? [from, to] : [to, from];
+    setPicked(new Set(keys.slice(a, b + 1)));
+  };
+  /** ⌘ / Ctrl: this key in or out; it becomes the primary when added */
+  const pickToggle = (key: string) => {
+    const row = treeRows.find((r) => r.key === key);
+    if (!row) return;
+    const next = new Set(picked);
+    if (next.has(key)) {
+      next.delete(key);
+      if (selKey === key) {
+        const other = treeRows.find((r) => next.has(r.key));
+        setSelRaw(other ? other.sel : null);
+      }
+    } else {
+      next.add(key);
+      setSelRaw(row.sel);
+    }
+    setPicked(next);
+  };
 
   // ── What the buttons can do with the selection ──
   const selTool = sel?.kind === 'tool' ? findTool(layout, sel.toolId) : null;
@@ -175,7 +226,8 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     return null;
   })() : null;
 
-  const canAdd = leftSel !== null && sel !== null;
+  const canAdd = leftSel !== null && sel !== null
+    && !(sel.kind === 'bar' && sel.barId === TITLE_BAR_ID) && selTool?.bar.id !== TITLE_BAR_ID;
   const add = () => {
     if (!leftSel || !sel) return;
     const id = leftSel;
@@ -192,20 +244,35 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     });
     setSel({ kind: 'tool', toolId: id });
   };
-  const canRemove = sel?.kind === 'tool' && !UNREMOVABLE.has(sel.toolId);
+  const pickedTools = [...picked].filter((k) => k.startsWith('t:')).map((k) => k.slice(2));
+  const pickedBars = [...picked].filter((k) => k.startsWith('b:')).map((k) => k.slice(2)).filter((id) => id !== TITLE_BAR_ID);
+  const removableTools = pickedTools.filter((t) => !UNREMOVABLE.has(t));
+  const canRemove = removableTools.length > 0;
   const remove = () => {
-    if (sel?.kind !== 'tool' || UNREMOVABLE.has(sel.toolId)) return;
-    const id = sel.toolId;
-    editLayout((l) => removeTool(l, id));
-    if (!isToolSeparator(id)) setLeftSel(id);
+    if (!canRemove) return;
+    const ids = removableTools;
+    editLayout((l) => ids.reduce((acc, id) => removeTool(acc, id), l));
+    const last = [...ids].reverse().find((id) => !isToolSeparator(id));
+    if (last) setLeftSel(last);
     setSel(null);
   };
+  /** The picked tools' shown / hidden state together: all shown unless every one already is */
+  const toggleHiddenMany = (ids: string[]) => {
+    const hideable = ids.filter((t) => !isToolSeparator(t) && !UNHIDEABLE.has(t));
+    if (hideable.length === 0) return;
+    const next = new Set(hidden);
+    const hide = hideable.some((t) => !next.has(t));
+    hideable.forEach((t) => (hide ? next.add(t) : next.delete(t)));
+    updatePreference('toolbarHiddenTools', [...next]);
+  };
   // Every toolbar in the tree's order, for a tool stepping between them
+  // (never the Title bar: nothing steps into or out of it)
   const allBars: Array<{ region: ToolbarRegion; row: number; bar: ToolbarBar }> = TOOLBAR_REGIONS.flatMap((region) =>
-    rowsOf(layout, region).flatMap((row, i) => row.map((bar) => ({ region, row: i, bar }))));
+    rowsOf(layout, region).flatMap((row, i) => row.map((bar) => ({ region, row: i, bar })))).filter((b) => b.bar.id !== TITLE_BAR_ID);
+  const inTitle = (sel?.kind === 'bar' && sel.barId === TITLE_BAR_ID) || (selTool?.bar.id === TITLE_BAR_ID);
   const barAt = selTool ? allBars.findIndex((b) => b.bar.id === selTool.bar.id) : -1;
-  const canUp = selTool ? selTool.index > 0 || barAt > 0 : selBar ? selBar.index > 0 : false;
-  const canDown = selTool ? selTool.index < selTool.bar.tools.length - 1 || barAt < allBars.length - 1 : selBar ? selBar.index < selBar.bars.length - 1 : false;
+  const canUp = inTitle ? false : selTool ? selTool.index > 0 || barAt > 0 : selBar ? selBar.index > 0 : false;
+  const canDown = inTitle ? false : selTool ? selTool.index < selTool.bar.tools.length - 1 || barAt < allBars.length - 1 : selBar ? selBar.index < selBar.bars.length - 1 : false;
   const move = (dir: -1 | 1) => {
     if (selTool && sel?.kind === 'tool') {
       const tools = selTool.bar.tools;
@@ -245,6 +312,20 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
    *  tool's), at the end of a selected row, on a new row of a selected dock,
    *  else at the end of the top dock */
   const newBar = () => {
+    if (pickedTools.length >= 2 && selTool && selTool.bar.id !== TITLE_BAR_ID) {
+      // Two or more tools picked: a new toolbar after the primary's, holding them in tree order
+      const order = treeRows.filter((r) => r.toolId && !r.fixed && picked.has(r.key)).map((r) => r.toolId!);
+      const row = rowsOf(layout, selTool.region)[selTool.row];
+      const at = row.findIndex((b) => b.id === selTool.bar.id);
+      const id = nextBarId(layout);
+      const name = freshName();
+      editLayout((l) => order.reduce(
+        (acc, t) => insertTool(acc, t, id, null),
+        addEmptyBar(l, { region: selTool.region, row: selTool.row, beforeBarId: row[at + 1]?.id ?? null }, name),
+      ));
+      setSel({ kind: 'bar', barId: id });
+      return;
+    }
     const located = selBarId ? allBars.find((b) => b.bar.id === selBarId) : null;
     if (located) {
       const row = rowsOf(layout, located.region)[located.row];
@@ -267,22 +348,24 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
   };
   /** ADD SEPARATOR: a group line after the selected tool, or at the end of
    *  the selected toolbar */
-  const canSeparator = selBarId !== null;
+  const canSeparator = selBarId !== null && selBarId !== TITLE_BAR_ID;
   const addSeparator = () => {
     if (!selBarId) return;
     const before = selTool ? selTool.bar.tools[selTool.index + 1] ?? null : null;
     editLayout((l) => insertSeparator(l, selBarId, before));
   };
-  /** DELETE TOOLBAR: its tools go onto no toolbar; a toolbar holding a tool
-   *  that cannot be removed cannot go either */
-  const canDeleteBar = sel?.kind === 'bar' && !!selBar && !selBar.bars[selBar.index].tools.some((t) => UNREMOVABLE.has(t));
+  /** DELETE TOOLBAR, ANY TOOLBAR (2026-11-11, "you should let me delete
+   *  whatever toolbar I want to"): every picked toolbar goes, its tools onto
+   *  none — the cog and the project tools come back by the layout's guards
+   *  (the cog at the top dock's end), so nothing can be stranded */
+  const canDeleteBar = pickedBars.length > 0;
   const deleteBar = () => {
-    if (!canDeleteBar || sel?.kind !== 'bar') return;
-    const id = sel.barId;
-    editLayout((l) => removeBar(l, id));
+    if (!canDeleteBar) return;
+    const ids = pickedBars;
+    editLayout((l) => ids.reduce((acc, id) => removeBar(acc, id), l));
     setSel(null);
   };
-  const canRename = sel?.kind === 'bar';
+  const canRename = sel?.kind === 'bar' && sel.barId !== TITLE_BAR_ID;
   const startRename = () => {
     if (sel?.kind !== 'bar') return;
     const bar = allBars.find((b) => b.bar.id === sel.barId)?.bar;
@@ -396,10 +479,20 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
           <span style={{ ...muted, height: 28, display: 'flex', alignItems: 'center' }}>Tick a tool to show it, untick to hide it</span>
           <div
             role="tree"
+            aria-multiselectable="true"
             aria-label="Toolbars"
             tabIndex={0}
             style={paneStyle}
             onKeyDown={(e) => {
+              if (e.shiftKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                // Shift+↑↓: grow the range from the anchor
+                e.preventDefault();
+                const keys = shownRows.map((r) => r.key);
+                const i = selKey ? keys.indexOf(selKey) : -1;
+                const next = keys[Math.max(0, Math.min(keys.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))];
+                if (next) pickRange(next);
+                return;
+              }
               walk(e, shownRows.map((r) => r.key), selKey, (k) => setSel(treeRows.find((r) => r.key === k)!.sel));
               // ← folds the selected node, or steps to its parent; → unfolds it, or steps to its first child
               const current = shownRows.find((r) => r.key === selKey);
@@ -414,10 +507,17 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
                   else { const child = shownRows[shownRows.indexOf(current) + 1]; if (child) setSel(child.sel); }
                 }
               }
-              if (e.key === ' ' && sel?.kind === 'tool' && !isToolSeparator(sel.toolId)) { e.preventDefault(); toggleHidden(sel.toolId); }
+              if (e.key === ' ' && pickedTools.length > 0) { e.preventDefault(); toggleHiddenMany(pickedTools); }
+              if ((e.key === 'a' || e.key === 'A') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setPicked(new Set(shownRows.map((r) => r.key))); }
               if (e.key === 'F2' && canRename) { e.preventDefault(); startRename(); }
-              if ((e.key === 'Delete' || e.key === 'Backspace') && canRemove) { e.preventDefault(); remove(); }
-              else if ((e.key === 'Delete' || e.key === 'Backspace') && canDeleteBar) { e.preventDefault(); deleteBar(); }
+              if ((e.key === 'Delete' || e.key === 'Backspace') && (canRemove || canDeleteBar)) {
+                e.preventDefault();
+                // one edit, so the second change does not start from the old layout
+                const tools = removableTools;
+                const bars = pickedBars;
+                editLayout((l) => bars.reduce((acc, id) => removeBar(acc, id), tools.reduce((acc, id) => removeTool(acc, id), l)));
+                setSel(null);
+              }
             }}
           >
             {shownRows.map((r) => (
@@ -426,10 +526,14 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
                 role="treeitem"
                 aria-level={r.level}
                 aria-expanded={r.hasChildren ? !collapsed.has(r.key) : undefined}
-                aria-selected={selKey === r.key}
+                aria-selected={picked.has(r.key)}
                 data-builder-node={r.key}
                 style={{ ...rowStyle(selKey === r.key, r.level - 1), fontWeight: r.level === 1 ? 600 : 400 }}
-                onClick={() => setSel(r.sel)}
+                onClick={(e) => {
+                  if (e.shiftKey) pickRange(r.key);
+                  else if (e.metaKey || e.ctrlKey) pickToggle(r.key);
+                  else setSel(r.sel);
+                }}
               >
                 {r.level < 4 && (
                   <span
@@ -455,7 +559,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
                       <Checkbox
                         checked={!hidden.has(r.toolId)}
                         disabled={UNHIDEABLE.has(r.toolId)}
-                        onChange={() => toggleHidden(r.toolId!)}
+                        onChange={() => (picked.has(r.key) && pickedTools.length > 1 ? toggleHiddenMany(pickedTools) : toggleHidden(r.toolId!))}
                         tabIndex={-1}
                       />
                     </span>
@@ -481,10 +585,11 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
                 ) : (
                   <span
                     style={r.level === 1 || r.level === 3 ? undefined : muted}
-                    onDoubleClick={r.barId ? (e) => { e.stopPropagation(); setSel(r.sel); setRenaming({ barId: r.barId!, text: r.label }); } : undefined}
+                    onDoubleClick={r.barId && !r.fixed ? (e) => { e.stopPropagation(); setSel(r.sel); setRenaming({ barId: r.barId!, text: r.label }); } : undefined}
                   >
                     {r.label}
                     {r.empty && <span style={muted}> (empty)</span>}
+                    {r.fixed && r.level === 1 && <span style={{ ...muted, fontWeight: 400 }}> · fixed, show or hide only</span>}
                     {r.barId && collapsed.has(r.key) && (() => {
                       const n = allBars.find((b) => b.bar.id === r.barId)?.bar.tools.filter((t) => !isToolSeparator(t)).length ?? 0;
                       return n > 0 ? <span style={muted}>{` · ${n} ${n === 1 ? 'tool' : 'tools'}`}</span> : null;
