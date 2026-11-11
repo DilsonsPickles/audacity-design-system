@@ -1348,9 +1348,7 @@ function CanvasDemoContent() {
     }}>
       {customTitleBar && (
         <AppTitleBar
-          activeMenuItem={activeMenuItem}
-          onNavigate={(item) => { void navigateProject(item); }}
-          projectTitle={projectTitle}
+          deps={projectToolDeps}
           insetForTrafficLights={!!window.electronShell?.customTitleBar}
           vibrancy={!!window.electronShell?.titleBarVibrancy}
         />

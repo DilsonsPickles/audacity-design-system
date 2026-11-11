@@ -96,7 +96,25 @@ export const CUSTOMISE_TOOL_ID = 'customise';
  *  top dock that looks like the old bar — move them into the other rows to
  *  win its 40px back. The tabs can never be lost (`withProjectTools`). */
 export const PROJECT_TAB_TOOL_ID = 'project-tabs';
+/** THE FIRST ROW, SINCE 2026-11-11 ("now we need to work out what we can
+ *  do with the 'Mixer' 'Audio Setup' 'Share audio' and 'Get effects'
+ *  buttons…" → "build it"): each button went where its job is — AUDIO
+ *  SETUP starts the METERS bar (it is about the devices the meters read),
+ *  UNDO / REDO start the EDIT bar, SHARE AUDIO is a bar of its own after
+ *  the workspace picker, and MIXER / GET EFFECTS stay here but HIDDEN by
+ *  default (M / View › Mixer, the Effect menu and the effects panel reach
+ *  them; Customise toolbar brings the buttons back). In the desktop app the
+ *  tabs, the workspace picker and Share live in the title bar, so this row
+ *  draws nothing and is gone. */
 const projectBars = (): ToolbarBar[] => [
+  { id: 'project-tabs', tools: [PROJECT_TAB_TOOL_ID] },
+  { id: 'project-actions', tools: ['mixer-button', 'get-effects'] },
+  { id: 'workspace', tools: ['workspace'] },
+  { id: 'share', tools: ['share-audio'] },
+];
+/** The first row as it was seeded from 2026-11-10 — where a layout that
+ *  lacks a project tool gets it back (`withProjectTools`) */
+const legacyProjectBars = (): ToolbarBar[] => [
   { id: 'project-tabs', tools: [PROJECT_TAB_TOOL_ID] },
   { id: 'project-actions', tools: ['mixer-button', 'audio-setup', 'share-audio', 'get-effects'] },
   { id: 'workspace', tools: ['workspace'] },
@@ -104,7 +122,9 @@ const projectBars = (): ToolbarBar[] => [
   { id: 'history', tools: ['undo', 'redo'] },
 ];
 /** Every project tool id */
-export const PROJECT_TOOL_IDS: ReadonlyArray<string> = projectBars().flatMap((b) => b.tools);
+export const PROJECT_TOOL_IDS: ReadonlyArray<string> = legacyProjectBars().flatMap((b) => b.tools);
+/** The project tools hidden by default (Customise toolbar brings them back) */
+export const PROJECT_TOOLS_HIDDEN_BY_DEFAULT: ReadonlyArray<string> = ['mixer-button', 'get-effects'];
 
 /** The status bar's seed: the Figma Status/Info bar's two slots, then the
  *  selection timecodes and the duration */
@@ -130,14 +150,14 @@ export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout
   const transport = bar('transport', ['play', 'stop', 'record', 'step-back', 'step-forward', 'loop']);
   const trackHeight = ['collapse-tracks', 'expand-tracks', 'fit-tracks-height'];
   const time = bar('time', ['varispeed', 'timecode', 'bpm', 'time-signature', 'snapping']);
-  const meters = bar('meters', ['microphone-levels', 'playback-meter']);
+  const meters = bar('meters', ['audio-setup', 'microphone-levels', 'playback-meter']);
   let top: ToolbarBar[];
   switch (workspace) {
     case 'classic':
       top = [
         transport,
         bar('tools', ['automation', 'split', 'spectral-editing']),
-        bar('edit', ['cut', 'copy', 'paste', 'trim', 'silence']),
+        bar('edit', ['undo', 'redo', 'cut', 'copy', 'paste', 'trim', 'silence']),
         bar('view', ['zoom-in', 'zoom-out', 'fit-selection', 'fit-project', 'zoom-toggle', ...trackHeight]),
         time,
         meters,
@@ -146,6 +166,7 @@ export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout
     case 'spectral-editing':
       top = [
         transport,
+        bar('edit', ['undo', 'redo']),
         bar('view', ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight, 'waveform-view']),
         time,
         meters,
@@ -155,7 +176,7 @@ export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout
       top = [
         transport,
         bar('tools', ['automation', 'split', 'spectral-editing']),
-        bar('edit', ['trim', 'silence']),
+        bar('edit', ['undo', 'redo', 'trim', 'silence']),
         bar('view', ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight]),
         time,
         meters,
@@ -166,7 +187,7 @@ export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout
       top = [
         transport,
         bar('tools', ['automation', 'split']),
-        bar('edit', ['trim', 'silence']),
+        bar('edit', ['undo', 'redo', 'trim', 'silence']),
         bar('view', ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight]),
         time,
         meters,
@@ -370,12 +391,52 @@ export function withProjectTools(input: ToolbarLayout): ToolbarLayout {
   const missing = PROJECT_TOOL_IDS.filter((id) => !findTool(layout, id));
   if (missing.length === 0) return layout;
   const taken = new Set(TOOLBAR_REGIONS.flatMap((r) => dockBars(layout, r).map((b) => b.id)));
-  const row = projectBars()
+  const row = legacyProjectBars()
     .map((b) => ({ id: taken.has(b.id) ? `${b.id}-1` : b.id, tools: b.tools.filter((t) => missing.includes(t)) }))
     .filter((b) => b.tools.length > 0);
   const next = cloneLayout(layout);
   next.top.unshift(row);
   return next;
+}
+
+/**
+ * THE FIRST ROW'S BUTTONS MOVE OUT (2026-11-11) — for a layout saved with
+ * the 2026-11-10 first row: when Audio setup and Share audio still share a
+ * bar (the old actions bar), Audio setup moves to the front of the bar
+ * holding a meter and Share audio to a bar of its own after the workspace
+ * picker's; when Undo / Redo are still a bar of their own and an edit bar
+ * exists, they move to its front. Shape-based, so a layout the user has
+ * rearranged otherwise is left as it is, and running it twice changes
+ * nothing.
+ */
+export function withProjectRowMoves(input: ToolbarLayout): ToolbarLayout {
+  let layout = input;
+  const audio = findTool(layout, 'audio-setup');
+  if (audio && audio.bar.tools.includes('share-audio')) {
+    const meterBar = TOOLBAR_REGIONS.flatMap((r) => dockBars(layout, r))
+      .find((b) => b.tools.includes('playback-meter') || b.tools.includes('microphone-levels'));
+    if (meterBar) layout = moveTool(layout, 'audio-setup', meterBar.id, meterBar.tools[0] ?? null);
+    const ws = findTool(layout, 'workspace');
+    const share = findTool(layout, 'share-audio');
+    if (share && share.bar.tools.length > 1) {
+      const anchorBar = ws ?? share;
+      const row = rowsOf(layout, anchorBar.region)[anchorBar.row];
+      const at = row.findIndex((b) => b.id === anchorBar.bar.id);
+      const after = row[at + 1]?.id ?? null;
+      layout = moveToolToNewBar(layout, 'share-audio', { region: anchorBar.region, row: anchorBar.row, beforeBarId: after });
+    }
+  }
+  const undo = findTool(layout, 'undo');
+  if (undo && undo.bar.tools.length === 2 && undo.bar.tools.includes('redo')) {
+    const editBar = TOOLBAR_REGIONS.flatMap((r) => dockBars(layout, r))
+      .find((b) => b !== undo.bar && (b.tools.includes('cut') || b.tools.includes('trim') || b.tools.includes('silence')));
+    if (editBar) {
+      const first = editBar.tools[0] ?? null;
+      layout = moveTool(layout, 'redo', editBar.id, first);
+      layout = moveTool(layout, 'undo', editBar.id, 'redo');
+    }
+  }
+  return layout;
 }
 
 const isBar = (b: unknown): b is ToolbarBar =>

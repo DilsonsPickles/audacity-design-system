@@ -79,6 +79,8 @@ export interface PreferencesState {
   /** Tools hidden from the transport toolbar, by the cog's Customise
    *  toolbar popover (CustomiseToolbarMenu ids; 2026-10-07) */
   toolbarHiddenTools: string[];
+  /** The project buttons' move has been applied to this profile's hidden list once (2026-11-11) */
+  projectButtonsMoved?: boolean;
   /** The user's toolbar LAYOUTS, one per workspace (custom toolbars,
    *  2026-11-09): which bars sit in which dock, which tools on each bar.
    *  A workspace with no entry draws its built-in seed layout. */
@@ -163,7 +165,10 @@ const defaultPreferences: PreferencesState = {
   // signature (2026-11-04, the real build's defaults: "playback-bpm" and
   // "playback-time-signature" off). A stored preference keeps whatever it
   // has — this is the default for a fresh profile.
-  toolbarHiddenTools: ['collapse-tracks', 'expand-tracks', 'fit-tracks-height', 'bpm', 'time-signature'],
+  // Mixer and Get effects hidden too since 2026-11-11 (the first row's buttons moved out)
+  toolbarHiddenTools: ['collapse-tracks', 'expand-tracks', 'fit-tracks-height', 'bpm', 'time-signature', 'mixer-button', 'get-effects'],
+  // (projectButtonsMoved is NOT defaulted: profiles merge onto these
+  // defaults, so an old profile must read it as absent)
   toolbarLayouts: {},
   playbackMeterOnToolbar: true,
   recordingMeterOnToolbar: false,

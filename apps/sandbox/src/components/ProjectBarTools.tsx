@@ -20,7 +20,8 @@ export interface ProjectBarToolsDeps {
   hidden: ReadonlySet<string>;
   /** The open project's title, the Project tab's text (2026-11-11) */
   projectTitle?: string;
-  /** The tabs live in the app's title bar (AppTitleBar), not the docks */
+  /** The tabs, the workspace picker and Share audio live in the app's
+   *  title bar (AppTitleBar), not the docks */
   tabsInTitleBar?: boolean;
 }
 
@@ -76,15 +77,30 @@ export function renderProjectTool(id: string, orientation: ToolbarOrientation, d
     case 'mixer-button':
       return deps.showMixer ? action('mixer', 'Mixer', () => deps.onToggleMixer()) : null;
     case 'audio-setup':
-      return action('cog', 'Audio setup', (e) => {
-        const r = e.currentTarget.getBoundingClientRect();
-        deps.onAudioSetup({ x: r.left, y: r.bottom + 4 });
-      });
+      // AN ICON BUTTON BESIDE THE METERS since 2026-11-11 — the toolbar's
+      // standard 28px button, as its neighbours the mic and volume are;
+      // its name stays "Audio setup" for the screen reader and status bar
+      // (ToolButton's click carries no event: the wrapper's gives the
+      // menu its anchor, a keyboard press included — its click bubbles)
+      return (
+        <span
+          style={{ display: 'inline-flex' }}
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            deps.onAudioSetup({ x: r.left, y: r.bottom + 4 });
+          }}
+        >
+          <ToolButton icon="cog" ariaLabel="Audio setup" />
+        </span>
+      );
     case 'share-audio':
+      // In the title bar instead when the app draws one (2026-11-11)
+      if (deps.tabsInTitleBar) return null;
       return action('cloud', 'Share audio', () => deps.onShareAudio());
     case 'get-effects':
       return action('plugins', 'Get effects', (e) => deps.onGetEffects(e.currentTarget.getBoundingClientRect()));
     case 'workspace':
+      if (deps.tabsInTitleBar) return null;
       return (
         <div className="project-workspace" data-project-tool="workspace" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}>Workspace</span>

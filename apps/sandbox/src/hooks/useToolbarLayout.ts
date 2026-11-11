@@ -1,6 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import {
-  coerceToolbarLayout, defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, moveBar, moveTool, moveToolToNewBar, normaliseLayout, setBarSize, usePreferences, withCustomiseTool, withProjectTools,
+  coerceToolbarLayout, defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, moveBar, moveTool, moveToolToNewBar, normaliseLayout, setBarSize, usePreferences, withCustomiseTool, withProjectTools, withProjectRowMoves, PROJECT_TOOLS_HIDDEN_BY_DEFAULT,
   type BarPlacement, type ToolbarBarAxis, type ToolbarLayout, type ToolbarWorkspace,
 } from '@audacity-ui/components';
 
@@ -35,17 +35,27 @@ export interface UseToolbarLayoutReturn {
 export function useToolbarLayout(workspace: ToolbarWorkspace, activeMenuItem: string): UseToolbarLayoutReturn {
   const { preferences, updatePreference } = usePreferences();
   const stored = preferences.toolbarLayouts?.[workspace];
+  // ONCE PER PROFILE (2026-11-11): a profile saved before the first row's
+  // buttons moved out gets Mixer and Get effects hidden, as a new one has
+  // them; after that the hidden list is the user's own again
+  useEffect(() => {
+    if (preferences.projectButtonsMoved) return;
+    const hidden = new Set(preferences.toolbarHiddenTools ?? []);
+    PROJECT_TOOLS_HIDDEN_BY_DEFAULT.forEach((id) => hidden.add(id));
+    updatePreference('toolbarHiddenTools', [...hidden]);
+    updatePreference('projectButtonsMoved', true);
+  }, [preferences.projectButtonsMoved, preferences.toolbarHiddenTools, updatePreference]);
   const custom = useMemo(() => coerceToolbarLayout(stored), [stored]);
   const layout = useMemo(() => {
     if (activeMenuItem === 'export') return EXPORT_TOOLBAR_LAYOUT;
     // (a layout saved before the cog was a tool gets it at the top dock's end)
-    return normaliseLayout(withProjectTools(withCustomiseTool(custom ?? defaultToolbarLayout(workspace))));
+    return normaliseLayout(withProjectRowMoves(withProjectTools(withCustomiseTool(custom ?? defaultToolbarLayout(workspace)))));
   }, [activeMenuItem, custom, workspace]);
 
   // One edit of the layout in force, stored for this workspace
   const edit = useCallback((change: (base: ToolbarLayout) => ToolbarLayout) => {
     if (activeMenuItem === 'export') return;
-    const base = withProjectTools(withCustomiseTool(custom ?? defaultToolbarLayout(workspace)));
+    const base = withProjectRowMoves(withProjectTools(withCustomiseTool(custom ?? defaultToolbarLayout(workspace))));
     const next = change(base);
     if (next === base) return;
     updatePreference('toolbarLayouts', { ...(preferences.toolbarLayouts ?? {}), [workspace]: next });

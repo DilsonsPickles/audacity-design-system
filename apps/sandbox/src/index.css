@@ -93,3 +93,15 @@ html.pan-active * {
 .app-title-bar .project-tabs .tab:first-child {
   border-left: 1px solid var(--app-title-bar-border);
 }
+/* The title bar's right end: the workspace picker, then Share audio */
+.app-title-bar__end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  padding: 0 12px;
+  -webkit-app-region: no-drag;
+}
+.app-title-bar__end .project-workspace .dropdown {
+  height: 24px;
+}

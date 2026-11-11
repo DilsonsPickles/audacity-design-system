@@ -1,6 +1,6 @@
 import React from 'react';
-import { useTheme } from '@audacity-ui/components';
-import { ProjectTabs, type ProjectBarToolsDeps } from './ProjectBarTools';
+import { Button, useTheme } from '@audacity-ui/components';
+import { ProjectTabs, renderProjectTool, type ProjectBarToolsDeps } from './ProjectBarTools';
 
 /**
  * THE APP'S OWN TITLE BAR (2026-11-11, "a custom app header which includes
@@ -18,7 +18,12 @@ import { ProjectTabs, type ProjectBarToolsDeps } from './ProjectBarTools';
  */
 export const TRAFFIC_LIGHTS_PX = 76;
 
-export function AppTitleBar({ activeMenuItem, onNavigate, projectTitle, insetForTrafficLights, vibrancy = false }: Pick<ProjectBarToolsDeps, 'activeMenuItem' | 'onNavigate' | 'projectTitle'> & { insetForTrafficLights: boolean; vibrancy?: boolean }) {
+// THE RIGHT END (2026-11-11, the first row's buttons moved out): the
+// WORKSPACE picker, then SHARE AUDIO as the primary button — Figma's file-
+// level controls; both honour Customise toolbar's hidden list, and both are
+// out of the window's drag region so they take clicks.
+export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: { deps: ProjectBarToolsDeps; insetForTrafficLights: boolean; vibrancy?: boolean }) {
+  const { activeMenuItem, onNavigate, projectTitle } = deps;
   const { theme } = useTheme();
   return (
     <div
@@ -42,6 +47,14 @@ export function AppTitleBar({ activeMenuItem, onNavigate, projectTitle, insetFor
       } as React.CSSProperties}
     >
       <ProjectTabs activeMenuItem={activeMenuItem} onNavigate={onNavigate} projectTitle={projectTitle} />
+      {activeMenuItem !== 'home' && (
+        <div className="app-title-bar__end" data-app-title-bar-end>
+          {renderProjectTool('workspace', 'horizontal', { ...deps, tabsInTitleBar: false })}
+          {!deps.hidden.has('share-audio') && (
+            <Button variant="primary" size="small" onClick={() => deps.onShareAudio()}>Share audio</Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
