@@ -50,9 +50,13 @@ export interface VarispeedTimecodeProps {
   /** The 0 key's A/B: 100% ↔ the last speed that was not. A click on
    *  "Speed" calls it; without it the click goes to 100% */
   onToggle?: () => void;
+  /** "Preserve pitch" in the right-click menu (2026-11-11) — the
+   *  preference's state and its toggle; omitted, the item is not shown */
+  preservePitch?: boolean;
+  onPreservePitchChange?: (preserve: boolean) => void;
 }
 
-export function VarispeedTimecode({ speed, enabled, onChange, onToggle }: VarispeedTimecodeProps) {
+export function VarispeedTimecode({ speed, enabled, onChange, onToggle, preservePitch, onPreservePitchChange }: VarispeedTimecodeProps) {
   const { theme } = useTheme();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -92,7 +96,12 @@ export function VarispeedTimecode({ speed, enabled, onChange, onToggle }: Varisp
     setEditing(false);
   };
 
-  const valueMenu = useValueContextMenu({ onEnterValue: beginEdit, onReset: () => onChange(1), resetLabel: '100%' });
+  const valueMenu = useValueContextMenu({
+    onEnterValue: beginEdit, onReset: () => onChange(1), resetLabel: '100%',
+    toggles: onPreservePitchChange
+      ? [{ label: 'Preserve pitch', checked: !!preservePitch, onToggle: () => onPreservePitchChange(!preservePitch) }]
+      : undefined,
+  });
 
   const stepBy = (direction: 1 | -1) => {
     const next = stepVarispeed(speedRef.current, direction);

@@ -35,6 +35,8 @@ export interface UsePlaybackControlsOptions {
   updateDisplayWhilePlaying: boolean;
   pinnedPlayHead: boolean;
   isProgrammaticScrollRef: React.MutableRefObject<boolean>;
+  /** Play-at-speed keeps the pitch (the preference, 2026-11-11) */
+  preservePitch?: boolean;
 }
 
 export interface UsePlaybackControlsReturn {
@@ -89,6 +91,7 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
     updateDisplayWhilePlaying,
     pinnedPlayHead,
     isProgrammaticScrollRef,
+    preservePitch = false,
   } = options;
 
   // Audio playback state
@@ -302,6 +305,26 @@ export function usePlaybackControls(options: UsePlaybackControlsOptions): UsePla
       if (reloadTimerRef.current === handle) reloadTimerRef.current = null;
     };
   }, [state.tracks, isPlaying, state.isRecording]);
+
+  // PRESERVE PITCH (2026-11-11): the engine takes the preference at once;
+  // when the player types change it needs the clips RELOADED — at once
+  // when stopped, and mid-play by a pause, the reload and a resume from
+  // where the audio was (a scheduled player cannot be swapped in place).
+  useEffect(() => {
+    const audioManager = audioManagerRef.current;
+    if (!audioManager.setPreservePitch?.(preservePitch)) return;
+    if (state.isRecording) { reloadNeededRef.current = true; return; }
+    if (audioManager.getIsPlaying()) {
+      const position = audioManager.getCurrentPosition();
+      audioManager.pause();
+      performReloadRef.current();
+      void audioManager.play(position);
+    } else {
+      performReloadRef.current();
+    }
+    // Only the preference drives this; the reload reads the live tracks
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preservePitch]);
 
   // Handle play/pause transport controls
   const handlePlay = async (options?: PlayOptions) => {

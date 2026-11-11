@@ -36,6 +36,9 @@ export function PlaybackRecordingPage() {
   const cursorMovementActiveIndexRef = useRef<number>(0);
   const [cursorMovementActiveIndex, setCursorMovementActiveIndex] = useState<number>(0);
 
+  const playAtSpeedRefs = useRef<(HTMLElement | null)[]>([]);
+  const playAtSpeedActiveIndexRef = useRef<number>(0);
+  const [playAtSpeedActiveIndex, setPlayAtSpeedActiveIndex] = useState<number>(0);
   const recordingBehaviorRefs = useRef<(HTMLElement | null)[]>([]);
   const recordingBehaviorActiveIndexRef = useRef<number>(0);
   const [recordingBehaviorActiveIndex, setRecordingBehaviorActiveIndex] = useState<number>(0);
@@ -189,6 +192,31 @@ export function PlaybackRecordingPage() {
           <NumberStepper
             value={preferences.longSkip}
             onChange={(value) => updatePreference('longSkip', value)}
+          />
+        </TabGroupField>
+      </div>
+
+      <Separator />
+
+      {/* Section 3b: Play-at-speed (2026-11-11) — keep the pitch, or let it
+          follow the speed as a tape machine does (Audacity 3's, the default) */}
+      <div className="preferences-page__section">
+        <h3 className="preferences-page__section-title">Play-at-speed</h3>
+
+        <TabGroupField
+          groupId="play-at-speed"
+          itemIndex={0}
+          totalItems={1}
+          itemRefs={playAtSpeedRefs}
+          activeIndexRef={playAtSpeedActiveIndexRef}
+          activeIndex={playAtSpeedActiveIndex}
+          onActiveIndexChange={setPlayAtSpeedActiveIndex}
+          resetKey="playback-recording"
+        >
+          <LabeledCheckbox
+            label="Preserve pitch when playing at speed"
+            checked={preferences.preservePitchAtSpeed}
+            onChange={(checked) => updatePreference('preservePitchAtSpeed', checked)}
           />
         </TabGroupField>
       </div>

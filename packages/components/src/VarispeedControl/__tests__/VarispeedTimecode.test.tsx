@@ -102,3 +102,28 @@ describe('VarispeedTimecode — the lamp (2026-11-11)', () => {
     expect(off.container.querySelector('[data-varispeed-timecode]')?.hasAttribute('data-varispeed-active')).toBe(false);
   });
 });
+
+describe('VarispeedTimecode — "Preserve pitch" in the right-click menu (2026-11-11)', () => {
+  it('shows the preference checked or not, and a press turns it over', () => {
+    const onPreservePitchChange = vi.fn();
+    const { container } = render(
+      <ThemeProvider>
+        <VarispeedTimecode speed={0.5} enabled onChange={() => {}} preservePitch={false} onPreservePitchChange={onPreservePitchChange} />
+      </ThemeProvider>,
+    );
+    fireEvent.contextMenu(container.querySelector('[data-varispeed-timecode]')!);
+    const item = [...document.body.querySelectorAll('.context-menu-item')].find((el) => el.textContent?.includes('Preserve pitch')) as HTMLElement;
+    expect(item).toBeTruthy();
+    // A checkable item: the check slot is there, empty while off
+    expect(item.querySelector('.context-menu-item-checkmark')).not.toBeNull();
+    expect(item.querySelector('.context-menu-item-checkmark')?.children.length).toBe(0);
+    fireEvent.click(item);
+    expect(onPreservePitchChange).toHaveBeenCalledWith(true);
+  });
+
+  it('has no such item when the host offers none', () => {
+    const { container } = render(<ThemeProvider><VarispeedTimecode speed={1} enabled={false} onChange={() => {}} /></ThemeProvider>);
+    fireEvent.contextMenu(container.querySelector('[data-varispeed-timecode]')!);
+    expect([...document.body.querySelectorAll('.context-menu-item')].some((el) => el.textContent?.includes('Preserve pitch'))).toBe(false);
+  });
+});

@@ -62,6 +62,10 @@ export interface TransportToolbarProps {
   /** Which form play-at-speed takes: the timecode (the default since
    *  2026-11-11) or the slider + readout, behind a Debug panel toggle */
   varispeedStyle?: 'timecode' | 'slider';
+  /** Play-at-speed keeps the pitch — the preference, shown and toggled in
+   *  the speed timecode's right-click menu (2026-11-11) */
+  preservePitch?: boolean;
+  onPreservePitchChange?: (preserve: boolean) => void;
 
   // Playback
   isPlaying: boolean;
@@ -376,7 +380,7 @@ function SplitRecordButton({
 export function TransportTools({
   activeMenuItem, workspace,
   hiddenTools = [], onToggleToolVisibility,
-  varispeed = 1, varispeedOn = false, onVarispeedChange, onVarispeedDial, onVarispeedToggle, varispeedStyle = 'timecode',
+  varispeed = 1, varispeedOn = false, onVarispeedChange, onVarispeedDial, onVarispeedToggle, varispeedStyle = 'timecode', preservePitch = false, onPreservePitchChange,
   isPlaying, isRecording, onPlay, onStop, onRecord, onSkipToStart, onSkipToEnd, useSplitRecordButton = false, rollInTimeEnabled = false, onToggleRollInTime, snapEnabled = false, onToggleSnap, snapSubdivision = 1, onSnapSubdivisionChange, snapTriplet = false, onToggleSnapTriplet, snapMode = 'musical', onSnapModeChange,
   loopRegionEnabled, loopRegionStart, loopRegionEnd,
   setLoopRegionEnabled, setLoopRegionStart, setLoopRegionEnd,
@@ -622,7 +626,7 @@ export function TransportTools({
       // third row, 2026-10-15)
       case 'varispeed': return show('varispeed') && onVarispeedChange
         ? varispeedStyle === 'timecode'
-          ? <VarispeedTimecode speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onToggle={onVarispeedToggle ? () => onVarispeedToggle(!varispeedOn) : undefined} />
+          ? <VarispeedTimecode speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onToggle={onVarispeedToggle ? () => onVarispeedToggle(!varispeedOn) : undefined} preservePitch={preservePitch} onPreservePitchChange={onPreservePitchChange} />
           : <VarispeedControl speed={varispeed} enabled={varispeedOn} onChange={onVarispeedChange} onDial={onVarispeedDial ?? onVarispeedChange} />
         : null;
       case 'timecode': return show('timecode')

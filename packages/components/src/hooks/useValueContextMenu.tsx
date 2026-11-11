@@ -18,9 +18,12 @@ export interface ValueContextMenuOptions {
   resetLabel?: string;
   /** The menu does not open (a disabled control) */
   disabled?: boolean;
+  /** Checkable items after a divider — a control's own settings
+   *  (play-at-speed's "Preserve pitch", 2026-11-11) */
+  toggles?: ReadonlyArray<{ label: string; checked: boolean; onToggle: () => void }>;
 }
 
-export function useValueContextMenu({ onEnterValue, onReset, resetLabel = 'default', disabled = false }: ValueContextMenuOptions) {
+export function useValueContextMenu({ onEnterValue, onReset, resetLabel = 'default', disabled = false, toggles }: ValueContextMenuOptions) {
   const [open, setOpen] = React.useState(false);
   const [pos, setPos] = React.useState({ x: 0, y: 0 });
   const close = React.useCallback(() => setOpen(false), []);
@@ -35,6 +38,10 @@ export function useValueContextMenu({ onEnterValue, onReset, resetLabel = 'defau
     <ContextMenu isOpen={open} onClose={close} x={pos.x} y={pos.y} className="value-context-menu">
       <ContextMenuItem label="Enter value…" onClick={onEnterValue} onClose={close} />
       {onReset && <ContextMenuItem label={`Reset to ${resetLabel}`} onClick={onReset} onClose={close} />}
+      {toggles && toggles.length > 0 && <div className="context-menu-separator" />}
+      {toggles?.map((t) => (
+        <ContextMenuItem key={t.label} label={t.label} checked={t.checked} onClick={t.onToggle} onClose={close} />
+      ))}
     </ContextMenu>
   );
   return { onContextMenu, menu, open, close };

@@ -82,6 +82,17 @@ export class AudioPlaybackManager {
    * runs speed× faster and lands where the audio is.
    */
   private varispeed = 1;
+  /**
+   * PRESERVE PITCH (2026-11-11, the preference "Preserve pitch when playing
+   * at speed", off by default — Audacity 3's tape-style is the default, as
+   * Dan Fabulich's AU4 PR has it): while on, EVERY live player is a
+   * GrainPlayer (near-transparent at 1×), whose playbackRate takes the
+   * speed and whose detune is left alone, so the pitch holds. Every clip
+   * being a GrainPlayer means a speed change never swaps a player type
+   * mid-play; turning the preference itself over does, so the host
+   * reloads the clips (pausing and resuming around it if playing).
+   */
+  private preservePitch = false;
   private static readonly BASE_BPM = 120;
   /** Each player's own rate and detune, before varispeed */
   private playerBase = new WeakMap<Tone.Player | Tone.GrainPlayer, { rate: number; detune: number }>();
@@ -113,12 +124,27 @@ export class AudioPlaybackManager {
     this.players.forEach((player) => this.applyVarispeed(player));
   }
 
+  getPreservePitch(): boolean {
+    return this.preservePitch;
+  }
+
+  /** Keep the pitch while playing at speed. Returns whether the clips must
+   *  be RELOADED for it to take effect (the player types change); the
+   *  live GrainPlayers' detune is updated at once either way. */
+  setPreservePitch(preserve: boolean): boolean {
+    if (this.preservePitch === preserve) return false;
+    this.preservePitch = preserve;
+    this.players.forEach((player) => this.applyVarispeed(player));
+    return true;
+  }
+
   private applyVarispeed(player: Tone.Player | Tone.GrainPlayer): void {
     const base = this.playerBase.get(player) ?? { rate: 1, detune: 0 };
     player.playbackRate = base.rate * this.varispeed;
     if (player instanceof Tone.GrainPlayer) {
-      // The pitch follows the speed, as a plain Player's does
-      player.detune = base.detune + 1200 * Math.log2(this.varispeed);
+      // The pitch follows the speed, as a plain Player's does — unless it
+      // is preserved, when the rate alone stretches time
+      player.detune = base.detune + (this.preservePitch ? 0 : 1200 * Math.log2(this.varispeed));
     }
   }
 
@@ -343,14 +369,17 @@ export class AudioPlaybackManager {
    *  WITHOUT changing time (2026-10-02; until then the stretch was
    *  visual-only and pitch did not exist). start/offset/duration are the
    *  same on both. */
-  private makePlayer(toneBuffer: Tone.ToneAudioBuffer, clip: any, trackGain: Tone.InputNode | undefined): Tone.Player | Tone.GrainPlayer { // justified: the host's clip shape — pending audio-package sweep
+  // `live` = a playback player: play-at-speed applies to it. An EXPORT's
+  // player is not live — the clip renders as it is, whatever the speed
+  // (2026-11-11; until then the export took the varispeed too).
+  private makePlayer(toneBuffer: Tone.ToneAudioBuffer, clip: any, trackGain: Tone.InputNode | undefined, live = true): Tone.Player | Tone.GrainPlayer { // justified: the host's clip shape — pending audio-package sweep
     const stretch = typeof clip.stretchFactor === 'number' && clip.stretchFactor > 0 ? clip.stretchFactor : 1;
     const semitones = typeof clip.pitchSemitones === 'number' && Number.isFinite(clip.pitchSemitones) ? clip.pitchSemitones : 0;
     const destination = trackGain || Tone.getDestination();
-    if (stretch === 1 && semitones === 0) {
+    if (stretch === 1 && semitones === 0 && !(live && this.preservePitch)) {
       const player = new Tone.Player(toneBuffer).connect(destination);
       this.playerBase.set(player, { rate: 1, detune: 0 });
-      this.applyVarispeed(player);
+      if (live) this.applyVarispeed(player);
       return player;
     }
     const grain = new Tone.GrainPlayer({
@@ -361,7 +390,7 @@ export class AudioPlaybackManager {
       detune: semitones * 100,
     });
     this.playerBase.set(grain, { rate: 1 / stretch, detune: semitones * 100 });
-    this.applyVarispeed(grain);
+    if (live) this.applyVarispeed(grain);
     return grain.connect(destination);
   }
 
@@ -992,7 +1021,7 @@ export class AudioPlaybackManager {
     const sampleRate = options.sampleRate ?? Tone.context.sampleRate;
     const rendered = await Tone.Offline(() => {
       // Inside Offline, Tone.getDestination() is the offline context's
-      const player = this.makePlayer(toneBuffer, clip, undefined);
+      const player = this.makePlayer(toneBuffer, clip, undefined, false);
       player.start(0, clip.trimStart || 0, duration);
     }, duration, numChannels, sampleRate);
 

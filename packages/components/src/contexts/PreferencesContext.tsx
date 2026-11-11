@@ -41,6 +41,8 @@ export interface PreferencesState {
   rollInTime: string;
   showMicMetering: boolean;
   enableInputMonitoring: boolean;
+  /** Play-at-speed keeps the pitch (time-stretch) instead of following the speed, tape-style (2026-11-11) */
+  preservePitchAtSpeed: boolean;
 
   // Plugins
   groupEffectsInMenus: boolean;
@@ -129,6 +131,7 @@ const defaultPreferences: PreferencesState = {
   rollInTime: '3 seconds',
   showMicMetering: true,
   enableInputMonitoring: false,
+  preservePitchAtSpeed: false,
 
   // Plugins
   groupEffectsInMenus: true,

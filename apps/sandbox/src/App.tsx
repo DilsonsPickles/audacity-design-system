@@ -600,6 +600,7 @@ function CanvasDemoContent() {
   const playback = usePlaybackControls({
     state, dispatch, recordingManagerRef, scrollContainerRef,
     pixelsPerSecond, updateDisplayWhilePlaying, pinnedPlayHead, isProgrammaticScrollRef,
+    preservePitch: preferences.preservePitchAtSpeed,
   });
   const {
     isPlaying, setIsPlaying, handlePlay, handleStop,
@@ -1240,6 +1241,8 @@ function CanvasDemoContent() {
       },
       useSplitRecordButton,
       varispeedStyle: useVarispeedSlider ? 'slider' : 'timecode',
+      preservePitch: preferences.preservePitchAtSpeed,
+      onPreservePitchChange: (preserve: boolean) => updatePreference('preservePitchAtSpeed', preserve),
       rollInTimeEnabled,
       onToggleRollInTime: () => setRollInTimeEnabled(!rollInTimeEnabled),
       timeSelection: state.timeSelection,
