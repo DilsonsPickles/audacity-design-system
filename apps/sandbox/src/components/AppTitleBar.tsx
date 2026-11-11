@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, useTheme } from '@audacity-ui/components';
-import { ProjectTabs, renderProjectTool, type ProjectBarToolsDeps } from './ProjectBarTools';
+import { Button, Dropdown, useTheme } from '@audacity-ui/components';
+import { ProjectTabs, type ProjectBarToolsDeps } from './ProjectBarTools';
 
 /**
  * THE APP'S OWN TITLE BAR (2026-11-11, "a custom app header which includes
@@ -43,13 +43,21 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
           : `color-mix(in srgb, ${theme.background.toolbar}, black 10%)`,
         '--app-title-bar-active': theme.background.toolbar,
         '--app-title-bar-border': theme.border.onSurface,
+        '--app-title-bar-text': theme.foreground.text.primary,
         paddingLeft: insetForTrafficLights ? TRAFFIC_LIGHTS_PX : 0,
       } as React.CSSProperties}
     >
       <ProjectTabs activeMenuItem={activeMenuItem} onNavigate={onNavigate} projectTitle={projectTitle} />
       {activeMenuItem !== 'home' && (
         <div className="app-title-bar__end" data-app-title-bar-end>
-          {renderProjectTool('workspace', 'horizontal', { ...deps, tabsInTitleBar: false })}
+          {/* 24px, as the small Share button is ("let's try 24px button and
+              dropdown", 2026-11-11) */}
+          {!deps.hidden.has('workspace') && (
+            <div className="project-workspace" data-project-tool="workspace">
+              <span className="app-title-bar__label">Workspace</span>
+              <Dropdown size="small" value={deps.workspace} width="140px" options={[...deps.workspaceOptions]} onChange={deps.onWorkspacePick} />
+            </div>
+          )}
           {!deps.hidden.has('share-audio') && (
             <Button variant="primary" size="small" onClick={() => deps.onShareAudio()}>Share audio</Button>
           )}

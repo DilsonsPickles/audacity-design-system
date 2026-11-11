@@ -43,6 +43,9 @@ export interface DropdownProps {
    * Tab index for keyboard navigation
    */
   tabIndex?: number;
+  /** 'small': a 24px trigger, for tight bars such as the app's title bar
+   *  (2026-11-11); the default is 28px */
+  size?: 'default' | 'small';
 }
 
 export const Dropdown: React.FC<DropdownProps> = ({
@@ -54,6 +57,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   className = '',
   width,
   tabIndex,
+  size = 'default',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState<number>(-1);
@@ -207,7 +211,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   return (
     <div
       ref={dropdownRef}
-      className={`dropdown ${className}`}
+      className={`dropdown${size === 'small' ? ' dropdown--small' : ''} ${className}`}
       style={style}
       onKeyDown={handleKeyDown}
     >

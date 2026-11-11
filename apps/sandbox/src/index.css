@@ -102,6 +102,13 @@ html.pan-active * {
   padding: 0 12px;
   -webkit-app-region: no-drag;
 }
-.app-title-bar__end .project-workspace .dropdown {
-  height: 24px;
+.app-title-bar__end .project-workspace {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.app-title-bar__label {
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--app-title-bar-text);
 }

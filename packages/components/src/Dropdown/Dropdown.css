@@ -161,3 +161,10 @@
 .dropdown__menu::-webkit-scrollbar-thumb:hover {
   background: rgba(20, 21, 26, 0.4);
 }
+
+/* SMALL (2026-11-11): a 24px trigger, the small Button's height — for the
+   app's 32px title bar */
+.dropdown--small .dropdown__trigger {
+  height: 24px;
+  padding: 4px 8px;
+}
