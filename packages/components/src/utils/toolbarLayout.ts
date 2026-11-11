@@ -328,6 +328,47 @@ export function moveTool(layout: ToolbarLayout, toolId: string, barId: string, b
 }
 
 /**
+ * ADD a tool to a bar, before `beforeToolId` (null = the bar's end) — the
+ * toolbar builder's Add (2026-11-11): a tool already on a toolbar MOVES
+ * there (`moveTool`); one on no toolbar is put there.
+ */
+export function insertTool(layout: ToolbarLayout, toolId: string, barId: string, beforeToolId: string | null): ToolbarLayout {
+  if (findTool(layout, toolId)) return moveTool(layout, toolId, barId, beforeToolId);
+  if (!findBar(layout, barId)) return layout;
+  const next = cloneLayout(layout);
+  const target = findBar(next, barId)!.bar;
+  const at = beforeToolId === null ? -1 : target.tools.indexOf(beforeToolId);
+  if (at < 0) target.tools.push(toolId);
+  else target.tools.splice(at, 0, toolId);
+  return normaliseLayout(next);
+}
+
+/**
+ * A tool into a NEW BAR of its own at a placement, whether or not it is on a
+ * toolbar now — the toolbar builder's Add onto a row or a dock (2026-11-11);
+ * `moveToolToNewBar` keeps its rule that a tool it cannot find moves nothing.
+ */
+export function addToolToNewBar(layout: ToolbarLayout, toolId: string, placement: BarPlacement): ToolbarLayout {
+  if (findTool(layout, toolId)) return moveToolToNewBar(layout, toolId, placement);
+  const next = cloneLayout(layout);
+  place(next, { id: nextBarId(layout), tools: [toolId] }, placement);
+  return normaliseLayout(next);
+}
+
+/**
+ * REMOVE a tool from the layout — onto no toolbar (the toolbar builder's
+ * Remove, 2026-11-11). Its bar goes when it was the last tool, and the row
+ * with it. A tool the layout's guards put back (the cog, the project tools)
+ * should be HIDDEN instead; this does not stop a caller.
+ */
+export function removeTool(layout: ToolbarLayout, toolId: string): ToolbarLayout {
+  if (!findTool(layout, toolId)) return layout;
+  const next = cloneLayout(layout);
+  for (const r of TOOLBAR_REGIONS) for (const row of rowsOf(next, r)) for (const b of row) b.tools = b.tools.filter((t) => t !== toolId);
+  return normaliseLayout(next);
+}
+
+/**
  * Pull ONE TOOL out into a NEW BAR of its own at a placement — "create a
  * whole new toolbar container just to put one tool in it" (2026-11-10).
  * A tool already ALONE in its bar is that bar: the bar itself moves,

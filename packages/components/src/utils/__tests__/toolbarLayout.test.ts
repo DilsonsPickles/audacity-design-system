@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   coerceToolbarLayout, defaultToolbarLayout, dockBars, findBar, findTool, moveBar, moveTool, moveToolToNewBar, nextBarId,
-  normaliseLayout, isToolbarLayout, setBarSize, withCustomiseTool, withProjectTools, withProjectRowMoves, PROJECT_TOOL_IDS, type ToolbarLayout, type ToolbarRegion,
+  normaliseLayout, isToolbarLayout, setBarSize, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, type ToolbarLayout, type ToolbarRegion,
 } from '../toolbarLayout';
 
 /** A seed WITHOUT the project row (2026-11-10, the project toolbar's
@@ -213,6 +213,28 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     // A rearranged layout (Undo moved by the user) is left alone there
     const custom = moveTool(old, 'undo', 'transport', null);
     expect(findTool(withProjectRowMoves(custom), 'undo')!.bar.id).toBe('transport');
+  });
+
+  it('THE TOOLBAR BUILDER\'S EDITS (2026-11-11): insertTool adds or moves, removeTool takes a tool off every toolbar, a new bar takes a tool on none', () => {
+    const layout = seedWithoutProjectRow('classic');
+    // remove: off its bar; the bar goes when it was the last tool
+    const off = removeTool(layout, 'zoom-in');
+    expect(findTool(off, 'zoom-in')).toBeNull();
+    expect(findBar(off, 'view')!.bar.tools).not.toContain('zoom-in');
+    expect(removeTool(off, 'zoom-in')).toBe(off);
+    // insert a tool on no toolbar: into a bar, before a tool or at its end
+    const back = insertTool(off, 'zoom-in', 'transport', 'stop');
+    expect(findBar(back, 'transport')!.bar.tools.slice(0, 3)).toEqual(['play', 'zoom-in', 'stop']);
+    expect(findBar(insertTool(off, 'zoom-in', 'transport', null), 'transport')!.bar.tools.slice(-1)).toEqual(['zoom-in']);
+    // insert a tool already placed: it moves (one copy only)
+    const moved = insertTool(layout, 'zoom-in', 'transport', null);
+    expect(findBar(moved, 'view')!.bar.tools).not.toContain('zoom-in');
+    expect(findTool(moved, 'zoom-in')!.bar.id).toBe('transport');
+    // a new bar for a tool on no toolbar
+    const own = addToolToNewBar(off, 'zoom-in', { region: 'bottom', newRowAt: 0 });
+    expect(own.bottom[0].map((b) => b.tools)).toEqual([['zoom-in']]);
+    // an unknown bar changes nothing
+    expect(insertTool(off, 'zoom-in', 'nope', null)).toBe(off);
   });
 
   it('THE COG IS A TOOL: every seed ends the top row with it as a toolbar of its own; a layout without it gets it back at the top dock\'s end (2026-11-10)', () => {

@@ -47,6 +47,7 @@ const OAuthCallback = React.lazy(() =>
 );
 import { RecordingManager } from './utils/RecordingManager';
 import { AppTitleBar, hasCustomTitleBar } from './components/AppTitleBar';
+import { ToolbarBuilderDialog } from './components/ToolbarBuilderDialog';
 import { computeFitTrackHeight, buildNewTrack } from './utils/trackManagement';
 import { handlePaste } from './hooks/handlers/clipboardHandlers';
 import type { TrackType } from '@audacity-ui/components';
@@ -363,6 +364,9 @@ function CanvasDemoContent() {
   // BESIDE one for a toolbar of its own. Done or Escape leaves it; it
   // ends with the Project tab
   const [toolbarEditing, setToolbarEditing] = React.useState(false);
+  // THE TOOLBAR BUILDER (2026-11-11): the cog menu's "Rearrange tools…" opens
+  // it, in place of the in-place edit mode (the grips still drag)
+  const [toolbarBuilderOpen, setToolbarBuilderOpen] = React.useState(false);
   const toolFitsVertical = (id: string) =>
     (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
   const toolDrag = useToolbarToolDrag({
@@ -1225,7 +1229,7 @@ function CanvasDemoContent() {
       activeMenuItem,
       workspace,
       layoutEditing: toolbarEditing,
-      onLayoutEditingChange: setToolbarEditing,
+      onLayoutEditingChange: (on: boolean) => { if (on) setToolbarBuilderOpen(true); else setToolbarEditing(false); },
       onResetLayout: toolbarLayout.resetLayout,
       layoutCustomised: toolbarLayout.customised,
       varispeed: playback.varispeed,
@@ -1714,6 +1718,14 @@ function CanvasDemoContent() {
       {/* Toast Container */}
       {/* The keyboard map (View › Keyboard map, so a palette command;
           2026-10-13): the Shortcuts page's rows on a Mac keyboard */}
+      <ToolbarBuilderDialog
+        isOpen={toolbarBuilderOpen}
+        onClose={() => setToolbarBuilderOpen(false)}
+        layout={toolbarLayout.layout}
+        editLayout={toolbarLayout.editLayout}
+        onResetLayout={toolbarLayout.resetLayout}
+        os={preferences.operatingSystem}
+      />
       <KeyboardMap isOpen={isKeyboardMapOpen} onClose={() => setIsKeyboardMapOpen(false)} rows={SHORTCUT_ROWS} timeSelected={!!state.timeSelection} clipsSelected={countSelectedClips(state.tracks) > 0} os={preferences.operatingSystem} />
       {/* The command palette (⌘P, 2026-10-13): the menus' items and the
           keyboard-only commands by name, with their chords */}

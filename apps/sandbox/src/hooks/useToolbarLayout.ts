@@ -20,6 +20,9 @@ export interface UseToolbarLayoutReturn {
   resizeBar: (barId: string, axis: ToolbarBarAxis, size: number | null) => void;
   /** Back to the workspace's seed */
   resetLayout: () => void;
+  /** Any edit of the layout in force, stored for this workspace (the
+   *  toolbar builder's, 2026-11-11) */
+  editLayout: (change: (base: ToolbarLayout) => ToolbarLayout) => void;
 }
 
 /**
@@ -81,5 +84,5 @@ export function useToolbarLayout(workspace: ToolbarWorkspace, activeMenuItem: st
     updatePreference('toolbarLayouts', next);
   }, [preferences.toolbarLayouts, updatePreference, workspace]);
 
-  return { layout, customised: custom !== null, moveBarTo, moveToolInto, moveToolToNewBar: moveToolToNew, resizeBar, resetLayout };
+  return { layout, customised: custom !== null, moveBarTo, moveToolInto, moveToolToNewBar: moveToolToNew, resizeBar, resetLayout, editLayout: edit };
 }

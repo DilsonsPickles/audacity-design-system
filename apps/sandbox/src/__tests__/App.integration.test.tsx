@@ -415,80 +415,76 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     await waitFor(() => expect(document.body.querySelector('[data-customise-toolbar]')).toBeTruthy());
   });
 
-  it('EDIT MODE: the cog\'s "Rearrange tools…" makes the tools inert and draggable; a tool pulled beside a bar gets a toolbar of its own; Escape leaves; Reset layout restores (2026-11-10)', async () => {
+  it('THE TOOLBAR BUILDER: the cog\'s "Rearrange tools…" opens it; Remove, Add, hide and New toolbar apply live; Cancel puts it all back; Reset layout restores (2026-11-11)', async () => {
     const { container, getByText } = renderApp();
     fireEvent.click(getByText('Untitled project'));
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
-    const dock = (region: string) => container.querySelector(`[data-toolbar-dock="${region}"]`) as HTMLElement;
-    const tool = (id: string) => container.querySelector(`[data-toolbar-tool="${id}"]`) as HTMLElement;
-    const barIds = (region: string) => Array.from(dock(region).querySelectorAll('[data-toolbar-bar]')).map((b) => b.getAttribute('data-toolbar-bar'));
-    const openCog = async () => {
+    const tool = (id: string) => container.querySelector(`[data-toolbar-tool="${id}"]`) as HTMLElement | null;
+    const barOf = (id: string) => tool(id)?.closest('[data-toolbar-bar]')?.getAttribute('data-toolbar-bar');
+    const stored = () => JSON.parse(window.localStorage.getItem('audacity-preferences')!).toolbarLayouts?.classic;
+    const openBuilder = async () => {
       fireEvent.click(container.querySelector('[data-customise-toolbar-cog] button') as HTMLElement);
+      const menu = await waitFor(() => {
+        const m = document.body.querySelector<HTMLElement>('[data-customise-toolbar]');
+        if (!m) throw new Error('not yet');
+        return m;
+      });
+      fireEvent.click(menu.querySelector('[data-customise-rearrange]') as HTMLElement);
       return waitFor(() => {
-        const menu = document.body.querySelector<HTMLElement>('[data-customise-toolbar]');
-        if (!menu) throw new Error('not yet');
-        return menu;
+        const b = document.body.querySelector<HTMLElement>('[data-toolbar-builder]');
+        if (!b) throw new Error('not yet');
+        return b;
       });
     };
+    const button = (b: HTMLElement, text: string) => Array.from(b.querySelectorAll('button')).find((x) => x.textContent?.includes(text)) as HTMLButtonElement;
 
-    // At rest: live tools, Reset dimmed (nothing rearranged)
-    expect(tool('record').querySelector('.toolbar-dock__tool-body')!.hasAttribute('inert')).toBe(false);
-    let menu = await openCog();
-    expect((menu.querySelector('[data-customise-reset]') as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(menu.querySelector('[data-customise-rearrange]') as HTMLElement);
-    await waitFor(() => expect(dock('top').classList.contains('toolbar-dock--editing')).toBe(true));
-    // Every dock is in the mode, the tools are inert, the cog gave way to Done
-    expect(dock('bottom').classList.contains('toolbar-dock--editing')).toBe(true);
-    expect(tool('record').querySelector('.toolbar-dock__tool-body')!.hasAttribute('inert')).toBe(true);
-    expect(container.querySelector('[data-customise-toolbar-cog]')).toBeNull();
-    expect(container.querySelector('.selection-toolbar__instruction-text')?.textContent).toMatch(/^Drag a tool onto a toolbar/);
+    let b = await openBuilder();
+    // No in-place edit mode any more: the tools stay live behind it
+    expect(container.querySelector('.toolbar-dock--editing')).toBeNull();
+    expect(barOf('record')).toBe('transport');
 
-    // A press that never travels is a click: nothing moves
-    fireEvent.mouseDown(tool('record'), { clientX: 200, clientY: 30, button: 0 });
-    fireEvent.mouseUp(document, { clientX: 201, clientY: 30 });
-    // (the top dock opens with the project row since 2026-11-10: its tabs first)
-    expect(barIds('top')[0]).toBe('project-tabs');
-    expect(tool('record').closest('[data-toolbar-bar]')!.getAttribute('data-toolbar-bar')).toBe('transport');
+    // Remove: off the toolbar, and the left list says so
+    fireEvent.click(b.querySelector('[data-builder-node="t:record"]')!);
+    fireEvent.click(button(b, 'Remove'));
+    await waitFor(() => expect(tool('record')).toBeNull());
+    expect(b.querySelector('[data-builder-tool="record"]')!.textContent).toContain('Not on a toolbar');
 
-    // Pulled BESIDE the first bar (its grip's strip — jsdom measures every
-    // rect as zero, so x < 24 is "beside"): Record gets a bar of its own
-    fireEvent.mouseDown(tool('record'), { clientX: 200, clientY: 30, button: 0 });
-    fireEvent.mouseMove(document, { clientX: 10, clientY: 10 });
-    expect(dock('top').querySelector('.toolbar-dock__insert')).toBeTruthy(); // the new container's line
-    expect(container.querySelector('.selection-toolbar__instruction-text')?.textContent).toBe('Release to give it a toolbar of its own');
-    fireEvent.mouseUp(document, { clientX: 10, clientY: 10 });
-    // (jsdom measures nothing: the drop lands at the start of the top dock's
-    // last row, the transport's — the project row is above it)
-    await waitFor(() => { const ids = barIds('top'); expect(ids[ids.indexOf('transport') - 1]).toBe('bar-1'); });
-    expect(tool('record').closest('[data-toolbar-bar]')!.getAttribute('data-toolbar-bar')).toBe('bar-1');
-    expect(dock('top').querySelector('[data-toolbar-bar="transport"] [data-toolbar-tool="record"]')).toBeNull();
-    const stored = () => JSON.parse(window.localStorage.getItem('audacity-preferences')!).toolbarLayouts?.classic;
-    expect(stored().top[1][0]).toEqual({ id: 'bar-1', tools: ['record'] });
+    // Add: into the selected toolbar, after the selected tool
+    fireEvent.click(b.querySelector('[data-builder-tool="record"]')!);
+    fireEvent.click(b.querySelector('[data-builder-node="t:loop"]')!);
+    fireEvent.click(button(b, 'Add'));
+    await waitFor(() => expect(barOf('record')).toBe('transport'));
 
-    // …and another, to the bottom dock: as many containers as wanted
-    fireEvent.mouseDown(tool('loop'), { clientX: 200, clientY: 30, button: 0 });
-    fireEvent.mouseMove(document, { clientX: 300, clientY: window.innerHeight - 10 });
-    fireEvent.mouseUp(document, { clientX: 300, clientY: window.innerHeight - 10 });
-    await waitFor(() => expect(barIds('bottom')).toContain('bar-2'));
+    // New toolbar: the selected tool into one of its own
+    fireEvent.click(b.querySelector('[data-builder-node="t:record"]')!);
+    fireEvent.click(button(b, 'New toolbar'));
+    await waitFor(() => expect(barOf('record')).not.toBe('transport'));
 
-    // Escape leaves the mode; the tools are live again
-    fireEvent.keyDown(document.body, { key: 'Escape' });
-    await waitFor(() => expect(dock('top').classList.contains('toolbar-dock--editing')).toBe(false));
-    expect(tool('record').querySelector('.toolbar-dock__tool-body')!.hasAttribute('inert')).toBe(false);
-    // outside the mode a press on a tool picks nothing up
-    fireEvent.mouseDown(tool('record'), { clientX: 200, clientY: 30, button: 0 });
-    fireEvent.mouseMove(document, { clientX: 300, clientY: window.innerHeight - 10 });
-    fireEvent.mouseUp(document, { clientX: 300, clientY: window.innerHeight - 10 });
-    expect(tool('record').closest('[data-toolbar-dock]')!.getAttribute('data-toolbar-dock')).toBe('top');
+    // Untick: hidden
+    const box = b.querySelector('[data-builder-node="t:loop"] [role="checkbox"], [data-builder-node="t:loop"] input[type="checkbox"]') as HTMLElement;
+    fireEvent.click(box);
+    await waitFor(() => expect(tool('loop')).toBeNull());
 
-    // Reset layout: the workspace's own bars again
-    menu = await openCog();
-    const reset = menu.querySelector('[data-customise-reset]') as HTMLButtonElement;
-    expect(reset.disabled).toBe(false);
-    fireEvent.click(reset);
-    await waitFor(() => expect(barIds('top')[0]).toBe('project-tabs'));
-    expect(tool('record').closest('[data-toolbar-bar]')!.getAttribute('data-toolbar-bar')).toBe('transport');
-    expect(barIds('bottom')).toEqual(['status', 'selection']);
+    // Cancel: everything as it was when the dialog opened
+    fireEvent.click(getByText('Cancel'));
+    await waitFor(() => expect(document.body.querySelector('[data-toolbar-builder]')).toBeNull());
+    await waitFor(() => expect(barOf('record')).toBe('transport'));
+    expect(tool('loop')).toBeTruthy();
+    expect(stored()).toBeUndefined();
+
+    // OK keeps an edit; Reset layout puts the workspace's own bars back
+    b = await openBuilder();
+    fireEvent.click(b.querySelector('[data-builder-node="t:record"]')!);
+    fireEvent.click(button(b, 'New toolbar'));
+    await waitFor(() => expect(barOf('record')).not.toBe('transport'));
+    fireEvent.click(getByText('OK'));
+    await waitFor(() => expect(document.body.querySelector('[data-toolbar-builder]')).toBeNull());
+    expect(barOf('record')).not.toBe('transport');
+    expect(stored()).toBeTruthy();
+    b = await openBuilder();
+    fireEvent.click(getByText('Reset layout'));
+    await waitFor(() => expect(barOf('record')).toBe('transport'));
+    fireEvent.click(getByText('OK'));
     expect(stored()).toBeUndefined();
   });
 });
