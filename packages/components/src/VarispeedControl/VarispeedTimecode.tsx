@@ -68,11 +68,11 @@ export function VarispeedTimecode({ speed, enabled, onChange, onToggle, preserve
 
   // BpmStepper's dark variant, token for token
   const style = {
-    '--timecode-bg': '#212433',
+    '--timecode-bg': theme.background.control.timecode.idle,
     '--timecode-text': '#f4f5f9',
     '--timecode-hover': '#4a5068',
     '--timecode-border': 'transparent',
-    '--timecode-unit-bg': '#212433',
+    '--timecode-unit-bg': theme.background.control.timecode.idle,
     '--timecode-unit-text': '#c5c6cd',
     '--timecode-unit-hover-bg': '#4a5068',
     '--timecode-unit-hover-text': '#f4f5f9',

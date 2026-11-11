@@ -55,11 +55,11 @@ export function BpmStepper({
   // Theme vars mirror TimeCode so visuals stay in sync if the design system
   // shifts those token values later.
   const style = {
-    '--timecode-bg': variant === 'light' ? '#FFFFFF' : '#212433',
+    '--timecode-bg': variant === 'light' ? '#FFFFFF' : theme.background.control.timecode.idle,
     '--timecode-text': variant === 'light' ? theme.foreground.text.primary : '#f4f5f9',
     '--timecode-hover': variant === 'light' ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
     '--timecode-border': variant === 'light' ? '#D4D5D9' : 'transparent',
-    '--timecode-unit-bg': variant === 'light' ? '#FFFFFF' : '#212433',
+    '--timecode-unit-bg': variant === 'light' ? '#FFFFFF' : theme.background.control.timecode.idle,
     '--timecode-unit-text': variant === 'light' ? theme.foreground.text.primary : '#c5c6cd',
     '--timecode-unit-hover-bg': variant === 'light' ? 'rgba(0, 0, 0, 0.05)' : '#4a5068',
     '--timecode-unit-hover-text': variant === 'light' ? theme.foreground.text.primary : '#f4f5f9',
