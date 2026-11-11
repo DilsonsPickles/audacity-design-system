@@ -19,7 +19,7 @@ import { ProjectTabs, type ProjectBarToolsDeps } from './ProjectBarTools';
 export const TRAFFIC_LIGHTS_PX = 76;
 
 // THE RIGHT END (2026-11-11, the first row's buttons moved out): the
-// WORKSPACE picker, then SHARE AUDIO as the primary button — Figma's file-
+// WORKSPACE picker, then SHARE AUDIO, a secondary button — Figma's file-
 // level controls; both honour Customise toolbar's hidden list, and both are
 // out of the window's drag region so they take clicks.
 export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: { deps: ProjectBarToolsDeps; insetForTrafficLights: boolean; vibrancy?: boolean }) {
@@ -59,7 +59,9 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
             </div>
           )}
           {!deps.hidden.has('share-audio') && (
-            <Button variant="primary" size="small" onClick={() => deps.onShareAudio()}>Share audio</Button>
+            // Secondary, not the accent (the same day, "don't make share
+            // audio accented")
+            <Button variant="secondary" size="small" onClick={() => deps.onShareAudio()}>Share audio</Button>
           )}
         </div>
       )}
