@@ -2,22 +2,22 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   height: 40px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #d4d5d9;
+  background-color: var(--prefs-table-bg, #ffffff);
+  border-bottom: 1px solid var(--prefs-border, #d4d5d9);
   cursor: pointer;
   transition: background-color 0.15s ease;
 }
 
 .shortcut-table-row:hover {
-  background-color: #ebedf0;
+  background-color: var(--prefs-body-bg, #ebedf0);
 }
 
 .shortcut-table-row--selected {
-  background-color: rgba(103, 124, 228, 0.2);
+  background-color: color-mix(in srgb, var(--prefs-link, #677ce4) 20%, transparent);
 }
 
 .shortcut-table-row--selected:hover {
-  background-color: rgba(103, 124, 228, 0.2);
+  background-color: color-mix(in srgb, var(--prefs-link, #677ce4) 20%, transparent);
 }
 
 .shortcut-table-row__action,
@@ -29,9 +29,9 @@
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  color: #14151a;
+  color: var(--prefs-text, #14151a);
 }
 
 .shortcut-table-row__shortcut {
-  border-left: 1px solid #d4d5d9;
+  border-left: 1px solid var(--prefs-border, #d4d5d9);
 }

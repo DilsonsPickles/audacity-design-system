@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useTabGroup } from '../hooks/useTabGroup';
+import { useTheme } from '../ThemeProvider';
 import './DialogSideNav.css';
 
 export interface DialogSideNavItem<T extends string = string> {
@@ -83,6 +84,15 @@ export function DialogSideNav<T extends string = string>({
 }: DialogSideNavProps<T>) {
   const sidebarRef = React.useRef<HTMLElement>(null);
   const itemRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
+  // THE THEME'S COLOURS (2026-11-11, "dark mode preferences are broken"):
+  // the side nav hard-coded the light theme's
+  const { theme } = useTheme();
+  const themeStyle = {
+    '--sidenav-bg': theme.background.surface.default,
+    '--sidenav-border': theme.border.default,
+    '--sidenav-text': theme.foreground.text.primary,
+    '--sidenav-accent': theme.accent.primary,
+  } as React.CSSProperties;
   const activeIndexRef = React.useRef(0);
 
   // Initialize itemRefs array
@@ -102,6 +112,7 @@ export function DialogSideNav<T extends string = string>({
     <nav
       ref={sidebarRef}
       className={`dialog-sidenav ${className}`}
+      style={themeStyle}
       role="tablist"
       aria-label={ariaLabel}
       aria-orientation="vertical"

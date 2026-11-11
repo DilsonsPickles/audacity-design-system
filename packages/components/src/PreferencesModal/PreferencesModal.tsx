@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Dialog } from '../Dialog';
 import { Button } from '../Button';
 import { DialogSideNav } from '../DialogSideNav/DialogSideNav';
+import { useTheme } from '../ThemeProvider';
 import { useAccessibilityProfile } from '../contexts/AccessibilityProfileContext';
 import type { PreferencesPage, PreferencesModalProps } from './types';
 import { menuItems } from './menuItems';
@@ -103,6 +104,23 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
 
   if (!isOpen) return null;
 
+  // THE THEME'S COLOURS (2026-11-11, "dark mode preferences are broken"):
+  // the modal's surfaces, borders, text, info box, links and the shortcuts
+  // table hard-coded the light theme's — in dark mode the theme-aware
+  // controls drew dark on a light page and the light labels vanished
+  const { theme } = useTheme();
+  const prefsThemeStyle = {
+    '--prefs-body-bg': theme.background.surface.inset,
+    '--prefs-border': theme.border.default,
+    '--prefs-footer-bg': theme.background.surface.default,
+    '--prefs-text': theme.foreground.text.primary,
+    '--prefs-info-bg': theme.background.surface.elevated,
+    '--prefs-link': theme.accent.primary,
+    '--prefs-table-bg': theme.background.control.input.idle,
+    // (the shortcuts table's header row)
+    '--prefs-header-bg': theme.background.surface.subtle,
+  } as React.CSSProperties;
+
   return (
     <Dialog
       isOpen={isOpen}
@@ -114,7 +132,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
       maximizable={true}
       closeOnClickOutside={false}
     >
-      <div className="preferences-modal__content">
+      <div className="preferences-modal__content" style={prefsThemeStyle}>
         {/* Sidebar Menu */}
         <DialogSideNav
           items={menuItems}
@@ -157,7 +175,7 @@ export const PreferencesModal: React.FC<PreferencesModalProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="preferences-modal__footer">
+      <div className="preferences-modal__footer" style={prefsThemeStyle}>
         <TabGroupField
           groupId="dialog-footer"
           itemIndex={0}

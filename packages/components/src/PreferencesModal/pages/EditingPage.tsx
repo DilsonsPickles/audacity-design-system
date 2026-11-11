@@ -201,7 +201,7 @@ export function EditingPage({
         <img
           src="https://via.placeholder.com/188x64?text=Stereo+Heights"
           alt="Asymmetric stereo heights example"
-          style={{ width: '188px', height: '64px', borderRadius: '4px', backgroundColor: '#d4d5d9' }}
+          style={{ width: '188px', height: '64px', borderRadius: '4px', backgroundColor: 'var(--prefs-border, #d4d5d9)' }}
         />
 
         <div style={{
@@ -210,7 +210,7 @@ export function EditingPage({
           fontSize: '12px',
           fontWeight: 400,
           lineHeight: '16px',
-          color: '#14151a'
+          color: 'var(--prefs-text, #14151a)'
         }}>
           Dragging on the center line may adjust the height of the channels:
         </div>

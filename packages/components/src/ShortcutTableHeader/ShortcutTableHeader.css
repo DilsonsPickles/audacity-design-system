@@ -2,8 +2,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr 16px;
   height: 32px;
-  background-color: #ebebef;
-  border-bottom: 1px solid #d4d5d9;
+  background-color: var(--prefs-header-bg, #ebebef);
+  border-bottom: 1px solid var(--prefs-border, #d4d5d9);
 }
 
 .shortcut-table-header__cell {
@@ -14,14 +14,14 @@
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
-  color: #14151a;
+  color: var(--prefs-text, #14151a);
 }
 
 .shortcut-table-header__cell:nth-child(2) {
-  border-left: 1px solid #d4d5d9;
+  border-left: 1px solid var(--prefs-border, #d4d5d9);
 }
 
 .shortcut-table-header__scrollbar-spacer {
-  background-color: #ebebef;
-  border-left: 1px solid #d4d5d9;
+  background-color: var(--prefs-header-bg, #ebebef);
+  border-left: 1px solid var(--prefs-border, #d4d5d9);
 }

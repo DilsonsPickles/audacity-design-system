@@ -30,7 +30,7 @@ export function ShortcutsPage() {
               fontFamily: 'Inter, sans-serif',
               fontSize: '12px',
               fontWeight: 400,
-              color: '#14151a'
+              color: 'var(--prefs-text, #14151a)'
             }}>
               Search by:
             </span>
