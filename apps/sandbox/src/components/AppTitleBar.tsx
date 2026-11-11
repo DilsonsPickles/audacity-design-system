@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, ContextMenu, ContextMenuItem, GhostButton, useTheme } from '@audacity-ui/components';
+import { ContextMenu, ContextMenuItem, GhostButton, useTheme } from '@audacity-ui/components';
 import { ProjectTabs, type ProjectBarToolsDeps } from './ProjectBarTools';
 
 /**
@@ -19,7 +19,7 @@ import { ProjectTabs, type ProjectBarToolsDeps } from './ProjectBarTools';
 export const TRAFFIC_LIGHTS_PX = 76;
 
 // THE RIGHT END (2026-11-11, the first row's buttons moved out): the
-// WORKSPACE picker, then SHARE AUDIO, a secondary button — Figma's file-
+// WORKSPACE picker, then SHARE AUDIO, flat buttons — Figma's file-
 // level controls; both honour Customise toolbar's hidden list, and both are
 // out of the window's drag region so they take clicks.
 export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: { deps: ProjectBarToolsDeps; insetForTrafficLights: boolean; vibrancy?: boolean }) {
@@ -102,9 +102,10 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
             </div>
           )}
           {!deps.hidden.has('share-audio') && (
-            // Secondary, not the accent (the same day, "don't make share
-            // audio accented")
-            <Button variant="secondary" size="small" onClick={() => deps.onShareAudio()}>Share audio</Button>
+            // The flat style of Audio setup and Workspace (the same day,
+            // "make the share audio the same style as setup and workspace";
+            // it was a secondary Button, a primary one before that)
+            <GhostButton icon="cloud" size="compact" label="Share audio" ariaLabel="Share audio" onClick={() => deps.onShareAudio()} />
           )}
         </div>
       )}
