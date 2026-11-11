@@ -161,11 +161,13 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
     // Add slight delay to prevent immediate close from the button click that opened it
     const doc = ownerDoc();
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       doc.addEventListener('mousedown', handleClickOutside);
     }, 0);
 
-    return () => doc.removeEventListener('mousedown', handleClickOutside);
+    // (the timer too: a re-render before it fired used to add a listener
+    // that no cleanup ever removed — 2026-11-11)
+    return () => { clearTimeout(timer); doc.removeEventListener('mousedown', handleClickOutside); };
   }, [isOpen, onClose]);
 
   // Handle keyboard navigation

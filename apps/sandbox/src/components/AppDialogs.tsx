@@ -193,6 +193,25 @@ export function AppDialogs(props: AppDialogsProps) {
     setActiveMenuItem,
   } = props;
 
+  // THE AUDIO SETUP MENU CLOSES ON A PRESS ANYWHERE ELSE, AND ON ESCAPE
+  // (2026-11-11): it closed only when the pointer LEFT it, so one never
+  // entered stayed open beside the next menu opened
+  const audioSetupMenuRef = React.useRef<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    if (!audioSetupMenuAnchor) return;
+    const onPress = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (audioSetupMenuRef.current?.contains(target)) return;
+      // (its own button re-opens it; leave that press to the button)
+      if ((target as HTMLElement).closest?.('[aria-label="Audio setup"]')) return;
+      setAudioSetupMenuAnchor(null);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAudioSetupMenuAnchor(null); };
+    const timer = window.setTimeout(() => document.addEventListener('mousedown', onPress, true), 0);
+    document.addEventListener('keydown', onKey);
+    return () => { window.clearTimeout(timer); document.removeEventListener('mousedown', onPress, true); document.removeEventListener('keydown', onKey); };
+  }, [audioSetupMenuAnchor, setAudioSetupMenuAnchor]);
+
   return (
     <>
       {/* Welcome Dialog */}
@@ -770,6 +789,8 @@ export function AppDialogs(props: AppDialogsProps) {
       {/* Audio Setup Context Menu */}
       {audioSetupMenuAnchor && (
         <div
+          ref={audioSetupMenuRef}
+          data-audio-setup-menu
           style={{
             position: 'fixed',
             top: audioSetupMenuAnchor.y,

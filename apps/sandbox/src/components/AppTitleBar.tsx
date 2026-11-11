@@ -70,6 +70,10 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
               label="Audio setup"
               ariaLabel="Audio setup"
               onClick={(e) => {
+                // One title-bar menu at a time (2026-11-11, "if I click
+                // workspaces and then audio setup, the workspace dropdown
+                // isn't hiding")
+                setWorkspaceMenu(null);
                 const r = e.currentTarget.getBoundingClientRect();
                 deps.onAudioSetup({ x: r.left, y: r.bottom + 4 });
               }}
