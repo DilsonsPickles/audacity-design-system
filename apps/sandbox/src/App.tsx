@@ -1338,13 +1338,21 @@ function CanvasDemoContent() {
     <PlaybackProvider value={playback}>
     <LoopRegionProvider value={loopRegion}>
     <TransportToolbarContainer {...transportToolbarProps}>
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw' }}>
+    <div style={{
+      display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw',
+      // Over the window's vibrancy (macOS): the title bar's 32px stay
+      // see-through, everything below is the app's solid surface
+      ...(window.electronShell?.titleBarVibrancy
+        ? { background: `linear-gradient(to bottom, transparent 32px, ${baseTheme.background.surface.default} 32px)` }
+        : {}),
+    }}>
       {customTitleBar && (
         <AppTitleBar
           activeMenuItem={activeMenuItem}
           onNavigate={(item) => { void navigateProject(item); }}
           projectTitle={projectTitle}
           insetForTrafficLights={!!window.electronShell?.customTitleBar}
+          vibrancy={!!window.electronShell?.titleBarVibrancy}
         />
       )}
       {!IS_ELECTRON && (
@@ -2020,6 +2028,9 @@ function CanvasDemoContent() {
 // Wrapper component that applies the theme based on preferences
 function ThemedApp() {
   const { theme } = useAppearancePrefs();
+  // The desktop window's native parts follow the app's theme, not the OS's
+  // — the glass title bar first of all (2026-11-11)
+  React.useEffect(() => { window.electronShell?.setAppearance?.(theme); }, [theme]);
   const currentTheme = theme === 'dark' ? darkTheme : lightTheme;
 
   return (

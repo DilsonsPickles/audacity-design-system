@@ -20,6 +20,10 @@ contextBridge.exposeInMainWorld('electronShell', {
   // The renderer draws the title bar, the traffic lights inset over it
   // (macOS only — main.cjs hides the native bar there; 2026-11-11)
   customTitleBar: process.platform === 'darwin',
+  // …and the window is vibrant under it: the bar may be see-through
+  titleBarVibrancy: process.platform === 'darwin',
+  // The window's native appearance follows the app's theme (2026-11-11)
+  setAppearance: (mode) => ipcRenderer.send('window:set-appearance', mode),
   // The microphone's OS permission (2026-11-04): 'granted' | 'denied' |
   // 'restricted' | 'not-determined' | 'unknown'; a request prompts while
   // undetermined; the settings call opens the OS's microphone privacy pane

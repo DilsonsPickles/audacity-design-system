@@ -18,7 +18,7 @@
 //     cross-origin fetch the sandbox makes.
 // A loopback http server sidesteps all three with no allowlist changes.
 
-const { app, BrowserWindow, shell, Menu, ipcMain, systemPreferences } = require('electron');
+const { app, BrowserWindow, shell, Menu, ipcMain, systemPreferences, nativeTheme } = require('electron');
 const path = require('node:path');
 const net = require('node:net');
 
@@ -165,7 +165,18 @@ function createWindow(url) {
     // carries the tabs and is the window's drag region. Other platforms
     // keep the native frame.
     ...(process.platform === 'darwin'
-      ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 12, y: 8 } }
+      ? {
+          titleBarStyle: 'hiddenInset',
+          trafficLightPosition: { x: 12, y: 8 },
+          // THE TITLE BAR IS GLASS (2026-11-11, "try vibrancy on the title
+          // bar"): the native under-window material, which shows only
+          // where the page is transparent — the renderer leaves the bar's
+          // 32px see-through and paints everything below it solid. The
+          // window's own background must be clear for it to show.
+          vibrancy: 'under-window',
+          visualEffectState: 'followWindow',
+          backgroundColor: '#00000000',
+        }
       : {}),
     webPreferences: {
       // The sandbox is pure browser code; we never expose Node APIs to
@@ -362,6 +373,13 @@ const microphoneAccessStatus = () => (
     ? systemPreferences.getMediaAccessStatus('microphone')
     : 'granted'
 );
+// THE WINDOW'S APPEARANCE FOLLOWS THE APP'S THEME (2026-11-11): the title
+// bar's vibrancy, the traffic lights and the native menus are drawn in the
+// OS appearance, so a light app on a Dark Mode Mac got a dark glass bar. The
+// renderer says its theme ('light' | 'dark'); 'system' hands it back.
+ipcMain.on('window:set-appearance', (_e, mode) => {
+  if (mode === 'light' || mode === 'dark' || mode === 'system') nativeTheme.themeSource = mode;
+});
 ipcMain.handle('mic:access-status', () => microphoneAccessStatus());
 ipcMain.handle('mic:request-access', async () => (
   process.platform === 'darwin' ? systemPreferences.askForMediaAccess('microphone') : true
