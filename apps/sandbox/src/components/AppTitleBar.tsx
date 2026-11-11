@@ -26,16 +26,17 @@ export function AppTitleBar({ activeMenuItem, onNavigate, projectTitle, insetFor
       data-app-title-bar
       data-vibrancy={vibrancy || undefined}
       style={{
-        // The bar a step DARKER than the toolbar below; the ACTIVE tab the
-        // primary surface the toolbar is, so it reads as joined to it, as
-        // Figma's does ("try making the bg of the bar darker and the active
-        // tab bg-primary", the same day)
-        // Over the window's vibrancy the bar is a LIGHT TINT of that grey,
-        // so the native glass shows through (2026-11-11, a trial)
+        // The ACTIVE tab is the TOOLBAR'S OWN colour (`background.toolbar`,
+        // "primary bg") so it runs into the toolbar below, Figma's; the BAR
+        // is that colour 10% darker — derived, so it is the darker of the
+        // two in BOTH themes (2026-11-11: surface.elevated / surface.default
+        // matched in light only — in dark the toolbar is #2E353C, and
+        // elevated is the LIGHTER grey). Over the window's vibrancy the bar
+        // is a light tint of it, so the native glass shows through.
         '--app-title-bar-bg': vibrancy
-          ? `color-mix(in srgb, ${theme.background.surface.elevated} 35%, transparent)`
-          : theme.background.surface.elevated,
-        '--app-title-bar-active': theme.background.surface.default,
+          ? `color-mix(in srgb, color-mix(in srgb, ${theme.background.toolbar}, black 10%) 35%, transparent)`
+          : `color-mix(in srgb, ${theme.background.toolbar}, black 10%)`,
+        '--app-title-bar-active': theme.background.toolbar,
         '--app-title-bar-border': theme.border.onSurface,
         paddingLeft: insetForTrafficLights ? TRAFFIC_LIGHTS_PX : 0,
       } as React.CSSProperties}
