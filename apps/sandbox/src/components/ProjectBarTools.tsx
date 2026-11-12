@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dropdown, GhostButton, Icon, Tab, ToolButton, type ToolMeta, type ToolbarOrientation } from '@audacity-ui/components';
+import { Dropdown, GhostButton, Icon, Tab, ToolButton, useTheme, type ToolMeta, type ToolbarOrientation } from '@audacity-ui/components';
 
 type MenuItem = 'home' | 'project' | 'export' | 'debug';
 
@@ -133,9 +133,17 @@ function useTabReorder(ids: string[], onReorder: ((ids: string[]) => void) | und
 export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectTabs, activeProjectId, onSelectProject, onCloseProject, onReorderProjects, onNewProject }: ProjectTabsProps) {
   const inProject = activeMenuItem !== 'home';
   const reorder = useTabReorder(projectTabs?.map((p) => p.id) ?? [], onReorderProjects);
+  const { theme } = useTheme();
+  // The × and the + take the THEME'S colours, the tabs' own (2026-11-12,
+  // "icons in top bar area are black in dark mode": they inherited the
+  // page's black): the active tab's × the primary text, the rest secondary
+  const colours = {
+    '--project-tabs-text': theme.foreground.text.primary,
+    '--project-tabs-text-secondary': theme.foreground.text.secondary,
+  } as React.CSSProperties;
   return (
     // ("Main menu": F6's section walk and the status bar find it by name)
-    <div className="project-tabs" role="group" aria-label="Main menu" data-project-tool="tabs" ref={reorder.containerRef} onClickCapture={reorder.onClickCapture}>
+    <div className="project-tabs" role="group" aria-label="Main menu" data-project-tool="tabs" ref={reorder.containerRef} onClickCapture={reorder.onClickCapture} style={colours}>
       <Tab
         variant="document"
         label="Home"
