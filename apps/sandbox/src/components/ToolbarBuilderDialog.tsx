@@ -23,8 +23,11 @@ import {
  * is inside it changes HERE. Every edit is the layout model's own
  * (`insertTool`, `removeTool`, `moveTool`, `moveBar`, `addEmptyBar`, `insertSeparator`, `renameBar`, `removeBar`, `addToolToNewBar`),
  * the drag gestures' rules, applied AT ONCE so the toolbars behind change as
- * you go; CANCEL (and Escape) put the stored layouts and the hidden list back
- * as they were when the dialog opened; OK keeps them. The project tools, the
+ * you go and STICK however the dialog is left — OK, the ×, Escape, all keep
+ * them (2026-11-12, "how come our changes to the toolbar don't save
+ * automatically now?" — dismissal reverted for a day, which read as the
+ * edits not saving); the CANCEL BUTTON alone puts the stored layouts and
+ * the hidden list back as they were when the dialog opened. The project tools, the
  * tabs and the cog are put back by the layout's guards when missing, so they
  * cannot be removed — only hidden (the tabs and the cog not even that).
  */
@@ -415,7 +418,12 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     <Dialog
       isOpen={isOpen}
       title="Customise toolbars"
-      onClose={cancel}
+      // DISMISSING KEEPS the changes (2026-11-12, "how come our changes
+      // to the toolbar don't save automatically now?"): edits apply
+      // live, so the × and Escape leave them standing — as leaving the
+      // old in-place edit mode did. The CANCEL BUTTON is the one door
+      // that puts the snapshot back.
+      onClose={onClose}
       os={os}
       width={820}
       maximizable

@@ -533,6 +533,20 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     await waitFor(() => expect(barOf('record')).toBe('main'));
     fireEvent.click(getByText('OK'));
     expect(stored()).toBeUndefined();
+
+    // DISMISSING KEEPS (2026-11-12, "how come our changes to the
+    // toolbar don't save automatically now?"): Escape (and the ×) leave
+    // the live-applied edits standing — only the Cancel BUTTON reverts
+    b = await openBuilder();
+    fireEvent.click(b.querySelector('[data-builder-node="t:record"]')!);
+    fireEvent.click(button(b, 'New toolbar'));
+    fireEvent.click(b.querySelector('[data-builder-tool="record"]')!);
+    fireEvent.click(button(b, 'Add'));
+    await waitFor(() => expect(barOf('record')).not.toBe('main'));
+    fireEvent.keyDown(document.body.querySelector('[data-toolbar-builder]')!, { key: 'Escape' });
+    await waitFor(() => expect(document.body.querySelector('[data-toolbar-builder]')).toBeNull());
+    expect(barOf('record')).not.toBe('main'); // kept
+    expect(stored()).toBeTruthy();
   });
 });
 
