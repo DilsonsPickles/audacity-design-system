@@ -119,6 +119,11 @@ export function useContainerClick({
       // (those just move the playhead), but empty space below the tracks
       // is the click-away target: clear the selection here, like Escape.
       dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+      // ...and the clips too (2026-11-12, "clicking in the area underneath
+      // the tracks should deselect all clips")
+      if (tracks.some((t) => t.clips.some((c) => c.selected))) {
+        dispatch({ type: 'DESELECT_ALL_CLIPS' });
+      }
     } else if (clickedTrackIndex !== null) {
       // Call containerProps onClick handler for track clicks (but skip if Shift is held)
       // (it would change selection before our Shift+Click logic runs)
