@@ -506,12 +506,13 @@ export function handlePaste(deps: ClipboardHandlerDeps, at?: PasteAt): void {
 
   dispatch({ type: 'REPLACE_TRACKS_EDIT', payload: updatedTracks });
 
-  // A replaced selection shrinks to what was pasted into it (spec 1a)
+  // Pasting AS A CLIP leaves no time selection behind (2026-11-12,
+  // "we don't need to bring the time selection with it"): the pasted
+  // clips land SELECTED and are the handle. A range destination's
+  // selection was consumed by the replace, so it clears; only a MERGE
+  // paste (tryMergePaste) marks its span as a time selection.
   if (rangeDest && state.timeSelection) {
-    dispatch({
-      type: 'SET_TIME_SELECTION',
-      payload: { ...state.timeSelection, startTime: rangeDest.start, endTime: rangeDest.start + effectiveDur },
-    });
+    dispatch({ type: 'SET_TIME_SELECTION', payload: null });
   }
 
   // Copy audio buffers for pasted clips so they play back correctly

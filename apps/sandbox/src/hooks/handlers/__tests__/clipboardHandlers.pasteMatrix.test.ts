@@ -109,13 +109,13 @@ describe('paste into a RANGE destination (replaces the selection)', () => {
       },
     );
 
-  it('range LARGER than the clipboard, OVERLAPS: selection replaced, the leftover stays a gap, the selection shrinks to the pasted span', () => {
+  it('range LARGER than the clipboard, OVERLAPS: selection replaced, the leftover stays a gap, and NO time selection survives (the pasted clip is the handle)', () => {
     const deps = makeDeps(rangeState(2, 8), { mode: 'overlaps' });
     handlePaste({ ...deps, clipboard: twoSecondClipboard() });
     const tracks = replacePayload(deps.dispatch);
     // Carved [2..8]; pasted [2..4]; the 4..8 gap remains
     expect(spans(tracks[0])).toEqual([[0, 2], [2, 4], [8, 10]]);
-    expect(selectionPayload(deps.dispatch)).toMatchObject({ startTime: 2, endTime: 4 });
+    expect(selectionPayload(deps.dispatch)).toBeNull();
   });
 
   it('range LARGER, PUSHES: later audio pulls back over the excess to keep relative positions', () => {
@@ -124,7 +124,7 @@ describe('paste into a RANGE destination (replaces the selection)', () => {
     const tracks = replacePayload(deps.dispatch);
     // Carved [2..8]; pasted [2..4]; the tail [8..10] pulled back to [4..6]
     expect(spans(tracks[0])).toEqual([[0, 2], [2, 4], [4, 6]]);
-    expect(selectionPayload(deps.dispatch)).toMatchObject({ startTime: 2, endTime: 4 });
+    expect(selectionPayload(deps.dispatch)).toBeNull();
   });
 
   it('range SMALLER than the clipboard: the paste is sized to the selection, no length change around it', () => {
@@ -135,7 +135,7 @@ describe('paste into a RANGE destination (replaces the selection)', () => {
     expect(spans(tracks[0])).toEqual([[0, 2], [2, 3], [3, 10]]);
     const pasted = tracks[0].clips.find((c) => c.start === 2)!;
     expect(pasted.duration).toBe(1);
-    expect(selectionPayload(deps.dispatch)).toMatchObject({ startTime: 2, endTime: 3 });
+    expect(selectionPayload(deps.dispatch)).toBeNull();
   });
 
   it('an explicit PasteAt point ignores the range (the canvas menu only opens with no selection)', () => {
