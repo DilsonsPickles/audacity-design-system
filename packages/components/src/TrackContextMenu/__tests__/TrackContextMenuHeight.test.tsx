@@ -23,7 +23,8 @@ describe('track menu — this track\'s height (2026-10-22, the design brief\'s l
     fireEvent.click(byLabel('Track height')); // a click on the parent opens it
     expect(items().slice(1).map((i) => i.querySelector('.context-menu-item-label')?.textContent)).toEqual(['Collapse', 'Expand', 'Fit to height']);
     // Each wears the chord that does the same to the track you are on
-    expect(items().slice(1).map((i) => i.querySelector('.context-menu-item-shortcut')?.textContent)).toEqual(['⌥⌘C', '⌥⌘X', '⌥⌘0']);
+    // Fit is ⌥⌘F since 2026-11-12 (the blow-up); ⌥⌘0 is Reset's now
+    expect(items().slice(1).map((i) => i.querySelector('.context-menu-item-shortcut')?.textContent)).toEqual(['⌥⌘C', '⌥⌘X', '⌥⌘F']);
     fireEvent.click(byLabel('Collapse'));
     expect(onCollapseTrack).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
