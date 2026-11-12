@@ -65,6 +65,31 @@ html.pan-active * {
    the layout, so the row stays 44 */
 .project-tabs { display: flex; align-items: stretch; gap: 0; height: 44px; margin: -8px 0; }
 .project-tabs .tab { height: 100%; box-sizing: border-box; }
+/* ONE TAB PER OPEN PROJECT (2026-11-12): the tab shrinks to share the bar
+   (its title ellipsised), the close × sits in its right padding — shown on
+   hover, always on the active tab — and a + opens a new project */
+.project-tabs { min-width: 0; }
+.project-tab { position: relative; display: flex; align-items: stretch; min-width: 96px; max-width: 240px; flex: 0 1 auto; }
+.project-tab .tab { width: 100%; min-width: 0; padding-right: 36px; justify-content: flex-start; }
+.project-tab .tab__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.project-tab__close {
+  position: absolute; top: 50%; right: 9px; transform: translateY(-50%);
+  width: 20px; height: 20px; padding: 0; border: 0; border-radius: 3px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: inherit; cursor: pointer; opacity: 0;
+  transition: opacity 0.06s;
+}
+.project-tab:hover .project-tab__close,
+.project-tab--active .project-tab__close,
+.project-tab__close:focus-visible { opacity: 1; }
+.project-tab__close:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+.project-tab .tab:not(.tab--active) + .project-tab__close { color: var(--project-tab-close-inactive, inherit); }
+.project-tabs__new {
+  align-self: center; flex-shrink: 0; width: 28px; height: 28px; margin: 0 6px; padding: 0;
+  border: 0; border-radius: 4px; background: transparent; color: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.project-tabs__new:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
 
 /* THE APP'S OWN TITLE BAR (2026-11-11) — AppTitleBar.tsx */
 .app-title-bar {
@@ -81,6 +106,7 @@ html.pan-active * {
 .app-title-bar .project-tabs {
   height: auto;
   margin: 0;
+  flex: 0 1 auto;
   -webkit-app-region: no-drag;
 }
 /* The active tab is the primary surface, and covers the bar's bottom

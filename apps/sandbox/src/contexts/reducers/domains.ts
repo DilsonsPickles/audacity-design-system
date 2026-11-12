@@ -11,7 +11,7 @@ export const DOMAINS: Domain[] = [
 
 export const ACTION_DOMAIN: Record<TracksAction['type'], Domain> = {
   // history
-  RESET_STATE: 'history', UNDO: 'history', REDO: 'history',
+  RESET_STATE: 'history', REPLACE_STATE: 'history', UNDO: 'history', REDO: 'history',
   BEGIN_UNDO_GESTURE: 'history', END_UNDO_GESTURE: 'history', CANCEL_UNDO_GESTURE: 'history',
 
   // tracks

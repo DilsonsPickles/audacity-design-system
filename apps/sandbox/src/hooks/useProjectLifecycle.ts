@@ -12,8 +12,6 @@ import { loadCloudProjectAsStored } from '../utils/cloudProjects';
 export type CloudLoadProgress = { progress: number; message: string } | null;
 
 export interface UseProjectLifecycleOptions {
-  /** In Electron, "New Project" opens a fresh window instead of replacing the current one. */
-  isElectron: boolean;
   /** From useProjectManagement() — creates the blank IndexedDB row + resets tracks state. */
   createNewProject: () => Promise<string>;
   audioManagerRef: React.MutableRefObject<AudioPlaybackManager>;
@@ -48,7 +46,6 @@ export interface UseProjectLifecycleReturn {
  */
 export function useProjectLifecycle(options: UseProjectLifecycleOptions): UseProjectLifecycleReturn {
   const {
-    isElectron,
     createNewProject,
     audioManagerRef,
     museHubSignedIn,
@@ -69,20 +66,9 @@ export function useProjectLifecycle(options: UseProjectLifecycleOptions): UsePro
   const dispatch = useTracksDispatch();
 
   const handleNewProject = async () => {
-    // In Electron, "New Project" opens a fresh window instead of
-    // replacing the current one — mirrors how desktop DAWs treat
-    // each project as its own document window. The new window
-    // boots into the home tab; the user can then create/open a
-    // project there.
-    if (isElectron) {
-      const api = (window as unknown as {
-        electronShell?: { openNewWindow: () => void };
-      }).electronShell;
-      if (api) {
-        api.openNewWindow();
-        return;
-      }
-    }
+    // NEW PROJECT OPENS A TAB (2026-11-12, the project tabs, Figma's): in
+    // the desktop app too — it opened a fresh window until then. The project
+    // left behind keeps its tab and its state (useProjectTabs).
     await createNewProject();
     // Reload projects list
     const projects = await getProjects();

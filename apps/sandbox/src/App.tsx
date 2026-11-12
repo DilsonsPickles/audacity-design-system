@@ -104,6 +104,7 @@ import { PlaybackProvider } from './contexts/PlaybackContext';
 import { LoopRegionProvider } from './contexts/LoopRegionContext';
 import { cloudSummaryToStored, type CloudAudioFile } from './utils/cloudProjects';
 import { useProjectLifecycle } from './hooks/useProjectLifecycle';
+import { useProjectTabs } from './hooks/useProjectTabs';
 import { useMenuDefinitions } from './hooks/useMenuDefinitions';
 import { useElectronMenuBridge } from './hooks/useElectronMenuBridge';
 
@@ -1012,7 +1013,6 @@ function CanvasDemoContent() {
 
   // HomeTab's new/open/delete project handlers
   const { handleNewProject, handleOpenProject, handleDeleteProject } = useProjectLifecycle({
-    isElectron: IS_ELECTRON,
     createNewProject,
     audioManagerRef,
     museHubSignedIn,
@@ -1029,6 +1029,65 @@ function CanvasDemoContent() {
     adieuCloudProjects,
     adieuRefreshProjects,
   });
+
+  // PROJECT TABS (2026-11-12, "two projects open using different tabs in
+  // the same electron window? Like Figma!"): every opened project gets a
+  // tab that keeps its state; Home's open switches to a project already open
+  const projectTabs = useProjectTabs({
+    state,
+    dispatch,
+    currentProjectId,
+    setCurrentProjectId,
+    setIsCloudProject,
+    setActiveMenuItem,
+    projects: indexedDBProjects,
+    openProject: handleOpenProject,
+    stopPlayback: () => { void handleStopAll(); },
+  });
+  const openProjectInTab = (projectId: string) => {
+    if (projectTabs.openProjectIds.includes(projectId)) {
+      projectTabs.switchToProject(projectId);
+      return Promise.resolve();
+    }
+    if (state.isRecording) {
+      toast.info('Recording in progress', 'Stop the recording before opening another project');
+      return Promise.resolve();
+    }
+    void handleStopAll();
+    return handleOpenProject(projectId);
+  };
+  // One new project at a time: a double-click on Home's New project card
+  // fired two creates, and so made two tabs
+  const creatingProjectRef = React.useRef(false);
+  const newProjectInTab = async () => {
+    if (creatingProjectRef.current) return;
+    if (state.isRecording) {
+      toast.info('Recording in progress', 'Stop the recording before starting a new project');
+      return;
+    }
+    creatingProjectRef.current = true;
+    try {
+      void handleStopAll();
+      await handleNewProject();
+    } finally {
+      creatingProjectRef.current = false;
+    }
+  };
+
+  // ⌘N / Ctrl+N: a new project in a new tab (2026-11-12) — a document
+  // listener bound once, reading the live handler through a ref
+  const newProjectInTabRef = React.useRef(newProjectInTab);
+  newProjectInTabRef.current = newProjectInTab;
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || e.code !== 'KeyN') return;
+      if (document.querySelector('[data-owns-keyboard]')) return;
+      e.preventDefault();
+      void newProjectInTabRef.current();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   // When Electron opens a fresh window for "New Project", it appends
   // ?newProject=1 to the URL. Detect it on boot, create a blank project,
@@ -1138,6 +1197,8 @@ function CanvasDemoContent() {
     onFitSelectedTracksToHeight: handleFitSelectedTracksToHeight,
     onZoomIn: zoomIn,
     onZoomOut: zoomOut,
+    onNewProject: () => { void newProjectInTab(); },
+    onCloseProject: currentProjectId ? () => projectTabs.closeProject(currentProjectId) : undefined,
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu
@@ -1203,6 +1264,14 @@ function CanvasDemoContent() {
     activeMenuItem,
     onNavigate: (item) => { void navigateProject(item); },
     projectTitle,
+    projectTabs: projectTabs.openProjectIds.map((id) => ({
+      id,
+      title: indexedDBProjects.find((p) => p.id === id)?.title || 'Untitled project',
+    })),
+    activeProjectId: currentProjectId,
+    onSelectProject: projectTabs.switchToProject,
+    onCloseProject: projectTabs.closeProject,
+    onNewProject: () => { void newProjectInTab(); },
     tabsInTitleBar: customTitleBar,
     showMixer,
     onToggleMixer: () => setMixerPanelOpen((prev) => !prev),
@@ -1462,8 +1531,8 @@ function CanvasDemoContent() {
                 'noopener,noreferrer',
               );
             }}
-            onNewProject={handleNewProject}
-            onOpenProject={handleOpenProject}
+            onNewProject={newProjectInTab}
+            onOpenProject={openProjectInTab}
             onOpenOther={handleOpenFromComputer}
             onDeleteProject={handleDeleteProject}
             currentProjectId={currentProjectId}

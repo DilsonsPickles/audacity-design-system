@@ -23,7 +23,7 @@ export const TRAFFIC_LIGHTS_PX = 76;
 // level controls; both honour Customise toolbar's hidden list, and both are
 // out of the window's drag region so they take clicks.
 export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: { deps: ProjectBarToolsDeps; insetForTrafficLights: boolean; vibrancy?: boolean }) {
-  const { activeMenuItem, onNavigate, projectTitle } = deps;
+  const { activeMenuItem } = deps;
   // THE WORKSPACE IS MUSESCORE'S "Workspace: Default" (2026-11-11, "can we
   // do workspace: Default like MSS does?" → in the title bar, same spot):
   // ONE flat button — the workspace icon and "Workspace: <name>" — opening
@@ -57,7 +57,7 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
         paddingLeft: insetForTrafficLights ? TRAFFIC_LIGHTS_PX : 0,
       } as React.CSSProperties}
     >
-      <ProjectTabs activeMenuItem={activeMenuItem} onNavigate={onNavigate} projectTitle={projectTitle} />
+      <ProjectTabs {...deps} />
       {activeMenuItem !== 'home' && (
         <div className="app-title-bar__end" data-app-title-bar-end>
           {/* AUDIO SETUP in the same style (the same day, "can we also try

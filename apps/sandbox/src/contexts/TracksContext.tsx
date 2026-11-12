@@ -312,6 +312,9 @@ export interface TracksState {
 // Action types
 export type TracksAction =
   | { type: 'RESET_STATE' }
+  /** A whole project's state swapped in — the project tabs (2026-11-12):
+   *  each open tab keeps its project's state, undo history included */
+  | { type: 'REPLACE_STATE'; payload: TracksState }
   | { type: 'UNDO' }
   | { type: 'REDO' }
   | { type: 'BEGIN_UNDO_GESTURE' }
@@ -597,6 +600,7 @@ function keepTrackView(restored: Track[], current: Track[]): Track[] {
 
 // Reducer
 export function tracksReducer(state: TracksState, action: TracksAction): TracksState {
+  if (action.type === 'REPLACE_STATE') return action.payload;
   // UNDO / REDO swap the `tracks` array against the past/future stacks
   // without touching the rest of the state (selection, focus, playhead
   // stay where the user left them).

@@ -8,6 +8,9 @@ export interface MenuDefinitionDeps {
   onSyncToast: () => void;
   onShowSaveProjectModal: () => void;
   onSaveToComputer: () => void;
+  /** File › New project ⌘N / Close project — the project tabs (2026-11-12) */
+  onNewProject?: () => void;
+  onCloseProject?: () => void;
 
   // Edit menu deps
   onOpenLabelEditor: () => void;
@@ -73,6 +76,10 @@ export interface MenuDefinitionDeps {
 
 export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, MenuItem[]> {
   const fileMenuItems: MenuItem[] = [
+    // THE PROJECT TABS (2026-11-12): a new project opens in a new tab;
+    // Close project closes the tab in front (⌘W is Close track, so none)
+    ...(deps.onNewProject ? [{ label: 'New project', shortcut: 'Ctrl+N', onClick: deps.onNewProject }] : []),
+    ...(deps.onCloseProject ? [{ label: 'Close project', onClick: deps.onCloseProject }] : []),
     {
       label: 'Import',
       // Cmd+I now splits the focused clip at the playhead — Import is

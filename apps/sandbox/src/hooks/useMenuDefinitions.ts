@@ -52,6 +52,9 @@ export interface UseMenuDefinitionsOptions {
   onFitSelectedTracksToHeight: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
+  /** File › New project / Close project (2026-11-12) */
+  onNewProject?: () => void;
+  onCloseProject?: () => void;
 }
 
 /**
@@ -97,6 +100,8 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onFitSelectedTracksToHeight,
     onZoomIn,
     onZoomOut,
+    onNewProject,
+    onCloseProject,
   } = options;
 
   const dispatch = useTracksDispatch();
@@ -169,6 +174,8 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onSyncToast: handleSaveCloudProject,
     onShowSaveProjectModal: () => setIsSaveProjectModalOpen(true),
     onSaveToComputer: handleSaveToComputer,
+    onNewProject,
+    onCloseProject,
     onOpenLabelEditor: () => setIsLabelEditorOpen(true),
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
     onOpenGoTo: () => setIsGoToOpen(true),
