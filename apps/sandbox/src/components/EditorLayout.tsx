@@ -231,7 +231,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   const { trackSelectionMode } = useEditingBehaviorPrefs();
   // Label text size — surfaced in the label track's context menu (global
   // preference; all label tracks share it).
-  const { labelTextSizePt, updatePreference: updateAppearancePreference } = useAppearancePrefs();
+  const { labelTextSizePt, trackPanelWidth, updatePreference: updateAppearancePreference } = useAppearancePrefs();
   const { operatingSystem } = useGeneralPrefs();
   const { setIsSpectrogramSettingsOpen, setIsPluginManagerOpen } = useDialogs();
   const {
@@ -874,6 +874,14 @@ export function EditorLayout(props: EditorLayoutProps) {
       {activeMenuItem !== 'export' && (
         <TrackControlSidePanel
           os={operatingSystem}
+          // Drag the panel's right edge to resize it; the committed
+          // width persists (2026-11-10).
+          resizable
+          width={trackPanelWidth}
+          defaultWidth={280}
+          minWidth={200}
+          maxWidth={480}
+          onResizeEnd={(w) => updateAppearancePreference('trackPanelWidth', w)}
           trackHeights={state.tracks.map((_t, i) => effectiveTrackHeight(state.tracks, i, 114))}
           dragPreview={trackDragPreview}
           // While a reorder drag is live the panel draws the PREVIEWED

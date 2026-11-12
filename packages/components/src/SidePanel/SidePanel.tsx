@@ -43,9 +43,21 @@ export interface SidePanelProps {
   style?: React.CSSProperties;
 
   /**
-   * Called when panel is resized
+   * Called continuously while the panel is dragged (live width)
    */
   onResize?: (width: number) => void;
+
+  /**
+   * Called once when a resize drag ends (the committed width) — the
+   * place to persist, so dragging doesn't thrash storage per pixel.
+   */
+  onResizeEnd?: (width: number) => void;
+
+  /**
+   * Double-clicking the resize handle restores this width (the app's
+   * resize-edge convention). Omit to disable the reset.
+   */
+  defaultWidth?: number;
 }
 
 export const SidePanel: React.FC<SidePanelProps> = ({
@@ -58,15 +70,37 @@ export const SidePanel: React.FC<SidePanelProps> = ({
   className = '',
   style,
   onResize,
+  onResizeEnd,
+  defaultWidth,
 }) => {
   const [currentWidth, setCurrentWidth] = React.useState(width);
   const [isResizing, setIsResizing] = React.useState(false);
   const panelRef = React.useRef<HTMLDivElement>(null);
+  const latestWidthRef = React.useRef(currentWidth);
+
+  // Adopt an externally-changed width (e.g. a persisted value loading,
+  // or a reset) while we're not mid-drag, so the panel stays controlled.
+  React.useEffect(() => {
+    if (!isResizing) setCurrentWidth(width);
+  }, [width, isResizing]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!resizable) return;
     e.preventDefault();
     setIsResizing(true);
+  };
+
+  // Double-click the handle → back to the default width (the app's
+  // resize-edge reset convention).
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (!resizable || defaultWidth === undefined) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(false);
+    latestWidthRef.current = defaultWidth;
+    setCurrentWidth(defaultWidth);
+    onResize?.(defaultWidth);
+    onResizeEnd?.(defaultWidth);
   };
 
   React.useEffect(() => {
@@ -87,12 +121,14 @@ export const SidePanel: React.FC<SidePanelProps> = ({
       // Clamp width between min and max
       newWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
 
+      latestWidthRef.current = newWidth;
       setCurrentWidth(newWidth);
       onResize?.(newWidth);
     };
 
     const handleMouseUp = () => {
       setIsResizing(false);
+      onResizeEnd?.(latestWidthRef.current);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -102,7 +138,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, position, minWidth, maxWidth, onResize]);
+  }, [isResizing, position, minWidth, maxWidth, onResize, onResizeEnd]);
 
   return (
     <div
@@ -118,6 +154,8 @@ export const SidePanel: React.FC<SidePanelProps> = ({
         <div
           className={`side-panel__resize-handle side-panel__resize-handle--${position}`}
           onMouseDown={handleMouseDown}
+          onDoubleClick={handleDoubleClick}
+          title={defaultWidth !== undefined ? 'Drag to resize · double-click to reset' : undefined}
         />
       )}
     </div>

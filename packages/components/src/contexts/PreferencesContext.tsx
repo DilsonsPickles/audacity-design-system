@@ -22,6 +22,9 @@ export interface PreferencesState {
    *  10pt default reaches profiles whose persisted blob froze the old
    *  9pt default; a size the user picks NOW persists under this key. */
   labelTextSizePt: number;
+  /** Width of the track-header side panel in px, set by dragging its
+   *  right edge (2026-11-10). Default 280. */
+  trackPanelWidth: number;
 
   // Audio Settings
   audioHost: string;
@@ -112,6 +115,7 @@ const defaultPreferences: PreferencesState = {
   theme: 'light',
   clipStyle: 'colourful',
   labelTextSizePt: 9,
+  trackPanelWidth: 280,
 
   // Audio Settings
   audioHost: 'core-audio',
@@ -205,6 +209,7 @@ export interface AppearancePrefsValue {
   theme: PreferencesState['theme'];
   clipStyle: PreferencesState['clipStyle'];
   labelTextSizePt: PreferencesState['labelTextSizePt'];
+  trackPanelWidth: PreferencesState['trackPanelWidth'];
   updatePreference: PreferencesContextValue['updatePreference'];
 }
 
@@ -276,9 +281,10 @@ export function PreferencesProvider({ children }: PreferencesProviderProps) {
       theme: preferences.theme,
       clipStyle: preferences.clipStyle,
       labelTextSizePt: preferences.labelTextSizePt,
+      trackPanelWidth: preferences.trackPanelWidth,
       updatePreference,
     }),
-    [preferences.theme, preferences.clipStyle, preferences.labelTextSizePt, updatePreference]
+    [preferences.theme, preferences.clipStyle, preferences.labelTextSizePt, preferences.trackPanelWidth, updatePreference]
   );
 
   const editingBehaviorValue = useMemo<EditingBehaviorPrefsValue>(
