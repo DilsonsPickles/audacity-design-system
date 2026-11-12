@@ -47,7 +47,7 @@ export interface KeyboardTrimResult {
 export function computeKeyboardTrim(args: KeyboardTrimArgs): KeyboardTrimResult | null {
   const { clip, edge, deltaSeconds } = args;
 
-  const stretch = (clip as any).stretchFactor ?? 1; // justified: stretchFactor is audio-only, not on Clip/MidiClip type
+  const stretch = (clip as Clip).stretchFactor ?? 1; // audio-only; a MidiClip never carries one
   const currentTrimStart = clip.trimStart || 0;
   const currentDuration = clip.duration;
   const currentStart = clip.start;
@@ -225,7 +225,7 @@ export function computeKeyboardStretch(args: KeyboardStretchArgs): KeyboardStret
 
   const currentDuration = clip.duration;
   const currentStart = clip.start;
-  const currentStretch = (clip as any).stretchFactor ?? 1; // justified: stretchFactor not on Clip type
+  const currentStretch = (clip as Clip).stretchFactor ?? 1; // audio-only; a MidiClip never carries one
   const newDuration = Math.max(MIN_CLIP_DURATION, currentDuration - deltaSeconds);
   const ratio = newDuration / currentDuration;
   const newStretchFactor = Math.max(

@@ -32,5 +32,20 @@ export default defineConfig({
     // at exactly that line (2026-10-25). The budget is the runner's, not
     // a hidden bug's: a test that hangs still fails, later.
     testTimeout: 30000,
+    // HEAP HISTORY (2026-11-12): the integration file used to OOM the
+    // fork worker ("Ineffective mark-compacts near heap limit",
+    // surfacing as nondeterministic test timeouts) and was briefly
+    // mitigated with NODE_OPTIONS=--max-old-space-size=8192 on the test
+    // script. The retention was fake-indexeddb's: its Database keeps
+    // every finished transaction (write rollback logs and read results
+    // included), so each auto-saved project — full waveform arrays —
+    // was retained for the life of the worker, ~5.8GB by test 58. Fixed
+    // at the source: renderApp()/renderCanvas() purge fake-indexeddb
+    // between tests (purgeFakeIndexedDB() in integrationHarness.tsx);
+    // per-test heap is flat (~175MB steady) and the heap raise is gone.
+    // If OOM symptoms ever return, start at that purge and the
+    // harness's comment on it. (Historical footnote: a
+    // poolOptions.forks.execArgv here was verified NOT to reach the
+    // workers on vitest 4, while NODE_OPTIONS does.)
   },
 });

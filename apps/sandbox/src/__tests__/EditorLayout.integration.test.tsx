@@ -166,7 +166,12 @@ afterEach(cleanup);
 // occasionally trip on slower/loaded machines despite every test settling
 // correctly; give the whole file real headroom rather than fight it
 // per-test.
-vi.setConfig({ testTimeout: 20000 });
+// (It was briefly 60 s while the file's fake-indexeddb retention made the
+// GC grind late in the file — CI measured a 32 s test on 2026-11-12. That
+// retention is fixed: renderApp() purges fake-indexeddb between tests —
+// see purgeFakeIndexedDB() in integrationHarness.tsx — and per-test heap
+// is flat again, so the budget is back to the vitest config's 30 s.)
+vi.setConfig({ testTimeout: 30000 });
 
 // ---------------------------------------------------------------------------
 // Shared helpers

@@ -1967,7 +1967,14 @@ function CanvasDemoContent() {
                 if (trackIndex === undefined) return;
                 dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: time });
                 dispatch({ type: 'SET_FOCUSED_TRACK', payload: trackIndex });
-                handlePaste({ state, dispatch, clipboard, setClipboard, audioManagerRef }, { time, trackIndex });
+                handlePaste({
+                  state, dispatch, clipboard, setClipboard, audioManagerRef,
+                  pastePrefs: {
+                    mode: preferences.pastingBehavior,
+                    pushScope: preferences.pastingPushesBehavior,
+                    asNewClip: preferences.alwaysPasteAsNewClip,
+                  },
+                }, { time, trackIndex });
               }}
             />
             <ContextMenuItem isDivider label="" />

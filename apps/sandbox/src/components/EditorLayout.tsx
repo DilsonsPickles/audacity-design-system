@@ -874,14 +874,13 @@ export function EditorLayout(props: EditorLayoutProps) {
       {activeMenuItem !== 'export' && (
         <TrackControlSidePanel
           os={operatingSystem}
-          // THE TRACK HEADER PANEL RESIZES (2026-11-11, "track header panel
-          // should be resizable"): its right edge drags it between 220 and
-          // 480px; the width is a preference, kept across views and launches
+          // Drag the panel's right edge to resize it; the committed
+          // width persists (2026-11-10).
           resizable
           width={trackPanelWidth}
-          minWidth={220}
+          defaultWidth={280}
+          minWidth={200}
           maxWidth={480}
-          // (stored once, at the release — not on every move of the drag)
           onResizeEnd={(w) => updateAppearancePreference('trackPanelWidth', Math.round(w))}
           trackHeights={state.tracks.map((_t, i) => effectiveTrackHeight(state.tracks, i, 114))}
           dragPreview={trackDragPreview}

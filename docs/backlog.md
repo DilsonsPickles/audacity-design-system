@@ -4,6 +4,9 @@ Self-contained work items discovered during the agent-readiness campaigns (2026-
 
 ## Bugs (confirmed, preserved-not-fixed during refactors)
 
+### FIXED 2026-11-12 — EditorLayout.integration.test.tsx exhausted the worker heap (OOM)
+The retention was fake-indexeddb's, not the app's: its `Database` object keeps every finished transaction for the life of the worker (`Database.transactions` is push-only), each write transaction's `_rollbackLog` closure captures a deep copy of the stored value, and each read transaction's requests keep their structured-cloned results. The app's 600 ms-debounced auto-save (`useProjectAutoSave`) writes the FULL track payload — waveform arrays of ~170k numbers per clip — so every test parked ~10–15 MB there forever; the stored projects also accumulated across tests (one global factory per file) and each later `renderApp()` loaded ALL of them into App state (`getProjects` → `setIndexedDBProjects`), which is what made the growth superlinear (~5.8 GB retained by test 58, measured post-GC). Heap-snapshot retainer paths pinned both; no app-side leak was found — leaked-listener instrumentation came back clean, and FiberNode counts were flat across renders. Fixed by `purgeFakeIndexedDB()` in `apps/sandbox/src/__tests__/integrationHarness.tsx`, called from `renderApp()`/`renderCanvas()` beside `localStorage.clear()`: per-test heap is now flat (~175 MB steady, autosave firing), the `NODE_OPTIONS=--max-old-space-size=8192` mitigation is removed from the sandbox test script, and the file's `testTimeout` is back to 30 s. The purge reaches into fake-indexeddb@6.2.5 internals (field names documented at the function) — revisit it if fake-indexeddb is bumped. Delete this entry once it has survived a few CI runs.
+
 ### Cursor-time readout wrong at non-default zoom
 `apps/sandbox/src/components/EditorLayout.tsx` — the canvas scroll-container's `onMouseMove` (locate by the `/100` divisor, near `setMouseCursorPosition`) computes mouse cursor time with a hard-coded 100 px/s divisor; every other site uses the live `pixelsPerSecond`. The status-bar cursor time is wrong at any other zoom. Verify by zooming and comparing the readout against the ruler; fix to use `pixelsPerSecond`; add a covering assertion via the integration harness (`apps/sandbox/src/__tests__/`).
 
@@ -250,9 +253,10 @@ ungroup). Deliberately deferred:
 ## Minor (batch into related work, don't do standalone)
 
 
-- `stretchFactor` onto the sandbox `Clip` type — would remove 2 justified `as any` casts in `utils/clipKeyboardEdit.ts` (plain `as Clip` does NOT typecheck today).
+- ~~`stretchFactor` onto the sandbox `Clip` type~~ — DONE 2026-11-12 with the paste-merge work; the 2 justified `as any` casts in `utils/clipKeyboardEdit.ts` are plain `as Clip` now.
 - Relocate `CanvasProps` out of Canvas.tsx (type-only import cycle with `useCanvasPointerHandlers`).
 - `components/editor/LoopRegionStalks.tsx` — inactive-color ternary branch is unreachable (both call sites gate on enabled).
 - `components/editor/PunchPointIndicator.tsx` — hard-coded `#FF2672`; fold into any design-token sweep.
 - GitHub workflows pin `node-version: '20'` (deprecated on runners, forced to 24) — bump repo-wide (test/deploy/release) in one pass.
 - `resetPreferences` + full-blob `usePreferences` context value are recreated per render (pre-existing; matters only if modal re-renders ever get audited).
+- `Canvas.integration.test.tsx` triple-click test is load-flaky: the click-chain counts clicks inside a time window, so a starved machine (full suite + other work) can space the test's three clicks past it and the "selects all clips on the track" assertion fails. Seen 2026-11-12 (passed in isolation immediately after). If it bites CI, drive the chain with fake timers or widen the window under test.

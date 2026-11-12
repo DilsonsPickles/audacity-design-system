@@ -79,8 +79,17 @@ export interface TrackControlSidePanelProps {
    */
   resizable?: boolean;
 
-  /** The panel's width, px (the starting width when resizable) */
+  /**
+   * Current width in px (controlled; e.g. a persisted value). Defaults
+   * to 280 — the panel's fixed width when `resizable` is off.
+   */
   width?: number;
+
+  /**
+   * Double-clicking the resize edge restores this width. Omit to disable.
+   */
+  defaultWidth?: number;
+
   /**
    * Minimum width when resizing (px)
    */
@@ -102,10 +111,13 @@ export interface TrackControlSidePanelProps {
   focusedTrackIndex?: number | null;
 
   /**
-   * Called when panel is resized
+   * Called continuously while the panel is dragged (live width)
    */
   onResize?: (width: number) => void;
-  /** The width at the end of a resize drag (2026-11-11) */
+
+  /**
+   * Called once when the resize drag ends (committed width — persist here)
+   */
   onResizeEnd?: (width: number) => void;
 
   /**
@@ -302,6 +314,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
   groupMenu,
   resizable = false,
   width = 280,
+  defaultWidth,
   minWidth = 280,
   maxWidth = 280,
   trackHeights = [],
@@ -733,6 +746,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
       maxWidth={maxWidth}
       onResize={onResize}
       onResizeEnd={onResizeEnd}
+      defaultWidth={defaultWidth}
       className={`track-control-side-panel ${className}`}
       style={style}
     >
