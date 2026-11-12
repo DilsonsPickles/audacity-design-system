@@ -180,7 +180,10 @@ describe('alwaysPasteAsNewClip OFF — the paste merges INTO the recipient clip'
     expect(spans(tracks[0])).toEqual([[1, 9], [10, 11]]); // still two clips, same geometry
     const merged = tracks[0].clips.find((c) => c.start === 1)!;
     expect(merged.id).not.toBe(10); // a fresh id — undo gets the old clip back
-    expect(merged.selected).toBe(true);
+    // A merge paste selects NO clip; the pasted span becomes the time
+    // selection instead (2026-11-12 feedback)
+    expect(merged.selected).toBe(false);
+    expect(selectionPayload(deps.dispatch)).toMatchObject({ startTime: 4, endTime: 6, tracks: [0] });
     expect(merged.trimStart).toBe(0);
     expect(merged.fullDuration).toBe(8);
     // Samples: [0..3 s) of the clip read 1, [3..5) read −1 (the paste), [5..8) read 1
@@ -199,6 +202,9 @@ describe('alwaysPasteAsNewClip OFF — the paste merges INTO the recipient clip'
     expect(spans(tracks[0])).toEqual([[1, 11], [12, 13]]); // grown clip + pushed neighbour
     const merged = tracks[0].clips.find((c) => c.start === 1)!;
     expect(merged.duration).toBe(10);
+    expect(merged.selected).toBe(false);
+    // The inserted span is the selection: [4..6]
+    expect(selectionPayload(deps.dispatch)).toMatchObject({ startTime: 4, endTime: 6, tracks: [0] });
     const wf = merged.waveform!;
     expect(wf[20]).toBe(1);   // before the insert
     expect(wf[40]).toBe(-1);  // the inserted 2 s

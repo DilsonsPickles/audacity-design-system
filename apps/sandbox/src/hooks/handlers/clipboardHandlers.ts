@@ -610,20 +610,29 @@ function tryMergePaste(args: MergePasteArgs): boolean {
 
   let maxClipId = 0;
   working.forEach((t) => t.clips.forEach((c) => { maxClipId = Math.max(maxClipId, c.id); }));
-  const mergedClip: Clip = { ...merged.clip, id: maxClipId + 1, start: merged.start, selected: true };
+  // A merge paste selects NO clip (2026-11-12, "I don't expect the
+  // target clip to become selected") — the pasted span is announced as
+  // a TIME RANGE SELECTION instead, below.
+  const mergedClip: Clip = { ...merged.clip, id: maxClipId + 1, start: merged.start, selected: false };
 
   const updatedTracks = dissolveDegenerateGroups(
     working.map((track, i) => (i === destIndex ? { ...track, clips: [...track.clips, mergedClip] } : track))
   );
   dispatch({ type: 'REPLACE_TRACKS_EDIT', payload: updatedTracks });
 
-  // A replaced selection shrinks to what was pasted into it
-  if (rangeDest && state.timeSelection) {
-    dispatch({
-      type: 'SET_TIME_SELECTION',
-      payload: { ...state.timeSelection, startTime: rangeDest.start, endTime: rangeDest.start + effectiveDur },
-    });
-  }
+  // The pasted content's span becomes the time selection, on the
+  // destination track (a range destination keeps its scope and shrinks
+  // to what was pasted into it) — so what just landed is marked, and
+  // the next edit can act on exactly it.
+  dispatch({
+    type: 'SET_TIME_SELECTION',
+    payload: {
+      ...(rangeDest ? state.timeSelection : null),
+      startTime: anchor,
+      endTime: anchor + effectiveDur,
+      tracks: rangeDest && state.timeSelection?.tracks ? state.timeSelection.tracks : [destIndex],
+    },
+  });
 
   // Recompose the audio; a missing source buffer (the debug placeholder
   // clips carry none) leaves the merge visual-only
