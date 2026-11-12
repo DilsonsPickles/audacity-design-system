@@ -11,7 +11,7 @@ afterEach(() => { cleanup(); localStorage.clear(); });
 function setup(opts: { restoreOnLaunch?: boolean; stored?: string[] } = {}) {
   const openProject = vi.fn(async () => {});
   let view: ProjectView = { loop: { enabled: false, start: null, end: null }, pixelsPerSecond: 100, scrollLeft: 0, scrollTop: 0 };
-  const restoreView = vi.fn((v: ProjectView | null) => { view = v ?? { ...view, scrollLeft: 0, scrollTop: 0 }; });
+  const restoreView = vi.fn((v: ProjectView | null) => { view = v ?? { loop: { enabled: false, start: null, end: null }, pixelsPerSecond: 100, scrollLeft: 0, scrollTop: 0 }; });
   const setView = (v: Partial<ProjectView>) => { view = { ...view, ...v }; };
   const stopPlayback = vi.fn();
   const setActiveMenuItem = vi.fn();
@@ -82,6 +82,20 @@ describe('useProjectTabs — view, order, relaunch (2026-11-12)', () => {
     expect(getView().pixelsPerSecond).toBe(50);
     act(() => result.current.tabs.switchToProject('b'));
     expect(getView().pixelsPerSecond).toBe(250);
+  });
+
+  it('a project opened from Home or the + starts from a clean view, and the one left keeps its loop', () => {
+    const { result, open, setView, getView } = setup();
+    open('a', [track('A1')]);
+    setView({ loop: { enabled: true, start: 1, end: 3 }, pixelsPerSecond: 300 });
+    act(() => result.current.tabs.parkView());
+    expect(getView().loop.enabled).toBe(false);
+    expect(getView().pixelsPerSecond).toBe(100);
+    open('b', [track('B1')]);
+    act(() => result.current.tabs.switchToProject('a'));
+    expect(getView().loop).toEqual({ enabled: true, start: 1, end: 3 });
+    act(() => result.current.tabs.switchToProject('b'));
+    expect(getView().loop.enabled).toBe(false);
   });
 
   it('reorders the tabs, and ignores an order that is not a permutation', () => {

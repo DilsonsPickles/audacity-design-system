@@ -57,7 +57,8 @@ export interface UseProjectTabsDeps {
   inProject: boolean;
   /** The window's view of the project in front, read as its tab is left… */
   captureView: () => ProjectView;
-  /** …and put back when it is returned to; a tab never seen gets null */
+  /** …and put back when it is returned to; a tab never seen gets null —
+   *  the clean view: loop off, the default zoom, scrolled to the start */
   restoreView: (view: ProjectView | null) => void;
   /** Lists the stored projects — the restore checks the saved tabs still exist */
   listProjects: () => Promise<StoredProject[]>;
@@ -216,11 +217,15 @@ export function useProjectTabs(deps: UseProjectTabsDeps): UseProjectTabsReturn {
     });
   };
 
-  // Opening a project from Home (not a tab switch) leaves the window's view
-  // behind too: the project being left keeps it for its tab
+  // Opening a project from Home or the + (not a tab switch) leaves the
+  // window's view behind too: the project being left keeps it for its tab,
+  // and the project coming in starts from a clean view — no loop region,
+  // the default zoom, the start (2026-11-12, "Loop region is shared across
+  // tabs...": the incoming project inherited the outgoing one's)
   const parkView = () => {
     const d = depsRef.current;
     if (d.currentProjectId) viewsRef.current.set(d.currentProjectId, d.captureView());
+    d.restoreView(null);
   };
 
   return { openProjectIds, switchToProject, closeProject, reorderProjects, parkView };

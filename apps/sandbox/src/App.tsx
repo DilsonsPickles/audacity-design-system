@@ -64,7 +64,7 @@ import { isOAuthCallbackPath } from './lib/appBase';
 import { MuseHubHomeAccountCard } from './components/wallet/MuseHubHomeAccountCard';
 import { AdieuHomeAccountCard } from './components/wallet/AdieuHomeAccountCard';
 import { MuseIdHomeAccountCard } from './components/museid/MuseIdHomeAccountCard';
-import { useZoomControls } from './hooks/useZoomControls';
+import { useZoomControls, DEFAULT_ZOOM } from './hooks/useZoomControls';
 import { useCanvasScrollSync } from './hooks/useCanvasScrollSync';
 import { usePlaybackControls } from './hooks/usePlaybackControls';
 import { useRecording } from './hooks/useRecording';
@@ -1064,7 +1064,7 @@ function CanvasDemoContent() {
       loopRegion.setLoopRegionEnabled(view?.loop.enabled ?? false);
       loopRegion.setLoopRegionStart(view?.loop.start ?? null);
       loopRegion.setLoopRegionEnd(view?.loop.end ?? null);
-      if (view) _setPixelsPerSecond(view.pixelsPerSecond);
+      _setPixelsPerSecond(view?.pixelsPerSecond ?? DEFAULT_ZOOM);
       pendingScrollRef.current = { left: view?.scrollLeft ?? 0, top: view?.scrollTop ?? 0 };
     },
     listProjects: getProjects,

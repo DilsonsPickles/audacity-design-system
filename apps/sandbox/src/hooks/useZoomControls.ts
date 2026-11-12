@@ -12,7 +12,7 @@ const MAX_CANVAS_WIDTH = 32000; // Browser canvas limit safety
 // length (see minPixelsPerSecond below) — audio ending at 4:00 lets you
 // zoom out to see 8:00, no further.
 const ABSOLUTE_MIN_ZOOM = 1;
-const DEFAULT_ZOOM = 100; // px/s — also caps the dynamic floor so a short
+export const DEFAULT_ZOOM = 100; // px/s — also caps the dynamic floor so a short
                           // project never forces a zoom-IN past the default
 const ZOOM_FACTOR = 1.5; // Multiplier for zoom in/out steps
 
