@@ -49,6 +49,11 @@ export interface Clip {
   selected?: boolean;
   trimStart?: number;
   fullDuration?: number;
+  /** Visual time-stretch factor (canvas / source). Long stored at
+   *  runtime by STRETCH_CLIP but missing from this type (the backlog's
+   *  "stretchFactor onto the sandbox Clip type" item, closed 2026-11-12
+   *  with the paste-merge work, which reads it too). */
+  stretchFactor?: number;
   deletedRegions?: DeletedRegion[]; // Sorted, non-overlapping deleted regions
   color?: 'cyan' | 'blue' | 'violet' | 'magenta' | 'red' | 'orange' | 'yellow' | 'green' | 'teal';
   /** The clip's OWN colour, set by the user (Clip properties panel /

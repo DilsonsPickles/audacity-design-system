@@ -5,6 +5,7 @@ import type { MidiClip } from '@audacity-ui/core';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
 import { applySplitCut, applyRippleCut } from '../../utils/cutOperations';
 import { rippleInsert, carveIntervals } from '../../utils/pasteOperations';
+import { canMergeClip, mergePasteIntoClip, composeMergedBuffer, type MergeContent, type MergeOp } from '../../utils/clipMerge';
 import { computeWholeGroupIds, regroupCopiedClips } from '../../utils/clipGroupCopy';
 import { resolveTimeSelectionScope } from '../../utils/timeSelectionScope';
 import { clipOfElement } from '../useFocusedClip';
@@ -389,9 +390,9 @@ export function handlePaste(deps: ClipboardHandlerDeps, at?: PasteAt): void {
   // preferences' choice: OVERLAPS carves the landing span out of the
   // clips underneath; PUSHES splits at the paste point and shifts later
   // clips right, on the destination track(s) or on every track. A RANGE
-  // destination REPLACES the selection. alwaysPasteAsNewClip OFF (merge
-  // the audio into the recipient clip) is the matrix's second half —
-  // until it lands, OFF pastes as a new clip too.
+  // destination REPLACES the selection. alwaysPasteAsNewClip OFF merges
+  // the audio INTO the recipient clip (tryMergePaste below) where the
+  // paste has the mergeable shape, else falls through to a new clip.
   const { pastePrefs } = deps;
 
   // The clipboard's span: a copied time selection keeps its silence
@@ -428,6 +429,18 @@ export function handlePaste(deps: ClipboardHandlerDeps, at?: PasteAt): void {
       effectiveDur = destLen;
       if (finalLandings.length === 0) return;
     }
+  }
+
+  // THE OFF HALF: with alwaysPasteAsNewClip off, write the audio INTO
+  // the recipient clip where the paste has the mergeable shape (one
+  // destination track whose top clip holds the anchor, plain audio on
+  // both sides). Anything else falls through to the new-clip paste.
+  if (!pastePrefs.asNewClip) {
+    const handled = tryMergePaste({
+      state, dispatch, audioManagerRef, pastePrefs,
+      rangeDest, pasteTime, finalLandings, effectiveDur,
+    });
+    if (handled) return;
   }
 
   // Make room, starting from the tracks with everything deselected
@@ -511,4 +524,113 @@ export function handlePaste(deps: ClipboardHandlerDeps, at?: PasteAt): void {
       }
     });
   }
+}
+
+interface MergePasteArgs {
+  state: TracksState;
+  dispatch: React.Dispatch<TracksAction>;
+  audioManagerRef: React.RefObject<AudioPlaybackManager>;
+  pastePrefs: PastePrefs;
+  rangeDest: { start: number; end: number } | null;
+  pasteTime: number;
+  finalLandings: Array<{
+    clipData: Clip & { trackIndex: number };
+    sourceClipId: number;
+    destTrackIndex: number;
+    start: number;
+  }>;
+  effectiveDur: number;
+}
+
+/**
+ * The OFF half's door: merge the paste into the clip under the anchor.
+ * Returns false — and the new-clip path runs — when the shape isn't
+ * mergeable: several destination tracks, no clip under the anchor, or
+ * stretched/pitched/reversed/holed audio on either side (canMergeClip).
+ * The merged clip takes a FRESH id, so undo restores the old clip with
+ * its own untouched buffer (the composed buffer never replaces one).
+ */
+function tryMergePaste(args: MergePasteArgs): boolean {
+  const { state, dispatch, audioManagerRef, pastePrefs, rangeDest, pasteTime, finalLandings, effectiveDur } = args;
+
+  const destIndices = Array.from(new Set(finalLandings.map((l) => l.destTrackIndex)));
+  if (destIndices.length !== 1) return false;
+  const destIndex = destIndices[0];
+  const anchor = rangeDest ? rangeDest.start : pasteTime;
+
+  // The TOP clip holding the anchor (later in the array = painted on top)
+  const recipient = [...state.tracks[destIndex].clips]
+    .reverse()
+    .find((c) => c.start <= anchor + PASTE_EPSILON && anchor < c.start + c.duration - PASTE_EPSILON);
+  if (!recipient || !canMergeClip(recipient)) return false;
+  if (!finalLandings.every((l) => canMergeClip(l.clipData))) return false;
+
+  const content: MergeContent = {
+    start: anchor,
+    duration: effectiveDur,
+    pieces: finalLandings.map((l) => ({ clip: l.clipData, start: l.start, bufferKey: l.sourceClipId })),
+  };
+  const op: MergeOp = rangeDest
+    ? { kind: 'replace', rangeEnd: rangeDest.end }
+    : pastePrefs.mode === 'overlaps'
+      ? { kind: 'overwrite' }
+      : { kind: 'insert' };
+
+  const recipientBufferKey = recipient.sourceClipId ?? recipient.id;
+  const merged = mergePasteIntoClip(recipient, recipient.start, recipientBufferKey, content, op);
+  if (!merged) return false;
+
+  // Make room around the merge with the recipient REMOVED — the merged
+  // clip replaces it, so the transforms can never split it.
+  let working: Track[] = state.tracks.map((track, i) => ({
+    ...track,
+    clips: track.clips
+      .filter((c) => !(i === destIndex && c.id === recipient.id))
+      .map((c) => ({ ...c, selected: false })),
+  }));
+  const pushScopeIndices = pastePrefs.pushScope === 'all-tracks'
+    ? state.tracks.map((_, i) => i)
+    : [destIndex];
+
+  if (rangeDest) {
+    // REPLACE: empty the selection around the recipient, and in push
+    // mode close the excess so later audio keeps its relative position
+    working = applySplitCut(working, rangeDest.start, rangeDest.end, [destIndex]);
+    const excessStart = rangeDest.start + effectiveDur;
+    if (pastePrefs.mode === 'pushes' && rangeDest.end > excessStart + PASTE_EPSILON) {
+      working = applyRippleCut(working, excessStart, rangeDest.end, pushScopeIndices);
+    }
+  } else if (pastePrefs.mode === 'overlaps') {
+    // The overwrite's overhang carves the OTHER clips beneath it
+    working = carveIntervals(working, [{ trackIndex: destIndex, start: anchor, end: anchor + effectiveDur }]);
+  } else {
+    // The insert pushes everything from the anchor on, per scope
+    working = rippleInsert(working, pushScopeIndices, anchor, effectiveDur);
+  }
+
+  let maxClipId = 0;
+  working.forEach((t) => t.clips.forEach((c) => { maxClipId = Math.max(maxClipId, c.id); }));
+  const mergedClip: Clip = { ...merged.clip, id: maxClipId + 1, start: merged.start, selected: true };
+
+  const updatedTracks = dissolveDegenerateGroups(
+    working.map((track, i) => (i === destIndex ? { ...track, clips: [...track.clips, mergedClip] } : track))
+  );
+  dispatch({ type: 'REPLACE_TRACKS_EDIT', payload: updatedTracks });
+
+  // A replaced selection shrinks to what was pasted into it
+  if (rangeDest && state.timeSelection) {
+    dispatch({
+      type: 'SET_TIME_SELECTION',
+      payload: { ...state.timeSelection, startTime: rangeDest.start, endTime: rangeDest.start + effectiveDur },
+    });
+  }
+
+  // Recompose the audio; a missing source buffer (the debug placeholder
+  // clips carry none) leaves the merge visual-only
+  const audioManager = audioManagerRef.current;
+  if (audioManager) {
+    const buffer = composeMergedBuffer((key) => audioManager.getClipBuffer(key), merged.segments);
+    if (buffer) audioManager.addClipBuffer(mergedClip.id, buffer);
+  }
+  return true;
 }

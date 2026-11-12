@@ -253,7 +253,7 @@ ungroup). Deliberately deferred:
 ## Minor (batch into related work, don't do standalone)
 
 
-- `stretchFactor` onto the sandbox `Clip` type — would remove 2 justified `as any` casts in `utils/clipKeyboardEdit.ts` (plain `as Clip` does NOT typecheck today).
+- ~~`stretchFactor` onto the sandbox `Clip` type~~ — DONE 2026-11-12 with the paste-merge work; the 2 justified `as any` casts in `utils/clipKeyboardEdit.ts` are plain `as Clip` now.
 - Relocate `CanvasProps` out of Canvas.tsx (type-only import cycle with `useCanvasPointerHandlers`).
 - `components/editor/LoopRegionStalks.tsx` — inactive-color ternary branch is unreachable (both call sites gate on enabled).
 - `components/editor/PunchPointIndicator.tsx` — hard-coded `#FF2672`; fold into any design-token sweep.
