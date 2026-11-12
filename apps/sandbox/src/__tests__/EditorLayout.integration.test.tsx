@@ -166,10 +166,14 @@ afterEach(cleanup);
 // occasionally trip on slower/loaded machines despite every test settling
 // correctly; give the whole file real headroom rather than fight it
 // per-test.
-// 30 s, matching the config's budget (it was 20, which the late tests in
-// this file can still trip under GC pressure — the whole file runs in one
-// fork worker near its heap; see the backlog's retention-hunt entry).
-vi.setConfig({ testTimeout: 30000 });
+// 60 s. It was 20, then 30 — and CI run #328 (2026-11-12, the first run
+// after the heap raise stopped the worker's OOM) still measured its
+// slowest test at 32 s on the GitHub runner: the file's retention makes
+// the GC grind late in the file, so the budget is 2× that worst case.
+// The budget is the runner's, not a hidden bug's — a hung test still
+// fails, later. The real fix (hunt the retention / split the file) is
+// the backlog's entry.
+vi.setConfig({ testTimeout: 60000 });
 
 // ---------------------------------------------------------------------------
 // Shared helpers
