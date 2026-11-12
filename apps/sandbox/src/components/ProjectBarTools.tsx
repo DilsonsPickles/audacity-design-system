@@ -28,6 +28,8 @@ export interface ProjectBarToolsDeps {
   onCloseProject?: (id: string) => void;
   /** A tab dragged along the bar puts the tabs in a new order (2026-11-12) */
   onReorderProjects?: (ids: string[]) => void;
+  /** A double-click on a tab renames its project (2026-11-12) */
+  onRenameProject?: (id: string, title: string) => void;
   /** The + after the tabs: a new project in a new tab */
   onNewProject?: () => void;
   /** The tabs, the workspace picker and Share audio live in the app's
@@ -41,7 +43,7 @@ export interface ProjectTabInfo {
   title: string;
 }
 
-type ProjectTabsProps = Pick<ProjectBarToolsDeps, 'activeMenuItem' | 'onNavigate' | 'projectTitle' | 'projectTabs' | 'activeProjectId' | 'onSelectProject' | 'onCloseProject' | 'onReorderProjects' | 'onNewProject'>;
+type ProjectTabsProps = Pick<ProjectBarToolsDeps, 'activeMenuItem' | 'onNavigate' | 'projectTitle' | 'projectTabs' | 'activeProjectId' | 'onSelectProject' | 'onCloseProject' | 'onReorderProjects' | 'onRenameProject' | 'onNewProject'>;
 
 /** Pointer travel before a press on a tab becomes a drag */
 const TAB_DRAG_THRESHOLD_PX = 4;
@@ -63,7 +65,7 @@ function useTabReorder(ids: string[], onReorder: ((ids: string[]) => void) | und
 
   const onPointerDown = (id: string) => (e: React.PointerEvent<HTMLDivElement>) => {
     if (!onReorder || e.button !== 0) return;
-    if ((e.target as HTMLElement).closest('[data-project-tab-close]')) return;
+    if ((e.target as HTMLElement).closest('[data-project-tab-close], [data-project-tab-rename]')) return;
     const startX = e.clientX;
     const el = e.currentTarget;
     const pointerId = e.pointerId;
@@ -130,7 +132,43 @@ function useTabReorder(ids: string[], onReorder: ((ids: string[]) => void) | und
  * a new project in a new tab. A host that passes no `projectTabs` gets the
  * old single Project tab.
  */
-export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectTabs, activeProjectId, onSelectProject, onCloseProject, onReorderProjects, onNewProject }: ProjectTabsProps) {
+/**
+ * A DOUBLE-CLICK ON A TAB RENAMES ITS PROJECT (2026-11-12, "let me rename by
+ * double clicking project tab"): the title becomes a field over the tab's
+ * label, all of it selected; Enter or a click away keeps the name (a blank
+ * one changes nothing), Escape puts the old one back.
+ */
+function TabRenameField({ title, onDone }: { title: string; onDone: (title: string | null) => void }) {
+  const [draft, setDraft] = React.useState(title);
+  const doneRef = React.useRef(false);
+  const finish = (value: string | null) => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    onDone(value);
+  };
+  return (
+    <input
+      className="project-tab__rename"
+      data-project-tab-rename
+      aria-label="Project name"
+      value={draft}
+      autoFocus
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => setDraft(e.target.value)}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') { e.preventDefault(); finish(draft); }
+        if (e.key === 'Escape') { e.preventDefault(); finish(null); }
+      }}
+      onBlur={() => finish(draft)}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+    />
+  );
+}
+
+export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectTabs, activeProjectId, onSelectProject, onCloseProject, onReorderProjects, onRenameProject, onNewProject }: ProjectTabsProps) {
+  const [renamingId, setRenamingId] = React.useState<string | null>(null);
   const inProject = activeMenuItem !== 'home';
   const reorder = useTabReorder(projectTabs?.map((p) => p.id) ?? [], onReorderProjects);
   const { theme } = useTheme();
@@ -140,6 +178,8 @@ export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectT
   const colours = {
     '--project-tabs-text': theme.foreground.text.primary,
     '--project-tabs-text-secondary': theme.foreground.text.secondary,
+    '--project-tabs-field-bg': theme.background.control.input.idle,
+    '--project-tabs-field-border': theme.border.focus,
   } as React.CSSProperties;
   return (
     // ("Main menu": F6's section walk and the status bar find it by name)
@@ -163,6 +203,11 @@ export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectT
                 data-project-tab={p.id}
                 onPointerDown={reorder.onPointerDown(p.id)}
                 onAuxClick={(e) => { if (e.button === 1 && onCloseProject) { e.preventDefault(); onCloseProject(p.id); } }}
+                onDoubleClick={(e) => {
+                  if (!onRenameProject || (e.target as HTMLElement).closest('[data-project-tab-close]')) return;
+                  setRenamingId(p.id);
+                }}
+                data-renaming={renamingId === p.id || undefined}
               >
                 <Tab
                   variant="document"
@@ -171,6 +216,16 @@ export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectT
                   isActive={active}
                   onClick={() => onSelectProject(p.id)}
                 />
+                {renamingId === p.id && (
+                  <TabRenameField
+                    title={p.title}
+                    onDone={(title) => {
+                      setRenamingId(null);
+                      const next = title?.trim();
+                      if (next && next !== p.title) onRenameProject?.(p.id, next);
+                    }}
+                  />
+                )}
                 {onCloseProject && (
                   <button
                     type="button"

@@ -86,6 +86,17 @@ html.pan-active * {
 .project-tab--active .project-tab__close,
 .project-tab__close:hover { color: var(--project-tabs-text, inherit); }
 .project-tab--dragging { opacity: 0.85; z-index: 1; }
+/* Renaming (2026-11-12): a field over the tab's label — after the icon,
+   short of the close × — the label hidden under it */
+.project-tab[data-renaming] .tab__label { visibility: hidden; }
+.project-tab__rename {
+  position: absolute; top: 50%; left: 36px; right: 32px; transform: translateY(-50%);
+  height: 22px; min-width: 0; box-sizing: border-box; padding: 0 4px;
+  font: inherit; font-size: 12px; color: var(--project-tabs-text, inherit);
+  background: var(--project-tabs-field-bg, transparent);
+  border: 1px solid var(--project-tabs-field-border, currentColor); border-radius: 3px;
+  outline: none;
+}
 .project-tab--dragging .tab { cursor: grabbing; }
 /* In the browser build's Home bar (ProjectToolbar's tabs slot) */
 .project-toolbar__left--custom { align-self: stretch; align-items: stretch; padding-left: 16px; }

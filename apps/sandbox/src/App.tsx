@@ -1308,6 +1308,12 @@ function CanvasDemoContent() {
     onSelectProject: projectTabs.switchToProject,
     onCloseProject: projectTabs.closeProject,
     onReorderProjects: projectTabs.reorderProjects,
+    // A double-click on a tab renames its project (2026-11-12): the list at
+    // once, so the tab and Home read the new name, and the stored project
+    onRenameProject: (id, title) => {
+      setIndexedDBProjects((prev) => prev.map((p) => (p.id === id ? { ...p, title } : p)));
+      void getProject(id).then((proj) => { if (proj) return saveProject({ ...proj, title }); });
+    },
     onNewProject: () => { void newProjectInTab(); },
     tabsInTitleBar: customTitleBar,
     showMixer,
