@@ -32,17 +32,19 @@ export default defineConfig({
     // at exactly that line (2026-10-25). The budget is the runner's, not
     // a hidden bug's: a test that hangs still fails, later.
     testTimeout: 30000,
-    // The integration file boots the whole app ~58 times in one fork
-    // worker, and by 2026-11-12 that crossed V8's default old-space
-    // limit: the worker died with "Ineffective mark-compacts near heap
-    // limit" (an OOM abort), surfacing as NONDETERMINISTIC 20 s test
-    // timeouts (the GC death spiral slows everything first) and a
-    // "Timeout terminating forks worker" note on every run. A limit,
-    // not a reservation — harmless where memory isn't needed. The
-    // real follow-up (hunt the retention / split the file) is in
-    // docs/backlog.md.
-    poolOptions: {
-      forks: { execArgv: ['--max-old-space-size=8192'] },
-    },
+    // THE FORK WORKERS NEED A RAISED HEAP (2026-11-12): the integration
+    // file boots the whole app ~58 times in one fork worker, and that
+    // crossed V8's default old-space limit — the worker died with
+    // "Ineffective mark-compacts near heap limit" (an OOM abort),
+    // surfacing as NONDETERMINISTIC 20 s test timeouts (the GC death
+    // spiral slows everything first) and a "Timeout terminating forks
+    // worker" note on every run. The raise lives in the test script as
+    // NODE_OPTIONS=--max-old-space-size=8192 (package.json) — a
+    // poolOptions.forks.execArgv here was verified NOT to reach the
+    // workers on vitest 4, while NODE_OPTIONS does (zero OOM, every
+    // test ran). V8 flags are legal in NODE_OPTIONS on Node 20; the
+    // storage flags CLAUDE.md warns about are not V8 flags. A limit,
+    // not a reservation. The real follow-up (hunt the retention /
+    // split the file) is in docs/backlog.md.
   },
 });

@@ -166,7 +166,10 @@ afterEach(cleanup);
 // occasionally trip on slower/loaded machines despite every test settling
 // correctly; give the whole file real headroom rather than fight it
 // per-test.
-vi.setConfig({ testTimeout: 20000 });
+// 30 s, matching the config's budget (it was 20, which the late tests in
+// this file can still trip under GC pressure — the whole file runs in one
+// fork worker near its heap; see the backlog's retention-hunt entry).
+vi.setConfig({ testTimeout: 30000 });
 
 // ---------------------------------------------------------------------------
 // Shared helpers
