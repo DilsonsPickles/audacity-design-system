@@ -841,6 +841,14 @@ const TrackNewComponent: React.FC<TrackProps> = ({
   // the animation completes.
   const [shakeState, setShakeState] = React.useState<{ clipId: string | number; edge: 'left' | 'right'; token: number } | null>(null);
   const shakeTimeoutRef = React.useRef<number | null>(null);
+  // The 180 ms shake-clear must not outlive the component: a timer
+  // firing after unmount is a setState on a dead tree — and in a test,
+  // after the environment's teardown, React's "window is not defined"
+  // crash (seen as CI's unhandled-error failure, 2026-11-12, with every
+  // test passing).
+  React.useEffect(() => () => {
+    if (shakeTimeoutRef.current !== null) window.clearTimeout(shakeTimeoutRef.current);
+  }, []);
   // Bump the shake state so React remounts the shake element (each
   // token change → fresh DOM node → fresh animation); clear after the
   // animation completes. A blocked keyboard edit's "no" at that edge.
