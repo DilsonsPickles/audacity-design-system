@@ -1,13 +1,28 @@
 import { announce } from '@audacity-ui/components';
-import type { TracksState, TracksAction, Clip, Label } from '../../contexts/TracksContext';
+import type { TracksState, TracksAction, Clip, Label, Track } from '../../contexts/TracksContext';
 import { dissolveDegenerateGroups } from '../../contexts/TracksContext';
 import type { MidiClip } from '@audacity-ui/core';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
-import { applySplitCut } from '../../utils/cutOperations';
+import { applySplitCut, applyRippleCut } from '../../utils/cutOperations';
+import { rippleInsert, carveIntervals } from '../../utils/pasteOperations';
 import { computeWholeGroupIds, regroupCopiedClips } from '../../utils/clipGroupCopy';
 import { resolveTimeSelectionScope } from '../../utils/timeSelectionScope';
 import { clipOfElement } from '../useFocusedClip';
 import type { ClipboardState } from '../useKeyboardShortcuts';
+
+/** The paste matrix's preferences (2026-11-12 spec), read from
+ *  Preferences › Editing: how pasted audio treats the audio already
+ *  there, and whether it lands as a clip of its own. */
+export interface PastePrefs {
+  mode: 'overlaps' | 'pushes';
+  pushScope: 'same-track' | 'all-tracks';
+  asNewClip: boolean;
+}
+
+/** Floats that drift by less than this are the same instant */
+const PASTE_EPSILON = 1e-6;
+/** A truncated pasted fade under this is no fade (the reducers' MIN_FADE_SECONDS) */
+const MIN_PASTED_FADE = 0.02;
 
 export interface ClipboardHandlerDeps {
   state: TracksState;
@@ -15,6 +30,7 @@ export interface ClipboardHandlerDeps {
   clipboard: ClipboardState | null;
   setClipboard: React.Dispatch<React.SetStateAction<ClipboardState | null>>;
   audioManagerRef: React.RefObject<AudioPlaybackManager>;
+  pastePrefs: PastePrefs;
 }
 
 /** Resolve the selected label ids ("trackIndex-labelId") to label objects. */
@@ -280,7 +296,16 @@ export function handlePaste(deps: ClipboardHandlerDeps, at?: PasteAt): void {
     return;
   }
 
-  const pasteTime = at?.time ?? state.playheadPosition;
+  // THE DESTINATION IS A RANGE when the project has a live time
+  // selection and the paste wasn't aimed at an explicit point (the
+  // canvas menu's PasteAt only opens with no selection): the pasted
+  // content REPLACES the selection (2026-11-12 spec). Otherwise it is
+  // a POINT — the playhead, or the point asked for.
+  const rangeDest =
+    !at && state.timeSelection && state.timeSelection.renderOnCanvas !== false
+      ? { start: state.timeSelection.startTime, end: state.timeSelection.endTime }
+      : null;
+  const pasteTime = rangeDest ? rangeDest.start : (at?.time ?? state.playheadPosition);
 
   // Calculate time offset based on time selection or clip start times
   let timeOffset: number;
@@ -330,38 +355,6 @@ export function handlePaste(deps: ClipboardHandlerDeps, at?: PasteAt): void {
   const minSourceTrackIndex = Math.min(...clipboard.clips.map(c => c.trackIndex));
   const trackOffset = targetTrackIndex - minSourceTrackIndex;
 
-  // Generate new clip IDs
-  let maxClipId = 0;
-  state.tracks.forEach(track => {
-    track.clips.forEach(clip => {
-      maxClipId = Math.max(maxClipId, clip.id);
-    });
-  });
-
-  // Create new clips with updated positions and track assignments
-  const newClipsWithTracks = clipsToPaste
-    .map((clipData, index) => {
-      const destTrackIndex = clipData.trackIndex + trackOffset;
-
-      // Skip clips that would paste outside available tracks
-      if (destTrackIndex < 0 || destTrackIndex >= state.tracks.length) {
-        return null;
-      }
-
-      return {
-        clip: {
-          ...clipData,
-          id: maxClipId + index + 1,
-          start: clipData.start + timeOffset,
-          selected: true,
-          color: state.tracks[destTrackIndex].color,
-        },
-        sourceClipId: clipData.id,
-        destTrackIndex,
-      };
-    })
-    .filter((item): item is NonNullable<typeof item> => item !== null);
-
   // Type guard: discriminate audio clips (have envelopePoints) from MIDI clips (have notes).
   // Paste currently only supports audio clips into track.clips; MIDI clips are skipped here
   // pending a dedicated MIDI paste path.
@@ -369,53 +362,150 @@ export function handlePaste(deps: ClipboardHandlerDeps, at?: PasteAt): void {
     return 'envelopePoints' in c;
   }
 
-  // Group clips by destination track
-  const clipsByTrack = new Map<number, (Clip & { trackIndex: number })[]>();
+  // LANDINGS: where each pasted clip will sit. Ids are minted AFTER the
+  // room-making transforms below — their splits mint ids from the same
+  // counter space, so ids assigned first would collide with them.
   let skippedMidiClips = 0;
-  newClipsWithTracks.forEach(({ clip, destTrackIndex }) => {
-    if (!isAudioClip(clip)) { skippedMidiClips++; return; } // skip MIDI clips — no dedicated paste path yet
-    if (!clipsByTrack.has(destTrackIndex)) {
-      clipsByTrack.set(destTrackIndex, []);
-    }
-    clipsByTrack.get(destTrackIndex)!.push(clip);
+  const landings: Array<{
+    clipData: Clip & { trackIndex: number };
+    sourceClipId: number;
+    destTrackIndex: number;
+    start: number;
+  }> = [];
+  clipsToPaste.forEach((clipData) => {
+    const destTrackIndex = clipData.trackIndex + trackOffset;
+    // Skip clips that would paste outside available tracks
+    if (destTrackIndex < 0 || destTrackIndex >= state.tracks.length) return;
+    if (!isAudioClip(clipData)) { skippedMidiClips++; return; } // no dedicated MIDI paste path yet
+    landings.push({ clipData, sourceClipId: clipData.id, destTrackIndex, start: clipData.start + timeOffset });
   });
   if (skippedMidiClips > 0) {
     announce("MIDI clips can't be pasted yet");
   }
+  if (landings.length === 0) return;
+
+  // ——— THE PASTE MATRIX (2026-11-12 spec) ———
+  // What pasting does to the audio already there is the paste
+  // preferences' choice: OVERLAPS carves the landing span out of the
+  // clips underneath; PUSHES splits at the paste point and shifts later
+  // clips right, on the destination track(s) or on every track. A RANGE
+  // destination REPLACES the selection. alwaysPasteAsNewClip OFF (merge
+  // the audio into the recipient clip) is the matrix's second half —
+  // until it lands, OFF pastes as a new clip too.
+  const { pastePrefs } = deps;
+
+  // The clipboard's span: a copied time selection keeps its silence
+  // (room is made for the whole selection), bare clips their extent.
+  const cbDur = clipboard.timeSelection
+    ? clipboard.timeSelection.endTime - clipboard.timeSelection.startTime
+    : Math.max(...landings.map((l) => l.start + l.clipData.duration)) - pasteTime;
+
+  // A range destination SMALLER than the clipboard truncates the paste
+  // to what fits the selection (the spec's cell b: sized to the range).
+  let effectiveDur = cbDur;
+  let finalLandings = landings;
+  if (rangeDest) {
+    const destLen = rangeDest.end - rangeDest.start;
+    if (destLen < cbDur - PASTE_EPSILON) {
+      finalLandings = landings
+        .filter((l) => l.start < rangeDest.end - PASTE_EPSILON)
+        .map((l) => {
+          if (l.start + l.clipData.duration <= rangeDest.end + PASTE_EPSILON) return l;
+          const duration = rangeDest.end - l.start;
+          const fadeIn = Math.min(l.clipData.fadeIn ?? 0, duration);
+          const fadeOut = Math.min(l.clipData.fadeOut ?? 0, Math.max(0, duration - fadeIn));
+          return {
+            ...l,
+            clipData: {
+              ...l.clipData,
+              duration,
+              fadeIn: fadeIn >= MIN_PASTED_FADE ? fadeIn : undefined,
+              fadeOut: fadeOut >= MIN_PASTED_FADE ? fadeOut : undefined,
+              envelopePoints: l.clipData.envelopePoints.filter((p) => p.time < duration),
+            },
+          };
+        });
+      effectiveDur = destLen;
+      if (finalLandings.length === 0) return;
+    }
+  }
+
+  // Make room, starting from the tracks with everything deselected
+  let working: Track[] = state.tracks.map((track) => ({
+    ...track,
+    clips: track.clips.map((c) => ({ ...c, selected: false })),
+  }));
+  const destIndices = Array.from(new Set(finalLandings.map((l) => l.destTrackIndex)));
+  const pushScopeIndices = pastePrefs.pushScope === 'all-tracks'
+    ? state.tracks.map((_, i) => i)
+    : destIndices;
+
+  if (rangeDest) {
+    // REPLACE: empty the selection on the destination tracks…
+    working = applySplitCut(working, rangeDest.start, rangeDest.end, destIndices);
+    // …and in push mode close the excess so everything later keeps its
+    // relative position (cell 2a); overlap mode leaves the gap (1a)
+    const excessStart = rangeDest.start + effectiveDur;
+    if (pastePrefs.mode === 'pushes' && rangeDest.end > excessStart + PASTE_EPSILON) {
+      working = applyRippleCut(working, excessStart, rangeDest.end, pushScopeIndices);
+    }
+  } else if (pastePrefs.mode === 'overlaps') {
+    working = carveIntervals(
+      working,
+      finalLandings.map((l) => ({ trackIndex: l.destTrackIndex, start: l.start, end: l.start + l.clipData.duration }))
+    );
+  } else {
+    working = rippleInsert(working, pushScopeIndices, pasteTime, cbDur);
+  }
+
+  // Mint ids above everything the transforms produced
+  let maxClipId = 0;
+  working.forEach((track) => track.clips.forEach((clip) => { maxClipId = Math.max(maxClipId, clip.id); }));
 
   // Re-group the pasted set per the copy invariant: one fresh groupId per
   // source group captured whole at copy time; everything else ungrouped.
   // Runs on the post-drop set (out-of-range/MIDI clips excluded) so a
   // whole group whose siblings were dropped dissolves below two.
-  const pastedFlat = Array.from(clipsByTrack.values()).flat();
-  const regrouped = regroupCopiedClips(
-    pastedFlat,
-    new Set(clipboard.wholeGroupIds ?? [])
-  );
-  let regroupIdx = 0;
-  for (const [destIndex, trackClips] of clipsByTrack) {
-    clipsByTrack.set(destIndex, trackClips.map(() => regrouped[regroupIdx++]));
-  }
+  const pastedFlat = finalLandings.map((l, i) => ({
+    ...l.clipData,
+    id: maxClipId + i + 1,
+    start: l.start,
+    selected: true,
+    color: state.tracks[l.destTrackIndex].color,
+  }));
+  const regrouped = regroupCopiedClips(pastedFlat, new Set(clipboard.wholeGroupIds ?? []));
 
-  // Add clips to their respective tracks
-  const updatedTracks = state.tracks.map((track, index) => {
-    const clipsForThisTrack = clipsByTrack.get(index) || [];
-    return {
-      ...track,
-      clips: [
-        ...track.clips.map(c => ({ ...c, selected: false })),
-        ...clipsForThisTrack,
-      ],
-    };
+  const pastedPerTrack = new Map<number, Clip[]>();
+  regrouped.forEach((clip, i) => {
+    const dest = finalLandings[i].destTrackIndex;
+    if (!pastedPerTrack.has(dest)) pastedPerTrack.set(dest, []);
+    pastedPerTrack.get(dest)!.push(clip);
   });
 
+  // Add clips to their respective tracks (a carve that emptied a whole
+  // grouped clip can degenerate its group — dissolve, as the cuts do)
+  const updatedTracks = dissolveDegenerateGroups(
+    working.map((track, index) => {
+      const extra = pastedPerTrack.get(index);
+      return extra ? { ...track, clips: [...track.clips, ...extra] } : track;
+    })
+  );
+
   dispatch({ type: 'REPLACE_TRACKS_EDIT', payload: updatedTracks });
+
+  // A replaced selection shrinks to what was pasted into it (spec 1a)
+  if (rangeDest && state.timeSelection) {
+    dispatch({
+      type: 'SET_TIME_SELECTION',
+      payload: { ...state.timeSelection, startTime: rangeDest.start, endTime: rangeDest.start + effectiveDur },
+    });
+  }
 
   // Copy audio buffers for pasted clips so they play back correctly
   const audioManager = audioManagerRef.current;
   if (audioManager) {
-    newClipsWithTracks.forEach(({ clip, sourceClipId }) => {
-      const buffer = audioManager.getClipBuffer(sourceClipId);
+    regrouped.forEach((clip, i) => {
+      const buffer = audioManager.getClipBuffer(finalLandings[i].sourceClipId);
       if (buffer) {
         audioManager.addClipBuffer(clip.id, buffer);
       }

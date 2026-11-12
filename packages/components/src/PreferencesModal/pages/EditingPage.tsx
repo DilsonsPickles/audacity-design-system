@@ -5,6 +5,7 @@ import { LabeledRadio } from '../../LabeledRadio';
 import { Separator } from '../../Separator';
 import { PreferenceThumbnail } from '../../PreferenceThumbnail';
 import { PreferencePanel } from '../../PreferencePanel';
+import { usePreferences } from '../../contexts/PreferencesContext';
 
 // Audio Editing Page Content
 export interface EditingPageProps {
@@ -22,9 +23,14 @@ export function EditingPage({
 }: EditingPageProps) {
   const [deletingBehavior, setDeletingBehavior] = useState<'leave-gap' | 'close-gap'>('leave-gap');
   const [closeGapBehavior, setCloseGapBehavior] = useState<'selected-clip' | 'same-track' | 'all-tracks'>('selected-clip');
-  const [pastingBehavior, setPastingBehavior] = useState<'overlaps' | 'pushes'>('overlaps');
-  const [pastingPushesBehavior, setPastingPushesBehavior] = useState<'same-track' | 'all-tracks'>('same-track');
-  const [alwaysPasteAsNewClip, setAlwaysPasteAsNewClip] = useState(false);
+  // THE PASTE OPTIONS ARE REAL (2026-11-12, the paste spec): persisted
+  // preferences that the clipboard handlers read; the rest of this page
+  // stays deliberately unwired.
+  const { preferences, updatePreference } = usePreferences();
+  const { pastingBehavior, pastingPushesBehavior, alwaysPasteAsNewClip } = preferences;
+  const setPastingBehavior = (v: 'overlaps' | 'pushes') => updatePreference('pastingBehavior', v);
+  const setPastingPushesBehavior = (v: 'same-track' | 'all-tracks') => updatePreference('pastingPushesBehavior', v);
+  const setAlwaysPasteAsNewClip = (v: boolean) => updatePreference('alwaysPasteAsNewClip', v);
   const [pastingBetweenProjects, setPastingBetweenProjects] = useState<'smart' | 'selected-only' | 'ask'>('smart');
   const [stereoHeightsBehavior, setStereoHeightsBehavior] = useState<'always' | 'workspace' | 'never'>('workspace');
   const [workspaceType, setWorkspaceType] = useState({

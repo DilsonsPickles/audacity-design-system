@@ -95,7 +95,7 @@ export interface UseKeyboardShortcutsOptions {
 export const TRACK_HEIGHT_KEY_STEP = 24;
 
 export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void {
-  const { trackSelectionMode } = useEditingBehaviorPrefs();
+  const { trackSelectionMode, pastingBehavior, pastingPushesBehavior, alwaysPasteAsNewClip } = useEditingBehaviorPrefs();
   const {
     state,
     dispatch,
@@ -170,7 +170,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         seek: (time: number) => { audioManagerRef.current?.seek?.(time); },
       },
     };
-    const clipboardDeps = { state, dispatch, clipboard, setClipboard, audioManagerRef };
+    const clipboardDeps = {
+      state, dispatch, clipboard, setClipboard, audioManagerRef,
+      // The paste matrix's preferences (Preferences › Editing)
+      pastePrefs: { mode: pastingBehavior, pushScope: pastingPushesBehavior, asNewClip: alwaysPasteAsNewClip },
+    };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // A dialog owns the keyboard while it is in use. FIRST, before
@@ -1158,6 +1162,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     isFlatNavigation,
     toggleLoopRegion,
     trackSelectionMode,
+    pastingBehavior,
+    pastingPushesBehavior,
+    alwaysPasteAsNewClip,
     effectsPanel,
   ]);
 }

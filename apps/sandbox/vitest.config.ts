@@ -32,5 +32,17 @@ export default defineConfig({
     // at exactly that line (2026-10-25). The budget is the runner's, not
     // a hidden bug's: a test that hangs still fails, later.
     testTimeout: 30000,
+    // The integration file boots the whole app ~58 times in one fork
+    // worker, and by 2026-11-12 that crossed V8's default old-space
+    // limit: the worker died with "Ineffective mark-compacts near heap
+    // limit" (an OOM abort), surfacing as NONDETERMINISTIC 20 s test
+    // timeouts (the GC death spiral slows everything first) and a
+    // "Timeout terminating forks worker" note on every run. A limit,
+    // not a reservation — harmless where memory isn't needed. The
+    // real follow-up (hunt the retention / split the file) is in
+    // docs/backlog.md.
+    poolOptions: {
+      forks: { execArgv: ['--max-old-space-size=8192'] },
+    },
   },
 });

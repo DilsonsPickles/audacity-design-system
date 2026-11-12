@@ -4,6 +4,9 @@ Self-contained work items discovered during the agent-readiness campaigns (2026-
 
 ## Bugs (confirmed, preserved-not-fixed during refactors)
 
+### EditorLayout.integration.test.tsx exhausts the worker heap (OOM)
+By 2026-11-12 the ~58 whole-app renders in `apps/sandbox/src/__tests__/EditorLayout.integration.test.tsx` cross V8's default old-space limit in the vitest fork worker: "Ineffective mark-compacts near heap limit … JavaScript heap out of memory", surfacing as NONDETERMINISTIC 20 s test timeouts (the GC death spiral slows everything first — different tests "fail" each run) plus a "Timeout terminating forks worker" note on every run, pass or fail. The file has `afterEach(cleanup)`, so something cleanup doesn't reach is retained per render (candidates: module-level singletons, document-level listeners, rAF/meter loops in mocks, fake-indexeddb state). Mitigated by raising the worker heap (`apps/sandbox/vitest.config.ts` poolOptions / NODE_OPTIONS — see the config comment); the real fixes are to hunt the retention (run with `--heapsnapshot-near-heap-limit=1` and diff) or split the file by describe block. Until then any single-test flake in this file under full-suite load is suspect as memory pressure, not logic.
+
 ### Cursor-time readout wrong at non-default zoom
 `apps/sandbox/src/components/EditorLayout.tsx` — the canvas scroll-container's `onMouseMove` (locate by the `/100` divisor, near `setMouseCursorPosition`) computes mouse cursor time with a hard-coded 100 px/s divisor; every other site uses the live `pixelsPerSecond`. The status-bar cursor time is wrong at any other zoom. Verify by zooming and comparing the readout against the ruler; fix to use `pixelsPerSecond`; add a covering assertion via the integration harness (`apps/sandbox/src/__tests__/`).
 

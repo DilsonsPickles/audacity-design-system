@@ -69,6 +69,18 @@ export interface PreferencesState {
    *    track; explicit modifiers (Shift, Option/Alt) are required to extend
    *    or toggle a non-contiguous selection. */
   trackSelectionMode: 'classic' | 'follows-focus';
+  /** THE PASTE MATRIX'S PREFERENCES (2026-11-12, the paste spec): what
+   *  pasting audio does to the audio already there. 'overlaps' CARVES
+   *  the landing span out of the clips underneath; 'pushes' makes room
+   *  by splitting at the paste point and shifting later clips right —
+   *  on the destination track alone or on every track
+   *  (pastingPushesBehavior). alwaysPasteAsNewClip chooses between
+   *  pasting a separate clip (on) and merging the audio into the
+   *  recipient clip (off). The Preferences › Editing page's controls,
+   *  now real. */
+  pastingBehavior: 'overlaps' | 'pushes';
+  pastingPushesBehavior: 'same-track' | 'all-tracks';
+  alwaysPasteAsNewClip: boolean;
   /** Prototyping toggle: what a plain click on a track's LANE does to
    *  track selection (2026-09-10 exploration — the rest of the model now
    *  selects tracks from gestures; the plain lane click is the holdout).
@@ -154,6 +166,9 @@ const defaultPreferences: PreferencesState = {
 
   // Debug
   trackSelectionMode: 'classic',
+  pastingBehavior: 'overlaps',
+  pastingPushesBehavior: 'same-track',
+  alwaysPasteAsNewClip: false,
   // 'select-and-collapse' won the 2026-09-10 lane-click exploration: a
   // plain lane click inside the selection's rows parks the playhead;
   // outside them it selects the clicked track and collapses the range
@@ -218,6 +233,9 @@ const AppearancePrefsContext = createContext<AppearancePrefsValue | undefined>(u
 export interface EditingBehaviorPrefsValue {
   trackSelectionMode: PreferencesState['trackSelectionMode'];
   laneClickBehavior: PreferencesState['laneClickBehavior'];
+  pastingBehavior: PreferencesState['pastingBehavior'];
+  pastingPushesBehavior: PreferencesState['pastingPushesBehavior'];
+  alwaysPasteAsNewClip: PreferencesState['alwaysPasteAsNewClip'];
   updatePreference: PreferencesContextValue['updatePreference'];
 }
 
@@ -291,9 +309,12 @@ export function PreferencesProvider({ children }: PreferencesProviderProps) {
     () => ({
       trackSelectionMode: preferences.trackSelectionMode,
       laneClickBehavior: preferences.laneClickBehavior,
+      pastingBehavior: preferences.pastingBehavior,
+      pastingPushesBehavior: preferences.pastingPushesBehavior,
+      alwaysPasteAsNewClip: preferences.alwaysPasteAsNewClip,
       updatePreference,
     }),
-    [preferences.trackSelectionMode, preferences.laneClickBehavior, updatePreference]
+    [preferences.trackSelectionMode, preferences.laneClickBehavior, preferences.pastingBehavior, preferences.pastingPushesBehavior, preferences.alwaysPasteAsNewClip, updatePreference]
   );
 
   return (

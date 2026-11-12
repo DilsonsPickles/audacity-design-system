@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { SetStateAction } from 'react';
-import { handleCopy, handleCut, handlePaste } from '../clipboardHandlers';
+import { handleCopy, handleCut, handlePaste, type PastePrefs } from '../clipboardHandlers';
 import { initialState, type TracksState, type Clip } from '../../../contexts/TracksContext';
 import type { ClipboardState } from '../../useKeyboardShortcuts';
 import type { AudioPlaybackManager } from '@audacity-ui/audio';
@@ -13,7 +13,7 @@ const clip = (o: Partial<Clip> & { id: number }): Clip => ({
   ...o,
 });
 
-const makeDeps = (state: TracksState) => {
+const makeDeps = (state: TracksState, pastePrefs?: Partial<PastePrefs>) => {
   let clipboard: ClipboardState | null = null;
   const setClipboard = vi.fn((v: SetStateAction<ClipboardState | null>) => {
     clipboard = typeof v === 'function' ? v(clipboard) : v;
@@ -25,6 +25,8 @@ const makeDeps = (state: TracksState) => {
       clipboard,
       setClipboard,
       audioManagerRef: { current: null as unknown as AudioPlaybackManager },
+      // The preferences' defaults, overridable per test
+      pastePrefs: { mode: 'overlaps', pushScope: 'same-track', asNewClip: false, ...pastePrefs } as PastePrefs,
     },
     getClipboard: () => clipboard,
   };
