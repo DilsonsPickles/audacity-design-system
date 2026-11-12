@@ -1050,7 +1050,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
           const heightItems = ([
             ['Collapse', onCollapseTrack, 'Ctrl+Alt+C'],
             ['Expand', onExpandTrack, 'Ctrl+Alt+X'],
-            ['Fit to height', onFitTrackToHeight, 'Ctrl+Alt+0'],
+            ['Fit to height', onFitTrackToHeight, 'Ctrl+Alt+F'],
             ['Reset height', onResetTrackHeight, undefined],
           ] as const).flatMap(([label, handler, chord]) => (handler ? [[label, handler, chord] as const] : []));
           const format = trackSampleFormats[index] ?? 'float32';

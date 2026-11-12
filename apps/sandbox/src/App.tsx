@@ -796,7 +796,14 @@ function CanvasDemoContent() {
         const t = state.tracks.find((tr) => tr.id === id);
         return !!t && heightOf(t) === active.bigHeight;
       });
-    if (active && activeStands && pressedIds.every((id) => active.ids.includes(id))) {
+    // "The same track" includes the EVERY-TRACK fallback: when focus
+    // has wandered off every row, resolveTracksImOn answers with all
+    // tracks — a press with no new target intent, which must RESTORE,
+    // not blow every track up ("I press it again and it changes all of
+    // them? Feels like a bug", 2026-11-12).
+    const noNewTarget = pressedIds.every((id) => active?.ids.includes(id))
+      || pressed.length === state.tracks.length;
+    if (active && activeStands && noNewTarget) {
       const others = state.tracks.map((_t, i) => i).filter((i) => !active.ids.includes(state.tracks[i].id));
       applyHeightUpdates(expandTracks(state.tracks, others, heightMemoryRef.current));
       state.tracks.forEach((t, index) => {

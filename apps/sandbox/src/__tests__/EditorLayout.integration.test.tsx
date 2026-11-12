@@ -1282,7 +1282,7 @@ describe('Selection playback', () => {
     });
   });
 
-  it('Option+Cmd+0 BLOWS THE TRACK UP: it takes the viewport, the others drop to the 44 floor; with Shift every track fits (2026-11-12)', async () => {
+  it('Option+Cmd+F BLOWS THE TRACK UP: it takes the viewport, the others drop to the 44 floor; with Shift every track fits (2026-11-12)', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1301,7 +1301,7 @@ describe('Selection playback', () => {
     // THE BLOW-UP (2026-11-12): the other track drops to the 44 floor
     // and the pressed track takes what the floors leave:
     // 500 - TOP_GAP 2 - (44 + TRACK_GAP 2) - its own TRACK_GAP 2 = 450
-    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
+    fireEvent.keyDown(document.body, { key: 'ƒ', code: 'KeyF', metaKey: true, altKey: true });
     await waitFor(() => {
       expect((panels()[1] as HTMLElement).style.height).toBe('450px');
     });
@@ -1314,7 +1314,7 @@ describe('Selection playback', () => {
     expect((panels()[1] as HTMLElement).style.height).toBe('450px');
 
     // Shift: all, 247 each as ⌘⇧F gives
-    fireEvent.keyDown(document.body, { key: ')', code: 'Digit0', metaKey: true, altKey: true, shiftKey: true });
+    fireEvent.keyDown(document.body, { key: 'F', code: 'KeyF', metaKey: true, altKey: true, shiftKey: true });
     await waitFor(() => {
       expect((panels()[0] as HTMLElement).style.height).toBe('247px');
       expect((panels()[1] as HTMLElement).style.height).toBe('247px');
@@ -1339,7 +1339,7 @@ describe('Selection playback', () => {
     // Blow track 2 up: the others floor to 44 and it takes the rest —
     // 500 - 2 - 2×(44+2) - 2 = 404
     act(() => { (headers()[2] as HTMLElement).focus(); });
-    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
+    fireEvent.keyDown(document.body, { key: 'ƒ', code: 'KeyF', metaKey: true, altKey: true });
     await waitFor(() => expect((panels()[2] as HTMLElement).style.height).toBe('404px'));
     expect((panels()[0] as HTMLElement).style.height).toBe('44px');
     expect((panels()[1] as HTMLElement).style.height).toBe('44px');
@@ -1347,7 +1347,7 @@ describe('Selection playback', () => {
     // HANDOVER: pressing on track 1 gives IT the big lane; track 2
     // floors, remembering its ORIGINAL 114, not the blown-up 404
     act(() => { (headers()[1] as HTMLElement).focus(); });
-    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
+    fireEvent.keyDown(document.body, { key: 'ƒ', code: 'KeyF', metaKey: true, altKey: true });
     await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('404px'));
     expect((panels()[0] as HTMLElement).style.height).toBe('44px');
     expect((panels()[2] as HTMLElement).style.height).toBe('44px');
@@ -1356,7 +1356,7 @@ describe('Selection playback', () => {
     // — the floored tracks expand from the collapse memory (114, the
     // original, 404 never leaked in) and the big track returns to its
     // own pre-blow-up height (it was floored at the handover, so 114)
-    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
+    fireEvent.keyDown(document.body, { key: 'ƒ', code: 'KeyF', metaKey: true, altKey: true });
     await waitFor(() => {
       expect((panels()[0] as HTMLElement).style.height).toBe('114px');
       expect((panels()[1] as HTMLElement).style.height).toBe('114px');

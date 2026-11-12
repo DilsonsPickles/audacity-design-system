@@ -379,9 +379,13 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       // falls back to the key letter.)
       const letter = e.code === 'KeyC' || (!e.code && e.key.toLowerCase() === 'c') ? 'c'
         : e.code === 'KeyX' || (!e.code && e.key.toLowerCase() === 'x') ? 'x'
-        : e.code === 'Digit0' || e.code === 'Numpad0' || (!e.code && (e.key === '0' || e.key === ')')) ? '0' : null;
+        // F since 2026-11-12 ("please can we use cmd + opt + f?" — back
+        // to the 2026-10-08 chord; the 2026-10-13 move to 0 is undone
+        // now that the blow-up IS the height family's F). ⌥⇧F (the
+        // fades dialog) carries no meta, ⌥F no meta either — no clash.
+        : e.code === 'KeyF' || (!e.code && e.key.toLowerCase() === 'f') ? 'f' : null;
       if ((e.metaKey || e.ctrlKey) && e.altKey && letter) {
-        // 0: fit the track I'm on, Shift = all
+        // F: blow the track I'm on up, Shift = fit all
         const cb = letter === 'c'
           ? (e.shiftKey ? onCollapseAllTracks : onCollapseSelectedTracks)
           : letter === 'x'

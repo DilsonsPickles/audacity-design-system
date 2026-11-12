@@ -51,7 +51,7 @@ export const TrackContextMenu: React.FC<TrackContextMenuProps> = ({
   const heightItems = [
     ['Collapse', onCollapseTrack, 'Ctrl+Alt+C'],
     ['Expand', onExpandTrack, 'Ctrl+Alt+X'],
-    ['Fit to height', onFitTrackToHeight, 'Ctrl+Alt+0'],
+    ['Fit to height', onFitTrackToHeight, 'Ctrl+Alt+F'],
     ['Reset height', onResetTrackHeight, undefined],
   ] as const;
   const hasHeightItems = heightItems.some(([, handler]) => handler);
