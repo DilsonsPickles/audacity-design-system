@@ -1282,7 +1282,7 @@ describe('Selection playback', () => {
     });
   });
 
-  it('Option+Cmd+0 fits the SELECTED track into the REST of the viewport, the others untouched; with Shift every track (2026-10-08)', async () => {
+  it('Option+Cmd+0 BLOWS THE TRACK UP: it takes the viewport, the others drop to the 44 floor; with Shift every track fits (2026-11-12)', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1298,13 +1298,20 @@ describe('Selection playback', () => {
     const panel1 = container.querySelectorAll('[aria-label*="track controls"]')[1] as HTMLElement;
     act(() => { panel1.focus(); });
 
-    // The REST of the viewport: 500 - TOP_GAP 2 - the other track's
-    // 114 + TRACK_GAP 2 - its own TRACK_GAP 2 = 380 for the one track
+    // THE BLOW-UP (2026-11-12): the other track drops to the 44 floor
+    // and the pressed track takes what the floors leave:
+    // 500 - TOP_GAP 2 - (44 + TRACK_GAP 2) - its own TRACK_GAP 2 = 450
     fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
     await waitFor(() => {
-      expect((panels()[1] as HTMLElement).style.height).toBe('380px');
+      expect((panels()[1] as HTMLElement).style.height).toBe('450px');
     });
-    expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+    expect((panels()[0] as HTMLElement).style.height).toBe('44px');
+
+    // The floors are ORDINARY COLLAPSES (through the memory): Expand all
+    // restores the floored track to 114; the big track, open, stays
+    fireEvent.keyDown(document.body, { key: 'X', code: 'KeyX', metaKey: true, shiftKey: true });
+    await waitFor(() => expect((panels()[0] as HTMLElement).style.height).toBe('114px'));
+    expect((panels()[1] as HTMLElement).style.height).toBe('450px');
 
     // Shift: all, 247 each as ⌘⇧F gives
     fireEvent.keyDown(document.body, { key: ')', code: 'Digit0', metaKey: true, altKey: true, shiftKey: true });
@@ -1314,7 +1321,7 @@ describe('Selection playback', () => {
     });
   });
 
-  it('successive Option+Cmd+0 presses SHARE the room: the track fitted last joins the next (2026-10-08)', async () => {
+  it('the blow-up TOGGLES on a second press and HANDS OVER on another track, restoring original heights (2026-11-12)', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1329,44 +1336,32 @@ describe('Selection playback', () => {
     const panels = () => container.querySelectorAll('.track-control-side-panel__track');
     const headers = () => container.querySelectorAll('[aria-label*="track controls"]');
 
-    // Fit track 2 into what tracks 0 and 1 leave: 500 - 2 - 2×116 - 2 = 264
+    // Blow track 2 up: the others floor to 44 and it takes the rest —
+    // 500 - 2 - 2×(44+2) - 2 = 404
     act(() => { (headers()[2] as HTMLElement).focus(); });
     fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
-    await waitFor(() => expect((panels()[2] as HTMLElement).style.height).toBe('264px'));
+    await waitFor(() => expect((panels()[2] as HTMLElement).style.height).toBe('404px'));
+    expect((panels()[0] as HTMLElement).style.height).toBe('44px');
+    expect((panels()[1] as HTMLElement).style.height).toBe('44px');
 
-    // Now fit track 1: it SHARES with track 2 rather than finding no
-    // room — (500 - 2 - 116 - 2×2) / 2 = 189 each; track 0 untouched
+    // HANDOVER: pressing on track 1 gives IT the big lane; track 2
+    // floors, remembering its ORIGINAL 114, not the blown-up 404
     act(() => { (headers()[1] as HTMLElement).focus(); });
     fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
-    await waitFor(() => {
-      expect((panels()[1] as HTMLElement).style.height).toBe('189px');
-      expect((panels()[2] as HTMLElement).style.height).toBe('189px');
-    });
-    expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+    await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('404px'));
+    expect((panels()[0] as HTMLElement).style.height).toBe('44px');
+    expect((panels()[2] as HTMLElement).style.height).toBe('44px');
 
-    // A collapse-all / expand-all round trip gives the fitted layout back
-    // (2026-10-22, "collapse remembers, expand restores")
-    fireEvent.keyDown(document.body, { key: 'C', code: 'KeyC', metaKey: true, shiftKey: true });
-    await waitFor(() => expect((panels()[2] as HTMLElement).style.height).toBe('44px'));
-    fireEvent.keyDown(document.body, { key: 'X', code: 'KeyX', metaKey: true, shiftKey: true });
+    // TOGGLE: a second press on the big track puts the whole scene back
+    // — the floored tracks expand from the collapse memory (114, the
+    // original, 404 never leaked in) and the big track returns to its
+    // own pre-blow-up height (it was floored at the handover, so 114)
+    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
     await waitFor(() => {
       expect((panels()[0] as HTMLElement).style.height).toBe('114px');
-      expect((panels()[1] as HTMLElement).style.height).toBe('189px');
-      expect((panels()[2] as HTMLElement).style.height).toBe('189px');
+      expect((panels()[1] as HTMLElement).style.height).toBe('114px');
+      expect((panels()[2] as HTMLElement).style.height).toBe('114px');
     });
-    // Expand all with nothing collapsed changes nothing — Expand only
-    // undoes a collapse, Audacity 3's rule (2026-10-29): the two 189s
-    // keep their height, so they are still the fitted set, and a fit of
-    // track 0 shares the room three ways: (500 - 2 - 3×2) / 3 = 164
-    fireEvent.keyDown(document.body, { key: 'X', code: 'KeyX', metaKey: true, shiftKey: true });
-    await new Promise((r) => setTimeout(r, 50));
-    expect((panels()[1] as HTMLElement).style.height).toBe('189px');
-    expect((panels()[2] as HTMLElement).style.height).toBe('189px');
-    act(() => { (headers()[0] as HTMLElement).focus(); });
-    fireEvent.keyDown(document.body, { key: '0', code: 'Digit0', metaKey: true, altKey: true });
-    await waitFor(() => expect((panels()[0] as HTMLElement).style.height).toBe('164px'));
-    expect((panels()[1] as HTMLElement).style.height).toBe('164px');
-    expect((panels()[2] as HTMLElement).style.height).toBe('164px');
   });
 
   it('a right-click on empty canvas with no time selection opens the canvas menu: Paste (dimmed with nothing to paste) and Add track (2026-10-22)', async () => {
@@ -1463,10 +1458,11 @@ describe('Selection playback', () => {
     heightItem('Expand');
     await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('114px'));
 
-    // Fit this track into what the other row leaves: 500 - 2 - 116 - 2 = 380
+    // Fit is the BLOW-UP (2026-11-12): the other row drops to the 44
+    // floor and this track takes the rest — 500 - 2 - 46 - 2 = 450
     heightItem('Fit to height');
-    await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('380px'));
-    expect((panels()[0] as HTMLElement).style.height).toBe('114px');
+    await waitFor(() => expect((panels()[1] as HTMLElement).style.height).toBe('450px'));
+    expect((panels()[0] as HTMLElement).style.height).toBe('44px');
   });
 
   it('the track menu\'s height items act on EVERY SELECTED track when opened from one of them, and on that row alone otherwise (2026-11-11)', async () => {

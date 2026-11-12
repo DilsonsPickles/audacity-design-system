@@ -52,7 +52,7 @@ import { computeFitTrackHeight, buildNewTrack } from './utils/trackManagement';
 import { handlePaste } from './hooks/handlers/clipboardHandlers';
 import type { TrackType } from '@audacity-ui/components';
 import { resolveTracksImOn as resolveTracksImOnRule } from './utils/tracksImOn';
-import { collapseTracks, expandTracks, resetTracks, type HeightMemory, type HeightUpdate } from './utils/trackHeightMemory';
+import { collapseTracks, expandTracks, resetTracks, isCollapsedHeight, type HeightMemory, type HeightUpdate } from './utils/trackHeightMemory';
 import { effectiveTrackStride } from './utils/trackFolders';
 import { TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT } from './constants/canvas';
 import { MuseHubProvider, useMuseHub, useInstalledEffects } from './contexts/MuseHubContext';
@@ -767,39 +767,89 @@ function CanvasDemoContent() {
   const handleExpandSelectedTracks = React.useCallback(() => {
     applyHeightUpdates(expandTracks(state.tracks, resolveTracksImOn(), heightMemoryRef.current));
   }, [state.tracks, resolveTracksImOn, applyHeightUpdates]);
-  // Option+Cmd+F (2026-10-08, "cmd + opt + F on a single track to get it
-  // to fill all available VH space"): the track I'm on (focus first, as
-  // above) takes what the other rows leave of the viewport; the others
-  // keep theirs. The one-track form of Fit to height.
-  // The tracks the last Option+Cmd+F sized, by id, at the height it gave
-  // them. SUCCESSIVE FITS SHARE THE ROOM (2026-10-08, "if I press cmd +
-  // alt + F on another track, it'll share the available height with the
-  // other track that I just did that on"): a track the fit sized, and
-  // which is STILL at that height, joins the next fit's targets instead of
-  // being counted as occupied space — otherwise the second press would
-  // find no room left and land on the floor. A track resized since by any
-  // other means (drag, wheel, collapse, expand, fit all) is no longer at
-  // its fitted height and drops out on its own.
-  const fittedHeightsRef = React.useRef<Map<number, number>>(new Map());
+  // ⌥⌘0 IS A BLOW-UP (2026-11-12, "should we instead make it blow up
+  // big?" — Cubase's Z, REAPER's maximize, replacing the 2026-10-08
+  // leftover-room fit whose share rule is retired with it): the track(s)
+  // I'm on take the viewport and every OTHER track drops to the 44 floor
+  // THROUGH THE COLLAPSE MEMORY, so the floors are ordinary collapses —
+  // Expand restores them, and so does the toggle. A SECOND PRESS on the
+  // same track, still at the blown-up height, PUTS EVERYTHING BACK: the
+  // others expand from memory, the big track returns to its own
+  // pre-blow-up height. Pressing on a DIFFERENT track HANDS THE BIG LANE
+  // OVER — the former big track floors remembering its ORIGINAL height
+  // (not the blown-up one), and a pressed track that was itself floored
+  // restores later to what IT remembered. Everything fits the viewport
+  // by construction, so the view scrolls to the top.
+  const blowUpRef = React.useRef<{ ids: number[]; bigHeight: number; prev: Map<number, number> } | null>(null);
   const fitTracksToHeightFor = React.useCallback((pressed: number[]) => {
-    const targetSet = new Set(pressed);
-    state.tracks.forEach((t, i) => {
-      if (fittedHeightsRef.current.get(t.id) === (t.height || DEFAULT_TRACK_HEIGHT)) targetSet.add(i);
-    });
-    const targets = [...targetSet].sort((a, b) => a - b);
     const viewport = scrollContainerRef.current?.clientHeight ?? 0;
-    // The targets take what the OTHER rows leave (a hidden child of a
-    // collapsed group contributes nothing, as in every y-walk)
-    const occupied = state.tracks.reduce((sum, _t, i) => (
-      targetSet.has(i) ? sum : sum + effectiveTrackStride(state.tracks, i, DEFAULT_TRACK_HEIGHT, TRACK_GAP)
-    ), 0);
-    const per = computeFitTrackHeight(viewport, targets.length, TOP_GAP, TRACK_GAP, occupied);
-    if (per === null) return;
-    fittedHeightsRef.current = new Map(targets.map((index) => [state.tracks[index].id, per]));
-    targets.forEach((index) => {
-      if ((state.tracks[index]?.height || DEFAULT_TRACK_HEIGHT) !== per) dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: per } });
+    if (viewport <= 0 || pressed.length === 0) return;
+    const pressedSet = new Set(pressed);
+    const pressedIds = pressed.map((i) => state.tracks[i]?.id).filter((id): id is number => id !== undefined);
+    const heightOf = (t: { height?: number }) => t.height || DEFAULT_TRACK_HEIGHT;
+
+    // THE TOGGLE: pressing the blown-up track again (its set, every one
+    // still at the height the blow-up gave it) restores the scene
+    const active = blowUpRef.current;
+    const activeStands = active
+      && active.ids.every((id) => {
+        const t = state.tracks.find((tr) => tr.id === id);
+        return !!t && heightOf(t) === active.bigHeight;
+      });
+    if (active && activeStands && pressedIds.every((id) => active.ids.includes(id))) {
+      const others = state.tracks.map((_t, i) => i).filter((i) => !active.ids.includes(state.tracks[i].id));
+      applyHeightUpdates(expandTracks(state.tracks, others, heightMemoryRef.current));
+      state.tracks.forEach((t, index) => {
+        if (!active.ids.includes(t.id)) return;
+        const prevHeight = active.prev.get(t.id) ?? DEFAULT_TRACK_HEIGHT;
+        if (heightOf(t) !== prevHeight) dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: prevHeight } });
+      });
+      blowUpRef.current = null;
+      return;
+    }
+
+    // ACTIVATION (or handover). The pressed tracks' restore heights: a
+    // floored one restores to what it remembered, an open one to itself.
+    const prev = new Map<number, number>();
+    pressed.forEach((i) => {
+      const t = state.tracks[i];
+      if (!t) return;
+      const h = heightOf(t);
+      prev.set(t.id, isCollapsedHeight(h) ? (heightMemoryRef.current.get(t.id) ?? DEFAULT_TRACK_HEIGHT) : h);
+      heightMemoryRef.current.delete(t.id); // open now — no stale memory
     });
-  }, [state.tracks, dispatch]);
+
+    // Floor the others through the collapse memory…
+    const others = state.tracks.map((_t, i) => i).filter((i) => !pressedSet.has(i));
+    const collapseUpdates = collapseTracks(state.tracks, others, heightMemoryRef.current);
+    // …but a HANDED-OVER big track must remember its original height,
+    // not the blown-up one the collapse just recorded
+    if (active && activeStands) {
+      active.ids.forEach((id) => {
+        if (!pressedIds.includes(id) && heightMemoryRef.current.has(id)) {
+          heightMemoryRef.current.set(id, active.prev.get(id) ?? DEFAULT_TRACK_HEIGHT);
+        }
+      });
+    }
+    applyHeightUpdates(collapseUpdates);
+
+    // The room the floors leave, from the post-collapse picture (hidden
+    // children of collapsed groups contribute nothing, as in every y-walk)
+    const after = state.tracks.map((t, i) => {
+      const upd = collapseUpdates.find((u) => u.index === i);
+      return upd ? { ...t, height: upd.height } : t;
+    });
+    const occupied = after.reduce((sum, _t, i) => (
+      pressedSet.has(i) ? sum : sum + effectiveTrackStride(after, i, DEFAULT_TRACK_HEIGHT, TRACK_GAP)
+    ), 0);
+    const per = computeFitTrackHeight(viewport, pressed.length, TOP_GAP, TRACK_GAP, occupied);
+    if (per === null) return;
+    pressed.forEach((index) => {
+      if (heightOf(state.tracks[index] ?? {}) !== per) dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: per } });
+    });
+    blowUpRef.current = { ids: pressedIds, bigHeight: per, prev };
+    if (scrollContainerRef.current) scrollContainerRef.current.scrollTop = 0;
+  }, [state.tracks, dispatch, applyHeightUpdates]);
   const handleFitSelectedTracksToHeight = React.useCallback(() => {
     fitTracksToHeightFor(resolveTracksImOn());
   }, [fitTracksToHeightFor, resolveTracksImOn]);
