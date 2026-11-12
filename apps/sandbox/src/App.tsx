@@ -31,7 +31,7 @@ import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
 import { computeProjectEnd } from './hooks/handlers/navigationHandlers';
 import { TransportToolbarContainer, type TransportToolbarContainerProps } from './components/TransportToolbarContainer';
 import { ProjectToolbarContainer, useProjectNavigation } from './components/ProjectToolbarContainer';
-import { renderProjectTool, projectToolMeta, type ProjectBarToolsDeps } from './components/ProjectBarTools';
+import { ProjectTabs, renderProjectTool, projectToolMeta, type ProjectBarToolsDeps } from './components/ProjectBarTools';
 const TokenReview = React.lazy(() =>
   import('./pages/TokenReview').then(m => ({ default: m.TokenReview }))
 );
@@ -1033,6 +1033,16 @@ function CanvasDemoContent() {
   // PROJECT TABS (2026-11-12, "two projects open using different tabs in
   // the same electron window? Like Figma!"): every opened project gets a
   // tab that keeps its state; Home's open switches to a project already open
+  // A tab's VIEW — loop region, zoom, scroll — goes with it (2026-11-12):
+  // read as a tab is left, put back when it returns. The scroll is the
+  // tracked scrollX / scrollY (the canvas may be unmounted on Home), and it
+  // is applied after the restored zoom commits (the layout effect below).
+  const scrollPosRef = React.useRef({ x: scrollX, y: scrollY });
+  scrollPosRef.current = { x: scrollX, y: scrollY };
+  const pendingScrollRef = React.useRef<{ left: number; top: number } | null>(null);
+  const [bootedForNewProject] = React.useState(() => {
+    try { return new URLSearchParams(window.location.search).get('newProject') === '1'; } catch { return false; }
+  });
   const projectTabs = useProjectTabs({
     state,
     dispatch,
@@ -1043,7 +1053,31 @@ function CanvasDemoContent() {
     projects: indexedDBProjects,
     openProject: handleOpenProject,
     stopPlayback: () => { void handleStopAll(); },
+    inProject: activeMenuItem !== 'home',
+    captureView: () => ({
+      loop: { enabled: loopRegion.loopRegionEnabled, start: loopRegion.loopRegionStart, end: loopRegion.loopRegionEnd },
+      pixelsPerSecond,
+      scrollLeft: scrollPosRef.current.x,
+      scrollTop: scrollPosRef.current.y,
+    }),
+    restoreView: (view) => {
+      loopRegion.setLoopRegionEnabled(view?.loop.enabled ?? false);
+      loopRegion.setLoopRegionStart(view?.loop.start ?? null);
+      loopRegion.setLoopRegionEnd(view?.loop.end ?? null);
+      if (view) _setPixelsPerSecond(view.pixelsPerSecond);
+      pendingScrollRef.current = { left: view?.scrollLeft ?? 0, top: view?.scrollTop ?? 0 };
+    },
+    listProjects: getProjects,
+    restoreOnLaunch: !bootedForNewProject,
   });
+  React.useLayoutEffect(() => {
+    const pending = pendingScrollRef.current;
+    const el = scrollContainerRef.current;
+    if (!pending || !el || activeMenuItem === 'home') return;
+    pendingScrollRef.current = null;
+    el.scrollLeft = pending.left;
+    el.scrollTop = pending.top;
+  }, [currentProjectId, pixelsPerSecond, activeMenuItem]);
   const openProjectInTab = (projectId: string) => {
     if (projectTabs.openProjectIds.includes(projectId)) {
       projectTabs.switchToProject(projectId);
@@ -1054,6 +1088,7 @@ function CanvasDemoContent() {
       return Promise.resolve();
     }
     void handleStopAll();
+    projectTabs.parkView();
     return handleOpenProject(projectId);
   };
   // One new project at a time: a double-click on Home's New project card
@@ -1068,6 +1103,7 @@ function CanvasDemoContent() {
     creatingProjectRef.current = true;
     try {
       void handleStopAll();
+      projectTabs.parkView();
       await handleNewProject();
     } finally {
       creatingProjectRef.current = false;
@@ -1271,6 +1307,7 @@ function CanvasDemoContent() {
     activeProjectId: currentProjectId,
     onSelectProject: projectTabs.switchToProject,
     onCloseProject: projectTabs.closeProject,
+    onReorderProjects: projectTabs.reorderProjects,
     onNewProject: () => { void newProjectInTab(); },
     tabsInTitleBar: customTitleBar,
     showMixer,
@@ -1442,6 +1479,7 @@ function CanvasDemoContent() {
         currentProjectId={currentProjectId}
         createNewProject={createNewProject}
         projectTitle={projectTitle}
+        tabs={<ProjectTabs {...projectToolDeps} />}
         showMixer={showMixer}
         setMixerPanelOpen={setMixerPanelOpen}
         setAudioSetupMenuAnchor={setAudioSetupMenuAnchor}

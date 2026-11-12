@@ -26,6 +26,8 @@ export interface ProjectBarToolsDeps {
   activeProjectId?: string | null;
   onSelectProject?: (id: string) => void;
   onCloseProject?: (id: string) => void;
+  /** A tab dragged along the bar puts the tabs in a new order (2026-11-12) */
+  onReorderProjects?: (ids: string[]) => void;
   /** The + after the tabs: a new project in a new tab */
   onNewProject?: () => void;
   /** The tabs, the workspace picker and Share audio live in the app's
@@ -39,7 +41,84 @@ export interface ProjectTabInfo {
   title: string;
 }
 
-type ProjectTabsProps = Pick<ProjectBarToolsDeps, 'activeMenuItem' | 'onNavigate' | 'projectTitle' | 'projectTabs' | 'activeProjectId' | 'onSelectProject' | 'onCloseProject' | 'onNewProject'>;
+type ProjectTabsProps = Pick<ProjectBarToolsDeps, 'activeMenuItem' | 'onNavigate' | 'projectTitle' | 'projectTabs' | 'activeProjectId' | 'onSelectProject' | 'onCloseProject' | 'onReorderProjects' | 'onNewProject'>;
+
+/** Pointer travel before a press on a tab becomes a drag */
+const TAB_DRAG_THRESHOLD_PX = 4;
+
+/**
+ * A TAB DRAGGED ALONG THE BAR REORDERS THE TABS (2026-11-12): past the
+ * threshold the press is a drag, and the order follows the pointer live —
+ * the dragged tab takes the slot whose neighbour's middle it has passed —
+ * so the tab stays under the pointer as the others step aside; the click
+ * that ends a drag selects nothing. Pointer capture keeps the drag going
+ * off the bar.
+ */
+function useTabReorder(ids: string[], onReorder: ((ids: string[]) => void) | undefined) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [draggingId, setDraggingId] = React.useState<string | null>(null);
+  const suppressClickRef = React.useRef(false);
+  const idsRef = React.useRef(ids);
+  idsRef.current = ids;
+
+  const onPointerDown = (id: string) => (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!onReorder || e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('[data-project-tab-close]')) return;
+    const startX = e.clientX;
+    const el = e.currentTarget;
+    const pointerId = e.pointerId;
+    let dragging = false;
+    const move = (ev: PointerEvent) => {
+      if (!dragging) {
+        if (Math.abs(ev.clientX - startX) < TAB_DRAG_THRESHOLD_PX) return;
+        dragging = true;
+        suppressClickRef.current = true;
+        setDraggingId(id);
+        try { el.setPointerCapture(pointerId); } catch { /* the press has ended */ }
+      }
+      const tabs = Array.from(containerRef.current?.querySelectorAll<HTMLElement>('[data-project-tab]') ?? []);
+      const current = idsRef.current;
+      const from = current.indexOf(id);
+      let to = from;
+      tabs.forEach((tab) => {
+        const other = tab.getAttribute('data-project-tab');
+        if (!other || other === id) return;
+        const r = tab.getBoundingClientRect();
+        const mid = r.left + r.width / 2;
+        const i = current.indexOf(other);
+        if (i < from && ev.clientX < mid) to = Math.min(to, i);
+        if (i > from && ev.clientX > mid) to = Math.max(to, i);
+      });
+      if (to !== from) {
+        const next = current.filter((x) => x !== id);
+        next.splice(to, 0, id);
+        idsRef.current = next;
+        onReorder(next);
+      }
+    };
+    const up = () => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      document.removeEventListener('pointercancel', up);
+      if (dragging) {
+        setDraggingId(null);
+        // the click that ends the drag lands after this — let it pass first
+        setTimeout(() => { suppressClickRef.current = false; }, 0);
+      }
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+  };
+
+  const onClickCapture = (e: React.MouseEvent) => {
+    if (!suppressClickRef.current) return;
+    e.stopPropagation();
+    e.preventDefault();
+  };
+
+  return { containerRef, draggingId, onPointerDown, onClickCapture };
+}
 
 /**
  * The Home and project tabs — the docks' tabs tool and the title bar's.
@@ -51,11 +130,12 @@ type ProjectTabsProps = Pick<ProjectBarToolsDeps, 'activeMenuItem' | 'onNavigate
  * a new project in a new tab. A host that passes no `projectTabs` gets the
  * old single Project tab.
  */
-export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectTabs, activeProjectId, onSelectProject, onCloseProject, onNewProject }: ProjectTabsProps) {
+export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectTabs, activeProjectId, onSelectProject, onCloseProject, onReorderProjects, onNewProject }: ProjectTabsProps) {
   const inProject = activeMenuItem !== 'home';
+  const reorder = useTabReorder(projectTabs?.map((p) => p.id) ?? [], onReorderProjects);
   return (
     // ("Main menu": F6's section walk and the status bar find it by name)
-    <div className="project-tabs" role="group" aria-label="Main menu" data-project-tool="tabs">
+    <div className="project-tabs" role="group" aria-label="Main menu" data-project-tool="tabs" ref={reorder.containerRef} onClickCapture={reorder.onClickCapture}>
       <Tab
         variant="document"
         label="Home"
@@ -71,8 +151,9 @@ export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectT
             return (
               <div
                 key={p.id}
-                className={`project-tab${active ? ' project-tab--active' : ''}`}
+                className={`project-tab${active ? ' project-tab--active' : ''}${reorder.draggingId === p.id ? ' project-tab--dragging' : ''}`}
                 data-project-tab={p.id}
+                onPointerDown={reorder.onPointerDown(p.id)}
                 onAuxClick={(e) => { if (e.button === 1 && onCloseProject) { e.preventDefault(); onCloseProject(p.id); } }}
               >
                 <Tab

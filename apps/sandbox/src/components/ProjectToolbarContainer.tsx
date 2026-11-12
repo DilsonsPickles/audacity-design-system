@@ -18,6 +18,8 @@ export interface ProjectToolbarContainerProps {
   createNewProject: () => Promise<string>;
   /** The open project's title, the Project tab's text (2026-11-11) */
   projectTitle?: string;
+  /** The host's tabs — one per open project (2026-11-12) */
+  tabs?: React.ReactNode;
 
   // Center actions
   showMixer: boolean;
@@ -89,6 +91,7 @@ export function ProjectToolbarContainer({
   currentProjectId,
   createNewProject,
   projectTitle,
+  tabs,
   showMixer,
   setMixerPanelOpen,
   setAudioSetupMenuAnchor,
@@ -109,6 +112,7 @@ export function ProjectToolbarContainer({
       showExportTab={false}
       tabStyle="document"
       projectTitle={projectTitle}
+      tabs={tabs}
       centerActions={activeMenuItem !== 'export' ? [
         ...(showMixer ? [{
           icon: 'mixer' as const,

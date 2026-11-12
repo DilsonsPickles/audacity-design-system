@@ -84,6 +84,11 @@ html.pan-active * {
 .project-tab__close:focus-visible { opacity: 1; }
 .project-tab__close:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
 .project-tab .tab:not(.tab--active) + .project-tab__close { color: var(--project-tab-close-inactive, inherit); }
+.project-tab--dragging { opacity: 0.85; z-index: 1; }
+.project-tab--dragging .tab { cursor: grabbing; }
+/* In the browser build's Home bar (ProjectToolbar's tabs slot) */
+.project-toolbar__left--custom { align-self: stretch; align-items: stretch; padding-left: 16px; }
+.project-toolbar__left--custom .project-tabs { height: auto; margin: 0; }
 .project-tabs__new {
   align-self: center; flex-shrink: 0; width: 28px; height: 28px; margin: 0 6px; padding: 0;
   border: 0; border-radius: 4px; background: transparent; color: inherit; cursor: pointer;

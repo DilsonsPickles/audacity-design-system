@@ -95,13 +95,13 @@ afterEach(async () => {
 
 describe('App boot', () => {
   it('boots: renders project chrome without crashing', async () => {
-    const { container, findByLabelText, getByText } = renderApp();
+    const { container, findByLabelText } = renderApp();
 
     // App boots on the Home tab. TransportToolbar (packages/components)
     // early-returns null while activeMenuItem === 'home', so Play/Stop and
     // the rest of the project chrome (timeline ruler, tracks panel) only
     // exist once the user navigates to Project via the real nav button.
-    fireEvent.click(getByText('Untitled project'));
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
 
     await findByLabelText('Play');
     await findByLabelText('Stop');
@@ -121,8 +121,8 @@ describe('App boot', () => {
 
 describe('Preferences modal', () => {
   it('opens via Cmd+, and every nav page renders (Music/Advanced options render empty by design)', async () => {
-    const { container, getByText } = renderApp();
-    fireEvent.click(getByText('Untitled project'));
+    const { container } = renderApp();
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
 
     // The Cmd+, listener lives on `document` (useKeyboardShortcuts.ts), not
@@ -199,8 +199,8 @@ describe('Preferences modal', () => {
 
 describe('Theme', () => {
   it('switching to Dark via Appearance re-themes the tree and persists to localStorage', async () => {
-    const { container, getByText } = renderApp();
-    fireEvent.click(getByText('Untitled project'));
+    const { container } = renderApp();
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
 
     fireEvent.keyDown(document, { key: ',', metaKey: true });
@@ -259,8 +259,8 @@ describe('Theme', () => {
 
 describe('Loop', () => {
   it('toggling Loop enables the audio stub loop region (0..8s) and marks the button active', async () => {
-    const { container, getByText, audioSpies } = renderApp();
-    fireEvent.click(getByText('Untitled project'));
+    const { container, audioSpies } = renderApp();
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
 
     const loopButton = container.querySelector('button[aria-label="Loop"]') as HTMLButtonElement;
@@ -294,8 +294,8 @@ describe('Loop', () => {
 
 describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
   it('moves a bar between docks by its grip: top -> bottom -> top, and keeps the layout in the preferences', async () => {
-    const { container, getByText } = renderApp();
-    fireEvent.click(getByText('Untitled project'));
+    const { container } = renderApp();
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
 
     const dock = (region: string) => container.querySelector(`[data-toolbar-dock="${region}"]`) as HTMLElement;
@@ -343,7 +343,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
 
   it('A NEW ROW (2026-11-10): a bar dropped on a row\'s edge gets a row of its own, the horizontal line saying so; the row goes when its last bar leaves; a flat stored layout is read as one row', async () => {
     // The first cut stored each dock as a flat list of bars
-    const { container, getByText } = renderApp({
+    const { container } = renderApp({
       toolbarLayouts: { classic: {
         top: [{ id: 'transport', tools: ['play', 'stop', 'record'] }, { id: 'zoom', tools: ['zoom-in', 'zoom-out'] }],
         // (the cog and the project tools in the status bar, so the top rows are the two bars alone)
@@ -351,7 +351,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
           { id: 'project', tools: ['project-tabs', 'mixer-button', 'audio-setup', 'share-audio', 'get-effects', 'workspace', 'undo', 'redo'] }], left: [], right: [],
       } },
     });
-    fireEvent.click(getByText('Untitled project'));
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
     const dock = (region: string) => container.querySelector(`[data-toolbar-dock="${region}"]`) as HTMLElement;
     const lines = () => Array.from(dock('top').querySelectorAll('.toolbar-dock__row')).map((l) =>
@@ -396,10 +396,10 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
 
   it('THE COG IS A TOOL (2026-11-10): its own toolbar at the top row\'s end, moved by its grip like any bar; a layout saved without it gets it back', async () => {
     // A layout saved before the cog was a tool
-    const { container, getByText } = renderApp({
+    const { container } = renderApp({
       toolbarLayouts: { classic: { top: [[{ id: 'transport', tools: ['play', 'stop'] }]], bottom: [[{ id: 'status', tools: ['status-cue', 'status-info'] }]], left: [], right: [] } },
     });
-    fireEvent.click(getByText('Untitled project'));
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
     const dock = (region: string) => container.querySelector(`[data-toolbar-dock="${region}"]`) as HTMLElement;
     const cogBar = () => container.querySelector('[data-toolbar-bar="customise"]') as HTMLElement;
@@ -416,7 +416,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
 
   it('THE TOOLBAR BUILDER: the cog\'s "Rearrange tools…" opens it; Remove, Add, hide, New toolbar (empty) and Add separator apply live; Cancel puts it all back; Reset layout restores (2026-11-11)', async () => {
     const { container, getByText } = renderApp();
-    fireEvent.click(getByText('Untitled project'));
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
     const tool = (id: string) => container.querySelector(`[data-toolbar-tool="${id}"]`) as HTMLElement | null;
     const barOf = (id: string) => tool(id)?.closest('[data-toolbar-bar]')?.getAttribute('data-toolbar-bar');

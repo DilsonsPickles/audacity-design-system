@@ -100,6 +100,9 @@ export interface ProjectToolbarProps {
   tabStyle?: 'text' | 'document';
   /** The Project tab's text in the document style */
   projectTitle?: string;
+  /** The host's own tabs in place of the built-in ones (2026-11-12, the
+   *  sandbox's project tabs — one per open project) */
+  tabs?: React.ReactNode;
   /**
    * Optional className for custom styling
    */
@@ -135,6 +138,7 @@ export function ProjectToolbar({
   showExportTab = true,
   tabStyle = 'text',
   projectTitle,
+  tabs,
   className = '',
 }: ProjectToolbarProps) {
   const { theme } = useTheme();
@@ -343,6 +347,7 @@ export function ProjectToolbar({
       role="toolbar"
       aria-label="Project toolbar"
     >
+      {tabs ? <div className="project-toolbar__left project-toolbar__left--custom">{tabs}</div> : (
       <div className="project-toolbar__left" role="group" aria-label="Main menu">
         <Tab
           ref={(el) => (leftGroupRef.current[0] = el)}
@@ -394,6 +399,7 @@ export function ProjectToolbar({
           />
         )}
       </div>
+      )}
 
       {activeItem !== 'home' && renderedCenter && (
         <div className="project-toolbar__center" role="group" aria-label="Toolbar options">

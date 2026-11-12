@@ -199,12 +199,12 @@ async function retrying(fn: () => Promise<void>, attempts = 3): Promise<void> {
 /**
  * Boots the app straight to the Project tab, past the point every seam
  * below needs (timeline ruler + track panel rendered). Mirrors the
- * `fireEvent.click(getByText('Untitled project')); await waitFor(...)` sequence
+ * `fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement); await waitFor(...)` sequence
  * repeated in App.integration.test.tsx.
  */
 async function gotoProject(rendered: ReturnType<typeof renderApp>): Promise<void> {
-  const { container, getByText } = rendered;
-  fireEvent.click(getByText('Untitled project'));
+  const { container } = rendered;
+  fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
   await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
 
   // Navigating to Project with no currentProjectId fires an ASYNC chain
