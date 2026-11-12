@@ -32,19 +32,20 @@ export default defineConfig({
     // at exactly that line (2026-10-25). The budget is the runner's, not
     // a hidden bug's: a test that hangs still fails, later.
     testTimeout: 30000,
-    // THE FORK WORKERS NEED A RAISED HEAP (2026-11-12): the integration
-    // file boots the whole app ~58 times in one fork worker, and that
-    // crossed V8's default old-space limit — the worker died with
-    // "Ineffective mark-compacts near heap limit" (an OOM abort),
-    // surfacing as NONDETERMINISTIC 20 s test timeouts (the GC death
-    // spiral slows everything first) and a "Timeout terminating forks
-    // worker" note on every run. The raise lives in the test script as
-    // NODE_OPTIONS=--max-old-space-size=8192 (package.json) — a
+    // HEAP HISTORY (2026-11-12): the integration file used to OOM the
+    // fork worker ("Ineffective mark-compacts near heap limit",
+    // surfacing as nondeterministic test timeouts) and was briefly
+    // mitigated with NODE_OPTIONS=--max-old-space-size=8192 on the test
+    // script. The retention was fake-indexeddb's: its Database keeps
+    // every finished transaction (write rollback logs and read results
+    // included), so each auto-saved project — full waveform arrays —
+    // was retained for the life of the worker, ~5.8GB by test 58. Fixed
+    // at the source: renderApp()/renderCanvas() purge fake-indexeddb
+    // between tests (purgeFakeIndexedDB() in integrationHarness.tsx);
+    // per-test heap is flat (~175MB steady) and the heap raise is gone.
+    // If OOM symptoms ever return, start at that purge and the
+    // harness's comment on it. (Historical footnote: a
     // poolOptions.forks.execArgv here was verified NOT to reach the
-    // workers on vitest 4, while NODE_OPTIONS does (zero OOM, every
-    // test ran). V8 flags are legal in NODE_OPTIONS on Node 20; the
-    // storage flags CLAUDE.md warns about are not V8 flags. A limit,
-    // not a reservation. The real follow-up (hunt the retention /
-    // split the file) is in docs/backlog.md.
+    // workers on vitest 4, while NODE_OPTIONS does.)
   },
 });

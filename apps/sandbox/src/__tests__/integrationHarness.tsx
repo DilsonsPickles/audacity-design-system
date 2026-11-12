@@ -34,6 +34,73 @@ import { getLastAudioManager, type AudioSpies } from './audioMock';
 export { audioMockFactory, type AudioSpies } from './audioMock';
 
 // ---------------------------------------------------------------------------
+// fake-indexeddb retention purge
+// ---------------------------------------------------------------------------
+
+// The shapes of fake-indexeddb@6's internals that the purge below reaches
+// into (build/esm/lib/{Database,ObjectStore,RecordStore}.js and
+// FDBFactory.js — field names verified against 6.2.5; the version is
+// pinned by pnpm-lock.yaml, so revisit this if fake-indexeddb is bumped).
+interface FakeRecordStore {
+  clear(): unknown;
+}
+interface FakeObjectStore {
+  records: FakeRecordStore;
+  rawIndexes: Map<string, { records: FakeRecordStore }>;
+}
+interface FakeTransaction {
+  _state: string;
+}
+interface FakeDatabase {
+  transactions: FakeTransaction[];
+  rawObjectStores: Map<string, FakeObjectStore>;
+}
+
+/**
+ * Frees what fake-indexeddb retains for the life of the worker — the reason
+ * EditorLayout.integration.test.tsx used to exhaust the fork worker's heap
+ * (docs/backlog.md, 2026-11-12). Two leaks, one mechanism each:
+ *
+ * 1. `Database.transactions` is PUSH-ONLY (FDBDatabase.js pushes, nothing
+ *    ever removes), and every finished WRITE transaction keeps its
+ *    `_rollbackLog` — closures capturing a deep copy of each stored value.
+ *    The app's 600ms-debounced auto-save (useProjectAutoSave) writes the
+ *    FULL track payload — waveform arrays of ~170k numbers per clip — so
+ *    every test that lives past the debounce parked ~5-10MB per save here,
+ *    forever. Verified by heap-snapshot retainer paths: the biggest arrays
+ *    in the heap hung off `rollbackStoreRecord` closures via
+ *    `FDBTransaction._rollbackLog` ← `Database.transactions`.
+ *    (Going through the public API makes it WORSE: a `store.clear()` write
+ *    transaction's own rollback entry captures every record it removed.)
+ *
+ * 2. The records themselves: fake-indexeddb/auto registers ONE global
+ *    factory per test file, so auto-saved projects accumulate across tests
+ *    and each later renderApp() loads ALL of them into App state
+ *    (getProjects → setIndexedDBProjects), growing the LIVE app's footprint
+ *    linearly with test index — which is what made the original file's
+ *    growth superlinear (~600MB/test near test 58).
+ *
+ * Called from renderApp()/renderCanvas() beside localStorage.clear() — the
+ * same hermetic-per-test rule, and a synchronous call site, so no async
+ * hook ordering is involved. Transactions still in flight (not "finished")
+ * are kept so a straggling write from the previous test can't crash.
+ */
+export function purgeFakeIndexedDB(): void {
+  const factory = (globalThis as { indexedDB?: { _databases?: Map<string, FakeDatabase> } }).indexedDB;
+  const databases = factory?._databases;
+  if (!databases) return;
+  for (const raw of databases.values()) {
+    raw.transactions = raw.transactions.filter((tx) => tx._state !== 'finished');
+    for (const store of raw.rawObjectStores.values()) {
+      store.records.clear();
+      for (const index of store.rawIndexes.values()) {
+        index.records.clear();
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // jsdom gaps
 // ---------------------------------------------------------------------------
 
@@ -114,6 +181,7 @@ const PREFERENCES_STORAGE_KEY = 'audacity-preferences';
  */
 export function renderApp(storedPreferences: Record<string, unknown> = {}): RenderResult & { audioSpies: AudioSpies } {
   window.localStorage.clear();
+  purgeFakeIndexedDB();
   // (`storedPreferences`: what a returning user's blob already holds)
   window.localStorage.setItem(
     PREFERENCES_STORAGE_KEY,
@@ -193,6 +261,7 @@ function CanvasHarness({ tracks, canvasProps }: CanvasHarnessProps) {
  */
 export function renderCanvas(tracks: Track[], canvasProps?: Partial<CanvasProps>): RenderResult {
   window.localStorage.clear();
+  purgeFakeIndexedDB();
   installJsdomStubs();
   return render(<CanvasHarness tracks={tracks} canvasProps={canvasProps} />);
 }

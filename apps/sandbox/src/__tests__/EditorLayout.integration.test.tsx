@@ -166,14 +166,12 @@ afterEach(cleanup);
 // occasionally trip on slower/loaded machines despite every test settling
 // correctly; give the whole file real headroom rather than fight it
 // per-test.
-// 60 s. It was 20, then 30 — and CI run #328 (2026-11-12, the first run
-// after the heap raise stopped the worker's OOM) still measured its
-// slowest test at 32 s on the GitHub runner: the file's retention makes
-// the GC grind late in the file, so the budget is 2× that worst case.
-// The budget is the runner's, not a hidden bug's — a hung test still
-// fails, later. The real fix (hunt the retention / split the file) is
-// the backlog's entry.
-vi.setConfig({ testTimeout: 60000 });
+// (It was briefly 60 s while the file's fake-indexeddb retention made the
+// GC grind late in the file — CI measured a 32 s test on 2026-11-12. That
+// retention is fixed: renderApp() purges fake-indexeddb between tests —
+// see purgeFakeIndexedDB() in integrationHarness.tsx — and per-test heap
+// is flat again, so the budget is back to the vitest config's 30 s.)
+vi.setConfig({ testTimeout: 30000 });
 
 // ---------------------------------------------------------------------------
 // Shared helpers
