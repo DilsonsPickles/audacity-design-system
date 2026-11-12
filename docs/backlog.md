@@ -259,3 +259,4 @@ ungroup). Deliberately deferred:
 - `components/editor/PunchPointIndicator.tsx` — hard-coded `#FF2672`; fold into any design-token sweep.
 - GitHub workflows pin `node-version: '20'` (deprecated on runners, forced to 24) — bump repo-wide (test/deploy/release) in one pass.
 - `resetPreferences` + full-blob `usePreferences` context value are recreated per render (pre-existing; matters only if modal re-renders ever get audited).
+- `Canvas.integration.test.tsx` triple-click test is load-flaky: the click-chain counts clicks inside a time window, so a starved machine (full suite + other work) can space the test's three clicks past it and the "selects all clips on the track" assertion fails. Seen 2026-11-12 (passed in isolation immediately after). If it bites CI, drive the chain with fake timers or widen the window under test.
