@@ -181,6 +181,7 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       // Back to the default height, whatever each track is (2026-10-29 —
       // Expand never shrinks, so this is the way back to normal)
       label: 'Reset all track heights',
+      shortcut: 'Ctrl+Alt+Shift+0',
       onClick: deps.onResetAllTrackHeights,
     },
     {

@@ -1321,7 +1321,7 @@ describe('Selection playback', () => {
     });
   });
 
-  it('the blow-up TOGGLES on a second press and HANDS OVER on another track, restoring original heights (2026-11-12)', async () => {
+  it('a second press on the blown-up track is a NO-OP; another track takes a HANDOVER; Expand is the way back (2026-11-12)', async () => {
     const rendered = renderApp();
     const { container } = rendered;
     await gotoProject(rendered);
@@ -1344,6 +1344,14 @@ describe('Selection playback', () => {
     expect((panels()[0] as HTMLElement).style.height).toBe('44px');
     expect((panels()[1] as HTMLElement).style.height).toBe('44px');
 
+    // A SECOND PRESS DOES NOTHING ("pressing it again shouldn't do
+    // anything right?!") — idempotent while its scene stands
+    fireEvent.keyDown(document.body, { key: 'ƒ', code: 'KeyF', metaKey: true, altKey: true });
+    await new Promise((r) => setTimeout(r, 50));
+    expect((panels()[2] as HTMLElement).style.height).toBe('404px');
+    expect((panels()[0] as HTMLElement).style.height).toBe('44px');
+    expect((panels()[1] as HTMLElement).style.height).toBe('44px');
+
     // HANDOVER: pressing on track 1 gives IT the big lane; track 2
     // floors, remembering its ORIGINAL 114, not the blown-up 404
     act(() => { (headers()[1] as HTMLElement).focus(); });
@@ -1352,16 +1360,15 @@ describe('Selection playback', () => {
     expect((panels()[0] as HTMLElement).style.height).toBe('44px');
     expect((panels()[2] as HTMLElement).style.height).toBe('44px');
 
-    // TOGGLE: a second press on the big track puts the whole scene back
-    // — the floored tracks expand from the collapse memory (114, the
-    // original, 404 never leaked in) and the big track returns to its
-    // own pre-blow-up height (it was floored at the handover, so 114)
-    fireEvent.keyDown(document.body, { key: 'ƒ', code: 'KeyF', metaKey: true, altKey: true });
+    // THE WAY BACK IS EXPAND (the floors are ordinary collapses):
+    // ⌘⇧X restores the floored tracks to 114 — track 2 to its original,
+    // 404 never leaked into the memory — and the big track, open, stays
+    fireEvent.keyDown(document.body, { key: 'X', code: 'KeyX', metaKey: true, shiftKey: true });
     await waitFor(() => {
       expect((panels()[0] as HTMLElement).style.height).toBe('114px');
-      expect((panels()[1] as HTMLElement).style.height).toBe('114px');
       expect((panels()[2] as HTMLElement).style.height).toBe('114px');
     });
+    expect((panels()[1] as HTMLElement).style.height).toBe('404px');
   });
 
   it('a right-click on empty canvas with no time selection opens the canvas menu: Paste (dimmed with nothing to paste) and Add track (2026-10-22)', async () => {

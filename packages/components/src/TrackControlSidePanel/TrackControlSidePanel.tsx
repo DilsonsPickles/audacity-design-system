@@ -1051,7 +1051,7 @@ export const TrackControlSidePanel: React.FC<TrackControlSidePanelProps> = ({
             ['Collapse', onCollapseTrack, 'Ctrl+Alt+C'],
             ['Expand', onExpandTrack, 'Ctrl+Alt+X'],
             ['Fit to height', onFitTrackToHeight, 'Ctrl+Alt+F'],
-            ['Reset height', onResetTrackHeight, undefined],
+            ['Reset height', onResetTrackHeight, 'Ctrl+Alt+0'],
           ] as const).flatMap(([label, handler, chord]) => (handler ? [[label, handler, chord] as const] : []));
           const format = trackSampleFormats[index] ?? 'float32';
           const formatLabel = TRACK_SAMPLE_FORMATS.find((f) => f.id === format)?.label ?? '32-bit Float';

@@ -71,6 +71,12 @@ export interface UseKeyboardShortcutsOptions {
   /** Option+Cmd/Ctrl+F: the selected tracks (or the track I'm on) share
    *  the viewport's height — the one-track form of ⌘⇧F (2026-10-08) */
   onFitSelectedTracksToHeight?: () => void;
+  /** Option+Cmd/Ctrl+0: RESET the track I'm on to the default height;
+   *  Shift = every track (2026-11-12, "perhaps we want a chord for
+   *  reset to default height?" — 0 is "back to default" as browsers'
+   *  ⌘0 is, and the key the blow-up's move to F freed) */
+  onResetSelectedTrackHeights?: () => void;
+  onResetAllTrackHeights?: () => void;
   /** Cmd/Ctrl+= and Cmd/Ctrl+-: horizontal zoom in / out (2026-10-12 —
    *  the real app's Ctrl+= / Ctrl+-; Cmd+1 / Cmd+3 were Audacity 3's) */
   /** ⌘P: the command palette (2026-10-13) */
@@ -121,6 +127,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onCollapseSelectedTracks,
     onExpandSelectedTracks,
     onFitSelectedTracksToHeight,
+    onResetSelectedTrackHeights,
+    onResetAllTrackHeights,
     onCommandPalette,
     onToggleMixer,
     onSpeedStep,
@@ -383,14 +391,18 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         // to the 2026-10-08 chord; the 2026-10-13 move to 0 is undone
         // now that the blow-up IS the height family's F). ⌥⇧F (the
         // fades dialog) carries no meta, ⌥F no meta either — no clash.
-        : e.code === 'KeyF' || (!e.code && e.key.toLowerCase() === 'f') ? 'f' : null;
+        : e.code === 'KeyF' || (!e.code && e.key.toLowerCase() === 'f') ? 'f'
+        // 0: RESET to the default height (2026-11-12) — the key F freed
+        : e.code === 'Digit0' || e.code === 'Numpad0' || (!e.code && (e.key === '0' || e.key === ')')) ? '0' : null;
       if ((e.metaKey || e.ctrlKey) && e.altKey && letter) {
-        // F: blow the track I'm on up, Shift = fit all
+        // F: blow the track I'm on up; 0: reset it; Shift = all
         const cb = letter === 'c'
           ? (e.shiftKey ? onCollapseAllTracks : onCollapseSelectedTracks)
           : letter === 'x'
             ? (e.shiftKey ? onExpandAllTracks : onExpandSelectedTracks)
-            : (e.shiftKey ? onFitTracksToHeight : onFitSelectedTracksToHeight);
+            : letter === '0'
+              ? (e.shiftKey ? onResetAllTrackHeights : onResetSelectedTrackHeights)
+              : (e.shiftKey ? onFitTracksToHeight : onFitSelectedTracksToHeight);
         if (cb) {
           e.preventDefault();
           cb();

@@ -767,6 +767,11 @@ function CanvasDemoContent() {
   const handleExpandSelectedTracks = React.useCallback(() => {
     applyHeightUpdates(expandTracks(state.tracks, resolveTracksImOn(), heightMemoryRef.current));
   }, [state.tracks, resolveTracksImOn, applyHeightUpdates]);
+  // ⌥⌘0 (2026-11-12, "a chord for reset to default height?"): the track
+  // I'm on back to 114, whatever it is; Shift = every track
+  const handleResetSelectedTracks = React.useCallback(() => {
+    applyHeightUpdates(resetTracks(state.tracks, resolveTracksImOn(), heightMemoryRef.current));
+  }, [state.tracks, resolveTracksImOn, applyHeightUpdates]);
   // ⌥⌘0 IS A BLOW-UP (2026-11-12, "should we instead make it blow up
   // big?" — Cubase's Z, REAPER's maximize, replacing the 2026-10-08
   // leftover-room fit whose share rule is retired with it): the track(s)
@@ -788,32 +793,25 @@ function CanvasDemoContent() {
     const pressedIds = pressed.map((i) => state.tracks[i]?.id).filter((id): id is number => id !== undefined);
     const heightOf = (t: { height?: number }) => t.height || DEFAULT_TRACK_HEIGHT;
 
-    // THE TOGGLE: pressing the blown-up track again (its set, every one
-    // still at the height the blow-up gave it) restores the scene
+    // A SECOND PRESS ON THE SAME TRACK DOES NOTHING (2026-11-12,
+    // "pressing it again shouldn't do anything right?!" — replacing the
+    // toggle built hours earlier, whose restore read as "all tracks are
+    // sharing height": everything snapping back to 114 looked like yet
+    // another resize, not an undo). The command is IDEMPOTENT while its
+    // scene stands; the way back out is Expand / Reset, whose job it
+    // already is — the floors are ordinary collapses. The EVERY-TRACK
+    // fallback counts as "the same track" too: with focus off every
+    // row, resolveTracksImOn answers with all tracks, and blowing the
+    // whole project up from that was the original bug.
     const active = blowUpRef.current;
     const activeStands = active
       && active.ids.every((id) => {
         const t = state.tracks.find((tr) => tr.id === id);
         return !!t && heightOf(t) === active.bigHeight;
       });
-    // "The same track" includes the EVERY-TRACK fallback: when focus
-    // has wandered off every row, resolveTracksImOn answers with all
-    // tracks — a press with no new target intent, which must RESTORE,
-    // not blow every track up ("I press it again and it changes all of
-    // them? Feels like a bug", 2026-11-12).
     const noNewTarget = pressedIds.every((id) => active?.ids.includes(id))
       || pressed.length === state.tracks.length;
-    if (active && activeStands && noNewTarget) {
-      const others = state.tracks.map((_t, i) => i).filter((i) => !active.ids.includes(state.tracks[i].id));
-      applyHeightUpdates(expandTracks(state.tracks, others, heightMemoryRef.current));
-      state.tracks.forEach((t, index) => {
-        if (!active.ids.includes(t.id)) return;
-        const prevHeight = active.prev.get(t.id) ?? DEFAULT_TRACK_HEIGHT;
-        if (heightOf(t) !== prevHeight) dispatch({ type: 'UPDATE_TRACK_HEIGHT', payload: { index, height: prevHeight } });
-      });
-      blowUpRef.current = null;
-      return;
-    }
+    if (active && activeStands && noNewTarget) return;
 
     // ACTIVATION (or handover). The pressed tracks' restore heights: a
     // floored one restores to what it remembered, an open one to itself.
@@ -917,6 +915,8 @@ function CanvasDemoContent() {
     onCollapseSelectedTracks: handleCollapseSelectedTracks,
     onExpandSelectedTracks: handleExpandSelectedTracks,
     onFitSelectedTracksToHeight: handleFitSelectedTracksToHeight,
+    onResetSelectedTrackHeights: handleResetSelectedTracks,
+    onResetAllTrackHeights: handleResetAllTrackHeights,
     onZoomIn: zoomIn,
     onZoomOut: zoomOut,
   });
