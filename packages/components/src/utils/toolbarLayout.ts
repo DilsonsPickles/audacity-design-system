@@ -519,7 +519,14 @@ export function withProjectTools(input: ToolbarLayout): ToolbarLayout {
       b.tools = b.tools.flatMap((t) => (t === 'undo-redo' ? ['undo', 'redo'] : [t]));
     }
   }
-  const missing = PROJECT_TOOL_IDS.filter((id) => !findTool(layout, id));
+  // Only the TABS resurrect (2026-11-12, "I should be able to remove
+  // 'Audio setup'" — until then every project tool came back, so the
+  // builder's Remove was undone on the next read): the tabs are the way
+  // back to Home; the other project tools, removed, stay removed and
+  // wait in the builder's "Not on a toolbar" list. (A pre-2026-11-10
+  // layout no longer gains them here — both profiles migrated long ago,
+  // and a fresh one seeds them.)
+  const missing = [PROJECT_TAB_TOOL_ID].filter((id) => !findTool(layout, id));
   if (missing.length === 0) return layout;
   const taken = new Set(TOOLBAR_REGIONS.flatMap((r) => dockBars(layout, r).map((b) => b.id)));
   const row = legacyProjectBars()

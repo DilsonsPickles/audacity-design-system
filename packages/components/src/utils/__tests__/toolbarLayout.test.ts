@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   coerceToolbarLayout, defaultToolbarLayout, dockBars, findBar, findTool, moveBar, moveTool, moveToolToNewBar, nextBarId, insertSeparator, isToolSeparator, addEmptyBar, removeBar, renameBar, barDisplayName,
-  normaliseLayout, isToolbarLayout, setBarSize, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, type ToolbarLayout, type ToolbarRegion,
+  normaliseLayout, isToolbarLayout, setBarSize, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID, type ToolbarLayout, type ToolbarRegion,
 } from '../toolbarLayout';
 
 /** A seed WITHOUT the project row (2026-11-10, the project toolbar's
@@ -67,15 +67,18 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(findBar(seedWithoutProjectRow('music'), 'tools')?.bar.tools).toEqual(['automation', 'split']);
   });
 
-  it('THE PROJECT TOOLS (2026-11-10): a layout saved without them gets the missing ones as a new first row of the top dock; one that has them moved elsewhere keeps them there', () => {
+  it('THE PROJECT TOOLS: only the TABS resurrect when missing (2026-11-12 — "I should be able to remove \'Audio setup\'"; every project tool came back before); moved tools stay where they are', () => {
     const full = defaultToolbarLayout('classic');
     expect(withProjectTools(full)).toBe(full);
     const old = seedWithoutProjectRow('classic');
     const fixed = withProjectTools(old);
-    // (the seed's other rows already hold Audio setup and Undo / Redo since 2026-11-11)
-    expect(rows(fixed, 'top')[0]).toEqual(['project-tabs', 'project-actions', 'workspace']);
+    // The way back to Home comes back; a REMOVED project tool stays
+    // removed, waiting in the builder's "Not on a toolbar" list
+    expect(rows(fixed, 'top')[0]).toEqual(['project-tabs']);
     expect(rows(fixed, 'top').slice(1)).toEqual(rows(old, 'top'));
-    expect(PROJECT_TOOL_IDS.every((id) => findTool(fixed, id))).toBe(true);
+    expect(findTool(fixed, PROJECT_TAB_TOOL_ID)).toBeTruthy();
+    const resurrected = PROJECT_TOOL_IDS.filter((id) => !findTool(old, id) && findTool(fixed, id));
+    expect(resurrected).toEqual([PROJECT_TAB_TOOL_ID]);
     // the tabs moved into the transport row: only the rest come back, and the tabs stay put
     const moved = moveBar(fixed, 'project-tabs', { region: 'top', row: 1, beforeBarId: 'transport' });
     expect(withProjectTools(moved)).toBe(moved);

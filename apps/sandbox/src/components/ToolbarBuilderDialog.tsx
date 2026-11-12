@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Button, Checkbox, Dialog, DialogFooter, Icon, SearchField, useTheme, usePreferences,
-  CUSTOMISE_TOOLBAR_ENTRIES, CUSTOMISE_TOOL_ID, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID,
+  CUSTOMISE_TOOLBAR_ENTRIES, CUSTOMISE_TOOL_ID, PROJECT_TAB_TOOL_ID,
   TOOLBAR_REGIONS, TITLE_BAR_ID, addEmptyBar, findBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertTool, isToolSeparator,
   moveBar, moveTool, nextBarId, removeBar, removeTool, renameBar, rowsOf,
   type BarPlacement, type ToolbarBar, type ToolbarLayout, type ToolbarRegion,
@@ -28,8 +28,10 @@ import {
  * automatically now?" — dismissal reverted for a day, which read as the
  * edits not saving); the CANCEL BUTTON alone puts the stored layouts and
  * the hidden list back as they were when the dialog opened. The project tools, the
- * tabs and the cog are put back by the layout's guards when missing, so they
- * cannot be removed — only hidden (the tabs and the cog not even that).
+ * tabs and the cog are put back by the layout's guards when missing, so those
+ * two cannot be removed or hidden; every other tool — the project tools
+ * included (2026-11-12, "I should be able to remove 'Audio setup'") —
+ * removes like any tool and waits in "Not on a toolbar".
  */
 
 type Selection =
@@ -69,7 +71,13 @@ const ALL_TOOLS: ReadonlyArray<string> = [
 ];
 
 /** Put back by the layout's guards when missing: hide, never remove */
-const UNREMOVABLE = new Set<string>([...PROJECT_TOOL_IDS, CUSTOMISE_TOOL_ID]);
+// Only the LOAD-BEARING two (2026-11-12, "I should be able to remove
+// 'Audio setup'" — every project tool was unremovable before): the tabs
+// are the way back to Home and the cog the way into this dialog; the
+// other project tools (Mixer, Audio setup, Share audio, Get effects,
+// Workspace, Undo, Redo) remove like any tool and wait in "Not on a
+// toolbar". The layout guard resurrects only the tabs to match.
+const UNREMOVABLE = new Set<string>([PROJECT_TAB_TOOL_ID, CUSTOMISE_TOOL_ID]);
 /** The way back to Home and the cog that opens this: never hidden */
 const UNHIDEABLE = new Set<string>([PROJECT_TAB_TOOL_ID, CUSTOMISE_TOOL_ID]);
 
