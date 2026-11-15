@@ -54,6 +54,8 @@ export interface UseMenuDefinitionsOptions {
   onZoomOut: () => void;
   /** File › New project / Close project (2026-11-12) */
   onNewProject?: () => void;
+  /** File › Save project as… (2026-11-16) */
+  onSaveProjectAs?: () => void;
   onCloseProject?: () => void;
 }
 
@@ -102,6 +104,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onZoomOut,
     onNewProject,
     onCloseProject,
+    onSaveProjectAs,
   } = options;
 
   const dispatch = useTracksDispatch();
@@ -176,6 +179,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onSaveToComputer: handleSaveToComputer,
     onNewProject,
     onCloseProject,
+    onSaveProjectAs,
     onOpenLabelEditor: () => setIsLabelEditorOpen(true),
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
     onOpenGoTo: () => setIsGoToOpen(true),

@@ -128,6 +128,9 @@ export interface AppDialogsProps {
   setUseSplitRecordButton: React.Dispatch<React.SetStateAction<boolean>>;
   useVarispeedSlider: boolean;
   setUseVarispeedSlider: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Debug › Slow media: how long Save project as… blocks (s; 0 = none) */
+  slowMediaSeconds: number;
+  setSlowMediaSeconds: (seconds: number) => void;
   showMixer: boolean;
   setShowMixer: React.Dispatch<React.SetStateAction<boolean>>;
   // Active menu item (for debug panel close)
@@ -189,6 +192,7 @@ export function AppDialogs(props: AppDialogsProps) {
     activeProfile, profiles, setProfile,
     useSplitRecordButton, setUseSplitRecordButton,
     useVarispeedSlider, setUseVarispeedSlider,
+    slowMediaSeconds, setSlowMediaSeconds,
     showMixer, setShowMixer,
     setActiveMenuItem,
   } = props;
@@ -1208,6 +1212,8 @@ export function AppDialogs(props: AppDialogsProps) {
         onUseSplitRecordButtonChange={setUseSplitRecordButton}
         useVarispeedSlider={useVarispeedSlider}
         onUseVarispeedSliderChange={setUseVarispeedSlider}
+        slowMediaSeconds={slowMediaSeconds}
+        onSlowMediaSecondsChange={setSlowMediaSeconds}
         showMixer={showMixer}
         onShowMixerChange={setShowMixer}
         trackSelectionMode={trackSelectionMode}

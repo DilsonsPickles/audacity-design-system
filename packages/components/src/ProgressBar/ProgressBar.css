@@ -16,3 +16,26 @@
   transition: width 0.3s ease;
   border-radius: 8px;
 }
+
+/* INDETERMINATE (2026-11-16): a quarter-width segment sliding end to end and
+   back — Audacity 3's "Copying Project" bar, the macOS indeterminate style */
+.progress-bar--indeterminate .progress-bar__fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 25%;
+  transition: none;
+  animation: progress-bar-sweep 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes progress-bar-sweep {
+  from { left: 0; }
+  to { left: 75%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-bar--indeterminate .progress-bar__fill {
+    animation: none;
+    left: 37.5%;
+  }
+}

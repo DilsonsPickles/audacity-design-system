@@ -274,6 +274,9 @@ function setApplicationMenu() {
       submenu: [
         { label: 'Import…', accelerator: 'CmdOrCtrl+I', click: send('file:import') },
         { label: 'Save Project', accelerator: 'CmdOrCtrl+S', click: send('file:save') },
+        // Save Project As… (2026-11-16): the chord is the renderer's, as the
+        // zoom items' are — shown here, handled there, never twice
+        { label: 'Save Project As…', accelerator: 'CmdOrCtrl+Shift+S', registerAccelerator: false, click: send('file:save-as') },
       ],
     },
     {

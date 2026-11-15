@@ -21,6 +21,14 @@ export interface ProgressBarProps {
    * Additional CSS classes
    */
   className?: string;
+  /**
+   * The length of the work is unknown (2026-11-16, Audacity 3's "Copying
+   * Project" bar): a segment slides back and forth instead of a fill, and
+   * `value` is ignored. Reduced motion holds it still in the middle.
+   */
+  indeterminate?: boolean;
+  /** Accessible name — read as the bar's label */
+  ariaLabel?: string;
 }
 
 /**
@@ -30,6 +38,8 @@ export function ProgressBar({
   value = 0,
   width = 220,
   className = '',
+  indeterminate = false,
+  ariaLabel,
 }: ProgressBarProps) {
   const { theme } = useTheme();
 
@@ -45,16 +55,19 @@ export function ProgressBar({
 
   return (
     <div
-      className={`progress-bar ${className}`}
+      className={`progress-bar${indeterminate ? ' progress-bar--indeterminate' : ''} ${className}`}
       style={{ width: widthStyle, ...style }}
       role="progressbar"
-      aria-valuenow={clampedValue}
-      aria-valuemin={0}
-      aria-valuemax={100}
+      aria-label={ariaLabel}
+      // An indeterminate bar has no value (ARIA: leave aria-valuenow off)
+      aria-valuenow={indeterminate ? undefined : clampedValue}
+      aria-valuemin={indeterminate ? undefined : 0}
+      aria-valuemax={indeterminate ? undefined : 100}
+      data-indeterminate={indeterminate || undefined}
     >
       <div
         className="progress-bar__fill"
-        style={{ width: `${clampedValue}%` }}
+        style={indeterminate ? undefined : { width: `${clampedValue}%` }}
       />
     </div>
   );

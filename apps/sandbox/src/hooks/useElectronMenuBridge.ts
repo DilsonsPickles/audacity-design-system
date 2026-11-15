@@ -30,6 +30,7 @@ export function useElectronMenuBridge(options: UseElectronMenuBridgeOptions): vo
   electronCommandsRef.current = {
     'file:import': () => menuByLabel.get('Import')?.(),
     'file:save': () => menuByLabel.get('Save Project')?.(),
+    'file:save-as': () => menuByLabel.get('Save project as...')?.(),
     'edit:labels': () => menuByLabel.get('Edit Labels...')?.(),
     'edit:preferences': () => menuByLabel.get('Preferences')?.(),
     'view:toggle-effects': () => menuByLabel.get('Show effects')?.(),

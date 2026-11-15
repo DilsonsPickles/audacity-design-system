@@ -21,6 +21,7 @@ import { EditorLayout } from './components/EditorLayout';
 import { GoToDialog } from './components/GoToDialog';
 import { TimerRecordDialog } from './components/TimerRecordDialog';
 import { TimerRecordWaitDialog } from './components/TimerRecordWaitDialog';
+import { CopyingProjectDialog } from './components/CopyingProjectDialog';
 import { useTimerRecord } from './hooks/useTimerRecord';
 import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
@@ -1169,6 +1170,49 @@ function CanvasDemoContent() {
 
   // ⌘N / Ctrl+N: a new project in a new tab (2026-11-12) — a document
   // listener bound once, reading the live handler through a ref
+  // SAVE PROJECT AS… SIMULATES SLOW MEDIA (2026-11-16, "a blocking dialog
+  // to add into the prototype to simulate slow media when 'Saving as'"):
+  // Audacity 3's "Copying Project" window blocks for the Debug panel's
+  // slow-media time (`slowMediaSeconds`, session state; 0 = no wait), the
+  // elapsed time ticking, then the copy is written — the project's own save
+  // to the computer, the .audacityweb download. Refused while recording.
+  const [slowMediaSeconds, setSlowMediaSeconds] = React.useState(6);
+  const [copyingSince, setCopyingSince] = React.useState<number | null>(null);
+  const [copyClock, setCopyClock] = React.useState(0);
+  React.useEffect(() => {
+    if (copyingSince === null) return;
+    const tick = window.setInterval(() => setCopyClock(Date.now()), 250);
+    return () => window.clearInterval(tick);
+  }, [copyingSince]);
+  const handleSaveProjectAs = async () => {
+    if (copyingSince !== null) return;
+    if (state.isRecording) {
+      toast.info('Recording in progress', 'Stop the recording before saving a copy');
+      return;
+    }
+    if (slowMediaSeconds > 0) {
+      const start = Date.now();
+      setCopyClock(start);
+      setCopyingSince(start);
+      await new Promise((resolve) => window.setTimeout(resolve, slowMediaSeconds * 1000));
+      setCopyingSince(null);
+    }
+    await handleSaveToComputer();
+  };
+  const handleSaveProjectAsRef = React.useRef(handleSaveProjectAs);
+  handleSaveProjectAsRef.current = handleSaveProjectAs;
+  // ⌘⇧S / Ctrl+Shift+S — the desktop menu shows the chord, this handles it
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || !e.shiftKey || e.altKey || e.code !== 'KeyS') return;
+      if (document.querySelector('[data-owns-keyboard]')) return;
+      e.preventDefault();
+      void handleSaveProjectAsRef.current();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
+
   const newProjectInTabRef = React.useRef(newProjectInTab);
   newProjectInTabRef.current = newProjectInTab;
   React.useEffect(() => {
@@ -1292,6 +1336,7 @@ function CanvasDemoContent() {
     onZoomOut: zoomOut,
     onNewProject: () => { void newProjectInTab(); },
     onCloseProject: currentProjectId ? () => projectTabs.closeProject(currentProjectId) : undefined,
+    onSaveProjectAs: currentProjectId ? () => { void handleSaveProjectAs(); } : undefined,
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu
@@ -1928,6 +1973,13 @@ function CanvasDemoContent() {
         onStop={timerRecord.stopNow}
         os={preferences.operatingSystem}
       />
+      {/* The BLOCK while Save project as… copies to (simulated) slow media (2026-11-16) */}
+      <CopyingProjectDialog
+        isOpen={copyingSince !== null}
+        startedAt={copyingSince ?? 0}
+        now={copyClock}
+        os={preferences.operatingSystem}
+      />
       {/* The window's full height is the container — measured */}
       <ToastContainer position="top-right" top={toastAnchor.top} right={toastAnchor.right} bottomInset={toastAnchor.bottomInset} maxHeight={toastAnchor.maxHeight} restTop={toastAnchor.restTop} />
 
@@ -2026,6 +2078,8 @@ function CanvasDemoContent() {
         useSplitRecordButton={useSplitRecordButton}
         useVarispeedSlider={useVarispeedSlider}
         setUseVarispeedSlider={setUseVarispeedSlider}
+        slowMediaSeconds={slowMediaSeconds}
+        setSlowMediaSeconds={setSlowMediaSeconds}
         setUseSplitRecordButton={setUseSplitRecordButton}
         showMixer={showMixer}
         setShowMixer={setShowMixer}

@@ -8,7 +8,9 @@
  * - Track/clip generation
  */
 
-import { Dialog, DialogFooter, LabeledCheckbox, Button, toast } from '@audacity-ui/components';
+import { Dialog, DialogFooter, LabeledCheckbox, Button, Dropdown, toast } from '@audacity-ui/components';
+
+const SLOW_MEDIA_OPTIONS = [0, 3, 6, 10, 30].map((s) => ({ value: String(s), label: s === 0 ? 'No wait' : `${s} s` }));
 import type { Command } from '@audacity-ui/components';
 import { useMacros } from '../contexts/MacrosContext';
 
@@ -67,6 +69,9 @@ export interface DebugPanelProps {
   // Play-at-speed: the slider form instead of the timecode (2026-11-11)
   useVarispeedSlider: boolean;
   onUseVarispeedSliderChange: (value: boolean) => void;
+  /** Slow media: how long Save project as… blocks, in seconds (0 = none) */
+  slowMediaSeconds: number;
+  onSlowMediaSecondsChange: (seconds: number) => void;
 
   // Mixer
   showMixer: boolean;
@@ -176,6 +181,8 @@ export function DebugPanel({
   useSplitRecordButton,
   useVarispeedSlider,
   onUseVarispeedSliderChange,
+  slowMediaSeconds,
+  onSlowMediaSecondsChange,
   onUseSplitRecordButtonChange,
   showMixer,
   onShowMixerChange,
@@ -487,6 +494,30 @@ export function DebugPanel({
             checked={useVarispeedSlider}
             onChange={onUseVarispeedSliderChange}
           />
+        </div>
+
+        {/* Slow media Section (2026-11-16): how long Save project as…'s
+            "Copying project" block lasts */}
+        <div>
+          <h3 style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '14px',
+            fontWeight: 600,
+            lineHeight: '20px',
+            color: '#14151a',
+            margin: '0 0 12px 0',
+          }}>
+            Slow media
+          </h3>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+            Save project as… copies for
+            <Dropdown
+              width="96px"
+              value={String(slowMediaSeconds)}
+              options={SLOW_MEDIA_OPTIONS}
+              onChange={(v) => onSlowMediaSecondsChange(Number(v))}
+            />
+          </label>
         </div>
 
         {/* Accessibility Section */}

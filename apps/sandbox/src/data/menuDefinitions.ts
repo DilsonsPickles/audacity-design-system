@@ -8,6 +8,9 @@ export interface MenuDefinitionDeps {
   onSyncToast: () => void;
   onShowSaveProjectModal: () => void;
   onSaveToComputer: () => void;
+  /** File › Save project as… ⌘⇧S — a copy, behind the "Copying project"
+   *  block that simulates slow media (2026-11-16) */
+  onSaveProjectAs?: () => void;
   /** File › New project ⌘N / Close project — the project tabs (2026-11-12) */
   onNewProject?: () => void;
   onCloseProject?: () => void;
@@ -101,6 +104,7 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
         }
       }
     },
+    ...(deps.onSaveProjectAs ? [{ label: 'Save project as...', shortcut: 'Ctrl+Shift+S', onClick: deps.onSaveProjectAs }] : []),
   ];
 
   const editMenuItems: MenuItem[] = [
