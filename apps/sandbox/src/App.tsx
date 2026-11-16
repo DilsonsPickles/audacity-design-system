@@ -1218,7 +1218,7 @@ function CanvasDemoContent() {
     const audio = state.tracks.map((_, i) => i).filter((i) => isAudioTrack(state.tracks[i]));
     const rows = resolveTimeSelectionScope(ts, state.selectedTrackIndices, audio).filter((i) => state.tracks[i] && isAudioTrack(state.tracks[i]));
     if (rows.length === 0) return null;
-    return { startTime: ts.startTime, endTime: ts.endTime, tracks: rows.map((i) => ({ id: state.tracks[i].id, name: state.tracks[i].name })) };
+    return { startTime: ts.startTime, endTime: ts.endTime, tracks: rows.map((i) => ({ id: state.tracks[i].id, name: state.tracks[i].name, color: state.tracks[i].color })) };
   }, [state.timeSelection, state.selectedTrackIndices, state.tracks]);
   const [copyClock, setCopyClock] = React.useState(0);
   React.useEffect(() => {

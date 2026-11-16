@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
-import { PreferencesProvider, ThemeProvider } from '@audacity-ui/components';
+import { PreferencesProvider, ThemeProvider, lightTheme } from '@audacity-ui/components';
 import { PlotSpectrumWindow, type PlotSpectrumSource } from '../PlotSpectrumWindow';
 
 afterEach(cleanup);
@@ -99,6 +99,21 @@ describe('PlotSpectrumWindow', () => {
     fireEvent.click(document.querySelector('[data-plot-remove="1"]') as HTMLElement);
     fireEvent.keyDown(document.querySelector('[data-plot-row="2"]') as HTMLElement, { key: 'Delete' });
     expect(document.querySelectorAll('[data-plot-row]')).toHaveLength(0);
+  });
+
+  it("a plot takes its track's colour; the row's ⋯ menu changes it", () => {
+    const V: PlotSpectrumSource = { startTime: 10, endTime: 20, tracks: [{ id: 1, name: 'Track 1', color: 'violet' }] };
+    renderWindow(V);
+    // the auto-plotted curve wears the track's clip-header hex
+    expect(document.querySelector('[data-plot-curve="1"]')?.getAttribute('stroke'))
+      .toBe(lightTheme.audio.clip.violet.header);
+    // the ⋯ menu lists the palette; picking Red recolours the curve
+    fireEvent.click(document.querySelector('[data-plot-menu="1"]') as HTMLElement);
+    const red = Array.from(document.querySelectorAll('.plot-spectrum__colour-menu [role="menuitem"]'))
+      .find((i) => i.textContent?.includes('Red')) as HTMLElement;
+    fireEvent.click(red);
+    expect(document.querySelector('[data-plot-curve="1"]')?.getAttribute('stroke'))
+      .toBe(lightTheme.audio.clip.red.header);
   });
 
   it('a selection with no audio says so and plots nothing', () => {

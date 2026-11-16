@@ -1,7 +1,7 @@
 import React from 'react';
-import { Dialog, DialogFooter, Dropdown, LabeledCheckbox, Button, ToolButton, useTheme, toast } from '@audacity-ui/components';
+import { Dialog, DialogFooter, Dropdown, LabeledCheckbox, Button, ToolButton, ContextMenu, ContextMenuItem, useTheme, toast } from '@audacity-ui/components';
 import {
-  computeSpectrum, spectrumDbAt, refinePeak, frequencyTicks, formatHzTick, noteName, formatHz, formatPlotTime, formatPlotDuration, spectrumCsv,
+  computeSpectrum, spectrumDbAt, frequencyTicks, formatHzTick, noteName, formatHz, formatPlotTime, formatPlotDuration, spectrumCsv,
   WINDOW_FUNCTIONS, SPECTRUM_SIZES, SPECTRUM_ALGORITHMS, type Spectrum, type WindowFunctionId,
 } from '../utils/spectrum';
 import { downloadBlob } from '../utils/downloadBlob';
@@ -24,6 +24,9 @@ import './PlotSpectrumWindow.css';
 export interface PlotSpectrumTrack {
   id: number | string;
   name: string;
+  /** the track's colour name from the clip palette ('blue', 'violet', …) —
+   *  a new plot takes the first track's colour (2026-11-17) */
+  color?: string;
 }
 
 export interface PlotSpectrumSource {
@@ -56,8 +59,14 @@ interface Plot {
   sampleRate: number;
 }
 
-/** Curve colours on the dark graph — distinct from each other and from the grid */
+/** Curve colours on the dark graph — distinct from each other and from the
+ *  grid; the FALLBACK for a track with no palette colour */
 export const PLOT_COLOURS = ['#B6F35A', '#FFC542', '#6FC3FF', '#FF7A9C', '#C79BFF', '#5EE0C1', '#FF9F5A', '#F2F2F2'];
+
+/** The clip palette's names, in the track palette's order — the row menu's
+ *  choices, resolved to each colour's clip-header hex (vivid pastels that
+ *  read on the dark graph) */
+export const PLOT_COLOUR_CHOICES = ['blue', 'violet', 'magenta', 'teal', 'cyan', 'green', 'orange', 'red', 'yellow'] as const;
 
 /** The visible dB span, zoomed by the magnifiers (Audacity 3's slider zooms the same axis) */
 export const DB_RANGES = [144, 120, 96, 72, 48, 24];
@@ -115,6 +124,24 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   }, [graphEl]);
   const [notice, setNotice] = React.useState<string | null>(null);
   const nextId = React.useRef(1);
+  // the row's ⋯ menu: which plot, where, and in which document (the OS
+  // window's menu must stay in its window — ContextMenu.portalTo)
+  const [colourMenu, setColourMenu] = React.useState<{ id: number; x: number; y: number; doc: Document } | null>(null);
+
+  // THE PLOT'S COLOUR IS THE TRACK'S (2026-11-17, "the plot color [should]
+  // match the track color"): a palette name resolved to its clip-header
+  // hex — the vivid pastels read on the dark graph
+  const clipHex: Record<string, string> = {
+    blue: theme.audio.clip.blue.header,
+    violet: theme.audio.clip.violet.header,
+    magenta: theme.audio.clip.magenta.header,
+    teal: theme.audio.clip.teal.header,
+    cyan: theme.audio.clip.cyan.header,
+    green: theme.audio.clip.green.header,
+    orange: theme.audio.clip.orange.header,
+    red: theme.audio.clip.red.header,
+    yellow: theme.audio.clip.yellow.header,
+  };
 
   // Every curve re-plotted with the current settings
   const spectra = React.useMemo(() => {
@@ -138,14 +165,22 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
     }
     const samples = region.samples.length > MAX_ANALYSED_SAMPLES ? region.samples.slice(0, MAX_ANALYSED_SAMPLES) : region.samples;
     const id = nextId.current++;
+    // the first track's colour; the fixed set stands in for a track
+    // without one, and the row's ⋯ menu changes it either way
     const used = new Set(plots.map((p) => p.colour));
-    const colour = PLOT_COLOURS.find((c) => !used.has(c)) ?? PLOT_COLOURS[(id - 1) % PLOT_COLOURS.length];
+    const colour = clipHex[selection.tracks[0]?.color ?? '']
+      ?? PLOT_COLOURS.find((c) => !used.has(c))
+      ?? PLOT_COLOURS[(id - 1) % PLOT_COLOURS.length];
     setPlots((ps) => [...ps, { id, name: `Plot ${id}`, colour, source: selection, samples, sampleRate: region.sampleRate }]);
   };
 
   const removePlot = (id: number) => {
     setPlots((ps) => ps.filter((p) => p.id !== id));
     if (focusedId === id) setFocusedId(null);
+  };
+
+  const setPlotColour = (id: number, colour: string) => {
+    setPlots((ps) => ps.map((p) => (p.id === id ? { ...p, colour } : p)));
   };
 
   // OPENING WITH A SELECTION PLOTS IT (2026-11-17, "when I have a
@@ -226,22 +261,18 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
 
   // the readout follows the focused curve, else the newest
   const readoutPlot = plots.find((p) => p.id === focusedId) ?? plots[plots.length - 1];
-  // TWO READINGS (2026-11-16, "I want to see freq at cursor pos AND peak
-  // value too", then "the cursor is where the User cursor is on the graph
-  // and the peak is the value of the line"): the CURSOR is the POINTER'S
-  // place on the graph — the frequency under it and the level at its
-  // height; the PEAK is the LINE's value at that frequency — the loudest
-  // bin in the pointer's pixel column, as drawn, its frequency refined
-  // between bins
+  // ONE READING (2026-11-17, "remove the peak label, we just need to show
+  // the cursor value" — the 2026-11-16 readout had Cursor AND Peak): the
+  // CURSOR is the POINTER'S place on the graph — the frequency under it
+  // and the level at its height. The LINE's value in the pointer's column
+  // is still computed for the dot the readout rides, but is not written.
   const readoutSpectrum = readoutPlot ? spectra.get(readoutPlot.id)! : null;
   const cursorReading = hover && readoutSpectrum
     ? { hz: xToHz(hover.x), db: dbTop - (hover.y / graphH) * range }
     : null;
-  const peakReading = (() => {
-    if (!hover || !readoutSpectrum) return null;
-    const c = columnPeak(readoutSpectrum, Math.min(graphW, Math.floor(hover.x)));
-    return { hz: c.k > 0 ? refinePeak(readoutSpectrum, c.k).hz : c.hz, db: c.db };
-  })();
+  const lineReading = hover && readoutSpectrum
+    ? columnPeak(readoutSpectrum, Math.min(graphW, Math.floor(hover.x)))
+    : null;
 
   const drawOrder = [...plots].sort((a, b) => (a.id === focusedId ? 1 : 0) - (b.id === focusedId ? 1 : 0));
 
@@ -378,11 +409,11 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
                 ))}
               </ul>
             )}
-            {cursorReading && peakReading && readoutPlot && (() => {
+            {cursorReading && lineReading && readoutPlot && (() => {
               const yPct = (db: number) => (Math.max(0, Math.min(graphH, dbToY(db))) / graphH) * 100;
-              // the DOT marks the line's value under the pointer — the Peak
+              // the DOT marks the line's value under the pointer
               const cx = (hover!.x / graphW) * 100;
-              const ly = yPct(peakReading.db);
+              const ly = yPct(lineReading.db);
               return (
                 <>
                   <span className="plot-spectrum__line-dot" data-plot-line-dot style={{ left: `${cx}%`, top: `${ly}%`, background: readoutPlot.colour }} />
@@ -395,12 +426,8 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
                     // riding the curve like that"), the crosshair marks the pointer
                     style={{ left: `${cx}%`, top: `${ly}%` }}
                   >
-                    <span>Cursor</span>
                     <span data-plot-cursor-reading>{formatHz(cursorReading.hz)} ({noteName(cursorReading.hz)})</span>
                     <span>{cursorReading.db.toFixed(1)} dB</span>
-                    <span>Peak</span>
-                    <span data-plot-peak-reading>{formatHz(peakReading.hz)} ({noteName(peakReading.hz)})</span>
-                    <span>{peakReading.db.toFixed(1)} dB</span>
                   </div>
                 </>
               );
@@ -467,11 +494,48 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
                 <span role="cell" className="plot-spectrum__actions">
                   <button type="button" data-plot-select={p.id} onClick={(e) => { e.stopPropagation(); onSelectRange(p.source); }}>Select</button>
                   <button type="button" data-plot-remove={p.id} onClick={(e) => { e.stopPropagation(); removePlot(p.id); }}>Remove</button>
+                  <button
+                    type="button"
+                    className="plot-spectrum__menu-button"
+                    data-plot-menu={p.id}
+                    aria-label={`${p.name} options`}
+                    aria-haspopup="menu"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const r = e.currentTarget.getBoundingClientRect();
+                      setColourMenu({ id: p.id, x: r.left, y: r.bottom + 2, doc: e.currentTarget.ownerDocument });
+                    }}
+                  >⋯</button>
                 </span>
               </div>
             ))}
           </div>
         </div>
+
+        {/* THE ROW'S ⋯ MENU: the plot's colour (2026-11-17, "perhaps we
+            also need an option to change the plot color. A menu button on
+            each table item") — the clip palette by name, the current one
+            checked; portalled to the row's own document so the OS
+            window's menu stays in its window */}
+        {colourMenu && (() => {
+          const plot = plots.find((p) => p.id === colourMenu.id);
+          if (!plot) return null;
+          const close = () => setColourMenu(null);
+          return (
+            <ContextMenu isOpen onClose={close} x={colourMenu.x} y={colourMenu.y} portalTo={colourMenu.doc.body} className="plot-spectrum__colour-menu">
+              {PLOT_COLOUR_CHOICES.map((c) => (
+                <ContextMenuItem
+                  key={c}
+                  label={c[0].toUpperCase() + c.slice(1)}
+                  checked={plot.colour === clipHex[c]}
+                  icon={<i className="plot-spectrum__menu-swatch" style={{ background: clipHex[c] }} />}
+                  onClick={() => setPlotColour(plot.id, clipHex[c])}
+                  onClose={close}
+                />
+              ))}
+            </ContextMenu>
+          );
+        })()}
 
       </div>
   );

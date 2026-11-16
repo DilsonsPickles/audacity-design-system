@@ -144,15 +144,10 @@
   pointer-events: none;
   font-variant-numeric: tabular-nums;
   z-index: 2;
-  /* Cursor / Peak: label · frequency · level, the columns lined up */
-  display: grid;
-  grid-template-columns: auto auto auto;
-  column-gap: 8px;
-  row-gap: 2px;
+  /* one reading: frequency · level (the Peak row went 2026-11-17) */
+  display: flex;
+  gap: 8px;
 }
-
-.plot-spectrum__readout > span:nth-child(3n + 1) { color: rgba(255, 255, 255, 0.6); }
-.plot-spectrum__readout > span:nth-child(3n) { text-align: right; }
 
 .plot-spectrum__line-dot {
   position: absolute;
@@ -255,6 +250,26 @@
 }
 
 .plot-spectrum__actions button:hover { text-decoration: underline; }
+
+/* the row's ⋯ menu button — a control, not a link */
+.plot-spectrum__actions .plot-spectrum__menu-button {
+  color: var(--ps-text-2);
+  font-weight: 700;
+  line-height: 1;
+}
+.plot-spectrum__actions .plot-spectrum__menu-button:hover { text-decoration: none; color: var(--ps-text); }
+
+/* the row's colour menu sits ABOVE the non-modal window: ContextMenu's
+   inline z-index (10000) ties the Dialog's and loses on DOM order */
+.plot-spectrum__colour-menu { z-index: 10001 !important; }
+
+/* the colour menu's swatch, in the icon slot */
+.plot-spectrum__menu-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
 
 /* ── the selection bar — a FULL-BLEED strip under the title bar, outside
    the scroll, so the input and its action never scroll away; its own
