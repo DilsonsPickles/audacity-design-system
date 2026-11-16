@@ -11,7 +11,7 @@ const tone = Float32Array.from({ length: 8192 }, (_, i) => Math.sin((2 * Math.PI
 function renderWindow(selection: PlotSpectrumSource | null, region: Float32Array | null = tone) {
   const readRegion = vi.fn(() => (region ? { samples: region, sampleRate: 44100 } : null));
   const onSelectRange = vi.fn();
-  const props = { isOpen: true, onClose: vi.fn(), selection, readRegion, onSelectRange };
+  const props = { isOpen: true, onClose: vi.fn(), selection, readRegion, onSelectRange, osWindow: false };
   const utils = render(
     <PreferencesProvider><ThemeProvider><PlotSpectrumWindow {...props} /></ThemeProvider></PreferencesProvider>,
   );

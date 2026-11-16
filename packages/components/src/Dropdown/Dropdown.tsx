@@ -80,12 +80,15 @@ export const Dropdown: React.FC<DropdownProps> = ({
       }
     };
 
+    // The trigger's own document: a dropdown in a popout (an OS window
+    // the app portals into) listens and draws THERE (2026-11-16)
+    const doc = dropdownRef.current?.ownerDocument ?? document;
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      doc.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      doc.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isOpen]);
 
@@ -163,11 +166,12 @@ export const Dropdown: React.FC<DropdownProps> = ({
 
     if (isOpen) {
       updatePosition();
-      window.addEventListener('scroll', updatePosition, true);
-      window.addEventListener('resize', updatePosition);
+      const win = triggerRef.current?.ownerDocument.defaultView ?? window;
+      win.addEventListener('scroll', updatePosition, true);
+      win.addEventListener('resize', updatePosition);
       return () => {
-        window.removeEventListener('scroll', updatePosition, true);
-        window.removeEventListener('resize', updatePosition);
+        win.removeEventListener('scroll', updatePosition, true);
+        win.removeEventListener('resize', updatePosition);
       };
     } else {
       setMenuPosition(null);
@@ -276,7 +280,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
             );
           })}
         </div>,
-        document.body
+        triggerRef.current?.ownerDocument.body ?? document.body
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { ContextMenu, ContextMenuItem, GhostButton } from '@audacity-ui/components';
+import { ContextMenu, ContextMenuItem, GhostButton, useTheme } from '@audacity-ui/components';
 
 export interface PopoutMenuItem {
   label: string;
@@ -33,6 +33,10 @@ export interface PopoutPanelProps {
   /** Items for the tab's ⋯ menu — the same placement/Close entries the
    *  panel shows when docked. Rendered INSIDE the popout document. */
   menuItems?: PopoutMenuItem[];
+  /** The popup could not be opened (a plain browser blocked it). Without
+   *  it the host hears onClose; with it the host can fall back to an
+   *  in-app form instead (2026-11-16, Plot spectrum) */
+  onBlocked?: () => void;
   children: React.ReactNode;
 }
 
@@ -76,7 +80,7 @@ function adoptParentStyles(popoutDocument: Document) {
       display: flex;
       align-items: center;
       flex-shrink: 0;
-      background: #ebedf0;
+      background: var(--popout-header-bg, #ebedf0);
       position: relative;
     }
     .popout-panel__header::after {
@@ -84,7 +88,7 @@ function adoptParentStyles(popoutDocument: Document) {
       position: absolute;
       left: 0; right: 0; bottom: 0;
       height: 1px;
-      background: #d4d5d9;
+      background: var(--popout-line, #d4d5d9);
       pointer-events: none;
     }
     .popout-panel__header:active { cursor: grabbing; }
@@ -94,15 +98,15 @@ function adoptParentStyles(popoutDocument: Document) {
       gap: 8px;
       height: 32px;
       padding: 0 8px 0 12px;
-      background: #f8f8f9;
-      border-right: 1px solid #d4d5d9;
+      background: var(--popout-tab-bg, #f8f8f9);
+      border-right: 1px solid var(--popout-line, #d4d5d9);
       position: relative;
       z-index: 1;
       font-family: 'Inter', sans-serif;
       font-size: 12px;
       font-weight: 400;
       line-height: 16px;
-      color: #14151a;
+      color: var(--popout-text, #14151a);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -138,7 +142,8 @@ interface PopoutEntry {
  *  same named window — which killed the popout the instant it opened. */
 const popoutEntries = new Map<string, PopoutEntry>();
 
-export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragEnd, continueDragFrom, menuItems, children }: PopoutPanelProps) {
+export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragEnd, continueDragFrom, menuItems, onBlocked, children }: PopoutPanelProps) {
+  const { theme } = useTheme();
   const [popoutRoot, setPopoutRoot] = React.useState<HTMLElement | null>(null);
   const [headerEl, setHeaderEl] = React.useState<HTMLDivElement | null>(null);
   // Tab ⋯ menu, positioned in the POPOUT's viewport coordinates
@@ -153,6 +158,8 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
   // callbacks through refs
   const onCloseRef = React.useRef(onClose);
   React.useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  const onBlockedRef = React.useRef(onBlocked);
+  React.useEffect(() => { onBlockedRef.current = onBlocked; }, [onBlocked]);
   const onDragMoveRef = React.useRef(onDragMove);
   React.useEffect(() => { onDragMoveRef.current = onDragMove; }, [onDragMove]);
   const onDragEndRef = React.useRef(onDragEnd);
@@ -280,7 +287,8 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
       if (!popout) {
         // Popup blocked (plain browser without a user gesture) — bail
         // out and let the consumer fall back to an in-app placement
-        onCloseRef.current();
+        if (onBlockedRef.current) onBlockedRef.current();
+        else onCloseRef.current();
         return;
       }
 
@@ -290,7 +298,7 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
 
       const root = popout.document.createElement('div');
       root.className = 'popout-panel-root';
-      root.style.cssText = 'height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#f8f8f9;';
+      root.style.cssText = 'height:100vh;display:flex;flex-direction:column;overflow:hidden;background:var(--popout-body-bg, #f8f8f9);';
       // Under Electron the popout is a frameless TRANSPARENT window
       // (main.cjs) — the panel draws its own corner radius. A plain
       // browser popup keeps its OS chrome, where rounding our content
@@ -340,6 +348,18 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
     // Mount-once by design: title/size only apply to the initial open
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The popout's frame takes the THEME (2026-11-16): its colours were the
+  // light theme's, fixed, so a dark app got a light frame
+  React.useLayoutEffect(() => {
+    if (!popoutRoot) return;
+    const st = popoutRoot.style;
+    st.setProperty('--popout-header-bg', theme.background.surface.elevated);
+    st.setProperty('--popout-tab-bg', theme.background.surface.default);
+    st.setProperty('--popout-body-bg', theme.background.surface.default);
+    st.setProperty('--popout-line', theme.border.default);
+    st.setProperty('--popout-text', theme.foreground.text.primary);
+  }, [popoutRoot, theme]);
 
   if (!popoutRoot) return null;
   return createPortal(

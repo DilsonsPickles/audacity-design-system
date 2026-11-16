@@ -5,6 +5,7 @@ import {
   WINDOW_FUNCTIONS, SPECTRUM_SIZES, SPECTRUM_ALGORITHMS, type Spectrum, type WindowFunctionId,
 } from '../utils/spectrum';
 import { downloadBlob } from '../utils/downloadBlob';
+import { PopoutPanel } from './editor/PopoutPanel';
 import './PlotSpectrumWindow.css';
 
 /**
@@ -42,6 +43,8 @@ export interface PlotSpectrumWindowProps {
   readRegion: (trackIds: (number | string)[], startTime: number, endTime: number) => { samples: Float32Array; sampleRate: number } | null;
   /** the Select action: make this the project's selection again */
   onSelectRange: (source: PlotSpectrumSource) => void;
+  /** open as an OS window (the default); false = the in-app window */
+  osWindow?: boolean;
 }
 
 interface Plot {
@@ -73,7 +76,8 @@ export function tracksLabel(tracks: PlotSpectrumTrack[]): string {
   return `${tracks.length} tracks`;
 }
 
-export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion, onSelectRange }: PlotSpectrumWindowProps) {
+export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion, onSelectRange, osWindow = true }: PlotSpectrumWindowProps) {
+  const [popupBlocked, setPopupBlocked] = React.useState(false);
   const { theme } = useTheme();
   const [plots, setPlots] = React.useState<Plot[]>([]);
   const [focusedId, setFocusedId] = React.useState<number | null>(null);
@@ -183,28 +187,17 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
     '--ps-link': theme.foreground.text.link,
   } as React.CSSProperties;
 
-  return (
-    <Dialog
-      isOpen={isOpen}
-      title="Plot spectrum"
-      onClose={onClose}
-      os={os}
-      nonModal
-      loopTab
-      closeOnClickOutside={false}
-      className="plot-spectrum-window"
-      width={640}
-      minHeight={0}
-      footer={
-        <DialogFooter
-          primaryText="Done"
-          secondaryText="Export"
-          onPrimaryClick={onClose}
-          onSecondaryClick={exportCsv}
-          secondaryDisabled={plots.length === 0}
-        />
-      }
-    >
+  const footer = (
+    <DialogFooter
+      primaryText="Done"
+      secondaryText="Export"
+      onPrimaryClick={onClose}
+      onSecondaryClick={exportCsv}
+      secondaryDisabled={plots.length === 0}
+    />
+  );
+
+  const body = (
       <div className="plot-spectrum" data-plot-spectrum style={style}>
         <div className="plot-spectrum__bar">
           <LabeledCheckbox label="Linear frequency scale" checked={linear} onChange={setLinear} />
@@ -352,6 +345,41 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
           <Button variant="secondary" size="small" disabled={!selection} onClick={plotSelection}>Plot selection</Button>
         </div>
       </div>
+  );
+
+  if (!isOpen) return null;
+
+  // AN OS WINDOW (2026-11-16, "that window has got to be able to float
+  // outside the application window. We did it with the floating panels"):
+  // the panels' PopoutPanel, so it can sit on another display beside the
+  // project. The in-app non-modal window is the fallback for a browser
+  // that blocks the popup.
+  if (osWindow && !popupBlocked) {
+    return (
+      <PopoutPanel title="Plot spectrum" width={672} height={760} onClose={onClose} onBlocked={() => setPopupBlocked(true)}>
+        <div className="plot-spectrum-popout" style={{ background: theme.background.surface.default }}>
+          <div className="plot-spectrum-popout__body">{body}</div>
+          {footer}
+        </div>
+      </PopoutPanel>
+    );
+  }
+
+  return (
+    <Dialog
+      isOpen={isOpen}
+      title="Plot spectrum"
+      onClose={onClose}
+      os={os}
+      nonModal
+      loopTab
+      closeOnClickOutside={false}
+      className="plot-spectrum-window"
+      width={640}
+      minHeight={0}
+      footer={footer}
+    >
+      {body}
     </Dialog>
   );
 }
