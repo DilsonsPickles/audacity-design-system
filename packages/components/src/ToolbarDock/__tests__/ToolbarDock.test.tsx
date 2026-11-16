@@ -316,12 +316,16 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
         { id: 'empty', tools: [] },
         { id: 'hidden', tools: ['gone', 'separator-5'] },
       ]],
+      onBarResize: vi.fn(),
     });
     const a = container.querySelector('[data-toolbar-bar="a"]')!;
     const tools = Array.from(a.querySelectorAll('[data-toolbar-tool]')).map((t) => t.getAttribute('data-toolbar-tool'));
     expect(tools).toEqual(['one', 'separator-2', 'two']);
     expect(a.querySelectorAll('.toolbar-dock__separator')).toHaveLength(1);
     const slot = container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-empty="empty"]');
+    // and no resize edge — nothing in it to size (2026-11-16); a toolbar with tools has one
+    expect(container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-resize]')).toBeNull();
+    expect(a.querySelector('[data-toolbar-resize="a"]')).not.toBeNull();
     // no words drawn (2026-11-16) — the name is for screen readers
     expect(slot?.textContent).toBe('');
     expect(slot?.getAttribute('aria-label')).toBe('Empty toolbar');

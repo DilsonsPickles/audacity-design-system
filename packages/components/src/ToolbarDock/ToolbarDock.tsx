@@ -138,7 +138,10 @@ export function ToolbarDock({
   // an overflow button, last first.
   const axis: ToolbarBarAxis = vertical ? 'height' : 'width';
   const [liveSize, setLiveSize] = useState<{ barId: string; size: number } | null>(null);
-  const sizeOf = (bar: ToolbarBar): number | undefined => (liveSize?.barId === bar.id ? liveSize.size : bar[axis]);
+  // An EMPTY toolbar has no size (2026-11-16, "an empty toolbar shouldn't
+  // have a width slider right?"): nothing in it to size, so no resize edge
+  // and any stored size is ignored until it holds a tool again
+  const sizeOf = (bar: ToolbarBar): number | undefined => (bar.tools.length === 0 ? undefined : liveSize?.barId === bar.id ? liveSize.size : bar[axis]);
   // Each tool's natural size along the dock, measured whenever it is drawn
   // unstretched (a tool behind the overflow button keeps its last)
   const toolSizes = useRef(new Map<string, number>());
@@ -460,7 +463,7 @@ export function ToolbarDock({
           <span className="musescore-icon" aria-hidden="true">{'\uF39B'}</span>
         </button>
       )}
-      {onBarResize && d.last && (
+      {onBarResize && d.last && d.bar.tools.length > 0 && (
         // THE RESIZE EDGE: the bar's trailing edge (bottom, in a column),
         // over the first 6px of whatever follows — the next bar's gutter,
         // whose line divides "resize the bar before" from "move the bar
