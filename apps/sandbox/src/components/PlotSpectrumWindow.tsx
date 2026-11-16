@@ -183,8 +183,9 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   // under the pointer and the level there — and the PEAK — the highest
   // point within PEAK_REACH_PX of the pointer, refined between bins
   const readoutSpectrum = readoutPlot ? spectra.get(readoutPlot.id)! : null;
+  // the cursor reads the LINE as drawn under the pointer, so its dot sits on it
   const cursorReading = hoverX !== null && readoutSpectrum
-    ? { hz: xToHz(hoverX), db: spectrumDbAt(readoutSpectrum, xToHz(hoverX)) }
+    ? { hz: xToHz(hoverX), db: columnPeak(readoutSpectrum, Math.min(GRAPH_W, Math.floor(hoverX))).db }
     : null;
   const peakReading = (() => {
     if (hoverX === null || !readoutSpectrum) return null;
@@ -278,18 +279,24 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
               </ul>
             )}
             {cursorReading && peakReading && readoutPlot && (() => {
-              const px = (hzToX(peakReading.hz) / GRAPH_W) * 100;
-              const py = (Math.max(0, Math.min(GRAPH_H, dbToY(peakReading.db))) / GRAPH_H) * 100;
-              const fx = hzToX(peakReading.hz);
+              const yPct = (db: number) => (Math.max(0, Math.min(GRAPH_H, dbToY(db))) / GRAPH_H) * 100;
+              // the DOT follows the pointer along the line; a RING marks the
+              // peak the Peak row reads (later the same day, "the little dot
+              // on the line isn't tracking with the cursor pos")
+              const cx = (hoverX! / GRAPH_W) * 100;
+              const cy = yPct(cursorReading.db);
+              const kx = (hzToX(peakReading.hz) / GRAPH_W) * 100;
+              const ky = yPct(peakReading.db);
               return (
                 <>
-                  <span className="plot-spectrum__peak-dot" data-plot-peak style={{ left: `${px}%`, top: `${py}%`, background: readoutPlot.colour }} />
+                  <span className="plot-spectrum__peak-ring" data-plot-peak style={{ left: `${kx}%`, top: `${ky}%`, borderColor: readoutPlot.colour }} />
+                  <span className="plot-spectrum__cursor-dot" data-plot-cursor-dot style={{ left: `${cx}%`, top: `${cy}%`, background: readoutPlot.colour }} />
                   <div
                     className="plot-spectrum__readout"
                     data-plot-readout
                     // near either side it hangs inward, so it stays in the window
-                    data-edge={fx < GRAPH_W * 0.2 ? 'start' : fx > GRAPH_W * 0.8 ? 'end' : undefined}
-                    style={{ left: `${px}%`, top: `${py}%` }}
+                    data-edge={hoverX! < GRAPH_W * 0.2 ? 'start' : hoverX! > GRAPH_W * 0.8 ? 'end' : undefined}
+                    style={{ left: `${cx}%`, top: `${Math.min(cy, ky)}%` }}
                   >
                     <span>Cursor</span>
                     <span data-plot-cursor-reading>{formatHz(cursorReading.hz)} ({noteName(cursorReading.hz)})</span>
