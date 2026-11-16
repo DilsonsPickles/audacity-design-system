@@ -37,6 +37,11 @@ export interface ProjectBarToolsDeps {
   titleItems?: string[];
   /** A right-click on the title bar's corner: its checklist (2026-11-16) */
   onTitleBarMenu?: (anchor: { x: number; y: number }) => void;
+  /** VERTICAL TABS are on (2026-11-16): the tab strip draws nothing — the
+   *  rail at the window's left edge holds the projects */
+  tabsVertical?: boolean;
+  /** A right-click on the tab strip: its menu ("Use vertical tabs") */
+  onTabsMenu?: (anchor: { x: number; y: number }) => void;
   /** The + after the tabs: a new project in a new tab */
   onNewProject?: () => void;
   /** The tabs, the workspace picker and Share audio live in the app's
@@ -50,7 +55,7 @@ export interface ProjectTabInfo {
   title: string;
 }
 
-type ProjectTabsProps = Pick<ProjectBarToolsDeps, 'activeMenuItem' | 'onNavigate' | 'projectTitle' | 'projectTabs' | 'activeProjectId' | 'onSelectProject' | 'onCloseProject' | 'onReorderProjects' | 'onRenameProject' | 'onNewProject'>;
+type ProjectTabsProps = Pick<ProjectBarToolsDeps, 'activeMenuItem' | 'onNavigate' | 'projectTitle' | 'projectTabs' | 'activeProjectId' | 'onSelectProject' | 'onCloseProject' | 'onReorderProjects' | 'onRenameProject' | 'onNewProject' | 'tabsVertical' | 'onTabsMenu'>;
 
 /** Pointer travel before a press on a tab becomes a drag */
 const TAB_DRAG_THRESHOLD_PX = 4;
@@ -174,7 +179,7 @@ function TabRenameField({ title, onDone }: { title: string; onDone: (title: stri
   );
 }
 
-export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectTabs, activeProjectId, onSelectProject, onCloseProject, onReorderProjects, onRenameProject, onNewProject }: ProjectTabsProps) {
+export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectTabs, activeProjectId, onSelectProject, onCloseProject, onReorderProjects, onRenameProject, onNewProject, tabsVertical, onTabsMenu }: ProjectTabsProps) {
   const [renamingId, setRenamingId] = React.useState<string | null>(null);
   const inProject = activeMenuItem !== 'home';
   const reorder = useTabReorder(projectTabs?.map((p) => p.id) ?? [], onReorderProjects);
@@ -188,9 +193,25 @@ export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectT
     '--project-tabs-field-bg': theme.background.control.input.idle,
     '--project-tabs-field-border': theme.border.focus,
   } as React.CSSProperties;
+  // Vertical tabs: the rail holds the projects (2026-11-16)
+  if (tabsVertical) return null;
   return (
     // ("Main menu": F6's section walk and the status bar find it by name)
-    <div className="project-tabs" role="group" aria-label="Main menu" data-project-tool="tabs" ref={reorder.containerRef} onClickCapture={reorder.onClickCapture} style={colours}>
+    <div
+      className="project-tabs"
+      role="group"
+      aria-label="Main menu"
+      data-project-tool="tabs"
+      ref={reorder.containerRef}
+      onClickCapture={reorder.onClickCapture}
+      style={colours}
+      onContextMenu={onTabsMenu ? (e) => {
+        if ((e.target as HTMLElement).closest('input')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onTabsMenu({ x: e.clientX, y: e.clientY });
+      } : undefined}
+    >
       <Tab
         variant="document"
         label="Home"

@@ -99,6 +99,13 @@ export interface PreferencesState {
   /** Debug has been put into this profile's stored layouts' title bars once
    *  (2026-11-16, the title bar's corner — not defaulted, as above) */
   titleBarDebugAdded?: boolean;
+  /** VERTICAL PROJECT TABS (2026-11-16, Firefox's): the open projects as a
+   *  rail at the window's left edge instead of tabs in the title bar */
+  projectTabsVertical: boolean;
+  /** The rail pinned open (else collapsed, widening on hover) */
+  projectTabRailPinned: boolean;
+  /** The rail's width when open, px */
+  projectTabRailWidth: number;
   /** The user's toolbar LAYOUTS, one per workspace (custom toolbars,
    *  2026-11-09): which bars sit in which dock, which tools on each bar.
    *  A workspace with no entry draws its built-in seed layout. */
@@ -192,6 +199,9 @@ const defaultPreferences: PreferencesState = {
   // (projectButtonsMoved is NOT defaulted: profiles merge onto these
   // defaults, so an old profile must read it as absent)
   toolbarLayouts: {},
+  projectTabsVertical: false,
+  projectTabRailPinned: false,
+  projectTabRailWidth: 220,
   playbackMeterOnToolbar: true,
   recordingMeterOnToolbar: false,
 

@@ -58,7 +58,13 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
         paddingLeft: insetForTrafficLights ? TRAFFIC_LIGHTS_PX : 0,
       } as React.CSSProperties}
     >
-      <ProjectTabs {...deps} />
+      {deps.tabsVertical ? (
+        // VERTICAL TABS (2026-11-16): the rail holds the projects, and the
+        // title bar names the one in front, as a macOS document window does
+        <div className="app-title-bar__title" data-app-title-bar-title>
+          <span>{activeMenuItem === 'home' ? 'Home' : (deps.projectTitle || 'Untitled project')}</span>
+        </div>
+      ) : <ProjectTabs {...deps} />}
       {activeMenuItem !== 'home' && (
         // THE CORNER (2026-11-16, "that area at the top right with debug,
         // setup, get effects etc is a special area"): the layout's title bar

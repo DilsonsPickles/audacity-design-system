@@ -50,6 +50,7 @@ import { RecordingManager } from './utils/RecordingManager';
 import { AppTitleBar, hasCustomTitleBar } from './components/AppTitleBar';
 import { ToolbarBuilderDialog } from './components/ToolbarBuilderDialog';
 import { ToolbarBarMenu, type ToolbarBarMenuState } from './components/ToolbarBarMenu';
+import { ProjectTabRail } from './components/ProjectTabRail';
 import { computeFitTrackHeight, buildNewTrack } from './utils/trackManagement';
 import { handlePaste } from './hooks/handlers/clipboardHandlers';
 import type { TrackType } from '@audacity-ui/components';
@@ -378,6 +379,8 @@ function CanvasDemoContent() {
   // THE TOOLBAR'S MENU on its grip (2026-11-16): Rename, Move to, Add
   // separator, Reset width, Edit toolbars…, Remove toolbar — ToolbarBarMenu
   const [barMenu, setBarMenu] = React.useState<ToolbarBarMenuState | null>(null);
+  // The tab strip's / the rail's own small menu (2026-11-16, vertical tabs)
+  const [tabsMenu, setTabsMenu] = React.useState<{ x: number; y: number; from: 'tabs' | 'rail' } | null>(null);
   const [builderBarId, setBuilderBarId] = React.useState<string | null>(null);
   const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }) => setBarMenu({ barId, ...anchor }), []);
   const toolFitsVertical = (id: string) =>
@@ -1448,6 +1451,10 @@ function CanvasDemoContent() {
     // its right-click checklist (the Title bar toolbar's menu)
     titleItems: titleBarItems(toolbarLayout.layout),
     onTitleBarMenu: (anchor) => setBarMenu({ barId: TITLE_BAR_ID, ...anchor }),
+    // VERTICAL TABS (2026-11-16): the strip draws nothing while they are on;
+    // a right-click on it offers them
+    tabsVertical: preferences.projectTabsVertical,
+    onTabsMenu: (anchor) => setTabsMenu({ ...anchor, from: 'tabs' }),
     tabsInTitleBar: customTitleBar,
     showMixer,
     onToggleMixer: () => setMixerPanelOpen((prev) => !prev),
@@ -1608,6 +1615,28 @@ function CanvasDemoContent() {
           menuDefinitions={menuDefinitions}
         />
       )}
+      {/* Everything under the title bar, beside the VERTICAL TABS' rail when
+          they are on (2026-11-16, Firefox's): window edge → rail → docks */}
+      <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0 }}>
+      {preferences.projectTabsVertical && (
+        <ProjectTabRail
+          inProject={activeMenuItem !== 'home'}
+          onHome={() => { void navigateProject('home'); }}
+          projects={projectToolDeps.projectTabs ?? []}
+          activeProjectId={currentProjectId}
+          onSelectProject={projectTabs.switchToProject}
+          onCloseProject={projectTabs.closeProject}
+          onReorderProjects={projectTabs.reorderProjects}
+          onRenameProject={(id, title) => projectToolDeps.onRenameProject?.(id, title)}
+          onNewProject={() => { void newProjectInTab(); }}
+          pinned={preferences.projectTabRailPinned}
+          onPinnedChange={(pinned) => updatePreference('projectTabRailPinned', pinned)}
+          width={preferences.projectTabRailWidth}
+          onWidthChange={(w) => updatePreference('projectTabRailWidth', w)}
+          onRailMenu={(anchor) => setTabsMenu({ ...anchor, from: 'rail' })}
+        />
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0', minWidth: 0, minHeight: 0 }}>
       {/* The project toolbar on HOME alone (its tabs, the way back); in the
           other views its pieces are tools in the docks (2026-11-10) */}
       {activeMenuItem === 'home' && !customTitleBar && <ProjectToolbarContainer
@@ -1618,7 +1647,7 @@ function CanvasDemoContent() {
         currentProjectId={currentProjectId}
         createNewProject={createNewProject}
         projectTitle={projectTitle}
-        tabs={<ProjectTabs {...projectToolDeps} />}
+        tabs={preferences.projectTabsVertical ? <span /> : <ProjectTabs {...projectToolDeps} />}
         showMixer={showMixer}
         setMixerPanelOpen={setMixerPanelOpen}
         setAudioSetupMenuAnchor={setAudioSetupMenuAnchor}
@@ -2308,6 +2337,26 @@ function CanvasDemoContent() {
           </p>
         </Dialog>
       )}
+      </div>
+      </div>
+      {/* The tab strip's and the rail's menu (2026-11-16): vertical / horizontal
+          tabs, and the rail's pin */}
+      <ContextMenu isOpen={tabsMenu !== null} onClose={() => setTabsMenu(null)} x={tabsMenu?.x ?? 0} y={tabsMenu?.y ?? 0} portalTo={document.body}>
+        <ContextMenuItem
+          label={preferences.projectTabsVertical ? 'Use horizontal tabs' : 'Use vertical tabs'}
+          onClick={() => updatePreference('projectTabsVertical', !preferences.projectTabsVertical)}
+          onClose={() => setTabsMenu(null)}
+        />
+        {tabsMenu?.from === 'rail' && (
+          <ContextMenuItem
+            label={preferences.projectTabRailPinned ? 'Unpin sidebar' : 'Pin sidebar'}
+            onClick={() => updatePreference('projectTabRailPinned', !preferences.projectTabRailPinned)}
+            onClose={() => setTabsMenu(null)}
+          />
+        )}
+        <ContextMenuItem isDivider />
+        <ContextMenuItem label="New project" shortcut="Ctrl+N" onClick={() => { void newProjectInTab(); }} onClose={() => setTabsMenu(null)} />
+      </ContextMenu>
     </div>
     </TransportToolbarContainer>
     </LoopRegionProvider>

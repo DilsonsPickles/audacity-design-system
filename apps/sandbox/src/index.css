@@ -184,3 +184,75 @@ html.pan-active * {
 /* A ⌘-DRAGGED TOOL (2026-11-16): the closed hand everywhere while it is in hand */
 body[data-toolbar-tool-drag],
 body[data-toolbar-tool-drag] * { cursor: grabbing !important; }
+
+/* VERTICAL PROJECT TABS (2026-11-16, Firefox's) — ProjectTabRail.tsx. The
+   rail takes 48px in the layout (its width when pinned); its PANEL is the
+   column you see, widening over the content on hover / focus. Window
+   chrome, the title bar's colour — not a panel. */
+.project-rail { position: relative; flex-shrink: 0; align-self: stretch; z-index: 30; }
+.project-rail__panel {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 6px; box-sizing: border-box; overflow: hidden;
+  background: var(--rail-bg); border-right: 1px solid var(--rail-border);
+  color: var(--rail-text);
+  transition: width 0.12s ease, box-shadow 0.12s ease;
+}
+.project-rail:not(.project-rail--pinned)[data-expanded] .project-rail__panel { box-shadow: 4px 0 16px rgba(0, 0, 0, 0.18); }
+.project-rail__divider { height: 1px; margin: 4px 4px; background: var(--rail-border); flex-shrink: 0; }
+.project-rail__list { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.project-rail__foot { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.project-rail__item { position: relative; display: flex; align-items: center; border-radius: 4px; flex-shrink: 0; }
+.project-rail__item:hover { background: var(--rail-hover); }
+.project-rail__item--active { background: var(--rail-active); }
+.project-rail__item--active::before {
+  content: ''; position: absolute; left: -6px; top: 6px; bottom: 6px; width: 3px; border-radius: 0 2px 2px 0; background: var(--rail-accent);
+}
+.project-rail__item--dragging { opacity: 0.85; }
+.project-rail__button {
+  display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0;
+  height: 36px; padding: 0 0 0 4px; border: 0; background: transparent; color: inherit;
+  font: inherit; font-size: 12px; text-align: left; cursor: pointer; border-radius: 4px;
+}
+.project-rail__badge { width: 28px; height: 28px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
+.project-rail__initials {
+  width: 28px; height: 28px; border-radius: 6px; color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+}
+.project-rail__label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.project-rail__rename {
+  flex: 1 1 auto; min-width: 0; height: 24px; box-sizing: border-box; padding: 0 4px;
+  font: inherit; font-size: 12px; color: var(--rail-text); background: transparent;
+  border: 1px solid var(--rail-accent); border-radius: 3px; outline: none;
+}
+.project-rail__close {
+  flex-shrink: 0; width: 20px; height: 20px; margin-right: 6px; padding: 0; border: 0; border-radius: 3px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--rail-text-secondary); cursor: pointer; opacity: 0;
+}
+.project-rail__item:hover .project-rail__close,
+.project-rail__item--active .project-rail__close,
+.project-rail__close:focus-visible { opacity: 1; }
+.project-rail__close:hover { background: var(--rail-hover); color: var(--rail-text); }
+.project-rail__pin {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
+  margin: 4px 0 0 8px; padding: 2px 6px; border: 0; border-radius: 3px;
+  background: transparent; color: var(--rail-text-secondary); font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+}
+.project-rail__pin:hover, .project-rail__pin--on { color: var(--rail-text); background: var(--rail-hover); }
+.project-rail__resize { position: absolute; top: 0; bottom: 0; right: -3px; width: 6px; cursor: ew-resize; }
+.project-rail__resize:hover { background: color-mix(in srgb, var(--rail-accent) 35%, transparent); }
+body[data-rail-resize], body[data-rail-resize] * { cursor: ew-resize !important; }
+@media (prefers-reduced-motion: reduce) { .project-rail__panel { transition: none; } }
+
+/* With vertical tabs the desktop title bar names the project instead */
+/* …in the free room between the window's left and the corner, centred
+   there, truncated rather than running into the corner's controls */
+.app-title-bar__title {
+  flex: 1 1 0; min-width: 0; padding: 0 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; pointer-events: none;
+}
+.app-title-bar__title > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.app-title-bar { position: relative; }
