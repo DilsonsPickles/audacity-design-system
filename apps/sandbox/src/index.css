@@ -252,13 +252,5 @@ body[data-toolbar-tool-drag] * { cursor: grabbing !important; }
 body[data-rail-resize], body[data-rail-resize] * { cursor: ew-resize !important; }
 @media (prefers-reduced-motion: reduce) { .project-rail__panel { transition: none; } }
 
-/* With vertical tabs the desktop title bar names the project instead */
-/* …in the free room between the window's left and the corner, centred
-   there, truncated rather than running into the corner's controls */
-.app-title-bar__title {
-  flex: 1 1 0; min-width: 0; padding: 0 16px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 600; pointer-events: none;
-}
-.app-title-bar__title > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
 .app-title-bar { position: relative; }
