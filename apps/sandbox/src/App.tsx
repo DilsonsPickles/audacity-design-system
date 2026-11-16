@@ -379,6 +379,11 @@ function CanvasDemoContent() {
   // THE TOOLBAR'S MENU on its grip (2026-11-16): Rename, Move to, Add
   // separator, Reset width, Edit toolbars…, Remove toolbar — ToolbarBarMenu
   const [barMenu, setBarMenu] = React.useState<ToolbarBarMenuState | null>(null);
+  // VERTICAL OR HORIZONTAL TABS IS THE WORKSPACE'S (2026-11-16, "vertical/
+  // horizontal tabs should be part of the workspace"), kept with its layout
+  const tabsVertical = preferences.workspaceTabsVertical?.[workspace] ?? false;
+  const setTabsVertical = (on: boolean) =>
+    updatePreference('workspaceTabsVertical', { ...(preferences.workspaceTabsVertical ?? {}), [workspace]: on });
   // The tab strip's / the rail's own small menu (2026-11-16, vertical tabs)
   const [tabsMenu, setTabsMenu] = React.useState<{ x: number; y: number; from: 'tabs' | 'rail' } | null>(null);
   const [builderBarId, setBuilderBarId] = React.useState<string | null>(null);
@@ -1453,7 +1458,7 @@ function CanvasDemoContent() {
     onTitleBarMenu: (anchor) => setBarMenu({ barId: TITLE_BAR_ID, ...anchor }),
     // VERTICAL TABS (2026-11-16): the strip draws nothing while they are on;
     // a right-click on it offers them
-    tabsVertical: preferences.projectTabsVertical,
+    tabsVertical,
     onTabsMenu: (anchor) => setTabsMenu({ ...anchor, from: 'tabs' }),
     tabsInTitleBar: customTitleBar,
     showMixer,
@@ -1618,7 +1623,7 @@ function CanvasDemoContent() {
       {/* Everything under the title bar, beside the VERTICAL TABS' rail when
           they are on (2026-11-16, Firefox's): window edge → rail → docks */}
       <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0 }}>
-      {preferences.projectTabsVertical && (
+      {tabsVertical && (
         <ProjectTabRail
           inProject={activeMenuItem !== 'home'}
           onHome={() => { void navigateProject('home'); }}
@@ -1647,7 +1652,7 @@ function CanvasDemoContent() {
         currentProjectId={currentProjectId}
         createNewProject={createNewProject}
         projectTitle={projectTitle}
-        tabs={preferences.projectTabsVertical ? <span /> : <ProjectTabs {...projectToolDeps} />}
+        tabs={tabsVertical ? <span /> : <ProjectTabs {...projectToolDeps} />}
         showMixer={showMixer}
         setMixerPanelOpen={setMixerPanelOpen}
         setAudioSetupMenuAnchor={setAudioSetupMenuAnchor}
@@ -2345,8 +2350,8 @@ function CanvasDemoContent() {
           tabs, and the rail's pin */}
       <ContextMenu isOpen={tabsMenu !== null} onClose={() => setTabsMenu(null)} x={tabsMenu?.x ?? 0} y={tabsMenu?.y ?? 0} portalTo={document.body}>
         <ContextMenuItem
-          label={preferences.projectTabsVertical ? 'Use horizontal tabs' : 'Use vertical tabs'}
-          onClick={() => updatePreference('projectTabsVertical', !preferences.projectTabsVertical)}
+          label={tabsVertical ? 'Use horizontal tabs' : 'Use vertical tabs'}
+          onClick={() => setTabsVertical(!tabsVertical)}
           onClose={() => setTabsMenu(null)}
         />
         {tabsMenu?.from === 'rail' && (

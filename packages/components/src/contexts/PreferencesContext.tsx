@@ -100,8 +100,10 @@ export interface PreferencesState {
    *  (2026-11-16, the title bar's corner — not defaulted, as above) */
   titleBarDebugAdded?: boolean;
   /** VERTICAL PROJECT TABS (2026-11-16, Firefox's): the open projects as a
-   *  rail at the window's left edge instead of tabs in the title bar */
-  projectTabsVertical: boolean;
+   *  rail at the window's left edge instead of tabs in the title bar — PER
+   *  WORKSPACE ("vertical/horizontal tabs should be part of the workspace"),
+   *  by workspace id; absent = horizontal */
+  workspaceTabsVertical: Record<string, boolean>;
   /** The rail pinned open (else collapsed, widening on hover) */
   projectTabRailPinned: boolean;
   /** The rail's width when open, px */
@@ -199,7 +201,7 @@ const defaultPreferences: PreferencesState = {
   // (projectButtonsMoved is NOT defaulted: profiles merge onto these
   // defaults, so an old profile must read it as absent)
   toolbarLayouts: {},
-  projectTabsVertical: false,
+  workspaceTabsVertical: {},
   projectTabRailPinned: false,
   projectTabRailWidth: 220,
   playbackMeterOnToolbar: true,
