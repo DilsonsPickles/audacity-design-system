@@ -309,6 +309,17 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     } finally { w.mockRestore(); warn.mockRestore(); }
   });
 
+  it('AN EMPTY TOOLBAR ALONE IN ITS ROW has no resize edge and ignores a stored width (2026-11-16)', () => {
+    const { container } = renderDock({
+      rows: [[{ id: 'lonely', tools: [], width: 300 }], [{ id: 'full', tools: ['one'] }]],
+      onBarResize: vi.fn(),
+    });
+    const lonely = container.querySelector('[data-toolbar-bar="lonely"]') as HTMLElement;
+    expect(lonely.querySelector('[data-toolbar-resize]')).toBeNull();
+    expect(lonely.classList.contains('toolbar-dock__bar--sized')).toBe(false);
+    expect(container.querySelector('[data-toolbar-resize="full"]')).not.toBeNull();
+  });
+
   it('TOOL GROUPS (2026-11-11): a separator draws a line between groups, never at a toolbar\'s ends nor doubled; an EMPTY toolbar draws its slot; one whose tools are all hidden draws nothing', () => {
     const { container } = renderDock({
       rows: [[
@@ -323,8 +334,8 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(tools).toEqual(['one', 'separator-2', 'two']);
     expect(a.querySelectorAll('.toolbar-dock__separator')).toHaveLength(1);
     const slot = container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-empty="empty"]');
-    // and no resize edge — nothing in it to size (2026-11-16); a toolbar with tools has one
-    expect(container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-resize]')).toBeNull();
+    // beside another toolbar it keeps its resize edge — its width spaces them (2026-11-16)
+    expect(container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-resize="empty"]')).not.toBeNull();
     expect(a.querySelector('[data-toolbar-resize="a"]')).not.toBeNull();
     // no words drawn (2026-11-16) — the name is for screen readers
     expect(slot?.textContent).toBe('');

@@ -138,10 +138,7 @@ export function ToolbarDock({
   // an overflow button, last first.
   const axis: ToolbarBarAxis = vertical ? 'height' : 'width';
   const [liveSize, setLiveSize] = useState<{ barId: string; size: number } | null>(null);
-  // An EMPTY toolbar has no size (2026-11-16, "an empty toolbar shouldn't
-  // have a width slider right?"): nothing in it to size, so no resize edge
-  // and any stored size is ignored until it holds a tool again
-  const sizeOf = (bar: ToolbarBar): number | undefined => (bar.tools.length === 0 ? undefined : liveSize?.barId === bar.id ? liveSize.size : bar[axis]);
+  const sizeOf = (bar: ToolbarBar): number | undefined => (liveSize?.barId === bar.id ? liveSize.size : bar[axis]);
   // Each tool's natural size along the dock, measured whenever it is drawn
   // unstretched (a tool behind the overflow button keeps its last)
   const toolSizes = useRef(new Map<string, number>());
@@ -224,10 +221,17 @@ export function ToolbarDock({
       nodes.push({ id: EMPTY_SLOT_ID, node: <span className="toolbar-dock__empty" data-toolbar-empty={bar.id} role="img" aria-label="Empty toolbar" /> });
     }
     const grow = nodes.some((t) => toolMeta?.(t.id, orientation)?.grow);
-    const size = sizeOf(bar);
+    // AN EMPTY TOOLBAR ALONE IN ITS ROW HAS NO SIZE (2026-11-16, "an empty
+    // toolbar shouldn't have a width slider right?", then "if an empty
+    // toolbar shares a dock space with another toolbar, it should be
+    // resizable. it's only when it's totally on its own"): beside another
+    // toolbar its width spaces them apart; alone there is nothing to size,
+    // so no resize edge and a stored size is ignored
+    const resizable = bar.tools.length > 0 || row.length > 1;
+    const size = resizable ? sizeOf(bar) : undefined;
     const overflow = overflowOf(nodes.map((t) => t.id), size);
     const allIds = nodes.map((t) => t.id);
-    const whole = { bar, nodes, grow, row: rowIndex, size, overflow, key: bar.id, continued: false, split: false, last: true, allIds };
+    const whole = { bar, nodes, grow, row: rowIndex, size, overflow, key: bar.id, continued: false, split: false, last: true, allIds, resizable };
     // A TOOLBAR WRAPS AT ITS SEPARATORS (2026-11-11 — with one toolbar a
     // dock, a narrow window would otherwise cut its end off): wider than a
     // line, its GROUPS are drawn as SEGMENTS, each starting at a group
@@ -463,7 +467,7 @@ export function ToolbarDock({
           <span className="musescore-icon" aria-hidden="true">{'\uF39B'}</span>
         </button>
       )}
-      {onBarResize && d.last && d.bar.tools.length > 0 && (
+      {onBarResize && d.last && d.resizable && (
         // THE RESIZE EDGE: the bar's trailing edge (bottom, in a column),
         // over the first 6px of whatever follows — the next bar's gutter,
         // whose line divides "resize the bar before" from "move the bar
