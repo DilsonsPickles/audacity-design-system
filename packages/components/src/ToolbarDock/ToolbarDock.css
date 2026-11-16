@@ -189,6 +189,12 @@
 .toolbar-dock__bar--sized.toolbar-dock__bar--grow { flex: 0 0 auto; }
 .toolbar-dock--horizontal .toolbar-dock__bar--sized { max-width: 100%; }
 .toolbar-dock__bar--sized .toolbar-dock__tools { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
+/* …and its clip box takes in the row's 8px padding above and below
+   (2026-11-16, "when I double click the resize handle to reset the toolbar
+   width, the divisions go full bleed": a SIZED toolbar's overflow clip cut
+   its full-height separators down to the tools' 28px; only the sideways
+   clip is wanted, for the tools behind the overflow button) */
+.toolbar-dock--horizontal .toolbar-dock__bar--sized .toolbar-dock__tools { margin: -8px 0; padding: 8px 0; }
 .toolbar-dock__bar--sized .toolbar-dock__tool--stretch,
 .toolbar-dock__bar--sized .toolbar-dock__tool--stretch > .toolbar-dock__tool-body { flex: 1 1 auto; }
 .toolbar-dock__tool--stretch > .toolbar-dock__tool-body > *,
