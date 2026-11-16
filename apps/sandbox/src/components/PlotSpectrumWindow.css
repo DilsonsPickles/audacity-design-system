@@ -1,0 +1,210 @@
+/* Plot spectrum (2026-11-16) — the graph is the Filter curve EQ's dark
+   plot ("1.0 - Existing graphs"), dark in both themes */
+
+.plot-spectrum {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--ps-text);
+}
+
+.plot-spectrum__bar,
+.plot-spectrum__selection {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.plot-spectrum__bar { gap: 16px; }
+.plot-spectrum__bar .tool-button + .tool-button { margin-left: -12px; }
+.plot-spectrum__spacer { flex: 1; }
+
+/* ── the graph ── */
+.plot-spectrum__graph-wrap {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  grid-template-rows: 240px 18px;
+}
+
+.plot-spectrum__db-axis {
+  position: relative;
+  grid-row: 1;
+  grid-column: 1;
+}
+
+.plot-spectrum__db-axis span {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  color: var(--ps-text-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.plot-spectrum__db-axis small,
+.plot-spectrum__hz-axis small { font-size: inherit; opacity: 0.7; }
+
+.plot-spectrum__graph {
+  position: relative;
+  grid-row: 1;
+  grid-column: 2;
+  background: #1f2233;
+  border-radius: 2px;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.plot-spectrum__graph svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.plot-spectrum__grid {
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.plot-spectrum__curve {
+  fill: none;
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  transition: opacity 0.12s;
+}
+
+.plot-spectrum__curve[data-focused] { stroke-width: 2; }
+.plot-spectrum__curve[data-dimmed] { opacity: 0.3; }
+
+.plot-spectrum__crosshair {
+  stroke: rgba(255, 255, 255, 0.45);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.plot-spectrum__empty {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.plot-spectrum__legend {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #fff;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.plot-spectrum__legend li { display: flex; align-items: center; gap: 6px; transition: opacity 0.12s; }
+.plot-spectrum__legend li[data-dimmed] { opacity: 0.4; }
+.plot-spectrum__legend i { width: 12px; height: 2px; border-radius: 1px; }
+
+.plot-spectrum__readout {
+  position: absolute;
+  transform: translate(-50%, calc(-100% - 8px));
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: #000;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.plot-spectrum__hz-axis {
+  position: relative;
+  grid-row: 2;
+  grid-column: 2;
+}
+
+.plot-spectrum__hz-axis span {
+  position: absolute;
+  top: 3px;
+  transform: translateX(-50%);
+  color: var(--ps-text-2);
+  white-space: nowrap;
+}
+
+/* ── settings ── */
+.plot-spectrum__settings {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.plot-spectrum__settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* ── the table ── */
+.plot-spectrum__table {
+  border: 1px solid var(--ps-table-line);
+  border-radius: 2px;
+  background: var(--ps-table-bg);
+}
+
+.plot-spectrum__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.1fr 1.1fr 0.9fr 1.3fr;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 8px;
+  gap: 8px;
+  border-bottom: 1px solid var(--ps-table-line);
+  cursor: default;
+}
+
+.plot-spectrum__row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.plot-spectrum__row--head { min-height: 24px; background: var(--ps-table-head); color: var(--ps-text-2); }
+.plot-spectrum__body { min-height: 96px; max-height: 160px; overflow-y: auto; }
+.plot-spectrum__body .plot-spectrum__row:hover { background: var(--ps-row-hover); }
+.plot-spectrum__body .plot-spectrum__row[data-focused] { background: var(--ps-row-focus); }
+
+.plot-spectrum__swatch {
+  display: inline-block;
+  width: 12px;
+  height: 3px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-radius: 1px;
+}
+
+.plot-spectrum__actions { display: flex; gap: 12px; }
+
+.plot-spectrum__actions button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ps-link);
+  font: inherit;
+  cursor: pointer;
+}
+
+.plot-spectrum__actions button:hover { text-decoration: underline; }
+
+/* ── the selection bar ── */
+.plot-spectrum__selection {
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ps-border);
+}
+
+.plot-spectrum__none,
+.plot-spectrum__notice { color: var(--ps-text-2); }

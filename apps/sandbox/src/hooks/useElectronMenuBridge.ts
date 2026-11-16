@@ -44,6 +44,7 @@ export function useElectronMenuBridge(options: UseElectronMenuBridgeOptions): vo
     'record:toggle-lead-in': () => menuByLabel.get('Enable lead in time')?.(),
     'effect:manage-plugins': () => menuByLabel.get('Manage Plugins...')?.(),
     'generate:tone': () => menuByLabel.get('Tone...')?.(),
+    'analyze:plot-spectrum': () => menuByLabel.get('Plot spectrum...')?.(),
     'tools:manage-macros': () => menuByLabel.get('Manage macros...')?.(),
     'help:debug-panel': () => menuByLabel.get('Debug panel...')?.(),
   };

@@ -11,6 +11,8 @@ export interface MenuDefinitionDeps {
   /** File › Save project as… ⌘⇧S — a copy, behind the "Copying project"
    *  block that simulates slow media (2026-11-16) */
   onSaveProjectAs?: () => void;
+  /** Analyze › Plot spectrum… (2026-11-16, the Figma flow in 44 - Analyzers) */
+  onOpenPlotSpectrum?: () => void;
   /** File › New project ⌘N / Close project — the project tabs (2026-11-12) */
   onNewProject?: () => void;
   onCloseProject?: () => void;
@@ -279,6 +281,7 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
     Tracks: tracksMenuItems,
     Effect: effectMenuItems,
     Generate: generateMenuItems,
+    ...(deps.onOpenPlotSpectrum ? { Analyze: [{ label: 'Plot spectrum...', onClick: deps.onOpenPlotSpectrum }] } : {}),
     Tools: toolsMenuItems,
     // DEBUG IS A HELP ITEM (2026-11-11, "can we hide 'Export' tab and put
     // debug somewhere else?"): the Debug tab went with the Figma-style

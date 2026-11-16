@@ -342,6 +342,12 @@ function setApplicationMenu() {
       ],
     },
     {
+      label: 'Analyze',
+      submenu: [
+        { label: 'Plot Spectrum…', click: send('analyze:plot-spectrum') },
+      ],
+    },
+    {
       label: 'Tools',
       submenu: [
         { label: 'Manage Macros…', click: send('tools:manage-macros') },

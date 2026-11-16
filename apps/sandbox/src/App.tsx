@@ -25,6 +25,8 @@ import { CopyingProjectDialog } from './components/CopyingProjectDialog';
 import { useTimerRecord } from './hooks/useTimerRecord';
 import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
+import { PlotSpectrumWindow, type PlotSpectrumSource } from './components/PlotSpectrumWindow';
+import { resolveTimeSelectionScope } from './utils/timeSelectionScope';
 import { KeyboardMap, SHORTCUT_ROWS, isToolSeparator, TITLE_BAR_ID, TITLE_BAR_ONLY, titleBarItems, removeTool, PROJECT_TAB_TOOL_ID } from '@audacity-ui/components';
 import { transportStatusText } from './utils/transportStatus';
 import { useStatusInfo } from './hooks/useStatusInfo';
@@ -1207,6 +1209,17 @@ function CanvasDemoContent() {
   // to the computer, the .audacityweb download. Refused while recording.
   const [slowMediaSeconds, setSlowMediaSeconds] = React.useState(6);
   const [copyingSince, setCopyingSince] = React.useState<number | null>(null);
+  // PLOT SPECTRUM (2026-11-16): a non-modal window; its plots live in it
+  const [isPlotSpectrumOpen, setIsPlotSpectrumOpen] = React.useState(false);
+  const isAudioTrack = (t: { type?: string }) => !t.type || t.type === 'audio';
+  const plotSpectrumSelection = React.useMemo<PlotSpectrumSource | null>(() => {
+    const ts = state.timeSelection;
+    if (!ts || !(ts.endTime > ts.startTime)) return null;
+    const audio = state.tracks.map((_, i) => i).filter((i) => isAudioTrack(state.tracks[i]));
+    const rows = resolveTimeSelectionScope(ts, state.selectedTrackIndices, audio).filter((i) => state.tracks[i] && isAudioTrack(state.tracks[i]));
+    if (rows.length === 0) return null;
+    return { startTime: ts.startTime, endTime: ts.endTime, tracks: rows.map((i) => ({ id: state.tracks[i].id, name: state.tracks[i].name })) };
+  }, [state.timeSelection, state.selectedTrackIndices, state.tracks]);
   const [copyClock, setCopyClock] = React.useState(0);
   React.useEffect(() => {
     if (copyingSince === null) return;
@@ -1366,6 +1379,7 @@ function CanvasDemoContent() {
     onNewProject: () => { void newProjectInTab(); },
     onCloseProject: currentProjectId ? () => projectTabs.closeProject(currentProjectId) : undefined,
     onSaveProjectAs: currentProjectId ? () => { void handleSaveProjectAs(); } : undefined,
+    onOpenPlotSpectrum: () => setIsPlotSpectrumOpen(true),
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu
@@ -2025,6 +2039,19 @@ function CanvasDemoContent() {
         fitsVertical={barFitsVertical}
         onEditToolbars={(barId) => { setBuilderBarId(barId); setToolbarBuilderOpen(true); }}
         os={preferences.operatingSystem}
+      />
+      <PlotSpectrumWindow
+        isOpen={isPlotSpectrumOpen}
+        onClose={() => setIsPlotSpectrumOpen(false)}
+        os={preferences.operatingSystem}
+        selection={plotSpectrumSelection}
+        readRegion={(trackIds, start, end) => audioManagerRef.current.readRegion(state.tracks.filter((t) => trackIds.includes(t.id)), start, end)}
+        onSelectRange={(source) => {
+          // SELECT: the project's selection back to where the curve came
+          // from — the tracks by id, so a reorder since still finds them
+          const rows = source.tracks.map((t) => state.tracks.findIndex((x) => x.id === t.id)).filter((i) => i >= 0);
+          dispatch({ type: 'SET_TIME_SELECTION', payload: { startTime: source.startTime, endTime: source.endTime, tracks: rows } });
+        }}
       />
       <KeyboardMap isOpen={isKeyboardMapOpen} onClose={() => setIsKeyboardMapOpen(false)} rows={SHORTCUT_ROWS} timeSelected={!!state.timeSelection} clipsSelected={countSelectedClips(state.tracks) > 0} os={preferences.operatingSystem} />
       {/* The command palette (⌘P, 2026-10-13): the menus' items and the

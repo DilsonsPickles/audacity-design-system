@@ -1030,6 +1030,51 @@ export class AudioPlaybackManager {
   }
 
   /**
+   * The SAMPLES of a time range on some tracks, mixed to MONO at the
+   * first source's rate (2026-11-16, Plot spectrum): every clip that
+   * overlaps the range contributes its visible audio (trimStart honoured,
+   * a reversed clip read from its mirror), channels averaged, tracks
+   * summed. Envelope, fades, pitch and speed are NOT applied — an analyser
+   * reads the audio as recorded, as Audacity 3's Frequency Analysis does.
+   * Null when no clip in the range has a buffer.
+   */
+  readRegion(tracks: any[], startTime: number, endTime: number): { samples: Float32Array; sampleRate: number } | null { // justified: Track[] not imported into audio package — pending audio-package sweep
+    if (!(endTime > startTime)) return null;
+    const parts: { clip: any; buffer: AudioBuffer }[] = []; // justified: the host's clip shape
+    for (const track of tracks) {
+      const clips = track?.clips ?? [];
+      for (const clip of clips) {
+        const clipEnd = clip.start + clip.duration;
+        if (clipEnd <= startTime || clip.start >= endTime) continue;
+        const source = this.resolveClipBuffer(clip, clips);
+        if (!source) continue;
+        parts.push({ clip, buffer: this.playableBuffer(clip, source, String(clip.sourceClipId ?? clip.id)).buffer });
+      }
+    }
+    if (parts.length === 0) return null;
+    const sampleRate = parts[0].buffer.sampleRate;
+    const length = Math.max(1, Math.round((endTime - startTime) * sampleRate));
+    const out = new Float32Array(length);
+    for (const { clip, buffer } of parts) {
+      const channels = Array.from({ length: buffer.numberOfChannels }, (_, ch) => buffer.getChannelData(ch));
+      const from = Math.max(startTime, clip.start);
+      const to = Math.min(endTime, clip.start + clip.duration);
+      const i0 = Math.max(0, Math.round((from - startTime) * sampleRate));
+      const i1 = Math.min(length, Math.round((to - startTime) * sampleRate));
+      const trim = clip.trimStart || 0;
+      for (let i = i0; i < i1; i++) {
+        const t = startTime + i / sampleRate - clip.start + trim;
+        const j = Math.round(t * buffer.sampleRate);
+        if (j < 0 || j >= buffer.length) continue;
+        let s = 0;
+        for (const data of channels) s += data[j];
+        out[i] += s / channels.length;
+      }
+    }
+    return { samples: out, sampleRate };
+  }
+
+  /**
    * Enable or disable looping
    */
   /**
