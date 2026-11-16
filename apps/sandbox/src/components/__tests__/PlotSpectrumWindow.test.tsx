@@ -56,9 +56,8 @@ describe('PlotSpectrumWindow', () => {
     expect(document.querySelector('[data-plot-curve="2"]')?.hasAttribute('data-dimmed')).toBe(true);
     expect(document.querySelector('[data-plot-curve="1"]')?.hasAttribute('data-dimmed')).toBe(false);
     expect(props.onSelectRange).not.toHaveBeenCalled();
-    // the focused curve is filled, the others stay lines
-    expect(document.querySelector('[data-plot-fill="1"]')).not.toBeNull();
-    expect(document.querySelector('[data-plot-fill="2"]')).toBeNull();
+    // compared curves stay lines, focused or not
+    expect(document.querySelectorAll('[data-plot-fill]')).toHaveLength(0);
     // a second click lets go
     fireEvent.click(document.querySelector('[data-plot-row="1"]') as HTMLElement);
     expect(document.querySelector('[data-plot-curve="2"]')?.hasAttribute('data-dimmed')).toBe(false);

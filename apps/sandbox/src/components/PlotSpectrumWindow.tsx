@@ -253,11 +253,11 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
               {grid && hzTicks.map((h) => <line key={`v${h}`} className="plot-spectrum__grid" x1={hzToX(h)} x2={hzToX(h)} y1={0} y2={GRAPH_H} />)}
               {drawOrder.map((p) => {
                 const line = pathFor(spectra.get(p.id)!);
-                // FILLED when it is the only curve or the focused one, as
-                // Audacity 3 draws its one spectrum (2026-11-16, "fill the
-                // single and focused curves"); compared curves stay lines,
-                // or one would hide the others
-                const filled = plots.length === 1 || focusedId === p.id;
+                // FILLED only when it is the ONLY curve, as Audacity 3 draws
+                // its one spectrum (2026-11-16, "let's just do it for single
+                // curves" — a focused curve's fill over the others did not
+                // work); compared curves stay lines
+                const filled = plots.length === 1;
                 return (
                   <React.Fragment key={p.id}>
                     {filled && (
