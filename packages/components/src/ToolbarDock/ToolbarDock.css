@@ -210,6 +210,35 @@
 .toolbar-dock__resize--active {
   background-color: color-mix(in srgb, var(--toolbar-dock-accent) 35%, transparent);
 }
+/* THE EDGE SHOWS ITSELF (2026-11-16, "there's no affordance for the toolbar
+   resizing"): while the pointer is over a toolbar, a small pill stands in
+   the middle of its resize edge — the toolbar's divider colour, 2 × 16 —
+   so the edge can be found before it is hovered; on the edge itself it
+   takes the accent, over the strip's fill */
+.toolbar-dock__resize::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 2px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 1px;
+  background-color: var(--toolbar-gripper-color, var(--toolbar-divider));
+  opacity: 0;
+  transition: opacity 0.06s ease;
+}
+.toolbar-dock__bar:hover > .toolbar-dock__resize::after { opacity: 0.45; }
+.toolbar-dock__resize:hover::after,
+.toolbar-dock__resize--active::after { opacity: 1; background-color: var(--toolbar-dock-accent); }
+.toolbar-dock--vertical .toolbar-dock__resize::after {
+  top: 2px;
+  left: 50%;
+  width: 16px;
+  height: 2px;
+  margin-top: 0;
+  margin-left: -8px;
+}
 .toolbar-dock--vertical .toolbar-dock__resize {
   top: auto;
   left: 0;
@@ -223,7 +252,7 @@ body[data-toolbar-resize="width"],
 body[data-toolbar-resize="width"] * { cursor: ew-resize !important; }
 body[data-toolbar-resize="height"],
 body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
-@media (prefers-reduced-motion: reduce) { .toolbar-dock__resize { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .toolbar-dock__resize, .toolbar-dock__resize::after { transition: none; } }
 
 /* THE OVERFLOW BUTTON: the tools a sized bar cannot fit, behind a chevron */
 .toolbar-dock__overflow {

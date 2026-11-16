@@ -223,7 +223,8 @@ export function ToolbarDock({
     const grow = nodes.some((t) => toolMeta?.(t.id, orientation)?.grow);
     const size = sizeOf(bar);
     const overflow = overflowOf(nodes.map((t) => t.id), size);
-    const whole = { bar, nodes, grow, row: rowIndex, size, overflow, key: bar.id, continued: false, split: false };
+    const allIds = nodes.map((t) => t.id);
+    const whole = { bar, nodes, grow, row: rowIndex, size, overflow, key: bar.id, continued: false, split: false, last: true, allIds };
     // A TOOLBAR WRAPS AT ITS SEPARATORS (2026-11-11 — with one toolbar a
     // dock, a narrow window would otherwise cut its end off): wider than a
     // line, its GROUPS are drawn as SEGMENTS, each starting at a group
@@ -241,8 +242,9 @@ export function ToolbarDock({
       if (last && naturalOf([...last, ...g].map((t) => t.id)) <= lineRoom) last.push(...g);
       else segments.push(isToolSeparator(g[0]?.id ?? '') ? g.slice(1) : g);
     }
-    return segments.filter((seg) => seg.length > 0).map((seg, i) => ({
-      ...whole, nodes: seg, key: i === 0 ? bar.id : `${bar.id}~${i + 1}`, continued: i > 0, split: true,
+    const kept = segments.filter((seg) => seg.length > 0);
+    return kept.map((seg, i) => ({
+      ...whole, nodes: seg, key: i === 0 ? bar.id : `${bar.id}~${i + 1}`, continued: i > 0, split: true, last: i === kept.length - 1,
     }));
   }).flat());
   const visible = drawn.filter((d) => d.nodes.length > 0);
@@ -280,8 +282,15 @@ export function ToolbarDock({
     e.preventDefault();
     e.stopPropagation();
     const start = vertical ? e.clientY : e.clientX;
-    const startSize = vertical ? el.offsetHeight : el.offsetWidth;
-    const natural = naturalOf(d.nodes.map((t) => t.id));
+    // A WRAPPED toolbar is resized from its LAST segment's edge (2026-11-16,
+    // "there's no affordance for the toolbar resizing" — a toolbar wider
+    // than its line had no edge at all): sized, it is one line again,
+    // starting where its first segment does, so its size is the pointer's
+    // distance from there and its end follows the pointer
+    const startSize = d.split
+      ? start - el.getBoundingClientRect().left
+      : vertical ? el.offsetHeight : el.offsetWidth;
+    const natural = naturalOf(d.allIds);
     const root = rootRef.current;
     const roomRaw = root ? (vertical ? root.clientHeight - ROW_END_PAD : root.clientWidth - endPadRef.current) : 0;
     const room = roomRaw > 0 ? roomRaw : Infinity;
@@ -451,11 +460,12 @@ export function ToolbarDock({
           <span className="musescore-icon" aria-hidden="true">{'\uF39B'}</span>
         </button>
       )}
-      {onBarResize && !d.split && (
+      {onBarResize && d.last && (
         // THE RESIZE EDGE: the bar's trailing edge (bottom, in a column),
         // over the first 6px of whatever follows — the next bar's gutter,
         // whose line divides "resize the bar before" from "move the bar
-        // after". Double-click: the bar's natural size again.
+        // after". Double-click: the bar's natural size again. A wrapped
+        // toolbar has it on its last segment.
         <span
           className={`toolbar-dock__resize${liveSize?.barId === d.bar.id ? ' toolbar-dock__resize--active' : ''}`}
           data-toolbar-resize={d.bar.id}
