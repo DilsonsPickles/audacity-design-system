@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import {
-  coerceToolbarLayout, defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, moveBar, moveTool, moveToolToNewBar, normaliseLayout, setBarSize, usePreferences, withCustomiseTool, withProjectTools, withProjectRowMoves, PROJECT_TOOLS_HIDDEN_BY_DEFAULT,
+  coerceToolbarLayout, defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, moveBar, moveTool, moveToolToNewBar, normaliseLayout, setBarSize, usePreferences, withProjectTools, withProjectRowMoves, PROJECT_TOOLS_HIDDEN_BY_DEFAULT,
   type BarPlacement, type ToolbarBarAxis, type ToolbarLayout, type ToolbarWorkspace,
 } from '@audacity-ui/components';
 
@@ -51,14 +51,15 @@ export function useToolbarLayout(workspace: ToolbarWorkspace, activeMenuItem: st
   const custom = useMemo(() => coerceToolbarLayout(stored), [stored]);
   const layout = useMemo(() => {
     if (activeMenuItem === 'export') return EXPORT_TOOLBAR_LAYOUT;
-    // (a layout saved before the cog was a tool gets it at the top dock's end)
-    return normaliseLayout(withProjectRowMoves(withProjectTools(withCustomiseTool(custom ?? defaultToolbarLayout(workspace)))));
+    // (the cog is NOT put back since 2026-11-16 — it removes like any tool,
+    // and a right-click on any toolbar opens the builder)
+    return normaliseLayout(withProjectRowMoves(withProjectTools(custom ?? defaultToolbarLayout(workspace))));
   }, [activeMenuItem, custom, workspace]);
 
   // One edit of the layout in force, stored for this workspace
   const edit = useCallback((change: (base: ToolbarLayout) => ToolbarLayout) => {
     if (activeMenuItem === 'export') return;
-    const base = withProjectRowMoves(withProjectTools(withCustomiseTool(custom ?? defaultToolbarLayout(workspace))));
+    const base = withProjectRowMoves(withProjectTools(custom ?? defaultToolbarLayout(workspace)));
     const next = change(base);
     if (next === base) return;
     updatePreference('toolbarLayouts', { ...(preferences.toolbarLayouts ?? {}), [workspace]: next });

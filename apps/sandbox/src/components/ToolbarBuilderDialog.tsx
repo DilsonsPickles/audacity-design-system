@@ -68,6 +68,9 @@ const toolName = (id: string) => ENTRY_BY_ID.get(id)?.label ?? EXTRA_NAMES[id] ?
 const ALL_TOOLS: ReadonlyArray<string> = [
   ...CUSTOMISE_TOOLBAR_ENTRIES.flatMap((e) => (e.kind === 'tool' && e.id !== 'metronome' ? [e.id] : [])),
   'split', 'waveform-view', 'status-cue', 'status-info', 'selection-timecodes', 'selection-duration',
+  // The cog removes like any tool since 2026-11-16 (a right-click on any
+  // toolbar opens this builder), and is added back from here
+  CUSTOMISE_TOOL_ID,
 ];
 
 /** Put back by the layout's guards when missing: hide, never remove */
@@ -77,7 +80,10 @@ const ALL_TOOLS: ReadonlyArray<string> = [
 // other project tools (Mixer, Audio setup, Share audio, Get effects,
 // Workspace, Undo, Redo) remove like any tool and wait in "Not on a
 // toolbar". The layout guard resurrects only the tabs to match.
-const UNREMOVABLE = new Set<string>([PROJECT_TAB_TOOL_ID, CUSTOMISE_TOOL_ID]);
+// THE COG IS REMOVABLE TOO (2026-11-16, "This should mean that I can remove
+// the toolbar with the customize toolbar cog in it"): a right-click on any
+// toolbar now opens this builder, so the cog is no longer the only way in
+const UNREMOVABLE = new Set<string>([PROJECT_TAB_TOOL_ID]);
 /** The way back to Home and the cog that opens this: never hidden */
 const UNHIDEABLE = new Set<string>([PROJECT_TAB_TOOL_ID, CUSTOMISE_TOOL_ID]);
 

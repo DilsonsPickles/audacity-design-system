@@ -40,8 +40,12 @@ export interface ToolbarDockProps {
   /** THE TOOLBAR'S MENU (2026-11-16): a right-click on a bar's grip, or
    *  Shift+F10 / the Menu key / Enter / Space on it from the keyboard — the
    *  grip is then a button in the dock's arrow-key ring (Tab still enters on
-   *  the first tool). The anchor is the pointer, or under the grip. */
-  onBarMenu?: (barId: string, anchor: { x: number; y: number }) => void;
+   *  the first tool). The anchor is the pointer, or under the grip. A
+   *  right-click ANYWHERE ELSE on a toolbar opens the same menu, and on the
+   *  dock's empty space asks with a null bar (2026-11-16, "I hate having to
+   *  rely on the cog") — a tool with its own right-click menu prevents the
+   *  default first and keeps it. */
+  onBarMenu?: (barId: string | null, anchor: { x: number; y: number }) => void;
   /** The bar in hand, drawn faint in place */
   draggingBarId?: string | null;
   /** Where a CONTAINER would land (a bar by its grip, or a new bar for a
@@ -591,6 +595,16 @@ export function ToolbarDock({
       aria-label={tabGroupId ? containerProps['aria-label'] : undefined}
       onKeyDown={tabGroupId ? onKeyDown : undefined}
       onBlur={tabGroupId ? onBlur : undefined}
+      onContextMenu={onBarMenu ? (e) => {
+        // A tool's own menu (timecode, speed, BPM, the meters) came first
+        if (e.defaultPrevented) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('input, textarea, [contenteditable="true"]')) return;
+        const barEl = target.closest('[data-toolbar-bar], [data-toolbar-bar-continued]');
+        const barId = barEl?.getAttribute('data-toolbar-bar') ?? barEl?.getAttribute('data-toolbar-bar-continued') ?? null;
+        e.preventDefault();
+        onBarMenu(barId, { x: e.clientX, y: e.clientY });
+      } : undefined}
     >
       {!empty && drawnLines.map((line, lineIndex) => (
         <React.Fragment key={lineIndex}>

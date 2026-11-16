@@ -23,7 +23,8 @@ import {
 } from '@audacity-ui/components';
 
 export interface ToolbarBarMenuState {
-  barId: string;
+  /** The toolbar; null = the dock's empty space, whose menu is the docks' own */
+  barId: string | null;
   x: number;
   y: number;
 }
@@ -35,8 +36,8 @@ export interface ToolbarBarMenuProps {
   editLayout: (change: (base: ToolbarLayout) => ToolbarLayout) => void;
   /** Whether every tool on the toolbar has a vertical form (a side dock takes it) */
   fitsVertical: (barId: string) => boolean;
-  /** Opens the toolbar builder with this toolbar selected */
-  onEditToolbars: (barId: string) => void;
+  /** Opens the toolbar builder with this toolbar selected (none for null) */
+  onEditToolbars: (barId: string | null) => void;
   os?: 'macos' | 'windows';
 }
 
@@ -65,11 +66,14 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
     }, 60);
     return () => window.clearTimeout(t);
   }, [renameOpen]);
-  const found = menu ? findBar(layout, menu.barId) : null;
+  const found = menu?.barId ? findBar(layout, menu.barId) : null;
   const bar = found?.bar ?? null;
   const region = found?.region ?? null;
   const axis = region && isVerticalRegion(region) ? 'height' : 'width';
   const fixed = menu?.barId === TITLE_BAR_ID;
+  // A right-click on a dock's empty space, outside any toolbar (2026-11-16,
+  // "I hate having to rely on the cog"): the way into the builder
+  const docksMenu = !!menu && menu.barId === null;
   const hasTools = (bar?.tools.length ?? 0) > 0;
   const portal = typeof document === 'undefined' ? null : document.body;
 
@@ -93,7 +97,10 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
 
   return (
     <>
-      <ContextMenu isOpen={!!menu && !!bar} onClose={onClose} x={menu?.x ?? 0} y={menu?.y ?? 0} portalTo={portal}>
+      <ContextMenu isOpen={!!menu && (!!bar || docksMenu)} onClose={onClose} x={menu?.x ?? 0} y={menu?.y ?? 0} portalTo={portal}>
+        {docksMenu && (
+          <ContextMenuItem label="Edit toolbars…" onClick={() => onEditToolbars(null)} onClose={onClose} />
+        )}
         {/* THE TOOLBAR'S NAME HEADS ITS MENU, read-only (2026-11-16, "can we
             put the toolbar name at the top in readonly text? The rename feels
             redundant if we can't see the name") — not a menu item, so the
@@ -124,13 +131,13 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
           <>
             <ContextMenuItem
               label="Rename…"
-              onClick={() => setRenaming({ barId: menu.barId, draft: bar.name ?? barDisplayName(bar) })}
+              onClick={() => setRenaming({ barId: bar.id, draft: bar.name ?? barDisplayName(bar) })}
               onClose={onClose}
             />
             <ContextMenuItem label="Move to" hasSubmenu onClick={() => {}}>
               {MOVE_TARGETS.map((t) => {
                 const here = t.region === region;
-                const refused = (t.region === 'left' || t.region === 'right') && !fitsVertical(menu.barId);
+                const refused = (t.region === 'left' || t.region === 'right') && !fitsVertical(bar.id);
                 return (
                   <ContextMenuItem
                     key={t.region}
@@ -138,7 +145,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
                     checked={here}
                     disabled={here || refused}
                     // (a submenu's items do not close the menu themselves)
-                    onClick={() => { onClose(); editLayout((base) => moveBar(base, menu.barId, { region: t.region, newRowAt: rowsOf(base, t.region).length })); }}
+                    onClick={() => { onClose(); editLayout((base) => moveBar(base, bar.id, { region: t.region, newRowAt: rowsOf(base, t.region).length })); }}
                     onClose={onClose}
                   />
                 );
@@ -147,20 +154,20 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
             <ContextMenuItem
               label="Add separator"
               disabled={!hasTools}
-              onClick={() => editLayout((base) => insertSeparator(base, menu.barId, null))}
+              onClick={() => editLayout((base) => insertSeparator(base, bar.id, null))}
               onClose={onClose}
             />
             {bar[axis] !== undefined && (
               <ContextMenuItem
                 label={axis === 'height' ? 'Reset height' : 'Reset width'}
-                onClick={() => editLayout((base) => setBarSize(base, menu.barId, axis, null))}
+                onClick={() => editLayout((base) => setBarSize(base, bar.id, axis, null))}
                 onClose={onClose}
               />
             )}
             <ContextMenuItem isDivider />
-            <ContextMenuItem label="Edit toolbars…" onClick={() => onEditToolbars(menu.barId)} onClose={onClose} />
+            <ContextMenuItem label="Edit toolbars…" onClick={() => onEditToolbars(bar.id)} onClose={onClose} />
             <ContextMenuItem isDivider />
-            <ContextMenuItem label="Remove toolbar" onClick={() => removeToolbar(menu.barId)} onClose={onClose} />
+            <ContextMenuItem label="Remove toolbar" onClick={() => removeToolbar(bar.id)} onClose={onClose} />
           </>
         ))}
       </ContextMenu>

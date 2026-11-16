@@ -25,8 +25,9 @@ export interface AppToolbarDockProps {
   drag: ToolbarDockDrag;
   /** A bar's resize edge was released (null = natural size) */
   onBarResize?: (barId: string, axis: ToolbarBarAxis, size: number | null) => void;
-  /** A grip's menu — right-click, or Shift+F10 / Menu key on the grip */
-  onBarMenu?: (barId: string, anchor: { x: number; y: number }) => void;
+  /** A toolbar's menu — right-click on it (or its grip), Shift+F10 / Menu
+   *  key on the grip; null = the dock's empty space */
+  onBarMenu?: (barId: string | null, anchor: { x: number; y: number }) => void;
   trailing?: React.ReactNode;
   className?: string;
   tabGroupId?: string;

@@ -394,24 +394,41 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     }
   });
 
-  it('THE COG IS A TOOL (2026-11-10): its own toolbar at the top row\'s end, moved by its grip like any bar; a layout saved without it gets it back', async () => {
-    // A layout saved before the cog was a tool
+  it('THE COG IS A TOOL (2026-11-10): its own toolbar, moved by its grip like any bar — and REMOVABLE since 2026-11-16: a layout without it stays without it, and a right-click on any toolbar opens the builder', async () => {
     const { container } = renderApp({
-      toolbarLayouts: { classic: { top: [[{ id: 'transport', tools: ['play', 'stop'] }]], bottom: [[{ id: 'status', tools: ['status-cue', 'status-info'] }]], left: [], right: [] } },
+      toolbarLayouts: { classic: { top: [[{ id: 'transport', tools: ['play', 'stop'] }, { id: 'customise', tools: ['customise'] }]], bottom: [[{ id: 'status', tools: ['status-cue', 'status-info'] }]], left: [], right: [] } },
     });
     fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
     const dock = (region: string) => container.querySelector(`[data-toolbar-dock="${region}"]`) as HTMLElement;
-    const cogBar = () => container.querySelector('[data-toolbar-bar="customise"]') as HTMLElement;
-    expect(dock('top').contains(cogBar())).toBe(true);
-    expect(cogBar().querySelector('[data-customise-toolbar-cog] button[aria-label="Customise toolbar"]')).toBeTruthy();
-    expect(dock('top').querySelector('.toolbar-dock__trailing--pinned')).toBeNull(); // no longer pinned
+    const cogBar = () => container.querySelector('[data-toolbar-bar="customise"]') as HTMLElement | null;
+    expect(cogBar()?.querySelector('[data-customise-toolbar-cog] button[aria-label="Customise toolbar"]')).toBeTruthy();
     // By its grip to the bottom edge: the status bar takes it, and it still opens the menu there
-    fireEvent.mouseDown(cogBar().querySelector('.toolbar-dock__grip')!, { clientX: 100, clientY: 100, button: 0 });
+    fireEvent.mouseDown(cogBar()!.querySelector('.toolbar-dock__grip')!, { clientX: 100, clientY: 100, button: 0 });
     fireEvent.mouseUp(document, { clientX: 100, clientY: window.innerHeight - 10 });
     await waitFor(() => expect(dock('bottom').contains(cogBar())).toBe(true));
     fireEvent.click(container.querySelector('[data-customise-toolbar-cog] button') as HTMLElement);
     await waitFor(() => expect(document.body.querySelector('[data-customise-toolbar]')).toBeTruthy());
+    fireEvent.keyDown(document, { key: 'Escape' });
+    // Removed from its grip's menu, it is not put back
+    fireEvent.contextMenu(cogBar()!.querySelector('[data-toolbar-grip]')!, { clientX: 20, clientY: 20 });
+    const remove = await waitFor(() => {
+      const item = Array.from(document.body.querySelectorAll('.context-menu-item')).find((e) => e.textContent?.includes('Remove toolbar'));
+      if (!item) throw new Error('not yet');
+      return item as HTMLElement;
+    });
+    fireEvent.click(remove);
+    await waitFor(() => expect(cogBar()).toBeNull());
+    expect(container.querySelector('[data-customise-toolbar-cog]')).toBeNull();
+    // …and a right-click on a toolbar's body is the way into the builder
+    fireEvent.contextMenu(container.querySelector('[data-toolbar-dock="top"] button[aria-label="Play"]')!, { clientX: 30, clientY: 30 });
+    const edit = await waitFor(() => {
+      const item = Array.from(document.body.querySelectorAll('.context-menu-item')).find((e) => e.textContent?.includes('Edit toolbars'));
+      if (!item) throw new Error('not yet');
+      return item as HTMLElement;
+    });
+    fireEvent.click(edit);
+    await waitFor(() => expect(document.body.querySelector('[data-toolbar-builder]')).toBeTruthy());
   });
 
   it('THE TOOLBAR BUILDER: the cog\'s "Rearrange tools…" opens it; Remove, Add, hide, New toolbar (empty) and Add separator apply live; Cancel puts it all back; Reset layout restores (2026-11-11)', async () => {
@@ -508,12 +525,13 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     fireEvent.click(button(b, 'New toolbar'));
     await waitFor(() => expect(barOf('play')).not.toBe('main'));
     expect(barOf('stop')).toBe(barOf('play'));
-    // ANY TOOLBAR CAN BE DELETED — the main one too; the cog comes back
+    // ANY TOOLBAR CAN BE DELETED — the main one too, and the cog goes with
+    // it since 2026-11-16 (a right-click on any toolbar opens the builder)
     fireEvent.click(b.querySelector('[data-builder-node="b:main"]')!);
     fireEvent.click(button(b, 'Delete toolbar'));
     await waitFor(() => expect(container.querySelector('[data-toolbar-bar="main"]')).toBeNull());
     expect(tool('record')).toBeNull();
-    expect(tool('customise')).toBeTruthy();
+    expect(tool('customise')).toBeNull();
     fireEvent.click(getByText('Cancel'));
     await waitFor(() => expect(barOf('record')).toBe('main'));
 

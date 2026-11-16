@@ -376,7 +376,7 @@ function CanvasDemoContent() {
   // separator, Reset width, Edit toolbars…, Remove toolbar — ToolbarBarMenu
   const [barMenu, setBarMenu] = React.useState<ToolbarBarMenuState | null>(null);
   const [builderBarId, setBuilderBarId] = React.useState<string | null>(null);
-  const openBarMenu = React.useCallback((barId: string, anchor: { x: number; y: number }) => setBarMenu({ barId, ...anchor }), []);
+  const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }) => setBarMenu({ barId, ...anchor }), []);
   const toolFitsVertical = (id: string) =>
     (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
   const toolDrag = useToolbarToolDrag({

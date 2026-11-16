@@ -369,6 +369,24 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
       expect(onBarMenu.mock.calls[0][0]).toBe('b');
     });
 
+    it('a right-click ANYWHERE on a toolbar opens its menu; a tool with its own menu keeps it; the dock\'s empty space asks with no toolbar (2026-11-16)', () => {
+      const onBarMenu = vi.fn();
+      const { container } = renderDock({
+        rows,
+        onBarMenu,
+        renderTool: (id) => (id === 'two'
+          ? <button aria-label="two" onContextMenu={(e) => e.preventDefault()}>two</button>
+          : <button aria-label={id}>{id}</button>),
+      });
+      fireEvent.contextMenu(container.querySelector('button[aria-label="three"]')!, { clientX: 5, clientY: 6 });
+      expect(onBarMenu).toHaveBeenLastCalledWith('b', { x: 5, y: 6 });
+      onBarMenu.mockClear();
+      fireEvent.contextMenu(container.querySelector('button[aria-label="two"]')!);
+      expect(onBarMenu).not.toHaveBeenCalled();
+      fireEvent.contextMenu(container.querySelector('.toolbar-dock__row')!, { clientX: 1, clientY: 2 });
+      expect(onBarMenu).toHaveBeenLastCalledWith(null, { x: 1, y: 2 });
+    });
+
     it('Tab enters on the first TOOL, never a grip; without a menu the grips are not buttons', () => {
       const { container } = renderDock({ rows, onBarMenu: vi.fn(), tabGroupId: 'tool-toolbar' });
       // the one roving stop (its index is the profile's tabOrder, not always 0)
