@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTheme } from '../ThemeProvider';
 import '../assets/fonts/musescore-icon.css';
@@ -177,6 +177,27 @@ export const Dropdown: React.FC<DropdownProps> = ({
       setMenuPosition(null);
     }
   }, [isOpen]);
+
+  // KEEP THE LIST INSIDE THE WINDOW (2026-11-17, the popout Plot spectrum
+  // window's Size list ran past the window's bottom edge — an OS window's
+  // content cannot overflow the window): once the menu has a size, FLIP it
+  // ABOVE the trigger when the room below runs out, and clamp it to the
+  // viewport when neither side fits (its max-height scroll takes over).
+  // A layout effect, so the first paint is already in place.
+  useLayoutEffect(() => {
+    if (!isOpen || !menuRef.current || !triggerRef.current || !menuPosition) return;
+    const menu = menuRef.current;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const win = menu.ownerDocument.defaultView ?? window;
+    const h = menu.offsetHeight;
+    const EDGE = 10;
+    if (rect.bottom + 4 + h <= win.innerHeight - EDGE) return; // fits below
+    const above = rect.top - 4 - h;
+    const top = above >= EDGE ? above : Math.max(EDGE, win.innerHeight - EDGE - h);
+    if (Math.abs(top - menuPosition.top) > 0.5) {
+      setMenuPosition((p) => (p ? { ...p, top } : p));
+    }
+  }, [isOpen, menuPosition]);
 
   // Focus management: when dropdown opens, focus the menu
   useEffect(() => {
