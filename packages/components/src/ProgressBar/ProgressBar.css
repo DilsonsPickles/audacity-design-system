@@ -17,20 +17,23 @@
   border-radius: 8px;
 }
 
-/* INDETERMINATE (2026-11-16): a quarter-width segment sliding end to end and
-   back — Audacity 3's "Copying Project" bar, the macOS indeterminate style */
+/* INDETERMINATE (2026-11-16): a quarter-width segment that ENTERS at the
+   left, travels the bar, LEAVES through the right end and starts again from
+   the left (the same day, "supposed to travel through end of bar and then
+   start at the beginning again rather than bounce back" — it bounced end to
+   end for the first hour); the bar's overflow clips it in and out */
 .progress-bar--indeterminate .progress-bar__fill {
   position: absolute;
   top: 0;
-  left: 0;
+  left: -25%;
   width: 25%;
   transition: none;
-  animation: progress-bar-sweep 1.6s ease-in-out infinite alternate;
+  animation: progress-bar-sweep 1.6s ease-in-out infinite;
 }
 
 @keyframes progress-bar-sweep {
-  from { left: 0; }
-  to { left: 75%; }
+  from { left: -25%; }
+  to { left: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

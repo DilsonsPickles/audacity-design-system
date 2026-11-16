@@ -23,7 +23,8 @@ export interface ProgressBarProps {
   className?: string;
   /**
    * The length of the work is unknown (2026-11-16, Audacity 3's "Copying
-   * Project" bar): a segment slides back and forth instead of a fill, and
+   * Project" bar): a segment travels through the bar and starts again from
+   * the left instead of a fill, and
    * `value` is ignored. Reduced motion holds it still in the middle.
    */
   indeterminate?: boolean;
