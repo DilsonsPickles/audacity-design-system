@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
-import { isVerticalRegion, regionSide, type BarPlacement, type ToolbarBar, type ToolbarBarAxis, type ToolbarOrientation, type ToolbarRegion, isToolSeparator } from '../utils/toolbarLayout';
+import { barDisplayName, isVerticalRegion, regionSide, type BarPlacement, type ToolbarBar, type ToolbarBarAxis, type ToolbarOrientation, type ToolbarRegion, isToolSeparator } from '../utils/toolbarLayout';
 import { Flyout } from '../Flyout';
 import '../assets/fonts/musescore-icon.css';
 import './ToolbarDock.css';
@@ -37,6 +37,11 @@ export interface ToolbarDockProps {
   /** A press on a bar's GRIP: the host owns the drag (self-cleaning
    *  document listeners), as the old toolbar gripper did */
   onGripMouseDown?: (barId: string, event: React.MouseEvent, barRect: DOMRect) => void;
+  /** THE TOOLBAR'S MENU (2026-11-16): a right-click on a bar's grip, or
+   *  Shift+F10 / the Menu key / Enter / Space on it from the keyboard — the
+   *  grip is then a button in the dock's arrow-key ring (Tab still enters on
+   *  the first tool). The anchor is the pointer, or under the grip. */
+  onBarMenu?: (barId: string, anchor: { x: number; y: number }) => void;
   /** The bar in hand, drawn faint in place */
   draggingBarId?: string | null;
   /** Where a CONTAINER would land (a bar by its grip, or a new bar for a
@@ -119,7 +124,7 @@ const GROW_BAR_PACK_WIDTH = 160;
  */
 export function ToolbarDock({
   region, rows, renderTool, toolMeta, onBarResize,
-  onGripMouseDown, draggingBarId = null, insert = null, insertAfterBarId = null, insertRefused = false,
+  onGripMouseDown, onBarMenu, draggingBarId = null, insert = null, insertAfterBarId = null, insertRefused = false,
   editing = false, onToolMouseDown, draggingToolId = null, toolInsert = null,
   trailing, className = '', tabGroupId, ariaLabel, dataAttrs, style: styleProp,
 }: ToolbarDockProps) {
@@ -365,8 +370,10 @@ export function ToolbarDock({
   const { onKeyDown, onBlur, containerProps, initTabIndices } = useContainerTabGroup({
     containerRef: rootRef,
     groupId: tabGroupId ?? `tool-dock-${region}`,
-    selector: 'button, select, input, [role="group"], [role="checkbox"], [role="combobox"], [role="spinbutton"], [role="slider"]',
-    filter: (el) => el.getAttribute('role') === 'group' || !el.closest('[role="group"]'),
+    selector: 'button, select, input, [role="group"], [role="checkbox"], [role="combobox"], [role="spinbutton"], [role="slider"], [data-toolbar-grip]',
+    filter: (el) => el.hasAttribute('data-toolbar-grip') || el.getAttribute('role') === 'group' || !el.closest('[role="group"]'),
+    // Tab enters on the first TOOL, never a grip (the arrows reach the grips)
+    entryFilter: (el) => !el.hasAttribute('data-toolbar-grip'),
     ariaLabel: ariaLabel ?? `${region} toolbar dock`,
   });
   useEffect(() => { if (tabGroupId) initTabIndices(); }, [tabGroupId, rows, initTabIndices]);
@@ -403,8 +410,30 @@ export function ToolbarDock({
     >
       <span
         className={`toolbar-dock__grip${leading ? ' toolbar-dock__grip--leading' : ''}${d.continued ? ' toolbar-dock__grip--continued' : ''}`}
-        aria-hidden="true"
-        role="presentation"
+        {...(onBarMenu && !d.continued ? {
+          // A button for the toolbar's menu: the arrows reach it, and
+          // Shift+F10 / the Menu key / Enter / Space open the menu under it
+          role: 'button',
+          tabIndex: -1,
+          // "Main toolbar", "Status bar toolbar", "Toolbar" — never "Toolbar toolbar"
+          'aria-label': /toolbar$/i.test(barDisplayName(d.bar)) ? barDisplayName(d.bar) : `${barDisplayName(d.bar)} toolbar`,
+          'aria-haspopup': 'menu' as const,
+          'data-toolbar-grip': d.bar.id,
+          onKeyDown: (e: React.KeyboardEvent<HTMLSpanElement>) => {
+            const opens = (e.key === 'F10' && e.shiftKey) || e.key === 'ContextMenu' || e.key === 'Enter' || e.key === ' ';
+            if (!opens) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const r = e.currentTarget.getBoundingClientRect();
+            onBarMenu(d.bar.id, { x: r.left, y: r.bottom + 4 });
+          },
+        } : { 'aria-hidden': true, role: 'presentation' })}
+        onContextMenu={(e) => {
+          if (!onBarMenu) return;
+          e.preventDefault();
+          e.stopPropagation();
+          onBarMenu(d.bar.id, { x: e.clientX, y: e.clientY });
+        }}
         onMouseDown={(e) => {
           if (!onGripMouseDown || e.button !== 0) return;
           const rect = barRefs.current.get(d.bar.id)?.getBoundingClientRect();

@@ -49,6 +49,7 @@ const OAuthCallback = React.lazy(() =>
 import { RecordingManager } from './utils/RecordingManager';
 import { AppTitleBar, hasCustomTitleBar } from './components/AppTitleBar';
 import { ToolbarBuilderDialog } from './components/ToolbarBuilderDialog';
+import { ToolbarBarMenu, type ToolbarBarMenuState } from './components/ToolbarBarMenu';
 import { computeFitTrackHeight, buildNewTrack } from './utils/trackManagement';
 import { handlePaste } from './hooks/handlers/clipboardHandlers';
 import type { TrackType } from '@audacity-ui/components';
@@ -353,12 +354,14 @@ function CanvasDemoContent() {
   // preferences; a grip drag moves a whole bar between docks, along a
   // row, or onto a new row (2026-11-10)
   const toolbarLayout = useToolbarLayout(workspace, activeMenuItem);
+  // Whether a side dock takes a toolbar: every tool on it has a vertical form
+  const barFitsVertical = (barId: string) => {
+    const bar = findBar(toolbarLayout.layout, barId)?.bar;
+    return !!bar && bar.tools.every((id) => isToolSeparator(id) || (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true);
+  };
   const barDrag = useToolbarBarDrag({
     layout: toolbarLayout.layout,
-    barFitsVertical: (barId) => {
-      const bar = findBar(toolbarLayout.layout, barId)?.bar;
-      return !!bar && bar.tools.every((id) => isToolSeparator(id) || (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true);
-    },
+    barFitsVertical,
     onDrop: toolbarLayout.moveBarTo,
   });
   // THE LAYOUT'S EDIT MODE (2026-11-10): from the cog's "Rearrange tools…";
@@ -369,6 +372,11 @@ function CanvasDemoContent() {
   // THE TOOLBAR BUILDER (2026-11-11): the cog menu's "Rearrange tools…" opens
   // it, in place of the in-place edit mode (the grips still drag)
   const [toolbarBuilderOpen, setToolbarBuilderOpen] = React.useState(false);
+  // THE TOOLBAR'S MENU on its grip (2026-11-16): Rename, Move to, Add
+  // separator, Reset width, Edit toolbars…, Remove toolbar — ToolbarBarMenu
+  const [barMenu, setBarMenu] = React.useState<ToolbarBarMenuState | null>(null);
+  const [builderBarId, setBuilderBarId] = React.useState<string | null>(null);
+  const openBarMenu = React.useCallback((barId: string, anchor: { x: number; y: number }) => setBarMenu({ barId, ...anchor }), []);
   const toolFitsVertical = (id: string) =>
     (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
   const toolDrag = useToolbarToolDrag({
@@ -1444,7 +1452,7 @@ function CanvasDemoContent() {
       activeMenuItem,
       workspace,
       layoutEditing: toolbarEditing,
-      onLayoutEditingChange: (on: boolean) => { if (on) setToolbarBuilderOpen(true); else setToolbarEditing(false); },
+      onLayoutEditingChange: (on: boolean) => { if (on) { setBuilderBarId(null); setToolbarBuilderOpen(true); } else setToolbarEditing(false); },
       onResetLayout: toolbarLayout.resetLayout,
       layoutCustomised: toolbarLayout.customised,
       varispeed: playback.varispeed,
@@ -1604,6 +1612,7 @@ function CanvasDemoContent() {
           renderExtraTool={renderAppTool}
           extraToolMeta={appToolMeta}
           drag={dockDrag}
+          onBarMenu={openBarMenu}
           onBarResize={toolbarLayout.resizeBar}
           className="transport-toolbar"
           tabGroupId="tool-toolbar"
@@ -1748,6 +1757,7 @@ function CanvasDemoContent() {
           renderExtraTool={renderAppTool}
           extraToolMeta={appToolMeta}
           drag={dockDrag}
+          onBarMenu={openBarMenu}
           onBarResize={toolbarLayout.resizeBar}
           tabGroupId="tool-dock-left"
           ariaLabel="Left toolbar dock"
@@ -1762,6 +1772,7 @@ function CanvasDemoContent() {
               renderExtraTool={renderAppTool}
               extraToolMeta={appToolMeta}
               drag={dockDrag}
+          onBarMenu={openBarMenu}
               onBarResize={toolbarLayout.resizeBar}
               tabGroupId="tool-dock-left"
               ariaLabel="Toolbar dock beside the left panels"
@@ -1775,6 +1786,7 @@ function CanvasDemoContent() {
               renderExtraTool={renderAppTool}
               extraToolMeta={appToolMeta}
               drag={dockDrag}
+          onBarMenu={openBarMenu}
               onBarResize={toolbarLayout.resizeBar}
               tabGroupId="tool-dock-right"
               ariaLabel="Toolbar dock beside the right panels"
@@ -1847,6 +1859,7 @@ function CanvasDemoContent() {
           renderExtraTool={renderAppTool}
           extraToolMeta={appToolMeta}
           drag={dockDrag}
+          onBarMenu={openBarMenu}
           onBarResize={toolbarLayout.resizeBar}
           tabGroupId="tool-dock-right"
           ariaLabel="Right toolbar dock"
@@ -1865,6 +1878,7 @@ function CanvasDemoContent() {
           renderExtraTool={renderAppTool}
           extraToolMeta={appToolMeta}
           drag={dockDrag}
+          onBarMenu={openBarMenu}
           onBarResize={toolbarLayout.resizeBar}
           className="selection-toolbar"
           tabGroupId="selection-toolbar"
@@ -1940,6 +1954,16 @@ function CanvasDemoContent() {
         layout={toolbarLayout.layout}
         editLayout={toolbarLayout.editLayout}
         onResetLayout={toolbarLayout.resetLayout}
+        os={preferences.operatingSystem}
+        initialBarId={builderBarId}
+      />
+      <ToolbarBarMenu
+        menu={barMenu}
+        onClose={() => setBarMenu(null)}
+        layout={toolbarLayout.layout}
+        editLayout={toolbarLayout.editLayout}
+        fitsVertical={barFitsVertical}
+        onEditToolbars={(barId) => { setBuilderBarId(barId); setToolbarBuilderOpen(true); }}
         os={preferences.operatingSystem}
       />
       <KeyboardMap isOpen={isKeyboardMapOpen} onClose={() => setIsKeyboardMapOpen(false)} rows={SHORTCUT_ROWS} timeSelected={!!state.timeSelection} clipsSelected={countSelectedClips(state.tracks) > 0} os={preferences.operatingSystem} />

@@ -27,6 +27,11 @@ export interface UseContainerTabGroupOptions {
   ariaLabel?: string;
   /** Override startTabIndex (default: resolved from profile tabOrder[groupId], then 0) */
   startTabIndex?: number;
+  /** Where Tab ENTERS the group: the first element passing this (default:
+   *  the first element). Arrow keys still reach the others (2026-11-16 —
+   *  the toolbar grips are in a dock's ring, but Tab lands on its first
+   *  tool, never on a grip) */
+  entryFilter?: (el: HTMLElement) => boolean;
 }
 
 export interface UseContainerTabGroupReturn {
@@ -87,6 +92,7 @@ export function useContainerTabGroup({
   filter,
   ariaLabel,
   startTabIndex: startTabIndexProp,
+  entryFilter,
 }: UseContainerTabGroupOptions): UseContainerTabGroupReturn {
   const { activeProfile } = useAccessibilityProfile();
   const groupConfig = activeProfile.config.tabGroups[groupId];
@@ -110,11 +116,26 @@ export function useContainerTabGroup({
   // Persisted active roving index — survives re-renders triggered by selection changes
   const activeIndexRef = useRef(0);
 
+  // The element Tab enters on: the first passing `entryFilter`, else the first
+  const entryFilterRef = useRef(entryFilter);
+  entryFilterRef.current = entryFilter;
+  const entryIndex = (focusables: HTMLElement[]) => {
+    const f = entryFilterRef.current;
+    if (!f) return 0;
+    const i = focusables.findIndex(f);
+    return i >= 0 ? i : 0;
+  };
+  // false until the active item is set by a key, a focus or a click inside —
+  // until then (and again once focus leaves) Tab enters on the entry element
+  const enteredRef = useRef(false);
+
   /** Set initial tabIndex values on all focusable children */
   const initTabIndices = useCallback(() => {
     if (!containerRef.current) return;
     const focusables = getFocusables(containerRef.current, selector, filter);
-    const active = Math.min(activeIndexRef.current, Math.max(0, focusables.length - 1));
+    const active = enteredRef.current
+      ? Math.min(activeIndexRef.current, Math.max(0, focusables.length - 1))
+      : entryIndex(focusables);
 
     focusables.forEach((el, index) => {
       if (isRoving) {
@@ -168,6 +189,7 @@ export function useContainerTabGroup({
         focusables[currentIndex].tabIndex = -1;
         focusables[nextIndex].tabIndex = startTabIndex;
         activeIndexRef.current = nextIndex;
+        enteredRef.current = true;
       }
 
       focusingRef.current = true;
@@ -190,6 +212,7 @@ export function useContainerTabGroup({
       if (targetIndex === -1) return;
 
       activeIndexRef.current = targetIndex;
+      enteredRef.current = true;
 
       focusables.forEach((el, i) => {
         el.tabIndex = i === targetIndex ? startTabIndex : -1;
@@ -207,11 +230,13 @@ export function useContainerTabGroup({
       const relatedTarget = e.relatedTarget as HTMLElement | null;
       if (containerRef.current?.contains(relatedTarget)) return;
 
-      // Focus left the container — reset
-      activeIndexRef.current = 0;
+      // Focus left the container — reset to the entry element
       const focusables = getFocusables(containerRef.current!, selector, filter);
+      const entry = entryIndex(focusables);
+      activeIndexRef.current = entry;
+      enteredRef.current = false;
       focusables.forEach((el, index) => {
-        el.tabIndex = index === 0 ? startTabIndex : -1;
+        el.tabIndex = index === entry ? startTabIndex : -1;
       });
     },
     [containerRef, selector, filter, isRoving, startTabIndex],
@@ -232,6 +257,7 @@ export function useContainerTabGroup({
       if (targetIndex === -1) return;
 
       activeIndexRef.current = targetIndex;
+      enteredRef.current = true;
       focusables.forEach((el, i) => {
         el.tabIndex = i === targetIndex ? startTabIndex : -1;
       });

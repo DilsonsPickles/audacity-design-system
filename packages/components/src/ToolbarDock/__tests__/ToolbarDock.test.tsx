@@ -342,5 +342,42 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(slot?.getAttribute('aria-label')).toBe('Empty toolbar');
     expect(container.querySelector('[data-toolbar-bar="hidden"]')).toBeNull();
   });
-});
 
+  describe('THE TOOLBAR\'S MENU ON ITS GRIP (2026-11-16)', () => {
+    const rows = [[{ id: 'a', tools: ['one', 'two'], name: 'Main toolbar' }, { id: 'b', tools: ['three'] }]];
+
+    it('a right-click on a grip asks for the bar\'s menu at the pointer', () => {
+      const onBarMenu = vi.fn();
+      const { container } = renderDock({ rows, onBarMenu, tabGroupId: 'tool-toolbar' });
+      const grip = container.querySelector('[data-toolbar-grip="b"]') as HTMLElement;
+      fireEvent.contextMenu(grip, { clientX: 40, clientY: 12 });
+      expect(onBarMenu).toHaveBeenCalledWith('b', { x: 40, y: 12 });
+    });
+
+    it('the grip is a button named for its toolbar, and Shift+F10 / the Menu key / Enter open the menu', () => {
+      const onBarMenu = vi.fn();
+      const { container } = renderDock({ rows, onBarMenu, tabGroupId: 'tool-toolbar' });
+      const a = container.querySelector('[data-toolbar-grip="a"]') as HTMLElement;
+      const b = container.querySelector('[data-toolbar-grip="b"]') as HTMLElement;
+      expect(a.getAttribute('role')).toBe('button');
+      expect(a.getAttribute('aria-label')).toBe('Main toolbar');
+      expect(b.getAttribute('aria-label')).toBe('Toolbar');
+      fireEvent.keyDown(b, { key: 'F10', shiftKey: true });
+      fireEvent.keyDown(b, { key: 'ContextMenu' });
+      fireEvent.keyDown(b, { key: 'Enter' });
+      expect(onBarMenu).toHaveBeenCalledTimes(3);
+      expect(onBarMenu.mock.calls[0][0]).toBe('b');
+    });
+
+    it('Tab enters on the first TOOL, never a grip; without a menu the grips are not buttons', () => {
+      const { container } = renderDock({ rows, onBarMenu: vi.fn(), tabGroupId: 'tool-toolbar' });
+      // the one roving stop (its index is the profile's tabOrder, not always 0)
+      const entry = container.querySelector('[data-toolbar-dock] [tabindex]:not([tabindex="-1"])') as HTMLElement;
+      expect(entry.hasAttribute('data-toolbar-grip')).toBe(false);
+      expect(entry.getAttribute('aria-label')).toBe('one');
+      cleanup();
+      const plain = renderDock({ rows });
+      expect(plain.container.querySelector('[data-toolbar-grip]')).toBeNull();
+    });
+  });
+});

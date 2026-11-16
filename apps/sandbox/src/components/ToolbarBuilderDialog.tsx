@@ -97,9 +97,12 @@ export interface ToolbarBuilderDialogProps {
   editLayout: (change: (base: ToolbarLayout) => ToolbarLayout) => void;
   onResetLayout: () => void;
   os?: 'macos' | 'windows';
+  /** A toolbar to select when it opens — a grip menu's "Edit toolbars…"
+   *  (2026-11-16) */
+  initialBarId?: string | null;
 }
 
-export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onResetLayout, os = 'macos' }: ToolbarBuilderDialogProps) {
+export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onResetLayout, os = 'macos', initialBarId = null }: ToolbarBuilderDialogProps) {
   const { theme } = useTheme();
   const { preferences, updatePreference } = usePreferences();
   const hidden = React.useMemo(() => new Set(preferences.toolbarHiddenTools ?? []), [preferences.toolbarHiddenTools]);
@@ -133,7 +136,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
   React.useEffect(() => {
     if (!isOpen) return;
     snapshotRef.current = { layouts: preferences.toolbarLayouts, hidden: [...(preferences.toolbarHiddenTools ?? [])] };
-    setSel(null); setLeftSel(null); setQuery(''); setRenaming(null);
+    setSel(initialBarId ? { kind: 'bar', barId: initialBarId } : null); setLeftSel(null); setQuery(''); setRenaming(null);
     // Only at open
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
