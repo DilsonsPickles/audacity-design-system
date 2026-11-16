@@ -10,8 +10,7 @@
   color: var(--ps-text);
 }
 
-.plot-spectrum__bar,
-.plot-spectrum__selection {
+.plot-spectrum__bar {
   display: flex;
   align-items: center;
   gap: 16px;
@@ -63,7 +62,12 @@
 
 .plot-spectrum__graph svg { border-radius: 2px; }
 
+/* OUT OF THE LAYOUT: the svg's viewBox is the measured size, and an
+   in-flow svg would size the graph by its aspect ratio — a loop that grew
+   the graph on every measure; the grid row alone sets the height */
 .plot-spectrum__graph svg {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
@@ -207,11 +211,13 @@
 
 .plot-spectrum__row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .plot-spectrum__row--head { min-height: 24px; background: var(--ps-table-head); color: var(--ps-text-2); }
-.plot-spectrum__body { min-height: 99px; max-height: 198px; overflow-y: auto; }
-/* the table fits its rows — three at least, six before it scrolls */
+.plot-spectrum__body { max-height: 198px; overflow-y: auto; }
+/* the table HUGS its rows — one for one plot, six before it scrolls
+   ("the table is now way too tall") */
+.plot-spectrum__body .plot-spectrum__row:last-child { border-bottom: 0; }
+.plot-spectrum__row--empty { grid-template-columns: 1fr; color: var(--ps-text-2); }
 .plot-spectrum__settings,
 .plot-spectrum__table,
-.plot-spectrum__selection,
 .plot-spectrum__bar { flex-shrink: 0; }
 
 /* the body is a column, so the graph can take the window's spare height */
@@ -245,16 +251,23 @@
 
 .plot-spectrum__actions button:hover { text-decoration: underline; }
 
-/* ── the selection bar — the window's first line, a WELL of its own
-   ("perhaps make it a bit more visually distinct"): the input, set apart
-   from the view controls and the results below it ── */
+/* ── the selection bar — a FULL-BLEED strip under the title bar, outside
+   the scroll, so the input and its action never scroll away; its own
+   tint and a line under it set it apart ── */
 .plot-spectrum__selection {
+  display: flex;
+  align-items: center;
   gap: 12px;
+  flex: 1;
+  width: 100%;
   min-height: 44px;
-  padding: 0 8px 0 12px;
-  border: 1px solid var(--ps-border);
-  border-radius: 4px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--ps-border);
   background: var(--ps-well);
+  color: var(--ps-text);
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
 .plot-spectrum__selection-label {

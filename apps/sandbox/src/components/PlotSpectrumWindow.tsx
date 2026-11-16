@@ -241,12 +241,14 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
     />
   );
 
-  const body = (
-      <div className="plot-spectrum" data-plot-spectrum style={style}>
-        {/* THE SELECTION COMES FIRST (2026-11-16, "move it to the top"):
-            the window reads input → output → list — what will be plotted,
-            the graph, the curves — and the footer keeps Export and Done */}
-        <div className="plot-spectrum__selection" data-plot-selection>
+  // THE SELECTION BAR IS A FULL-BLEED STRIP UNDER THE TITLE BAR, outside
+  // the scroll (2026-11-16, "if it does need to scroll, the action bar at
+  // the top should be a full bleed element and the graph can scroll
+  // underneath"): the input and the main action never scroll away; the
+  // in-app window puts it in the Dialog's header slot, the OS window
+  // between its title bar and its body
+  const selectionBar = (
+      <div className="plot-spectrum__selection" data-plot-selection style={style}>
           <span className="plot-spectrum__selection-label">Selection</span>
           {notice ? (
             <span className="plot-spectrum__notice" role="status">{notice}</span>
@@ -261,7 +263,11 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
           )}
           <span className="plot-spectrum__spacer" />
           <Button variant="secondary" size="small" disabled={!selection} onClick={plotSelection}>Plot selection</Button>
-        </div>
+      </div>
+  );
+
+  const body = (
+      <div className="plot-spectrum" data-plot-spectrum style={style}>
         <div className="plot-spectrum__bar">
           <LabeledCheckbox label="Linear frequency scale" checked={linear} onChange={setLinear} />
           <LabeledCheckbox label="Grid lines" checked={grid} onChange={setGrid} />
@@ -403,6 +409,11 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
             {['Curve', 'Track', 'Start', 'Finish', 'Duration', 'Actions'].map((h) => <span key={h} role="columnheader">{h}</span>)}
           </div>
           <div className="plot-spectrum__body">
+            {plots.length === 0 && (
+              <div className="plot-spectrum__row plot-spectrum__row--empty" role="row">
+                <span role="cell">Plotted curves appear here</span>
+              </div>
+            )}
             {plots.map((p) => (
               <div
                 key={p.id}
@@ -448,6 +459,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   if (osWindow && !popupBlocked) {
     return (
       <PopoutPanel title="Plot spectrum" width={672} height={760} frame="dialog" os={os} onClose={onClose} onBlocked={() => setPopupBlocked(true)}>
+        {selectionBar}
         <div className="dialog__body plot-spectrum-body">{body}</div>
         {footer}
       </PopoutPanel>
@@ -466,6 +478,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
       className="plot-spectrum-window"
       width={640}
       minHeight={0}
+      headerContent={selectionBar}
       footer={footer}
     >
       {body}
