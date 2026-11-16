@@ -218,6 +218,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
     '--ps-row-hover': theme.background.table.row.hover,
     '--ps-row-focus': theme.background.table.row.selected,
     '--ps-link': theme.foreground.text.link,
+    '--ps-well': theme.background.surface.inset,
   } as React.CSSProperties;
 
   const footer = (
@@ -232,6 +233,25 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
 
   const body = (
       <div className="plot-spectrum" data-plot-spectrum style={style}>
+        {/* THE SELECTION COMES FIRST (2026-11-16, "move it to the top"):
+            the window reads input → output → list — what will be plotted,
+            the graph, the curves — and the footer keeps Export and Done */}
+        <div className="plot-spectrum__selection" data-plot-selection>
+          <span className="plot-spectrum__selection-label">Selection</span>
+          {notice ? (
+            <span className="plot-spectrum__notice" role="status">{notice}</span>
+          ) : selection ? (
+            <span className="plot-spectrum__selection-value">
+              <strong>{tracksLabel(selection.tracks)}</strong>
+              <span>{formatPlotTime(selection.startTime)} – {formatPlotTime(selection.endTime)}</span>
+              <span className="plot-spectrum__selection-duration">{formatPlotDuration(selection.endTime - selection.startTime)}</span>
+            </span>
+          ) : (
+            <span className="plot-spectrum__none">None — select some audio in the project</span>
+          )}
+          <span className="plot-spectrum__spacer" />
+          <Button variant="secondary" size="small" disabled={!selection} onClick={plotSelection}>Plot selection</Button>
+        </div>
         <div className="plot-spectrum__bar">
           <LabeledCheckbox label="Linear frequency scale" checked={linear} onChange={setLinear} />
           <LabeledCheckbox label="Grid lines" checked={grid} onChange={setGrid} />
@@ -394,23 +414,6 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
           </div>
         </div>
 
-        <div className="plot-spectrum__selection" data-plot-selection>
-          <strong>Selection:</strong>
-          {notice ? (
-            <span className="plot-spectrum__notice" role="status">{notice}</span>
-          ) : selection ? (
-            <>
-              <span>{tracksLabel(selection.tracks)}</span>
-              <span>Start: {formatPlotTime(selection.startTime)}</span>
-              <span>End: {formatPlotTime(selection.endTime)}</span>
-              <span>Duration: {formatPlotDuration(selection.endTime - selection.startTime)}</span>
-            </>
-          ) : (
-            <span className="plot-spectrum__none">None — select some audio in the project</span>
-          )}
-          <span className="plot-spectrum__spacer" />
-          <Button variant="secondary" size="small" disabled={!selection} onClick={plotSelection}>Plot selection</Button>
-        </div>
       </div>
   );
 
@@ -423,7 +426,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   // that blocks the popup.
   if (osWindow && !popupBlocked) {
     return (
-      <PopoutPanel title="Plot spectrum" width={672} height={660} frame="dialog" os={os} onClose={onClose} onBlocked={() => setPopupBlocked(true)}>
+      <PopoutPanel title="Plot spectrum" width={672} height={672} frame="dialog" os={os} onClose={onClose} onBlocked={() => setPopupBlocked(true)}>
         <div className="dialog__body">{body}</div>
         {footer}
       </PopoutPanel>

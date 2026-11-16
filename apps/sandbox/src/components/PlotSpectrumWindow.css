@@ -228,12 +228,36 @@
 
 .plot-spectrum__actions button:hover { text-decoration: underline; }
 
-/* ── the selection bar ── */
+/* ── the selection bar — the window's first line, a WELL of its own
+   ("perhaps make it a bit more visually distinct"): the input, set apart
+   from the view controls and the results below it ── */
 .plot-spectrum__selection {
   gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--ps-border);
+  min-height: 44px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--ps-border);
+  border-radius: 4px;
+  background: var(--ps-well);
 }
+
+.plot-spectrum__selection-label {
+  color: var(--ps-text-2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.plot-spectrum__selection-value {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.plot-spectrum__selection-value strong { font-weight: 600; }
+.plot-spectrum__selection-duration { color: var(--ps-text-2); }
 
 .plot-spectrum__none,
 .plot-spectrum__notice { color: var(--ps-text-2); }
