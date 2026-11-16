@@ -1744,7 +1744,9 @@ function CanvasDemoContent() {
             onOpenProject={openProjectInTab}
             onOpenOther={handleOpenFromComputer}
             onDeleteProject={handleDeleteProject}
-            currentProjectId={currentProjectId}
+            // NO "CURRENT" TAG (2026-11-16, "we can remove the 'Current' tag on
+            // the homescreen as that's now irrelevant right?"): with project
+            // tabs several projects are open at once, so HomeTab is told of none
             // The design system's built-in Audio.com card renders hardcoded
             // placeholder copy ("Service name / URL") rather than real
             // state — always suppress it in favor of AdieuHomeAccountCard
