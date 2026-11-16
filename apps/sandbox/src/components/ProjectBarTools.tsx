@@ -30,6 +30,8 @@ export interface ProjectBarToolsDeps {
   onReorderProjects?: (ids: string[]) => void;
   /** A double-click on a tab renames its project (2026-11-12) */
   onRenameProject?: (id: string, title: string) => void;
+  /** The title bar's Debug button — the Debug panel (2026-11-16) */
+  onOpenDebug?: () => void;
   /** The + after the tabs: a new project in a new tab */
   onNewProject?: () => void;
   /** The tabs, the workspace picker and Share audio live in the app's

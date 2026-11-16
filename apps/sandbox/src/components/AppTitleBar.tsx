@@ -60,6 +60,22 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
       <ProjectTabs {...deps} />
       {activeMenuItem !== 'home' && (
         <div className="app-title-bar__end" data-app-title-bar-end>
+          {/* DEBUG in the same flat style, beside Audio setup (2026-11-16,
+              "put the debug menu action up in the top right alongside audio
+              setup in same button style") — the Debug panel, also Help ›
+              Debug panel… */}
+          {deps.onOpenDebug && (
+            <GhostButton
+              icon="menu"
+              size="compact"
+              label="Debug"
+              ariaLabel="Debug panel"
+              onClick={() => {
+                setWorkspaceMenu(null);
+                deps.onOpenDebug?.();
+              }}
+            />
+          )}
           {/* AUDIO SETUP in the same style (the same day, "can we also try
               doing the audio setup in that style?"): a flat cog-and-label
               button, opening the Audio setup menu under it */}

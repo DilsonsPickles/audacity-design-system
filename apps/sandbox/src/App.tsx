@@ -1417,6 +1417,7 @@ function CanvasDemoContent() {
       void getProject(id).then((proj) => { if (proj) return saveProject({ ...proj, title }); });
     },
     onNewProject: () => { void newProjectInTab(); },
+    onOpenDebug: () => setIsDebugPanelOpen(true),
     tabsInTitleBar: customTitleBar,
     showMixer,
     onToggleMixer: () => setMixerPanelOpen((prev) => !prev),
