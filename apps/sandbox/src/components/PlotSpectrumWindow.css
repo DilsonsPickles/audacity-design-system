@@ -258,7 +258,9 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  flex: 1;
+  /* NEVER flex-grow: in the OS window it sits in a COLUMN, where growing
+     took half the window's height (the in-app slot is a row) */
+  flex: 0 0 auto;
   width: 100%;
   min-height: 44px;
   padding: 0 16px;
@@ -267,7 +269,6 @@
   background: var(--ps-well);
   color: var(--ps-text);
   font-size: 12px;
-  flex-shrink: 0;
 }
 
 .plot-spectrum__selection-label {

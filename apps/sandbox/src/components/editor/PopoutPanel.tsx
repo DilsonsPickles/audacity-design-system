@@ -368,6 +368,11 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
     st.setProperty('--popout-body-bg', theme.background.surface.default);
     st.setProperty('--popout-line', theme.border.default);
     st.setProperty('--popout-text', theme.foreground.text.primary);
+    // the popout's own document takes the theme's colour scheme, so its
+    // scrollbars and form controls are not light in a dark app
+    const hex = theme.background.surface.default.replace('#', '');
+    const lum = hex.length >= 6 ? (0.299 * parseInt(hex.slice(0, 2), 16) + 0.587 * parseInt(hex.slice(2, 4), 16) + 0.114 * parseInt(hex.slice(4, 6), 16)) / 255 : 1;
+    popoutRoot.ownerDocument.documentElement.style.colorScheme = lum < 0.5 ? 'dark' : 'light';
   }, [popoutRoot, theme]);
 
   if (!popoutRoot) return null;
