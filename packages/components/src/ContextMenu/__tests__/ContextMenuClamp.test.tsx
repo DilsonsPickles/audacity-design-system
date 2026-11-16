@@ -19,7 +19,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const menuEl = (container: HTMLElement) => container.querySelector('.context-menu') as HTMLElement;
+// the menu portals to document.body (2026-11-17); the param is kept for the call sites
+const menuEl = (_container: HTMLElement) => document.querySelector('.context-menu') as HTMLElement;
 
 describe('ContextMenu stays on screen (2026-10-14, "context menu is being cut off")', () => {
   it('a menu opened near the bottom is moved up to 10px from the edge, and STAYS there across re-renders', () => {

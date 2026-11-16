@@ -48,7 +48,7 @@ const selectionAdd = (container: HTMLElement) =>
 const openStepMenu = (container: HTMLElement, stepNumber: number) => {
   fireEvent.click(container.querySelector<HTMLButtonElement>(`button[aria-label="Step ${stepNumber} options"]`)!);
   return (label: string) =>
-    Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+    Array.from(document.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
       .find((el) => el.textContent?.trim() === label)!;
 };
 
@@ -347,7 +347,7 @@ describe('MacroBuilderDialog', () => {
     const onClearSteps = vi.fn();
     const { container } = renderBuilder({ onClearSteps });
     fireEvent.click(container.querySelector<HTMLButtonElement>('button[aria-label="Macro options"]')!);
-    const item = Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+    const item = Array.from(document.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
       .find((el) => el.textContent?.trim() === 'Remove all steps')!;
     fireEvent.click(item);
     expect(onClearSteps).toHaveBeenCalledWith('m1');

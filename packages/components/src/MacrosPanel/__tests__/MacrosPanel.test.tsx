@@ -50,7 +50,7 @@ describe('MacrosPanel', () => {
     const onRunOnFiles = vi.fn();
     const { container } = renderPanel({ onRunOnFiles });
     fireEvent.click(container.querySelector('button[aria-label="MP3 conversion options"]')!);
-    const applyItem = Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'))
+    const applyItem = Array.from(document.querySelectorAll('.context-menu-item, [role="menuitem"]'))
       .find((el) => el.textContent?.includes('Apply to files'));
     fireEvent.click(applyItem!);
     expect(onRunOnFiles).toHaveBeenCalledWith('m2');
@@ -104,7 +104,7 @@ describe('MacrosPanel', () => {
     const { container } = renderPanel({ onDeleteMacro });
     fireEvent.click(container.querySelector('button[aria-label="Fade ends options"]')!);
 
-    const items = Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'));
+    const items = Array.from(document.querySelectorAll('.context-menu-item, [role="menuitem"]'));
     const labels = items.map((el) => el.textContent);
     expect(labels.join(' ')).toContain('Edit macro');
     expect(labels.join(' ')).toContain('Rename macro');
@@ -120,7 +120,7 @@ describe('MacrosPanel', () => {
     const onImportMacro = vi.fn();
     const { container } = renderPanel({ onImportMacro });
     fireEvent.click(container.querySelector('button[aria-label="Macro manager options"]')!);
-    const importItem = Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'))
+    const importItem = Array.from(document.querySelectorAll('.context-menu-item, [role="menuitem"]'))
       .find((el) => el.textContent?.includes('Import macro'));
     fireEvent.click(importItem!);
     expect(onImportMacro).toHaveBeenCalled();
@@ -142,7 +142,7 @@ describe('MacrosPanel', () => {
     const onRenameMacro = vi.fn();
     const { container, getByText } = renderPanel({ onRenameMacro });
     fireEvent.click(container.querySelector('button[aria-label="Fade ends options"]')!);
-    const renameItem = Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'))
+    const renameItem = Array.from(document.querySelectorAll('.context-menu-item, [role="menuitem"]'))
       .find((el) => el.textContent?.includes('Rename macro'));
     fireEvent.click(renameItem!);
 
@@ -159,7 +159,7 @@ describe('MacrosPanel — duplicate and empty-state copy', () => {
     const onDuplicateMacro = vi.fn();
     const { container } = renderPanel({ onDuplicateMacro });
     fireEvent.click(container.querySelector('button[aria-label="Fade ends options"]')!);
-    const item = Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'))
+    const item = Array.from(document.querySelectorAll('.context-menu-item, [role="menuitem"]'))
       .find((el) => el.textContent?.includes('Duplicate macro'));
     expect(item).toBeDefined();
     fireEvent.click(item!);

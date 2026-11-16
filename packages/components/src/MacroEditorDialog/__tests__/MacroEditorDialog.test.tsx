@@ -26,7 +26,7 @@ function renderEditor(props: Partial<React.ComponentProps<typeof MacroEditorDial
 }
 
 function contextMenuItems(container: HTMLElement) {
-  return Array.from(container.querySelectorAll('.context-menu-item, [role="menuitem"]'));
+  return Array.from(document.querySelectorAll('.context-menu-item, [role="menuitem"]'));
 }
 
 describe('MacroEditorDialog', () => {

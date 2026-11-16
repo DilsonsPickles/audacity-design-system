@@ -17,7 +17,7 @@ describe('track menu — this track\'s height (2026-10-22, the design brief\'s l
         <TrackContextMenu isOpen x={0} y={0} onClose={onClose} onCollapseTrack={onCollapseTrack} onExpandTrack={onExpandTrack} onFitTrackToHeight={onFitTrackToHeight} />
       </ThemeProvider>,
     );
-    const items = () => [...container.querySelectorAll('[data-track-height-items] [role="menuitem"]')];
+    const items = () => [...document.querySelectorAll('[data-track-height-items] [role="menuitem"]')];
     const byLabel = (label: string) => items().find((i) => i.textContent?.trim().startsWith(label))!;
     expect(items().map((i) => i.textContent?.trim().replace(/▸$/, ''))).toEqual(['Track height']);
     fireEvent.click(byLabel('Track height')); // a click on the parent opens it
@@ -38,6 +38,6 @@ describe('track menu — this track\'s height (2026-10-22, the design brief\'s l
         <TrackContextMenu isOpen x={0} y={0} onClose={() => {}} />
       </ThemeProvider>,
     );
-    expect(bare.container.querySelector('[data-track-height-items]')).toBeNull();
+    expect(document.querySelector('[data-track-height-items]')).toBeNull();
   });
 });

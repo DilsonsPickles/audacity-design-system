@@ -36,13 +36,17 @@ export interface ContextMenuProps {
    * Optional CSS class name
    */
   className?: string;
-  /** Render the menu into this element (its document's body, usually)
-   *  instead of in place. A `position: fixed` menu inside an ancestor
-   *  that is a containing block — a Dialog, whose `container-type:
-   *  inline-size` makes it one — is placed relative to that ancestor and
-   *  clipped by its overflow (the Go to dialog's timecode menu opened
-   *  under the dialog, 2026-10-13). Pass the trigger's own document's
-   *  body so a popout window's menu stays in its window. */
+  /** Render the menu into this element instead of its own document's
+   *  body. SINCE 2026-11-17 THE MENU ALWAYS PORTALS ("the context menus
+   *  are being clipped by the modal, this should never happen"): a
+   *  `position: fixed` menu left in place inside an ancestor that is a
+   *  containing block — a Dialog, whose `container-type: inline-size`
+   *  makes it one — is placed relative to that ancestor and clipped by
+   *  its overflow (the Go to dialog's timecode menu, 2026-10-13). By
+   *  default an invisible probe at the menu's place in the tree learns
+   *  which document the menu lives in (a panel popout window's menus
+   *  stay in their window) and the menu portals to that body; pass
+   *  `portalTo` only to send it somewhere else. */
   portalTo?: Element | null;
 
   /**
@@ -74,6 +78,17 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const { theme } = useTheme();
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerElementRef = useRef<HTMLElement | null>(null);
+  // THE DEFAULT PORTAL TARGET: the body of the document the menu is
+  // RENDERED IN — the module document's body at once (right for the main
+  // window, so the menu mounts in the first commit and the effects bind),
+  // corrected before paint by an invisible probe at the menu's place in
+  // the tree when that is another document (a panel popout window's menu
+  // stays in its window). Stable identity, or the ref re-fires per render.
+  const [ownBody, setOwnBody] = useState<Element | null>(null);
+  const probeRef = React.useCallback((el: HTMLElement | null) => {
+    if (el) setOwnBody((prev) => (prev === el.ownerDocument.body ? prev : el.ownerDocument.body));
+  }, []);
+  const host = portalTo ?? ownBody ?? (typeof document === 'undefined' ? null : document.body);
 
   const internalStyle = {
     '--context-menu-bg': theme.background.menu.background,
@@ -89,12 +104,14 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   // document the menu actually lives in, not the module-global one.
   const ownerDoc = () => menuRef.current?.ownerDocument ?? document;
 
-  // Store the trigger element when menu opens
+  // Store the trigger element when menu opens (re-read if the probe
+  // moves the menu to another document's body)
   useEffect(() => {
     if (isOpen) {
       triggerElementRef.current = ownerDoc().activeElement as HTMLElement;
     }
-  }, [isOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, host]);
 
   // FOCUS RETURNS TO THE TRIGGER WHEN THE MENU CLOSES — the global rule
   // (user decision 2026-10-12, "once I've escaped from a context menu or
@@ -132,7 +149,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       }
       focusWithinRef.current = false;
     };
-  }, [isOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, host]);
 
   // Auto-focus first menu item when opened via keyboard
   useEffect(() => {
@@ -146,7 +164,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         firstItem.focus();
       }, 0);
     }
-  }, [isOpen, autoFocus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, autoFocus, host]);
 
   // Handle click outside to close. Bound ONCE per opening, the close read
   // through a ref (the ref-mirror rule): hosts pass an inline onClose, and a
@@ -186,7 +205,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       doc.removeEventListener('pointerdown', handleClickOutside, true);
       doc.removeEventListener('mousedown', handleClickOutside, true);
     };
-  }, [isOpen]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, host]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -292,7 +312,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
     doc.addEventListener('keydown', handleKeyDown, true);
     return () => doc.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen, onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, onClose, host]);
 
   // KEEP THE MENU ON SCREEN (2026-10-14, "context menu is being cut
   // off": the clip menu opened near the window's bottom ran past it).
@@ -320,7 +341,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     if (ax < EDGE_MARGIN) ax = EDGE_MARGIN;
     if (ay < EDGE_MARGIN) ay = EDGE_MARGIN;
     setClamped(ax !== x || ay !== y ? { x: ax, y: ay } : null);
-  }, [isOpen, x, y]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, x, y, host]);
 
   if (!isOpen) return null;
 
@@ -333,12 +355,19 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         position: 'fixed',
         left: `${clamped?.x ?? x}px`,
         top: `${clamped?.y ?? y}px`,
-        zIndex: 10000,
+        // above the Dialog's 10000: a menu is transient top-layer UI,
+        // and a tie loses on DOM order to a later-mounted window
+        zIndex: 10010,
         ...style,
       }}
     >
       {children}
     </div>
   );
-  return portalTo ? createPortal(menu, portalTo) : menu;
+  return (
+    <>
+      <span ref={probeRef} style={{ display: 'none' }} aria-hidden data-context-menu-probe />
+      {host ? createPortal(menu, host) : null}
+    </>
+  );
 };

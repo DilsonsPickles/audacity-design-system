@@ -55,7 +55,7 @@ describe('the track menu is the real build\'s (2026-10-29, trackcontextmenumodel
       </ThemeProvider>,
     );
     fireEvent.contextMenu(utils.container.querySelectorAll('.track-control-side-panel__track')[0], { clientX: 40, clientY: 30 });
-    const menu = () => utils.container.querySelector('.context-menu') as HTMLElement;
+    const menu = () => document.querySelector('.context-menu') as HTMLElement;
     /** The menu's own items (not a submenu's), by label */
     const top = () => [...menu().querySelectorAll(':scope > .context-menu-item, :scope > * > .context-menu-item')]
       .map((i) => i.querySelector('.context-menu-item-label')!.textContent);

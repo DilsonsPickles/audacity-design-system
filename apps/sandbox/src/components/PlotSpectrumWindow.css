@@ -259,10 +259,6 @@
 }
 .plot-spectrum__actions .plot-spectrum__menu-button:hover { text-decoration: none; color: var(--ps-text); }
 
-/* the row's colour menu sits ABOVE the non-modal window: ContextMenu's
-   inline z-index (10000) ties the Dialog's and loses on DOM order */
-.plot-spectrum__colour-menu { z-index: 10001 !important; }
-
 /* the colour menu's swatch, in the icon slot */
 .plot-spectrum__menu-swatch {
   display: inline-block;

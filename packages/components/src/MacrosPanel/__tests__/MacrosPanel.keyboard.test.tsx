@@ -47,7 +47,7 @@ function renderPanel(props: PanelProps = {}, profile: 'au4-tab-groups' | 'wcag-f
   const tabStops = () =>
     [...utils.container.querySelectorAll<HTMLElement>('.macros-panel__list button')].filter((b) => b.tabIndex >= 0);
   const menuLabels = () =>
-    [...utils.container.querySelectorAll('[role="menuitem"]')].map((i) => (i.textContent ?? '').trim());
+    [...document.querySelectorAll('[role="menuitem"]')].map((i) => (i.textContent ?? '').trim());
   return { ...utils, rerenderWith: (p: PanelProps) => utils.rerender(ui(p)), row, cell, focused, focus, press, tabStops, menuLabels };
 }
 
@@ -346,7 +346,7 @@ describe('MacrosPanel keyboard — acting on a macro', () => {
 describe('MacrosPanel keyboard — where focus goes afterwards', () => {
   const deleteVia = (api: ReturnType<typeof renderPanel>, id: string) => {
     fireEvent.click(api.cell(id, 'menu'));
-    const item = [...api.container.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
       .find((i) => i.textContent?.trim() === 'Delete macro')!;
     fireEvent.click(item);
   };

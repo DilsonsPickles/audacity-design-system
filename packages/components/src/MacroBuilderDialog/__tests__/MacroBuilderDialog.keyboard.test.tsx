@@ -60,8 +60,9 @@ function renderBuilder(props: Props = {}, profile: Profile = 'au4-tab-groups') {
   const selected = () => all('[data-command-id][aria-selected="true"]').map((el) => el.dataset.commandId);
   const stops = (within: string) => all(`${within} button, ${within} [tabindex]`)
     .filter((el) => el.tabIndex >= 0 && !(el as HTMLButtonElement).disabled);
+  // menus portal to document.body (2026-11-17)
   const menuItem = (label: string) =>
-    all('[role="menuitem"]').find((el) => el.textContent?.trim() === label)!;
+    [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((el) => el.textContent?.trim() === label)!;
   const search = () => q<HTMLInputElement>('input[aria-label="Search commands"]');
   const pane = () => q('.macro-builder__commands-pane');
   return {
@@ -481,7 +482,7 @@ describe('Edit macro keyboard — the step table (a data grid, 2026-10-21)', () 
     const notPrevented = fireEvent.keyDown(focused(), { key: 'Enter' });
     expect(notPrevented).toBe(true);
     fireEvent.click(focused());
-    expect(all('[role="menuitem"]').map((i) => i.textContent?.trim())).toContain('Delete step');
+    expect([...document.querySelectorAll('[role="menuitem"]')].map((i) => i.textContent?.trim())).toContain('Delete step');
     expect(document.querySelectorAll('.dialog')).toHaveLength(1); // the window itself
   });
 

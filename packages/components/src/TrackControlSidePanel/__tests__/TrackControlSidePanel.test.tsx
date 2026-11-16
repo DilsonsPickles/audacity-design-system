@@ -82,10 +82,10 @@ describe('TrackControlSidePanel — right-click opens the row menu', () => {
 
   it('right-clicking a row opens the same menu the kebab does, at the pointer', () => {
     const { container } = renderRows();
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
     const row = container.querySelectorAll('.track-control-side-panel__track')[1] as HTMLElement;
     fireEvent.contextMenu(row, { clientX: 140, clientY: 260 });
-    const menu = container.querySelector('[role="menu"]') as HTMLElement | null;
+    const menu = document.querySelector('[role="menu"]') as HTMLElement | null;
     expect(menu).not.toBeNull();
     expect(menu!.textContent).toContain('Delete');
     expect(menu!.style.left).toBe('140px');
@@ -97,7 +97,7 @@ describe('TrackControlSidePanel — right-click opens the row menu', () => {
     const { container } = renderRows(onDeleteTrack);
     const row = container.querySelectorAll('.track-control-side-panel__track')[1] as HTMLElement;
     fireEvent.contextMenu(row, { clientX: 100, clientY: 100 });
-    const del = Array.from(container.querySelectorAll('[role="menuitem"]')).find((el) => el.textContent?.trim() === 'Delete');
+    const del = Array.from(document.querySelectorAll('[role="menuitem"]')).find((el) => el.textContent?.trim() === 'Delete');
     expect(del).toBeDefined();
     fireEvent.click(del!);
     expect(onDeleteTrack).toHaveBeenCalledWith(1);
@@ -110,6 +110,6 @@ describe('TrackControlSidePanel — right-click opens the row menu', () => {
     row.appendChild(input);
     const ev = fireEvent.contextMenu(input, { clientX: 10, clientY: 10 });
     expect(ev).toBe(true); // not preventDefault'ed
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 });

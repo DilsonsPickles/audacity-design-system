@@ -292,9 +292,10 @@ function trackMenuButton(container: HTMLElement, index: number): HTMLButtonEleme
  *  context menu in this app (clip / track / ruler) renders items with
  *  role="menuitem", and only one menu is ever open at a time in these
  *  tests (each interaction below closes its menu before opening another). */
-function menuItem(container: HTMLElement, label: string): HTMLElement {
-  // By the item's LABEL — a row also carries its chord
-  const item = Array.from(container.querySelectorAll('[role="menuitem"]')).find(
+function menuItem(_container: HTMLElement, label: string): HTMLElement {
+  // By the item's LABEL — a row also carries its chord. The menu portals
+  // to document.body (2026-11-17); the param is kept for the call sites.
+  const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find(
     (el) => (el.querySelector('.context-menu-item-label') ?? el).textContent?.trim() === label,
   );
   if (!item) throw new Error(`menu item "${label}" not found`);
@@ -446,7 +447,7 @@ describe('Bottom drawer', () => {
     const closeViaKebab = (tabLabel: string) => {
       fireEvent.click(panelHeader.querySelector(`[aria-label="${tabLabel} menu"]`)!);
       const closeItem = Array.from(
-        container.querySelectorAll('.context-menu-item, [role="menuitem"]'),
+        document.querySelectorAll('.context-menu-item, [role="menuitem"]'),
       ).find((el) => el.textContent?.trim() === 'Close');
       fireEvent.click(closeItem!);
     };
@@ -690,7 +691,7 @@ describe('Bottom drawer', () => {
     act(() => { clip.focus(); });
     fireEvent.keyDown(clip, { key: 'F10', shiftKey: true });
     const items = await waitFor(() => {
-      const list = Array.from(container.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]:not([aria-disabled="true"])'));
+      const list = Array.from(document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]:not([aria-disabled="true"])'));
       if (list.length < 2 || document.activeElement !== list[0]) throw new Error('menu not open on its first item yet');
       return list;
     });
@@ -1454,7 +1455,7 @@ describe('Selection playback', () => {
     // "Track height ▸" is a parent, as Track color is; a click opens it
     const heightItem = (label: string) => {
       fireEvent.click(trackMenuButton(container, 1));
-      const parent = Array.from(container.querySelectorAll('[role="menuitem"]')).find((el) => el.textContent?.trim().startsWith('Track height'))!;
+      const parent = Array.from(document.querySelectorAll('[role="menuitem"]')).find((el) => el.textContent?.trim().startsWith('Track height'))!;
       fireEvent.click(parent);
       fireEvent.click(menuItem(container, label));
     };
@@ -1485,7 +1486,7 @@ describe('Selection playback', () => {
     const height = (i: number) => (panels()[i] as HTMLElement).style.height;
     const heightItem = (row: number, label: string) => {
       fireEvent.click(trackMenuButton(container, row));
-      const parent = Array.from(container.querySelectorAll('[role="menuitem"]')).find((el) => el.textContent?.trim().startsWith('Track height'))!;
+      const parent = Array.from(document.querySelectorAll('[role="menuitem"]')).find((el) => el.textContent?.trim().startsWith('Track height'))!;
       fireEvent.click(parent);
       fireEvent.click(menuItem(container, label));
     };
@@ -2447,7 +2448,7 @@ describe('Focus routing', () => {
     );
 
     const menuItem = (label: string) =>
-      Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+      Array.from(document.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
         .find((el) => el.textContent?.trim() === label);
 
     // The in-app Float placement is gone — the OS window is THE floating form
@@ -2488,7 +2489,7 @@ describe('Focus routing', () => {
     await gotoProject(rendered);
     await addTrackType(container, 'Mono');
     const menuItem = (label: string) =>
-      Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+      Array.from(document.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
         .find((el) => el.textContent?.trim() === label);
     const mixerMenu = () => container.querySelector('button[aria-label="Mixer menu"]') as HTMLElement;
 
@@ -2524,7 +2525,7 @@ describe('Focus routing', () => {
     await gotoProject(rendered);
     await addTrackType(container, 'Mono');
     const menuItem = (label: string) =>
-      Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+      Array.from(document.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
         .find((el) => el.textContent?.trim() === label);
     const panels = () => Array.from(container.querySelectorAll('[data-drawer-group]')).map((g) =>
       Array.from(g.querySelectorAll('[role="tab"]')).map((t) => t.textContent?.replace(/[^A-Za-z ]/g, '').trim()));
@@ -2649,7 +2650,7 @@ describe('Focus routing', () => {
         expect(container.querySelector('button[aria-label="Effects menu"]')).toBeTruthy(),
       );
       const menuItem = (label: string) =>
-        Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+        Array.from(document.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
           .find((el) => el.textContent?.trim() === label)!;
       fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);
       fireEvent.click(menuItem('Open in window'));
@@ -2718,7 +2719,7 @@ describe('Focus routing', () => {
       );
 
       const menuItem = (label: string) =>
-        Array.from(container.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
+        Array.from(document.querySelectorAll<HTMLElement>('.context-menu-item, [role="menuitem"]'))
           .find((el) => el.textContent?.trim() === label)!;
 
       fireEvent.click(container.querySelector('button[aria-label="Effects menu"]')!);

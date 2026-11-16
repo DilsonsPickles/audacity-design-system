@@ -331,7 +331,7 @@ describe('TrackControlSidePanel — a group row can join and leave groups', () =
     ...over,
   });
   const menuLabels = (container: HTMLElement) =>
-    [...container.querySelectorAll('[role="menuitem"]')].map((i) =>
+    [...document.querySelectorAll('[role="menuitem"]')].map((i) =>
       (i.textContent ?? '').replace(/[-]/g, '').trim(),
     );
 
@@ -350,7 +350,7 @@ describe('TrackControlSidePanel — a group row can join and leave groups', () =
     const { container, wrapperOf } = renderRows(nest(), { groupMenu: menu });
     fireEvent.contextMenu(wrapperOf(1)!, { clientX: 10, clientY: 10 });
     expect(menuLabels(container).filter((l) => l.startsWith('Add to'))).toEqual(['Add to A ▸ B']);
-    const item = [...container.querySelectorAll('[role="menuitem"]')].find((i) =>
+    const item = [...document.querySelectorAll('[role="menuitem"]')].find((i) =>
       (i.textContent ?? '').includes('Add to A ▸ B'),
     ) as HTMLElement;
     fireEvent.click(item);

@@ -36,12 +36,12 @@ describe('ContextMenu — focus returns to the trigger when the menu closes (202
     act(() => { trigger.focus(); });
     fireEvent.keyDown(trigger, { key: 'F10', shiftKey: true });
     await flush(); // autoFocus on the first item
-    const first = container.querySelector<HTMLElement>('[role="menuitem"]')!;
+    const first = document.querySelector<HTMLElement>('[role="menuitem"]')!;
     expect(document.activeElement).toBe(first);
     fireEvent.click(first);
     await flush();
     expect(onAction).toHaveBeenCalled();
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
 
@@ -53,7 +53,7 @@ describe('ContextMenu — focus returns to the trigger when the menu closes (202
     await flush();
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
     await flush();
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
 
@@ -67,7 +67,7 @@ describe('ContextMenu — focus returns to the trigger when the menu closes (202
     act(() => { elsewhere.focus(); });
     fireEvent.mouseDown(elsewhere);
     await flush();
-    expect(container.querySelector('[role="menu"]')).toBeNull();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
     expect(document.activeElement).toBe(elsewhere);
   });
 });

@@ -56,7 +56,7 @@ describe('ContextMenu closes on a press outside', () => {
       </ThemeProvider>,
     );
     await tick();
-    fireEvent.mouseDown(container.querySelector('.context-menu') as HTMLElement);
+    fireEvent.mouseDown(document.querySelector('.context-menu') as HTMLElement);
     expect(onClose).not.toHaveBeenCalled();
   });
 });

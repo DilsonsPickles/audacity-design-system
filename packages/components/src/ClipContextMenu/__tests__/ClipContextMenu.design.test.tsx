@@ -7,7 +7,7 @@ import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 afterEach(cleanup);
 
 const labelsOf = (container: HTMLElement) =>
-  Array.from(container.querySelectorAll('.context-menu > .context-menu-item .context-menu-item-label')).map((el) => el.textContent);
+  Array.from(document.querySelectorAll('.context-menu > .context-menu-item .context-menu-item-label')).map((el) => el.textContent);
 
 describe('ClipContextMenu › the Figma "Context menu/Clip" frame (43 - Fades, 2026-10-14)', () => {
   it('lists the design\'s rows in its order, with its chords in the OS\'s glyphs, and nothing the design dropped', () => {
@@ -24,15 +24,15 @@ describe('ClipContextMenu › the Figma "Context menu/Clip" frame (43 - Fades, 2
       'Split', 'Split at silences',
       'Stretch with tempo changes', 'Open pitch and speed dialog', 'Reset pitch and speed', 'Render pitch and speed',
     ]);
-    const chords = Array.from(container.querySelectorAll('.context-menu-item-shortcut')).map((el) => el.textContent);
+    const chords = Array.from(document.querySelectorAll('.context-menu-item-shortcut')).map((el) => el.textContent);
     expect(chords).toEqual(['⌘F2', '⌘X', '⌘C', '⌘D', '⌥⇧F', '⌘I', '⌥⌘I', '⌘⇧P']);
     // Six groups, five dividers
-    expect(container.querySelectorAll('.clip-context-menu-divider')).toHaveLength(5);
+    expect(document.querySelectorAll('.clip-context-menu-divider')).toHaveLength(5);
     for (const gone of ['Clip properties…', 'Fade-in', 'Fade-out', 'Fade in…', 'Group clips', 'Ungroup clips', 'Spectral editing', 'Export clip', 'Delete clip']) {
       expect(queryByText(gone), gone).toBeNull();
     }
     // Cut, Copy and Delete carry the design's glyphs in the leading slot
-    const iconed = Array.from(container.querySelectorAll('.context-menu-item-icon')).map((el) => el.closest('.context-menu-item')?.querySelector('.context-menu-item-label')?.textContent);
+    const iconed = Array.from(document.querySelectorAll('.context-menu-item-icon')).map((el) => el.closest('.context-menu-item')?.querySelector('.context-menu-item-label')?.textContent);
     expect(iconed).toEqual(['Cut', 'Copy', 'Delete']);
   });
 
@@ -45,7 +45,7 @@ describe('ClipContextMenu › the Figma "Context menu/Clip" frame (43 - Fades, 2
       </ThemeProvider>,
     );
     expect(labelsOf(container).slice(0, 2)).toEqual(['Clip properties…', 'Rename clip']);
-    expect(container.querySelector('.context-menu-item-shortcut')?.textContent).toBe('⌥⌘I');
+    expect(document.querySelector('.context-menu-item-shortcut')?.textContent).toBe('⌥⌘I');
     fireEvent.click(getByText('Clip properties…'));
     expect(onOpenProperties).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalled();
@@ -57,7 +57,7 @@ describe('ClipContextMenu › the Figma "Context menu/Clip" frame (43 - Fades, 2
         <ClipContextMenu isOpen x={0} y={0} onClose={() => {}} os="windows" />
       </ThemeProvider>,
     );
-    const chords = Array.from(container.querySelectorAll('.context-menu-item-shortcut')).map((el) => el.textContent);
+    const chords = Array.from(document.querySelectorAll('.context-menu-item-shortcut')).map((el) => el.textContent);
     expect(chords[0]).toBe('Ctrl+F2');
     expect(chords[4]).toBe('Alt+Shift+F');
   });
