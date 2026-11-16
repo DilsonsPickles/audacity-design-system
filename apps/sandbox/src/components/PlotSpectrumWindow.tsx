@@ -151,17 +151,23 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
     ? Array.from({ length: Math.floor(fMax / (fMax > 12000 ? 2000 : 1000)) + 1 }, (_, i) => i * (fMax > 12000 ? 2000 : 1000)).filter((h) => h > 0)
     : [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000].filter((h) => h > fMin && h < fMax);
 
-  // one point per pixel column: the loudest bin that falls in it
+  // one point per pixel column: the loudest bin that falls in it — the
+  // readout reads the same, so it sits ON the drawn line, at the peak's
+  // own frequency
+  const columnPeak = (spectrum: Spectrum, x: number): { hz: number; db: number } => {
+    const lo = xToHz(x);
+    const hi = xToHz(x + 1);
+    const k0 = Math.max(1, Math.floor(lo / spectrum.binHz));
+    const k1 = Math.min(spectrum.db.length - 1, Math.ceil(hi / spectrum.binHz));
+    if (k1 <= k0) return { hz: lo, db: spectrumDbAt(spectrum, lo) };
+    let best = k0;
+    for (let k = k0 + 1; k <= k1; k++) if (spectrum.db[k] > spectrum.db[best]) best = k;
+    return { hz: best * spectrum.binHz, db: spectrum.db[best] };
+  };
   const pathFor = (spectrum: Spectrum) => {
     let d = '';
     for (let x = 0; x <= GRAPH_W; x++) {
-      const lo = xToHz(x);
-      const hi = xToHz(x + 1);
-      const k0 = Math.max(1, Math.floor(lo / spectrum.binHz));
-      const k1 = Math.min(spectrum.db.length - 1, Math.ceil(hi / spectrum.binHz));
-      let v = -Infinity;
-      if (k1 <= k0) v = spectrumDbAt(spectrum, lo);
-      else for (let k = k0; k <= k1; k++) v = Math.max(v, spectrum.db[k]);
+      const v = columnPeak(spectrum, x).db;
       const y = Math.min(GRAPH_H, Math.max(0, dbToY(v)));
       d += `${x === 0 ? 'M' : 'L'}${x},${y.toFixed(1)}`;
     }
@@ -170,8 +176,9 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
 
   // the readout follows the focused curve, else the newest
   const readoutPlot = plots.find((p) => p.id === focusedId) ?? plots[plots.length - 1];
-  const hoverHz = hoverX !== null ? xToHz(hoverX) : null;
-  const hoverDb = hoverHz !== null && readoutPlot ? spectrumDbAt(spectra.get(readoutPlot.id)!, hoverHz) : null;
+  const hoverPeak = hoverX !== null && readoutPlot ? columnPeak(spectra.get(readoutPlot.id)!, Math.floor(hoverX)) : null;
+  const hoverHz = hoverPeak?.hz ?? null;
+  const hoverDb = hoverPeak?.db ?? null;
 
   const drawOrder = [...plots].sort((a, b) => (a.id === focusedId ? 1 : 0) - (b.id === focusedId ? 1 : 0));
 
@@ -259,6 +266,8 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
               <div
                 className="plot-spectrum__readout"
                 data-plot-readout
+                // near either side it hangs inward, so it stays in the window
+                data-edge={hoverX! < GRAPH_W * 0.15 ? 'start' : hoverX! > GRAPH_W * 0.85 ? 'end' : undefined}
                 style={{ left: `${(hoverX! / GRAPH_W) * 100}%`, top: `${(Math.max(0, dbToY(hoverDb)) / GRAPH_H) * 100}%` }}
               >
                 {formatHz(hoverHz)} ({noteName(hoverHz)}) = {hoverDb.toFixed(1)} dB

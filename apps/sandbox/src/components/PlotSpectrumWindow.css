@@ -51,9 +51,14 @@
   grid-column: 2;
   background: #1f2233;
   border-radius: 2px;
-  overflow: hidden;
+  /* NOT clipped: the readout overlaps whatever is around the graph
+     (2026-11-16, "if the tooltip moves out of graph area, it clips. It
+     should overlap"); the svg clips the curves itself */
+  overflow: visible;
   cursor: crosshair;
 }
+
+.plot-spectrum__graph svg { border-radius: 2px; }
 
 .plot-spectrum__graph svg {
   display: block;
@@ -123,7 +128,11 @@
   white-space: nowrap;
   pointer-events: none;
   font-variant-numeric: tabular-nums;
+  z-index: 2;
 }
+
+.plot-spectrum__readout[data-edge='start'] { transform: translate(-8px, calc(-100% - 8px)); }
+.plot-spectrum__readout[data-edge='end'] { transform: translate(calc(-100% + 8px), calc(-100% - 8px)); }
 
 .plot-spectrum__hz-axis {
   position: relative;
