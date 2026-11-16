@@ -409,17 +409,14 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
   height: 28px;
 }
 
-/* THE SEPARATOR RUNS THE ROW'S FULL HEIGHT (2026-11-11), through the row's
-   8px padding as the gripper does; a column's runs its full width */
+/* A SEPARATOR IS SHORT, A TOOLBAR BOUNDARY FULL HEIGHT (2026-11-16, "let's
+   try 1": a separator inside a toolbar and the line between two toolbars
+   were the same full-height line, so a toolbar split into groups read as
+   several toolbars): the separator is a 16px tick centred in the row (16px
+   wide in a column) — a group boundary — while the line between toolbars
+   keeps the row's full height. It ran full height from 2026-11-11 to here. */
 .toolbar-dock__tools { align-self: stretch; }
-.toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) {
-  align-self: stretch;
-  margin: -8px 0;
-}
-.toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) > .toolbar-dock__tool-body { align-self: stretch; }
-.toolbar-dock__tool-body > .toolbar-dock__separator { height: auto; align-self: stretch; }
-.toolbar-dock--vertical .toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) { margin: 0; align-self: stretch; }
-.toolbar-dock--vertical .toolbar-dock__tool-body > .toolbar-dock__separator { width: auto; height: 1px; }
+.toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) { align-self: center; }
 
 /* A WRAPPED TOOLBAR'S LATER SEGMENTS (2026-11-11): the same toolbar, so the
    gripper is quieter there; it still moves the whole toolbar */
