@@ -78,6 +78,11 @@ const GRIP_GLYPH = '';
 
 /** A bar's gutter (its grip), the gap between tools, and the overflow
  *  button — the numbers the dock's sizing is made of (ToolbarDock.css) */
+// The grip's width for the SIZING maths, an approximation: a toolbar that
+// starts its line has a 16px grip, one that follows another 25 (8 clear,
+// the 1px line between toolbars, 16 for the dots — 2026-11-16), and which
+// one a bar is is only known once the line is packed. Packing itself reads
+// the bars' MEASURED widths, so it is exact.
 const GUTTER = 17;
 const TOOL_GAP = 8;
 const OVERFLOW_BUTTON = 28;
@@ -209,7 +214,11 @@ export function ToolbarDock({
       i > 0 && !isToolSeparator(raw[i - 1].id) && raw.slice(i + 1).some((n) => !isToolSeparator(n.id))
     ));
     if (bar.tools.length === 0) {
-      nodes.push({ id: EMPTY_SLOT_ID, node: <span className="toolbar-dock__empty" data-toolbar-empty={bar.id}>Empty toolbar</span> });
+      // No words in the slot (2026-11-16, "when I have an empty toolbar,
+      // can we please not show 'empty toolbar'?") — a blank dashed square
+      // the tools' size, so the toolbar still shows; the name is for
+      // screen readers alone
+      nodes.push({ id: EMPTY_SLOT_ID, node: <span className="toolbar-dock__empty" data-toolbar-empty={bar.id} role="img" aria-label="Empty toolbar" /> });
     }
     const grow = nodes.some((t) => toolMeta?.(t.id, orientation)?.grow);
     const size = sizeOf(bar);

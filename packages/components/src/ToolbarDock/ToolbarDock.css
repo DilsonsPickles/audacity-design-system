@@ -157,7 +157,22 @@
    the gripper says where a toolbar starts, the full-height SEPARATOR (below)
    splits a toolbar into groups. The line element stays, hidden, for a
    revert. */
-.toolbar-dock__grip-line { opacity: 0; }
+/* A LINE BETWEEN TOOLBARS AGAIN (2026-11-16, "I'd like individual toolbars
+   to have a separator line"): a toolbar that follows another on its line
+   opens with the full-height line, 8px clear of the toolbar before it, and
+   then its dots in a 16px cell of their own — the leading toolbar's — so
+   the line never runs through the dots: 8 + 1 + 16 = 25 */
+.toolbar-dock__grip:not(.toolbar-dock__grip--leading) {
+  width: 25px;
+  padding-left: 9px;
+  box-sizing: border-box;
+}
+.toolbar-dock__grip-line { opacity: 1; }
+/* The hover fill stays on THIS toolbar's side of the line (the same day,
+   "the gripper hover state… is overlapping the neighbouring toolbar"):
+   the 8px before the line is padding, and the fill is clipped to the
+   content box after it */
+.toolbar-dock__grip { background-clip: content-box; }
 .toolbar-dock__grip:active { cursor: grabbing; }
 .toolbar-dock__grip:active .toolbar-dock__grip-dots { color: var(--toolbar-dock-accent); }
 @media (prefers-reduced-motion: reduce) {
@@ -325,6 +340,7 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 .toolbar-dock--vertical .toolbar-dock__tools { flex-direction: column; gap: 8px; }
 .toolbar-dock--vertical .toolbar-dock__tools .toolbar__button-group { flex-direction: column; }
 .toolbar-dock--vertical .toolbar-dock__grip { width: auto; height: 17px; margin: 0; }
+.toolbar-dock--vertical .toolbar-dock__grip:not(.toolbar-dock__grip--leading) { width: auto; height: 25px; padding-left: 0; padding-top: 9px; }
 .toolbar-dock--vertical .toolbar-dock__grip--leading { width: auto; height: 16px; }
 .toolbar-dock--vertical .toolbar-dock__grip-line { top: 8px; bottom: auto; left: 0; right: 0; width: auto; height: 1px; }
 .toolbar-dock--vertical .toolbar-dock__grip-dots { transform: rotate(90deg); }
@@ -349,17 +365,14 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 /* AN EMPTY TOOLBAR: a dashed slot the tools' height, so it shows and its
    grip can move it; filled from the toolbar builder */
 .toolbar-dock__empty {
-  display: flex;
-  align-items: center;
+  display: block;
+  width: 28px;
   height: 28px;
-  padding: 0 8px;
+  box-sizing: border-box;
   border: 1px dashed var(--toolbar-divider);
   border-radius: 3px;
-  font-size: 12px;
-  white-space: nowrap;
   opacity: 0.7;
 }
-.toolbar-dock--vertical .toolbar-dock__empty { height: auto; padding: 8px 4px; writing-mode: vertical-rl; }
 
 /* THE SEPARATOR RUNS THE ROW'S FULL HEIGHT (2026-11-11), through the row's
    8px padding as the gripper does; a column's runs its full width */

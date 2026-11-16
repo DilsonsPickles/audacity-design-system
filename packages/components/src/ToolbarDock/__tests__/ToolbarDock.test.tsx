@@ -321,7 +321,10 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     const tools = Array.from(a.querySelectorAll('[data-toolbar-tool]')).map((t) => t.getAttribute('data-toolbar-tool'));
     expect(tools).toEqual(['one', 'separator-2', 'two']);
     expect(a.querySelectorAll('.toolbar-dock__separator')).toHaveLength(1);
-    expect(container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-empty="empty"]')?.textContent).toBe('Empty toolbar');
+    const slot = container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-empty="empty"]');
+    // no words drawn (2026-11-16) — the name is for screen readers
+    expect(slot?.textContent).toBe('');
+    expect(slot?.getAttribute('aria-label')).toBe('Empty toolbar');
     expect(container.querySelector('[data-toolbar-bar="hidden"]')).toBeNull();
   });
 });
