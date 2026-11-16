@@ -1,7 +1,7 @@
 import React from 'react';
 import { Dialog, DialogFooter, Dropdown, LabeledCheckbox, Button, ToolButton, useTheme, toast } from '@audacity-ui/components';
 import {
-  computeSpectrum, spectrumDbAt, refinePeak, noteName, formatHz, formatPlotTime, formatPlotDuration, spectrumCsv,
+  computeSpectrum, spectrumDbAt, refinePeak, frequencyTicks, formatHzTick, noteName, formatHz, formatPlotTime, formatPlotDuration, spectrumCsv,
   WINDOW_FUNCTIONS, SPECTRUM_SIZES, SPECTRUM_ALGORITHMS, type Spectrum, type WindowFunctionId,
 } from '../utils/spectrum';
 import { downloadBlob } from '../utils/downloadBlob';
@@ -66,7 +66,8 @@ const DEFAULT_RANGE_INDEX = 2;
 /** Audacity 3 analyses at most this many samples of a selection */
 export const MAX_ANALYSED_SAMPLES = 10 * 1024 * 1024;
 
-const GRAPH_W = 560;
+/** the graph's width before it has been measured */
+const DEFAULT_GRAPH_W = 560;
 const GRAPH_H = 240;
 const LOG_MIN_HZ = 10;
 
@@ -87,6 +88,20 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   const [windowFn, setWindowFn] = React.useState<WindowFunctionId>('hann');
   const [size, setSize] = React.useState(2048);
   const [hover, setHover] = React.useState<{ x: number; y: number } | null>(null);
+  // THE GRAPH'S REAL WIDTH: the curve is drawn a column per pixel and the
+  // frequency grid is chosen for it, so a wider window shows more
+  const [graphW, setGraphW] = React.useState(DEFAULT_GRAPH_W);
+  const [graphEl, setGraphEl] = React.useState<HTMLDivElement | null>(null);
+  React.useEffect(() => {
+    if (!graphEl) return;
+    const measure = () => { const w = Math.round(graphEl.clientWidth); if (w > 0) setGraphW(w); };
+    measure();
+    const RO = graphEl.ownerDocument.defaultView?.ResizeObserver ?? (typeof ResizeObserver !== 'undefined' ? ResizeObserver : null);
+    if (!RO) return;
+    const ro = new RO(measure);
+    ro.observe(graphEl);
+    return () => ro.disconnect();
+  }, [graphEl]);
   const [notice, setNotice] = React.useState<string | null>(null);
   const nextId = React.useRef(1);
 
@@ -133,11 +148,11 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   const fMin = linear ? 0 : LOG_MIN_HZ;
   const fMax = nyquist;
   const hzToX = (hz: number) => (linear
-    ? (hz / fMax) * GRAPH_W
-    : (Math.log10(Math.max(hz, fMin) / fMin) / Math.log10(fMax / fMin)) * GRAPH_W);
+    ? (hz / fMax) * graphW
+    : (Math.log10(Math.max(hz, fMin) / fMin) / Math.log10(fMax / fMin)) * graphW);
   const xToHz = (x: number) => (linear
-    ? (x / GRAPH_W) * fMax
-    : fMin * 10 ** ((x / GRAPH_W) * Math.log10(fMax / fMin)));
+    ? (x / graphW) * fMax
+    : fMin * 10 ** ((x / graphW) * Math.log10(fMax / fMin)));
   const range = DB_RANGES[rangeIndex];
   // the top follows the loudest curve, rounded up to 6 dB
   const peak = Math.max(-150, ...[...spectra.values()].map((s) => Math.max(...s.db.subarray(1))));
@@ -147,9 +162,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   const dbStep = range >= 96 ? 12 : 6;
   const dbTicks: number[] = [];
   for (let d = dbTop; d >= dbBottom; d -= dbStep) dbTicks.push(d);
-  const hzTicks = linear
-    ? Array.from({ length: Math.floor(fMax / (fMax > 12000 ? 2000 : 1000)) + 1 }, (_, i) => i * (fMax > 12000 ? 2000 : 1000)).filter((h) => h > 0)
-    : [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000].filter((h) => h > fMin && h < fMax);
+  const { grid: hzGrid, labels: hzTicks } = frequencyTicks(fMin, fMax, linear, graphW);
 
   // one point per pixel column: the loudest bin that falls in it — the
   // readout reads the same, so it sits ON the drawn line, at the peak's
@@ -166,7 +179,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   };
   const pathFor = (spectrum: Spectrum) => {
     let d = '';
-    for (let x = 0; x <= GRAPH_W; x++) {
+    for (let x = 0; x <= graphW; x++) {
       const v = columnPeak(spectrum, x).db;
       const y = Math.min(GRAPH_H, Math.max(0, dbToY(v)));
       d += `${x === 0 ? 'M' : 'L'}${x},${y.toFixed(1)}`;
@@ -189,7 +202,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
     : null;
   const peakReading = (() => {
     if (!hover || !readoutSpectrum) return null;
-    const c = columnPeak(readoutSpectrum, Math.min(GRAPH_W, Math.floor(hover.x)));
+    const c = columnPeak(readoutSpectrum, Math.min(graphW, Math.floor(hover.x)));
     return { hz: c.k > 0 ? refinePeak(readoutSpectrum, c.k).hz : c.hz, db: c.db };
   })();
 
@@ -235,19 +248,20 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
           </div>
           <div
             className="plot-spectrum__graph"
+            ref={setGraphEl}
             data-plot-spectrum-graph
             onMouseMove={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
               setHover({
-                x: Math.max(0, Math.min(GRAPH_W, ((e.clientX - r.left) / r.width) * GRAPH_W)),
+                x: Math.max(0, Math.min(graphW, ((e.clientX - r.left) / r.width) * graphW)),
                 y: Math.max(0, Math.min(GRAPH_H, ((e.clientY - r.top) / r.height) * GRAPH_H)),
               });
             }}
             onMouseLeave={() => setHover(null)}
           >
-            <svg viewBox={`0 0 ${GRAPH_W} ${GRAPH_H}`} preserveAspectRatio="none" role="img" aria-label={plots.length ? `Spectrum of ${plots.map((p) => p.name).join(', ')}` : 'No spectrum plotted'}>
-              {grid && dbTicks.map((d) => <line key={`h${d}`} className="plot-spectrum__grid" x1={0} x2={GRAPH_W} y1={dbToY(d)} y2={dbToY(d)} />)}
-              {grid && hzTicks.map((h) => <line key={`v${h}`} className="plot-spectrum__grid" x1={hzToX(h)} x2={hzToX(h)} y1={0} y2={GRAPH_H} />)}
+            <svg viewBox={`0 0 ${graphW} ${GRAPH_H}`} preserveAspectRatio="none" role="img" aria-label={plots.length ? `Spectrum of ${plots.map((p) => p.name).join(', ')}` : 'No spectrum plotted'}>
+              {grid && dbTicks.map((d) => <line key={`h${d}`} className="plot-spectrum__grid" x1={0} x2={graphW} y1={dbToY(d)} y2={dbToY(d)} />)}
+              {grid && hzGrid.map((h) => <line key={`v${h}`} className="plot-spectrum__grid" x1={hzToX(h)} x2={hzToX(h)} y1={0} y2={GRAPH_H} />)}
               {drawOrder.map((p) => {
                 const line = pathFor(spectra.get(p.id)!);
                 // FILLED only when it is the ONLY curve, as Audacity 3 draws
@@ -258,7 +272,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
                 return (
                   <React.Fragment key={p.id}>
                     {filled && (
-                      <path d={`${line}L${GRAPH_W},${GRAPH_H}L0,${GRAPH_H}Z`} fill={p.colour} className="plot-spectrum__fill" data-plot-fill={p.id} />
+                      <path d={`${line}L${graphW},${GRAPH_H}L0,${GRAPH_H}Z`} fill={p.colour} className="plot-spectrum__fill" data-plot-fill={p.id} />
                     )}
                     <path
                       d={line}
@@ -274,7 +288,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
               {hover && plots.length > 0 && (
                 <>
                   <line className="plot-spectrum__crosshair" x1={hover.x} x2={hover.x} y1={0} y2={GRAPH_H} />
-                  <line className="plot-spectrum__crosshair" x1={0} x2={GRAPH_W} y1={hover.y} y2={hover.y} />
+                  <line className="plot-spectrum__crosshair" x1={0} x2={graphW} y1={hover.y} y2={hover.y} />
                 </>
               )}
             </svg>
@@ -293,7 +307,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
             {cursorReading && peakReading && readoutPlot && (() => {
               const yPct = (db: number) => (Math.max(0, Math.min(GRAPH_H, dbToY(db))) / GRAPH_H) * 100;
               // the DOT marks the line's value under the pointer — the Peak
-              const cx = (hover!.x / GRAPH_W) * 100;
+              const cx = (hover!.x / graphW) * 100;
               const ly = yPct(peakReading.db);
               return (
                 <>
@@ -302,7 +316,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
                     className="plot-spectrum__readout"
                     data-plot-readout
                     // near either side it hangs inward, so it stays in the window
-                    data-edge={hover!.x < GRAPH_W * 0.2 ? 'start' : hover!.x > GRAPH_W * 0.8 ? 'end' : undefined}
+                    data-edge={hover!.x < graphW * 0.2 ? 'start' : hover!.x > graphW * 0.8 ? 'end' : undefined}
                     // it RIDES THE CURVE with the dot ("I liked the peak
                     // riding the curve like that"), the crosshair marks the pointer
                     style={{ left: `${cx}%`, top: `${ly}%` }}
@@ -320,7 +334,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
           </div>
           <div className="plot-spectrum__hz-axis" aria-hidden>
             {hzTicks.map((h) => (
-              <span key={h} style={{ left: `${(hzToX(h) / GRAPH_W) * 100}%` }}>{h >= 1000 ? `${h / 1000}k` : h}<small>Hz</small></span>
+              <span key={h} style={{ left: `${(hzToX(h) / graphW) * 100}%` }}>{formatHzTick(h)}<small>Hz</small></span>
             ))}
           </div>
         </div>

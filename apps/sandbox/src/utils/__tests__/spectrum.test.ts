@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeSpectrum, spectrumDbAt, noteName, formatPlotTime, spectrumCsv, fft, refinePeak } from '../spectrum';
+import { computeSpectrum, spectrumDbAt, noteName, formatPlotTime, spectrumCsv, fft, refinePeak, frequencyTicks, formatHzTick } from '../spectrum';
 
 // Plot spectrum's maths (2026-11-16)
 const sine = (hz: number, amp: number, rate: number, n: number) =>
@@ -61,5 +61,23 @@ describe('spectrum', () => {
     const peak = refinePeak(s, k);
     expect(Math.abs(peak.hz - 1012)).toBeLessThan(3);
     expect(Math.abs(k * s.binHz - 1012)).toBeGreaterThan(Math.abs(peak.hz - 1012));
+  });
+
+  it('a wider graph gets more grid lines and labels; labels never crowd', () => {
+    const narrow = frequencyTicks(10, 22050, false, 400);
+    const wide = frequencyTicks(10, 22050, false, 1400);
+    expect(wide.grid.length).toBeGreaterThan(narrow.grid.length);
+    expect(wide.labels.length).toBeGreaterThan(narrow.labels.length);
+    // decades are labelled first
+    expect(narrow.labels).toEqual(expect.arrayContaining([100, 1000, 10000]));
+    for (const t of [narrow, wide]) {
+      const xs = t.labels.map((h) => (Math.log10(h / 10) / Math.log10(22050 / 10)));
+      for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeGreaterThan(0);
+    }
+    const linNarrow = frequencyTicks(0, 22050, true, 400);
+    const linWide = frequencyTicks(0, 22050, true, 1400);
+    expect(linWide.grid.length).toBeGreaterThan(linNarrow.grid.length);
+    expect(formatHzTick(1500)).toBe('1.5k');
+    expect(formatHzTick(500)).toBe('500');
   });
 });

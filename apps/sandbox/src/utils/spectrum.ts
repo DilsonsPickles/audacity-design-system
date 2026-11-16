@@ -159,6 +159,53 @@ export function refinePeak(spectrum: Spectrum, k: number): { hz: number; db: num
   return { hz: (k + p) * binHz, db: b - 0.25 * (a - c) * p };
 }
 
+/**
+ * The frequency grid for a graph `widthPx` wide (2026-11-16, "as modal
+ * gets wider, more grid lines and frequencies should show up"): on a LOG
+ * scale the multiples of each decade, denser as the decades get room —
+ * 1·2·5, then 1·2·3·5·7, then every 1–9; on a LINEAR scale the nicest step
+ * that keeps lines about 40px apart. LABELS go on as many lines as fit
+ * MIN_LABEL_GAP_PX apart, decades first, then 5s, 2s, the rest.
+ */
+const MIN_LABEL_GAP_PX = 44;
+export function frequencyTicks(fMin: number, fMax: number, linear: boolean, widthPx: number): { grid: number[]; labels: number[] } {
+  const xOf = (hz: number) => (linear
+    ? (hz / fMax) * widthPx
+    : (Math.log10(hz / fMin) / Math.log10(fMax / fMin)) * widthPx);
+  let grid: number[] = [];
+  let priority: (hz: number) => number;
+  if (linear) {
+    const steps = [100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000];
+    const step = steps.find((st) => (st / fMax) * widthPx >= 40) ?? 10000;
+    for (let h = step; h < fMax; h += step) grid.push(h);
+    priority = (h) => (h % (step * 4) === 0 ? 0 : h % (step * 2) === 0 ? 1 : 2);
+  } else {
+    const perDecade = widthPx / Math.log10(fMax / fMin);
+    const mults = perDecade >= 320 ? [1, 2, 3, 4, 5, 6, 7, 8, 9] : perDecade >= 170 ? [1, 2, 3, 5, 7] : perDecade >= 90 ? [1, 2, 5] : [1, 3];
+    for (let d = 10 ** Math.floor(Math.log10(fMin)); d < fMax; d *= 10) {
+      for (const m of mults) {
+        const h = m * d;
+        if (h > fMin && h < fMax) grid.push(h);
+      }
+    }
+    const lead = (h: number) => Math.round(h / 10 ** Math.floor(Math.log10(h) + 1e-9));
+    priority = (h) => [1, 5, 2, 3, 4, 6, 7, 8, 9].indexOf(lead(h));
+  }
+  grid = grid.filter((h) => xOf(h) > 0 && xOf(h) < widthPx);
+  const placed: number[] = [];
+  for (const h of [...grid].sort((a, b) => priority(a) - priority(b) || a - b)) {
+    const x = xOf(h);
+    if (x < 14 || x > widthPx - 14) continue;
+    if (placed.every((p) => Math.abs(xOf(p) - x) >= MIN_LABEL_GAP_PX)) placed.push(h);
+  }
+  return { grid, labels: placed.sort((a, b) => a - b) };
+}
+
+/** "500", "1k", "1.5k", "20k" — the axis's compact labels */
+export function formatHzTick(hz: number): string {
+  return hz >= 1000 ? `${+(hz / 1000).toFixed(2)}k` : `${hz}`;
+}
+
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 /** "A4" for 440 Hz — the nearest equal-tempered note (Audacity 3 shows it beside the frequency) */
