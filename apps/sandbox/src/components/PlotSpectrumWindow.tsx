@@ -69,8 +69,6 @@ export const MAX_ANALYSED_SAMPLES = 10 * 1024 * 1024;
 const GRAPH_W = 560;
 const GRAPH_H = 240;
 const LOG_MIN_HZ = 10;
-/** how far either side of the pointer the Peak reading looks */
-const PEAK_REACH_PX = 12;
 
 export function tracksLabel(tracks: PlotSpectrumTrack[]): string {
   if (tracks.length === 0) return 'No track';
@@ -88,7 +86,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   const [rangeIndex, setRangeIndex] = React.useState(DEFAULT_RANGE_INDEX);
   const [windowFn, setWindowFn] = React.useState<WindowFunctionId>('hann');
   const [size, setSize] = React.useState(2048);
-  const [hoverX, setHoverX] = React.useState<number | null>(null);
+  const [hover, setHover] = React.useState<{ x: number; y: number } | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
   const nextId = React.useRef(1);
 
@@ -178,25 +176,21 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
 
   // the readout follows the focused curve, else the newest
   const readoutPlot = plots.find((p) => p.id === focusedId) ?? plots[plots.length - 1];
-  // TWO READINGS, Audacity 3's pair (later the same day, "I want to see
-  // freq at cursor pos AND peak value too"): the CURSOR — the frequency
-  // under the pointer and the level there — and the PEAK — the highest
-  // point within PEAK_REACH_PX of the pointer, refined between bins
+  // TWO READINGS (2026-11-16, "I want to see freq at cursor pos AND peak
+  // value too", then "the cursor is where the User cursor is on the graph
+  // and the peak is the value of the line"): the CURSOR is the POINTER'S
+  // place on the graph — the frequency under it and the level at its
+  // height; the PEAK is the LINE's value at that frequency — the loudest
+  // bin in the pointer's pixel column, as drawn, its frequency refined
+  // between bins
   const readoutSpectrum = readoutPlot ? spectra.get(readoutPlot.id)! : null;
-  // the cursor reads the LINE as drawn under the pointer, so its dot sits on it
-  const cursorReading = hoverX !== null && readoutSpectrum
-    ? { hz: xToHz(hoverX), db: columnPeak(readoutSpectrum, Math.min(GRAPH_W, Math.floor(hoverX))).db }
+  const cursorReading = hover && readoutSpectrum
+    ? { hz: xToHz(hover.x), db: dbTop - (hover.y / GRAPH_H) * range }
     : null;
   const peakReading = (() => {
-    if (hoverX === null || !readoutSpectrum) return null;
-    let best: { db: number; k: number } | null = null;
-    const x0 = Math.max(0, Math.floor(hoverX) - PEAK_REACH_PX);
-    const x1 = Math.min(GRAPH_W, Math.floor(hoverX) + PEAK_REACH_PX);
-    for (let x = x0; x <= x1; x++) {
-      const c = columnPeak(readoutSpectrum, x);
-      if (!best || c.db > best.db) best = c;
-    }
-    return best ? refinePeak(readoutSpectrum, best.k) : null;
+    if (!hover || !readoutSpectrum) return null;
+    const c = columnPeak(readoutSpectrum, Math.min(GRAPH_W, Math.floor(hover.x)));
+    return { hz: c.k > 0 ? refinePeak(readoutSpectrum, c.k).hz : c.hz, db: c.db };
   })();
 
   const drawOrder = [...plots].sort((a, b) => (a.id === focusedId ? 1 : 0) - (b.id === focusedId ? 1 : 0));
@@ -244,9 +238,12 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
             data-plot-spectrum-graph
             onMouseMove={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
-              setHoverX(Math.max(0, Math.min(GRAPH_W, ((e.clientX - r.left) / r.width) * GRAPH_W)));
+              setHover({
+                x: Math.max(0, Math.min(GRAPH_W, ((e.clientX - r.left) / r.width) * GRAPH_W)),
+                y: Math.max(0, Math.min(GRAPH_H, ((e.clientY - r.top) / r.height) * GRAPH_H)),
+              });
             }}
-            onMouseLeave={() => setHoverX(null)}
+            onMouseLeave={() => setHover(null)}
           >
             <svg viewBox={`0 0 ${GRAPH_W} ${GRAPH_H}`} preserveAspectRatio="none" role="img" aria-label={plots.length ? `Spectrum of ${plots.map((p) => p.name).join(', ')}` : 'No spectrum plotted'}>
               {grid && dbTicks.map((d) => <line key={`h${d}`} className="plot-spectrum__grid" x1={0} x2={GRAPH_W} y1={dbToY(d)} y2={dbToY(d)} />)}
@@ -274,8 +271,11 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
                   </React.Fragment>
                 );
               })}
-              {hoverX !== null && plots.length > 0 && (
-                <line className="plot-spectrum__crosshair" x1={hoverX} x2={hoverX} y1={0} y2={GRAPH_H} />
+              {hover && plots.length > 0 && (
+                <>
+                  <line className="plot-spectrum__crosshair" x1={hover.x} x2={hover.x} y1={0} y2={GRAPH_H} />
+                  <line className="plot-spectrum__crosshair" x1={0} x2={GRAPH_W} y1={hover.y} y2={hover.y} />
+                </>
               )}
             </svg>
             {plots.length === 0 && (
@@ -292,23 +292,19 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
             )}
             {cursorReading && peakReading && readoutPlot && (() => {
               const yPct = (db: number) => (Math.max(0, Math.min(GRAPH_H, dbToY(db))) / GRAPH_H) * 100;
-              // the DOT follows the pointer along the line; a RING marks the
-              // peak the Peak row reads (later the same day, "the little dot
-              // on the line isn't tracking with the cursor pos")
-              const cx = (hoverX! / GRAPH_W) * 100;
-              const cy = yPct(cursorReading.db);
-              const kx = (hzToX(peakReading.hz) / GRAPH_W) * 100;
-              const ky = yPct(peakReading.db);
+              // the DOT marks the line's value under the pointer — the Peak
+              const cx = (hover!.x / GRAPH_W) * 100;
+              const cy = (hover!.y / GRAPH_H) * 100;
+              const ly = yPct(peakReading.db);
               return (
                 <>
-                  <span className="plot-spectrum__peak-ring" data-plot-peak style={{ left: `${kx}%`, top: `${ky}%`, borderColor: readoutPlot.colour }} />
-                  <span className="plot-spectrum__cursor-dot" data-plot-cursor-dot style={{ left: `${cx}%`, top: `${cy}%`, background: readoutPlot.colour }} />
+                  <span className="plot-spectrum__line-dot" data-plot-line-dot style={{ left: `${cx}%`, top: `${ly}%`, background: readoutPlot.colour }} />
                   <div
                     className="plot-spectrum__readout"
                     data-plot-readout
                     // near either side it hangs inward, so it stays in the window
-                    data-edge={hoverX! < GRAPH_W * 0.2 ? 'start' : hoverX! > GRAPH_W * 0.8 ? 'end' : undefined}
-                    style={{ left: `${cx}%`, top: `${Math.min(cy, ky)}%` }}
+                    data-edge={hover!.x < GRAPH_W * 0.2 ? 'start' : hover!.x > GRAPH_W * 0.8 ? 'end' : undefined}
+                    style={{ left: `${cx}%`, top: `${cy}%` }}
                   >
                     <span>Cursor</span>
                     <span data-plot-cursor-reading>{formatHz(cursorReading.hz)} ({noteName(cursorReading.hz)})</span>
