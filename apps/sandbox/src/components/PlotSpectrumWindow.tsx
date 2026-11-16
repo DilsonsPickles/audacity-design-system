@@ -294,7 +294,6 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
               const yPct = (db: number) => (Math.max(0, Math.min(GRAPH_H, dbToY(db))) / GRAPH_H) * 100;
               // the DOT marks the line's value under the pointer — the Peak
               const cx = (hover!.x / GRAPH_W) * 100;
-              const cy = (hover!.y / GRAPH_H) * 100;
               const ly = yPct(peakReading.db);
               return (
                 <>
@@ -304,7 +303,9 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
                     data-plot-readout
                     // near either side it hangs inward, so it stays in the window
                     data-edge={hover!.x < GRAPH_W * 0.2 ? 'start' : hover!.x > GRAPH_W * 0.8 ? 'end' : undefined}
-                    style={{ left: `${cx}%`, top: `${cy}%` }}
+                    // it RIDES THE CURVE with the dot ("I liked the peak
+                    // riding the curve like that"), the crosshair marks the pointer
+                    style={{ left: `${cx}%`, top: `${ly}%` }}
                   >
                     <span>Cursor</span>
                     <span data-plot-cursor-reading>{formatHz(cursorReading.hz)} ({noteName(cursorReading.hz)})</span>
