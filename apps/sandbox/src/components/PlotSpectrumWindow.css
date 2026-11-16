@@ -2,6 +2,7 @@
    plot ("1.0 - Existing graphs"), dark in both themes */
 
 .plot-spectrum {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -24,7 +25,9 @@
 .plot-spectrum__graph-wrap {
   display: grid;
   grid-template-columns: 40px 1fr;
-  grid-template-rows: 240px 18px;
+  grid-template-rows: minmax(320px, 1fr) 18px;
+  flex: 1;
+  min-height: 0;
 }
 
 .plot-spectrum__db-axis {
@@ -204,7 +207,19 @@
 
 .plot-spectrum__row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .plot-spectrum__row--head { min-height: 24px; background: var(--ps-table-head); color: var(--ps-text-2); }
-.plot-spectrum__body { min-height: 96px; max-height: 160px; overflow-y: auto; }
+.plot-spectrum__body { min-height: 99px; max-height: 198px; overflow-y: auto; }
+/* the table fits its rows — three at least, six before it scrolls */
+.plot-spectrum__settings,
+.plot-spectrum__table,
+.plot-spectrum__selection,
+.plot-spectrum__bar { flex-shrink: 0; }
+
+/* the body is a column, so the graph can take the window's spare height */
+.plot-spectrum-window .dialog__body,
+.plot-spectrum-body {
+  display: flex;
+  flex-direction: column;
+}
 .plot-spectrum__body .plot-spectrum__row:hover { background: var(--ps-row-hover); }
 .plot-spectrum__body .plot-spectrum__row[data-focused] { background: var(--ps-row-focus); }
 

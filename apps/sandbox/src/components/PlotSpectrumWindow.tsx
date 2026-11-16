@@ -68,7 +68,8 @@ export const MAX_ANALYSED_SAMPLES = 10 * 1024 * 1024;
 
 /** the graph's width before it has been measured */
 const DEFAULT_GRAPH_W = 560;
-const GRAPH_H = 240;
+/** the graph's height before it has been measured, and its least */
+const DEFAULT_GRAPH_H = 320;
 const LOG_MIN_HZ = 10;
 
 export function tracksLabel(tracks: PlotSpectrumTrack[]): string {
@@ -91,10 +92,18 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   // THE GRAPH'S REAL WIDTH: the curve is drawn a column per pixel and the
   // frequency grid is chosen for it, so a wider window shows more
   const [graphW, setGraphW] = React.useState(DEFAULT_GRAPH_W);
+  // …and its real HEIGHT: it takes the window's spare height (2026-11-16,
+  // "make the graph a bit taller" — the table fits its rows instead)
+  const [graphH, setGraphH] = React.useState(DEFAULT_GRAPH_H);
   const [graphEl, setGraphEl] = React.useState<HTMLDivElement | null>(null);
   React.useEffect(() => {
     if (!graphEl) return;
-    const measure = () => { const w = Math.round(graphEl.clientWidth); if (w > 0) setGraphW(w); };
+    const measure = () => {
+      const w = Math.round(graphEl.clientWidth);
+      const h = Math.round(graphEl.clientHeight);
+      if (w > 0) setGraphW(w);
+      if (h > 0) setGraphH(h);
+    };
     measure();
     const RO = graphEl.ownerDocument.defaultView?.ResizeObserver ?? (typeof ResizeObserver !== 'undefined' ? ResizeObserver : null);
     if (!RO) return;
@@ -158,8 +167,9 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   const peak = Math.max(-150, ...[...spectra.values()].map((s) => Math.max(...s.db.subarray(1))));
   const dbTop = plots.length > 0 ? Math.min(12, Math.ceil(peak / 6) * 6) : 0;
   const dbBottom = dbTop - range;
-  const dbToY = (db: number) => ((dbTop - db) / range) * GRAPH_H;
-  const dbStep = range >= 96 ? 12 : 6;
+  const dbToY = (db: number) => ((dbTop - db) / range) * graphH;
+  // dB lines about 22px apart or more: denser as the graph gets taller
+  const dbStep = [3, 6, 12, 24].find((st) => (st / range) * graphH >= 22) ?? 24;
   const dbTicks: number[] = [];
   for (let d = dbTop; d >= dbBottom; d -= dbStep) dbTicks.push(d);
   const { grid: hzGrid, labels: hzTicks } = frequencyTicks(fMin, fMax, linear, graphW);
@@ -181,7 +191,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
     let d = '';
     for (let x = 0; x <= graphW; x++) {
       const v = columnPeak(spectrum, x).db;
-      const y = Math.min(GRAPH_H, Math.max(0, dbToY(v)));
+      const y = Math.min(graphH, Math.max(0, dbToY(v)));
       d += `${x === 0 ? 'M' : 'L'}${x},${y.toFixed(1)}`;
     }
     return d;
@@ -198,7 +208,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   // between bins
   const readoutSpectrum = readoutPlot ? spectra.get(readoutPlot.id)! : null;
   const cursorReading = hover && readoutSpectrum
-    ? { hz: xToHz(hover.x), db: dbTop - (hover.y / GRAPH_H) * range }
+    ? { hz: xToHz(hover.x), db: dbTop - (hover.y / graphH) * range }
     : null;
   const peakReading = (() => {
     if (!hover || !readoutSpectrum) return null;
@@ -274,14 +284,14 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
               const r = e.currentTarget.getBoundingClientRect();
               setHover({
                 x: Math.max(0, Math.min(graphW, ((e.clientX - r.left) / r.width) * graphW)),
-                y: Math.max(0, Math.min(GRAPH_H, ((e.clientY - r.top) / r.height) * GRAPH_H)),
+                y: Math.max(0, Math.min(graphH, ((e.clientY - r.top) / r.height) * graphH)),
               });
             }}
             onMouseLeave={() => setHover(null)}
           >
-            <svg viewBox={`0 0 ${graphW} ${GRAPH_H}`} preserveAspectRatio="none" role="img" aria-label={plots.length ? `Spectrum of ${plots.map((p) => p.name).join(', ')}` : 'No spectrum plotted'}>
+            <svg viewBox={`0 0 ${graphW} ${graphH}`} preserveAspectRatio="none" role="img" aria-label={plots.length ? `Spectrum of ${plots.map((p) => p.name).join(', ')}` : 'No spectrum plotted'}>
               {grid && dbTicks.map((d) => <line key={`h${d}`} className="plot-spectrum__grid" x1={0} x2={graphW} y1={dbToY(d)} y2={dbToY(d)} />)}
-              {grid && hzGrid.map((h) => <line key={`v${h}`} className="plot-spectrum__grid" x1={hzToX(h)} x2={hzToX(h)} y1={0} y2={GRAPH_H} />)}
+              {grid && hzGrid.map((h) => <line key={`v${h}`} className="plot-spectrum__grid" x1={hzToX(h)} x2={hzToX(h)} y1={0} y2={graphH} />)}
               {(() => {
                 // EVERY CURVE IS FILLED (2026-11-16, "I really like the
                 // transparent body under the curve... can we keep it when we
@@ -294,7 +304,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
                     {lines.map(({ p, d }) => (
                       <path
                         key={`fill-${p.id}`}
-                        d={`${d}L${graphW},${GRAPH_H}L0,${GRAPH_H}Z`}
+                        d={`${d}L${graphW},${graphH}L0,${graphH}Z`}
                         fill={p.colour}
                         className="plot-spectrum__fill"
                         data-plot-fill={p.id}
@@ -318,7 +328,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
               })()}
               {hover && plots.length > 0 && (
                 <>
-                  <line className="plot-spectrum__crosshair" x1={hover.x} x2={hover.x} y1={0} y2={GRAPH_H} />
+                  <line className="plot-spectrum__crosshair" x1={hover.x} x2={hover.x} y1={0} y2={graphH} />
                   <line className="plot-spectrum__crosshair" x1={0} x2={graphW} y1={hover.y} y2={hover.y} />
                 </>
               )}
@@ -336,7 +346,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
               </ul>
             )}
             {cursorReading && peakReading && readoutPlot && (() => {
-              const yPct = (db: number) => (Math.max(0, Math.min(GRAPH_H, dbToY(db))) / GRAPH_H) * 100;
+              const yPct = (db: number) => (Math.max(0, Math.min(graphH, dbToY(db))) / graphH) * 100;
               // the DOT marks the line's value under the pointer — the Peak
               const cx = (hover!.x / graphW) * 100;
               const ly = yPct(peakReading.db);
@@ -437,8 +447,8 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   // that blocks the popup.
   if (osWindow && !popupBlocked) {
     return (
-      <PopoutPanel title="Plot spectrum" width={672} height={672} frame="dialog" os={os} onClose={onClose} onBlocked={() => setPopupBlocked(true)}>
-        <div className="dialog__body">{body}</div>
+      <PopoutPanel title="Plot spectrum" width={672} height={760} frame="dialog" os={os} onClose={onClose} onBlocked={() => setPopupBlocked(true)}>
+        <div className="dialog__body plot-spectrum-body">{body}</div>
         {footer}
       </PopoutPanel>
     );
