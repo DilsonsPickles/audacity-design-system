@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { ContextMenu, ContextMenuItem, GhostButton, useTheme } from '@audacity-ui/components';
+import { ContextMenu, ContextMenuItem, GhostButton, DialogHeader, useTheme } from '@audacity-ui/components';
 
 export interface PopoutMenuItem {
   label: string;
@@ -37,6 +37,15 @@ export interface PopoutPanelProps {
    *  it the host hears onClose; with it the host can fall back to an
    *  in-app form instead (2026-11-16, Plot spectrum) */
   onBlocked?: () => void;
+  /** What the window's frame looks like: a PANEL's tab header (the
+   *  default — Effects, Macros), or a DIALOG's title bar, body and footer
+   *  — a window that is a modal's look in an OS window (2026-11-16, Plot
+   *  spectrum: "it should still be styled like a modal"). With 'dialog'
+   *  the children are the dialog's body and footer (`.dialog__body`, a
+   *  DialogFooter) and the title bar's close button closes the window. */
+  frame?: 'panel' | 'dialog';
+  /** the dialog frame's title-bar controls */
+  os?: 'macos' | 'windows';
   children: React.ReactNode;
 }
 
@@ -142,7 +151,7 @@ interface PopoutEntry {
  *  same named window — which killed the popout the instant it opened. */
 const popoutEntries = new Map<string, PopoutEntry>();
 
-export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragEnd, continueDragFrom, menuItems, onBlocked, children }: PopoutPanelProps) {
+export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragEnd, continueDragFrom, menuItems, onBlocked, frame = 'panel', os, children }: PopoutPanelProps) {
   const { theme } = useTheme();
   const [popoutRoot, setPopoutRoot] = React.useState<HTMLElement | null>(null);
   const [headerEl, setHeaderEl] = React.useState<HTMLDivElement | null>(null);
@@ -307,7 +316,7 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
       if (isElectron) {
         popout.document.documentElement.style.background = 'transparent';
         popout.document.body.style.background = 'transparent';
-        root.style.borderRadius = '4px';
+        root.style.borderRadius = frame === 'dialog' ? '8px' : '4px';
       }
       popout.document.body.appendChild(root);
 
@@ -362,6 +371,36 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
   }, [popoutRoot, theme]);
 
   if (!popoutRoot) return null;
+  if (frame === 'dialog') {
+    // A DIALOG'S LOOK in the OS window: the design system's title bar
+    // (drag it to move the window — the same JS drag as the panel header;
+    // its buttons are left to themselves), body and footer, in the dialog's
+    // own theme variables; no shadow or float — the OS window is the frame
+    const isElectron = Boolean((window as { electronMenu?: unknown }).electronMenu);
+    const dialogVars = {
+      '--dialog-bg': theme.background.surface.default,
+      '--dialog-fg': theme.foreground.text.primary,
+      '--dialog-footer-bg': theme.background.surface.default,
+      '--dialog-border': theme.border.default,
+      '--dialog-footer-border': 'transparent',
+      '--dialog-shadow': 'none',
+    } as React.CSSProperties;
+    return createPortal(
+      <div
+        className="dialog popout-panel--dialog"
+        role="dialog"
+        aria-label={title}
+        data-owns-keyboard=""
+        style={{ ...dialogVars, width: '100%', height: '100%', minWidth: 0, maxWidth: 'none', maxHeight: 'none', margin: 0, borderRadius: isElectron ? 8 : 0, border: isElectron ? undefined : 'none', animation: 'none' }}
+      >
+        <div ref={setHeaderEl}>
+          <DialogHeader title={title} onClose={() => onCloseRef.current()} os={os} />
+        </div>
+        {children}
+      </div>,
+      popoutRoot,
+    );
+  }
   return createPortal(
     <>
       <div className="popout-panel__header" ref={setHeaderEl}>

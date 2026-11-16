@@ -356,11 +356,9 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   // that blocks the popup.
   if (osWindow && !popupBlocked) {
     return (
-      <PopoutPanel title="Plot spectrum" width={672} height={760} onClose={onClose} onBlocked={() => setPopupBlocked(true)}>
-        <div className="plot-spectrum-popout" style={{ background: theme.background.surface.default }}>
-          <div className="plot-spectrum-popout__body">{body}</div>
-          {footer}
-        </div>
+      <PopoutPanel title="Plot spectrum" width={672} height={660} frame="dialog" os={os} onClose={onClose} onBlocked={() => setPopupBlocked(true)}>
+        <div className="dialog__body">{body}</div>
+        {footer}
       </PopoutPanel>
     );
   }
