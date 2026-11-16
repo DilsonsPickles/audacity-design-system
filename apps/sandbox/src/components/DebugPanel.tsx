@@ -8,7 +8,8 @@
  * - Track/clip generation
  */
 
-import { Dialog, DialogFooter, LabeledCheckbox, Button, Dropdown, toast } from '@audacity-ui/components';
+import type React from 'react';
+import { Dialog, DialogFooter, LabeledCheckbox, Button, Dropdown, toast, useTheme } from '@audacity-ui/components';
 
 const SLOW_MEDIA_OPTIONS = [0, 3, 6, 10, 30].map((s) => ({ value: String(s), label: s === 0 ? 'No wait' : `${s} s` }));
 import type { Command } from '@audacity-ui/components';
@@ -193,6 +194,7 @@ export function DebugPanel({
   legacyAuthDialogsEnabled,
   onLegacyAuthDialogsEnabledChange,
 }: DebugPanelProps) {
+  const { theme } = useTheme();
   const { macros, addMacro, addCommandToMacro, deleteMacro } = useMacros();
 
   // Twenty macros overflow the Macro manager list at any dock height; the
@@ -230,11 +232,20 @@ export function DebugPanel({
       title="Developer Tools"
       width={500}
     >
+      {/* THE PANEL TAKES THE THEME (2026-11-16, "Debug panel isn't right on
+          dark mode. Should be light text"): every text, the select's field
+          and border, and the info box read these, set from the theme */}
       <div style={{
         display: 'flex',
         flexDirection: 'column',
         gap: '24px',
-      }}>
+        '--debug-text': theme.foreground.text.primary,
+        '--debug-border': theme.border.default,
+        '--debug-input-bg': theme.background.control.input.idle,
+        '--debug-info-bg': `color-mix(in srgb, ${theme.accent.primary} 10%, transparent)`,
+        '--debug-info-border': `color-mix(in srgb, ${theme.accent.primary} 30%, transparent)`,
+        color: theme.foreground.text.primary,
+      } as React.CSSProperties}>
         {/* Hit Markers Section — first, it is the one reached for most */}
         <div>
           <h3 style={{
@@ -242,7 +253,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Hit Markers
@@ -261,7 +272,7 @@ export function DebugPanel({
               fontFamily: 'Inter, sans-serif',
               fontSize: '12px',
               lineHeight: '16px',
-              color: '#14151a',
+              color: 'var(--debug-text)',
               opacity: 0.7,
             }}>
               Paints every handle&apos;s real hit element in place: trim (purple), stretch (red),
@@ -278,7 +289,7 @@ export function DebugPanel({
               fontFamily: 'Inter, sans-serif',
               fontSize: '12px',
               lineHeight: '16px',
-              color: '#14151a',
+              color: 'var(--debug-text)',
               opacity: 0.7,
             }}>
               Hover anything for its W × H, padding and margin, its offsets from its container&apos;s
@@ -297,7 +308,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             User State
@@ -334,7 +345,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Operating System
@@ -361,7 +372,7 @@ export function DebugPanel({
                 fontSize: '12px',
                 fontWeight: 400,
                 lineHeight: '16px',
-                color: '#14151a',
+                color: 'var(--debug-text)',
               }}>
                 Windows
               </span>
@@ -384,7 +395,7 @@ export function DebugPanel({
                 fontSize: '12px',
                 fontWeight: 400,
                 lineHeight: '16px',
-                color: '#14151a',
+                color: 'var(--debug-text)',
               }}>
                 macOS
               </span>
@@ -399,7 +410,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Cut Mode
@@ -426,7 +437,7 @@ export function DebugPanel({
                 fontSize: '12px',
                 fontWeight: 400,
                 lineHeight: '16px',
-                color: '#14151a',
+                color: 'var(--debug-text)',
               }}>
                 Split (leaves gaps)
               </span>
@@ -449,7 +460,7 @@ export function DebugPanel({
                 fontSize: '12px',
                 fontWeight: 400,
                 lineHeight: '16px',
-                color: '#14151a',
+                color: 'var(--debug-text)',
               }}>
                 Ripple (shifts timeline)
               </span>
@@ -464,7 +475,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Record Button
@@ -484,7 +495,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Play-at-Speed
@@ -504,7 +515,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Slow media
@@ -527,7 +538,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Accessibility
@@ -547,7 +558,7 @@ export function DebugPanel({
                 fontSize: '12px',
                 fontWeight: 400,
                 lineHeight: '16px',
-                color: '#14151a',
+                color: 'var(--debug-text)',
               }}>
                 Keyboard Navigation Profile
               </label>
@@ -558,9 +569,10 @@ export function DebugPanel({
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   padding: '6px 8px',
-                  border: '1px solid #d4d5d9',
+                  border: '1px solid var(--debug-border)',
                   borderRadius: '2px',
-                  backgroundColor: '#ffffff',
+                  backgroundColor: 'var(--debug-input-bg)',
+                  color: 'var(--debug-text)',
                   cursor: 'pointer',
                 }}
               >
@@ -575,7 +587,7 @@ export function DebugPanel({
                 fontSize: '11px',
                 fontStyle: 'italic',
                 lineHeight: '14px',
-                color: '#14151a',
+                color: 'var(--debug-text)',
                 opacity: 0.7,
               }}>
                 {accessibilityProfiles.find(p => p.id === accessibilityProfileId)?.description}
@@ -596,7 +608,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Mixer
@@ -615,7 +627,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Muse ID
@@ -634,7 +646,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Track & Clip Controls
@@ -654,7 +666,7 @@ export function DebugPanel({
                 fontSize: '12px',
                 fontWeight: 400,
                 lineHeight: '16px',
-                color: '#14151a',
+                color: 'var(--debug-text)',
                 minWidth: '100px',
               }}>
                 Number of tracks:
@@ -669,10 +681,11 @@ export function DebugPanel({
                   fontFamily: 'Inter, sans-serif',
                   fontSize: '12px',
                   padding: '6px 8px',
-                  border: '1px solid #d4d5d9',
+                  border: '1px solid var(--debug-border)',
                   borderRadius: '2px',
                   width: '80px',
-                  backgroundColor: '#ffffff',
+                  backgroundColor: 'var(--debug-input-bg)',
+                  color: 'var(--debug-text)',
                 }}
               />
             </div>
@@ -721,7 +734,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Macros
@@ -744,7 +757,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Toasts
@@ -806,7 +819,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Track Selection Model
@@ -824,7 +837,7 @@ export function DebugPanel({
                 onChange={(e) => onTrackSelectionModeChange(e.target.value as 'classic' | 'follows-focus')}
                 style={{ cursor: 'pointer', marginTop: '2px' }}
               />
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: 'var(--debug-text)' }}>
                 <strong>Classic</strong> — focus and selection are independent. Arrow keys move focus only; Shift+Click / Cmd+Click change selection. Cmd+Arrow reorders tracks.
               </span>
             </label>
@@ -836,7 +849,7 @@ export function DebugPanel({
                 onChange={(e) => onTrackSelectionModeChange(e.target.value as 'classic' | 'follows-focus')}
                 style={{ cursor: 'pointer', marginTop: '2px' }}
               />
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: 'var(--debug-text)' }}>
                 <strong>Selection follows focus</strong> — plain clicks and arrow keys move focus AND replace selection. Hold <em>Alt</em> on Arrow to peek (focus moves, selection stays). Hold <em>Cmd</em> on Enter to toggle non-contiguously (Cmd+Enter, Cmd+Click on a side-panel header). Shift extends a contiguous range. Cmd+Arrow reorders tracks.
               </span>
             </label>
@@ -855,7 +868,7 @@ export function DebugPanel({
             fontSize: '14px',
             fontWeight: 600,
             lineHeight: '20px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: '0 0 12px 0',
           }}>
             Lane Click Behavior
@@ -873,7 +886,7 @@ export function DebugPanel({
                 onChange={(e) => onLaneClickBehaviorChange(e.target.value as 'playhead-only' | 'select-track' | 'select-and-collapse')}
                 style={{ cursor: 'pointer', marginTop: '2px' }}
               />
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: 'var(--debug-text)' }}>
                 <strong>Playhead only</strong> — a plain click on a track's lane parks the playhead, moves focus and clears any time selection; track selection is untouched.
               </span>
             </label>
@@ -885,7 +898,7 @@ export function DebugPanel({
                 onChange={(e) => onLaneClickBehaviorChange(e.target.value as 'playhead-only' | 'select-track' | 'select-and-collapse')}
                 style={{ cursor: 'pointer', marginTop: '2px' }}
               />
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: 'var(--debug-text)' }}>
                 <strong>Select clicked track</strong> — the click also selects that track exclusively (and clears any time selection, as every plain lane click does since 2026-10-07).
               </span>
             </label>
@@ -897,7 +910,7 @@ export function DebugPanel({
                 onChange={(e) => onLaneClickBehaviorChange(e.target.value as 'playhead-only' | 'select-track' | 'select-and-collapse')}
                 style={{ cursor: 'pointer', marginTop: '2px' }}
               />
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: '#14151a' }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', lineHeight: '16px', color: 'var(--debug-text)' }}>
                 <strong>Select + collapse</strong> (default) — the click selects that track and collapses the time selection, wherever it lands — inside the selection's rows too (Audacity 3 feel; until 2026-10-07 a click inside the rows kept the range).
               </span>
             </label>
@@ -907,15 +920,15 @@ export function DebugPanel({
         {/* Info Section */}
         <div style={{
           padding: '12px',
-          backgroundColor: 'rgba(103, 124, 228, 0.1)',
+          backgroundColor: 'var(--debug-info-bg)',
           borderRadius: '4px',
-          border: '1px solid rgba(103, 124, 228, 0.3)',
+          border: '1px solid var(--debug-info-border)',
         }}>
           <p style={{
             fontFamily: 'Inter, sans-serif',
             fontSize: '12px',
             lineHeight: '16px',
-            color: '#14151a',
+            color: 'var(--debug-text)',
             margin: 0,
           }}>
             💡 <strong>Tip:</strong> Use these controls to test different UI states without going through the full flow. Changes take effect immediately.

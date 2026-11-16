@@ -75,18 +75,26 @@ export const darkTheme: ThemeTokens = {
       },
 
       checkbox: {
-        idle: '#252B31',         // Dark background
-        hover: '#2C333A',        // Slightly lighter on hover
-        pressed: '#373E46',      // Even lighter when pressed
+        // A step ABOVE the dialog's #252B31 (2026-11-16, "Debug panel isn't
+        // right on dark mode": idle WAS the dialog's own colour, so every
+        // unchecked checkbox vanished in a dark dialog), as the light theme's
+        // sits a step below its surface
+        idle: '#4C545D',
+        hover: '#5F676F',
+        pressed: '#6B737B',
         checked: '#4a90e2',      // Blue when checked
         checkedHover: '#5ba3ff', // Lighter blue on hover
         disabled: '#1A1F24',     // Very dark when disabled
       },
 
       radio: {
-        idle: '#252B31',         // Dark background
-        hover: '#2C333A',        // Slightly lighter on hover
-        pressed: '#373E46',      // Even lighter when pressed
+        // A step ABOVE the dialog's #252B31 (2026-11-16, "Debug panel isn't
+        // right on dark mode": idle WAS the dialog's own colour, so every
+        // unchecked radio vanished in a dark dialog), as the light theme's
+        // sits a step below its surface
+        idle: '#4C545D',
+        hover: '#5F676F',
+        pressed: '#6B737B',
         selected: '#4a90e2',     // Blue when selected
         selectedHover: '#5ba3ff', // Lighter blue on hover
         disabled: '#1A1F24',     // Very dark when disabled
