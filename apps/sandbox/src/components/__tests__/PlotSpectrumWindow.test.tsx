@@ -39,8 +39,8 @@ describe('PlotSpectrumWindow', () => {
     expect(props.readRegion).toHaveBeenLastCalledWith([1, 2], 600, 616);
     const rows = document.querySelectorAll('[data-plot-row]');
     expect(rows).toHaveLength(2);
-    // two curves, none focused: lines only
-    expect(document.querySelectorAll('[data-plot-fill]')).toHaveLength(0);
+    // two curves: both filled, the fills fainter
+    expect(document.querySelectorAll('[data-plot-fill][data-several]')).toHaveLength(2);
     expect(rows[0].textContent).toContain('0:05:00.00');
     expect(rows[1].textContent).toContain('2 tracks');
     expect(document.querySelectorAll('[data-plot-curve]')).toHaveLength(2);
@@ -56,8 +56,8 @@ describe('PlotSpectrumWindow', () => {
     expect(document.querySelector('[data-plot-curve="2"]')?.hasAttribute('data-dimmed')).toBe(true);
     expect(document.querySelector('[data-plot-curve="1"]')?.hasAttribute('data-dimmed')).toBe(false);
     expect(props.onSelectRange).not.toHaveBeenCalled();
-    // compared curves stay lines, focused or not
-    expect(document.querySelectorAll('[data-plot-fill]')).toHaveLength(0);
+    // a dimmed curve's fill dims with it
+    expect(document.querySelector('[data-plot-fill="2"]')?.hasAttribute('data-dimmed')).toBe(true);
     // a second click lets go
     fireEvent.click(document.querySelector('[data-plot-row="1"]') as HTMLElement);
     expect(document.querySelector('[data-plot-curve="2"]')?.hasAttribute('data-dimmed')).toBe(false);

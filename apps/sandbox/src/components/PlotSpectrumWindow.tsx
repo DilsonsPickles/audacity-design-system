@@ -282,29 +282,40 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
             <svg viewBox={`0 0 ${graphW} ${GRAPH_H}`} preserveAspectRatio="none" role="img" aria-label={plots.length ? `Spectrum of ${plots.map((p) => p.name).join(', ')}` : 'No spectrum plotted'}>
               {grid && dbTicks.map((d) => <line key={`h${d}`} className="plot-spectrum__grid" x1={0} x2={graphW} y1={dbToY(d)} y2={dbToY(d)} />)}
               {grid && hzGrid.map((h) => <line key={`v${h}`} className="plot-spectrum__grid" x1={hzToX(h)} x2={hzToX(h)} y1={0} y2={GRAPH_H} />)}
-              {drawOrder.map((p) => {
-                const line = pathFor(spectra.get(p.id)!);
-                // FILLED only when it is the ONLY curve, as Audacity 3 draws
-                // its one spectrum (2026-11-16, "let's just do it for single
-                // curves" — a focused curve's fill over the others did not
-                // work); compared curves stay lines
-                const filled = plots.length === 1;
+              {(() => {
+                // EVERY CURVE IS FILLED (2026-11-16, "I really like the
+                // transparent body under the curve... can we keep it when we
+                // have multiple curves?"): all the fills first, every line on
+                // top, so no fill hides a line; fainter when several overlap,
+                // and a dimmed curve's fill dims with it
+                const lines = drawOrder.map((p) => ({ p, d: pathFor(spectra.get(p.id)!) }));
                 return (
-                  <React.Fragment key={p.id}>
-                    {filled && (
-                      <path d={`${line}L${graphW},${GRAPH_H}L0,${GRAPH_H}Z`} fill={p.colour} className="plot-spectrum__fill" data-plot-fill={p.id} />
-                    )}
-                    <path
-                      d={line}
-                      stroke={p.colour}
-                      className="plot-spectrum__curve"
-                      data-plot-curve={p.id}
-                      data-dimmed={focusedId !== null && focusedId !== p.id ? '' : undefined}
-                      data-focused={focusedId === p.id ? '' : undefined}
-                    />
-                  </React.Fragment>
+                  <>
+                    {lines.map(({ p, d }) => (
+                      <path
+                        key={`fill-${p.id}`}
+                        d={`${d}L${graphW},${GRAPH_H}L0,${GRAPH_H}Z`}
+                        fill={p.colour}
+                        className="plot-spectrum__fill"
+                        data-plot-fill={p.id}
+                        data-several={plots.length > 1 ? '' : undefined}
+                        data-dimmed={focusedId !== null && focusedId !== p.id ? '' : undefined}
+                      />
+                    ))}
+                    {lines.map(({ p, d }) => (
+                      <path
+                        key={p.id}
+                        d={d}
+                        stroke={p.colour}
+                        className="plot-spectrum__curve"
+                        data-plot-curve={p.id}
+                        data-dimmed={focusedId !== null && focusedId !== p.id ? '' : undefined}
+                        data-focused={focusedId === p.id ? '' : undefined}
+                      />
+                    ))}
+                  </>
                 );
-              })}
+              })()}
               {hover && plots.length > 0 && (
                 <>
                   <line className="plot-spectrum__crosshair" x1={hover.x} x2={hover.x} y1={0} y2={GRAPH_H} />
