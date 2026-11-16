@@ -142,6 +142,23 @@ export function spectrumDbAt(spectrum: Spectrum, hz: number): number {
   return spectrum.db[k] * (1 - f) + spectrum.db[k + 1] * f;
 }
 
+/**
+ * A peak at bin k, refined between bins by a parabola through it and its
+ * two neighbours (Audacity 3's Frequency Analysis does the same for its
+ * Peak readout), so the frequency is not stuck to the bin grid.
+ */
+export function refinePeak(spectrum: Spectrum, k: number): { hz: number; db: number } {
+  const { db, binHz } = spectrum;
+  if (k <= 0 || k >= db.length - 1) return { hz: k * binHz, db: db[k] };
+  const a = db[k - 1];
+  const b = db[k];
+  const c = db[k + 1];
+  const denom = a - 2 * b + c;
+  if (denom >= 0) return { hz: k * binHz, db: b };
+  const p = Math.max(-0.5, Math.min(0.5, (0.5 * (a - c)) / denom));
+  return { hz: (k + p) * binHz, db: b - 0.25 * (a - c) * p };
+}
+
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 /** "A4" for 440 Hz — the nearest equal-tempered note (Audacity 3 shows it beside the frequency) */

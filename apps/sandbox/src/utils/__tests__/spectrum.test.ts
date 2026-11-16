@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeSpectrum, spectrumDbAt, noteName, formatPlotTime, spectrumCsv, fft } from '../spectrum';
+import { computeSpectrum, spectrumDbAt, noteName, formatPlotTime, spectrumCsv, fft, refinePeak } from '../spectrum';
 
 // Plot spectrum's maths (2026-11-16)
 const sine = (hz: number, amp: number, rate: number, n: number) =>
@@ -51,5 +51,15 @@ describe('spectrum', () => {
     expect(csv[0]).toBe('Frequency (Hz),Plot 1 (dB),Plot 2 (dB)');
     expect(csv.length).toBe(129);
     expect(csv[1].split(',').length).toBe(3);
+  });
+
+  it('the Peak reading is refined between bins: a 1012 Hz tone reads within a few Hz, not the bin grid', () => {
+    const rate = 48000;
+    const s = computeSpectrum(sine(1012, 1, rate, rate), rate, 2048, 'hann');
+    let k = 1;
+    for (let i = 1; i < s.db.length; i++) if (s.db[i] > s.db[k]) k = i;
+    const peak = refinePeak(s, k);
+    expect(Math.abs(peak.hz - 1012)).toBeLessThan(3);
+    expect(Math.abs(k * s.binHz - 1012)).toBeGreaterThan(Math.abs(peak.hz - 1012));
   });
 });

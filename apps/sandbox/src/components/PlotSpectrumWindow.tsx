@@ -1,7 +1,7 @@
 import React from 'react';
 import { Dialog, DialogFooter, Dropdown, LabeledCheckbox, Button, ToolButton, useTheme, toast } from '@audacity-ui/components';
 import {
-  computeSpectrum, spectrumDbAt, noteName, formatHz, formatPlotTime, formatPlotDuration, spectrumCsv,
+  computeSpectrum, spectrumDbAt, refinePeak, noteName, formatHz, formatPlotTime, formatPlotDuration, spectrumCsv,
   WINDOW_FUNCTIONS, SPECTRUM_SIZES, SPECTRUM_ALGORITHMS, type Spectrum, type WindowFunctionId,
 } from '../utils/spectrum';
 import { downloadBlob } from '../utils/downloadBlob';
@@ -69,6 +69,8 @@ export const MAX_ANALYSED_SAMPLES = 10 * 1024 * 1024;
 const GRAPH_W = 560;
 const GRAPH_H = 240;
 const LOG_MIN_HZ = 10;
+/** how far either side of the pointer the Peak reading looks */
+const PEAK_REACH_PX = 12;
 
 export function tracksLabel(tracks: PlotSpectrumTrack[]): string {
   if (tracks.length === 0) return 'No track';
@@ -154,15 +156,15 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   // one point per pixel column: the loudest bin that falls in it — the
   // readout reads the same, so it sits ON the drawn line, at the peak's
   // own frequency
-  const columnPeak = (spectrum: Spectrum, x: number): { hz: number; db: number } => {
+  const columnPeak = (spectrum: Spectrum, x: number): { hz: number; db: number; k: number } => {
     const lo = xToHz(x);
     const hi = xToHz(x + 1);
     const k0 = Math.max(1, Math.floor(lo / spectrum.binHz));
     const k1 = Math.min(spectrum.db.length - 1, Math.ceil(hi / spectrum.binHz));
-    if (k1 <= k0) return { hz: lo, db: spectrumDbAt(spectrum, lo) };
+    if (k1 <= k0) return { hz: lo, db: spectrumDbAt(spectrum, lo), k: Math.round(lo / spectrum.binHz) };
     let best = k0;
     for (let k = k0 + 1; k <= k1; k++) if (spectrum.db[k] > spectrum.db[best]) best = k;
-    return { hz: best * spectrum.binHz, db: spectrum.db[best] };
+    return { hz: best * spectrum.binHz, db: spectrum.db[best], k: best };
   };
   const pathFor = (spectrum: Spectrum) => {
     let d = '';
@@ -176,9 +178,25 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
 
   // the readout follows the focused curve, else the newest
   const readoutPlot = plots.find((p) => p.id === focusedId) ?? plots[plots.length - 1];
-  const hoverPeak = hoverX !== null && readoutPlot ? columnPeak(spectra.get(readoutPlot.id)!, Math.floor(hoverX)) : null;
-  const hoverHz = hoverPeak?.hz ?? null;
-  const hoverDb = hoverPeak?.db ?? null;
+  // TWO READINGS, Audacity 3's pair (later the same day, "I want to see
+  // freq at cursor pos AND peak value too"): the CURSOR — the frequency
+  // under the pointer and the level there — and the PEAK — the highest
+  // point within PEAK_REACH_PX of the pointer, refined between bins
+  const readoutSpectrum = readoutPlot ? spectra.get(readoutPlot.id)! : null;
+  const cursorReading = hoverX !== null && readoutSpectrum
+    ? { hz: xToHz(hoverX), db: spectrumDbAt(readoutSpectrum, xToHz(hoverX)) }
+    : null;
+  const peakReading = (() => {
+    if (hoverX === null || !readoutSpectrum) return null;
+    let best: { db: number; k: number } | null = null;
+    const x0 = Math.max(0, Math.floor(hoverX) - PEAK_REACH_PX);
+    const x1 = Math.min(GRAPH_W, Math.floor(hoverX) + PEAK_REACH_PX);
+    for (let x = x0; x <= x1; x++) {
+      const c = columnPeak(readoutSpectrum, x);
+      if (!best || c.db > best.db) best = c;
+    }
+    return best ? refinePeak(readoutSpectrum, best.k) : null;
+  })();
 
   const drawOrder = [...plots].sort((a, b) => (a.id === focusedId ? 1 : 0) - (b.id === focusedId ? 1 : 0));
 
@@ -246,9 +264,6 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
               {hoverX !== null && plots.length > 0 && (
                 <line className="plot-spectrum__crosshair" x1={hoverX} x2={hoverX} y1={0} y2={GRAPH_H} />
               )}
-              {hoverDb !== null && plots.length > 0 && (
-                <line className="plot-spectrum__crosshair" x1={0} x2={GRAPH_W} y1={dbToY(hoverDb)} y2={dbToY(hoverDb)} />
-              )}
             </svg>
             {plots.length === 0 && (
               <p className="plot-spectrum__empty">Make a selection, then press Plot selection</p>
@@ -262,17 +277,30 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
                 ))}
               </ul>
             )}
-            {hoverHz !== null && hoverDb !== null && readoutPlot && (
-              <div
-                className="plot-spectrum__readout"
-                data-plot-readout
-                // near either side it hangs inward, so it stays in the window
-                data-edge={hoverX! < GRAPH_W * 0.15 ? 'start' : hoverX! > GRAPH_W * 0.85 ? 'end' : undefined}
-                style={{ left: `${(hoverX! / GRAPH_W) * 100}%`, top: `${(Math.max(0, dbToY(hoverDb)) / GRAPH_H) * 100}%` }}
-              >
-                {formatHz(hoverHz)} ({noteName(hoverHz)}) = {hoverDb.toFixed(1)} dB
-              </div>
-            )}
+            {cursorReading && peakReading && readoutPlot && (() => {
+              const px = (hzToX(peakReading.hz) / GRAPH_W) * 100;
+              const py = (Math.max(0, Math.min(GRAPH_H, dbToY(peakReading.db))) / GRAPH_H) * 100;
+              const fx = hzToX(peakReading.hz);
+              return (
+                <>
+                  <span className="plot-spectrum__peak-dot" data-plot-peak style={{ left: `${px}%`, top: `${py}%`, background: readoutPlot.colour }} />
+                  <div
+                    className="plot-spectrum__readout"
+                    data-plot-readout
+                    // near either side it hangs inward, so it stays in the window
+                    data-edge={fx < GRAPH_W * 0.2 ? 'start' : fx > GRAPH_W * 0.8 ? 'end' : undefined}
+                    style={{ left: `${px}%`, top: `${py}%` }}
+                  >
+                    <span>Cursor</span>
+                    <span data-plot-cursor-reading>{formatHz(cursorReading.hz)} ({noteName(cursorReading.hz)})</span>
+                    <span>{cursorReading.db.toFixed(1)} dB</span>
+                    <span>Peak</span>
+                    <span data-plot-peak-reading>{formatHz(peakReading.hz)} ({noteName(peakReading.hz)})</span>
+                    <span>{peakReading.db.toFixed(1)} dB</span>
+                  </div>
+                </>
+              );
+            })()}
           </div>
           <div className="plot-spectrum__hz-axis" aria-hidden>
             {hzTicks.map((h) => (
