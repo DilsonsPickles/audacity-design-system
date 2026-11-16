@@ -25,7 +25,7 @@ import { CopyingProjectDialog } from './components/CopyingProjectDialog';
 import { useTimerRecord } from './hooks/useTimerRecord';
 import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
-import { KeyboardMap, SHORTCUT_ROWS, isToolSeparator, TITLE_BAR_ID, titleBarItems, removeTool, PROJECT_TAB_TOOL_ID } from '@audacity-ui/components';
+import { KeyboardMap, SHORTCUT_ROWS, isToolSeparator, TITLE_BAR_ID, TITLE_BAR_ONLY, titleBarItems, removeTool, PROJECT_TAB_TOOL_ID } from '@audacity-ui/components';
 import { transportStatusText } from './utils/transportStatus';
 import { useStatusInfo } from './hooks/useStatusInfo';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
@@ -1388,7 +1388,8 @@ function CanvasDemoContent() {
     // (and while a ⌘-drag has a tool in hand, 2026-11-16)
     infoText: toolbarEditing || toolDrag.draggingToolId
       ? (toolDrag.target?.refused
-          ? (toolDrag.target.kind === 'into' && toolDrag.target.barId === TITLE_BAR_ID ? 'The title bar takes app controls only' : 'This tool has no vertical form')
+          ? (TITLE_BAR_ONLY.includes(toolDrag.draggingToolId ?? '') ? 'This one lives in the title bar only'
+            : toolDrag.target.kind === 'into' && toolDrag.target.barId === TITLE_BAR_ID ? 'The title bar takes app controls only' : 'This tool has no vertical form')
         : toolDrag.target?.kind === 'new' ? ('newRowAt' in toolDrag.target.placement ? 'Release to give it a row of its own' : 'Release to give it a toolbar of its own')
         : toolDrag.target?.kind === 'into' ? 'Release to add it to this toolbar'
         : toolDrag.removing ? 'Release to take it off the toolbars'

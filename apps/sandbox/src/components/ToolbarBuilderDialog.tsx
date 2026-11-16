@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Button, Checkbox, Dialog, DialogFooter, Icon, SearchField, useTheme, usePreferences,
   CUSTOMISE_TOOLBAR_ENTRIES, CUSTOMISE_TOOL_ID, PROJECT_TAB_TOOL_ID,
-  TOOLBAR_REGIONS, TITLE_BAR_ID, TITLE_BAR_ALLOWED, addEmptyBar, findBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertTool, isToolSeparator,
+  TOOLBAR_REGIONS, TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, addEmptyBar, findBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertTool, isToolSeparator,
   moveBar, moveTool, nextBarId, removeBar, removeTool, renameBar, rowsOf,
   type BarPlacement, type ToolbarBar, type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
@@ -252,7 +252,9 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
   // THE TITLE BAR TAKES APP-LEVEL ITEMS ONLY (2026-11-16, the corner):
   // Debug, Audio setup, Workspace, Share audio, Get effects, Mixer
   const targetIsTitle = (sel?.kind === 'bar' && sel.barId === TITLE_BAR_ID) || selTool?.bar.id === TITLE_BAR_ID;
-  const canAdd = leftSel !== null && sel !== null && (!targetIsTitle || TITLE_BAR_ALLOWED.includes(leftSel));
+  // …and Get effects and Mixer go into the title bar only (2026-11-16)
+  const canAdd = leftSel !== null && sel !== null
+    && (targetIsTitle ? TITLE_BAR_ALLOWED.includes(leftSel) : !TITLE_BAR_ONLY.includes(leftSel));
   const add = () => {
     if (!leftSel || !sel) return;
     const id = leftSel;

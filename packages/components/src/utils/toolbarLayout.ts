@@ -161,6 +161,25 @@ export const TITLE_BAR_TOOLS: ReadonlyArray<string> = [PROJECT_TAB_TOOL_ID, 'deb
  *  the user gives them; an item is in the corner or on a toolbar, never both */
 export const TITLE_BAR_ALLOWED: ReadonlyArray<string> = ['debug', 'audio-setup', 'workspace', 'share-audio', 'get-effects', 'mixer-button'];
 
+/** The corner items that live NOWHERE ELSE (2026-11-16, "get effects and
+ *  mixer shouldn't be able to go in main toolbars. Keep that as title bar
+ *  only for now"): never on a dock's toolbar */
+export const TITLE_BAR_ONLY: ReadonlyArray<string> = ['get-effects', 'mixer-button'];
+
+/** A layout with every TITLE-BAR-ONLY item off the docks' toolbars: one found
+ *  on a toolbar moves to the end of the title bar (or, with no title bar,
+ *  comes off the toolbars); the same layout when there is none to move.
+ *  Idempotent — applied on every read, so an old layout is put right */
+export function withTitleBarOnlyItems(layout: ToolbarLayout): ToolbarLayout {
+  let next = layout;
+  for (const id of TITLE_BAR_ONLY) {
+    const at = findTool(next, id);
+    if (!at || at.bar.id === TITLE_BAR_ID) continue;
+    next = findBar(next, TITLE_BAR_ID) ? insertTool(next, id, TITLE_BAR_ID, null) : removeTool(next, id);
+  }
+  return next;
+}
+
 /** The title bar's corner items, in order (the tabs left out): the layout's
  *  Title bar toolbar, or the seed's when a layout has none */
 export function titleBarItems(layout: ToolbarLayout): string[] {
@@ -263,7 +282,9 @@ export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout
   // The title bar a toolbar of its own, fixed; Mixer and Get effects (hidden
   // by default) lead the main toolbar
   const title: ToolbarBar = { id: TITLE_BAR_ID, tools: [...TITLE_BAR_TOOLS] };
-  const main = groupedBar('main', [['mixer-button', 'get-effects'], ...groups, [CUSTOMISE_TOOL_ID]], counter);
+  // (Mixer and Get effects are title-bar-only since 2026-11-16 — not seeded
+  // on the main toolbar; the title bar's checklist adds them)
+  const main = groupedBar('main', [...groups, [CUSTOMISE_TOOL_ID]], counter);
   const bottom = groupedBar('status', statusBars().map((b) => b.tools), counter);
   return { top: [[title], [main]], bottom: [[bottom]], left: [], right: [] };
 }

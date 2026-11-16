@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { TITLE_BAR_ALLOWED, TITLE_BAR_ID, type BarPlacement, type ToolbarLayout } from '@audacity-ui/components';
+import { TITLE_BAR_ALLOWED, TITLE_BAR_ID, TITLE_BAR_ONLY, type BarPlacement, type ToolbarLayout } from '@audacity-ui/components';
 import { resolveToolDrop, type ToolDropTarget } from '../utils/toolbarToolDrop';
 
 export interface UseToolbarToolDragDeps {
@@ -76,6 +76,8 @@ export function useToolbarToolDrag({ layout, toolFitsVertical, onMoveInto, onMov
     const resolve = (x: number, y: number): ToolDropTarget | null => {
       const t = resolveToolDrop(x, y, layoutRef.current, row, fits);
       if (t && t.kind === 'into' && t.barId === TITLE_BAR_ID && !TITLE_BAR_ALLOWED.includes(toolId)) return { ...t, refused: true };
+      // …and a title-bar-only item (Get effects, Mixer) goes nowhere else
+      if (t && TITLE_BAR_ONLY.includes(toolId) && !(t.kind === 'into' && t.barId === TITLE_BAR_ID)) return { ...t, refused: true };
       return t;
     };
     const begin = () => {

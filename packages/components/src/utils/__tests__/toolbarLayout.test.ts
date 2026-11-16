@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   coerceToolbarLayout, defaultToolbarLayout, dockBars, findBar, findTool, moveBar, moveTool, moveToolToNewBar, nextBarId, insertSeparator, isToolSeparator, addEmptyBar, removeBar, renameBar, barDisplayName,
-  normaliseLayout, isToolbarLayout, setBarSize, titleBarItems, withTitleBarItem, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID, type ToolbarLayout, type ToolbarRegion,
+  normaliseLayout, isToolbarLayout, setBarSize, titleBarItems, withTitleBarItem, withTitleBarOnlyItems, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID, type ToolbarLayout, type ToolbarRegion,
 } from '../toolbarLayout';
 
 /** A seed WITHOUT the project row (2026-11-10, the project toolbar's
@@ -45,9 +45,10 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
       expect(layout.right).toEqual([]);
       expect(isToolbarLayout(layout)).toBe(true);
       const groups = groupsOf(layout.top[1][0].tools);
-      // Mixer and Get effects first (hidden by default), the cog last
-      expect(groups[0]).toEqual(['mixer-button', 'get-effects']);
-      expect(groups[1]).toEqual(['play', 'stop', 'record', 'step-back', 'step-forward', 'loop']);
+      // The transport first (Mixer and Get effects are title-bar-only since 2026-11-16), the cog last
+      expect(groups[0]).toEqual(['play', 'stop', 'record', 'step-back', 'step-forward', 'loop']);
+      expect(layout.top[1][0].tools).not.toContain('mixer-button');
+      expect(layout.top[1][0].tools).not.toContain('get-effects');
       expect(groups[groups.length - 1]).toEqual(['customise']);
       expect(groups[groups.length - 2]).toEqual(['microphone-levels', 'playback-meter']);
       expect(groupsOf(layout.bottom[0][0].tools)).toEqual([['status-cue', 'status-info'], ['selection-timecodes', 'selection-duration']]);
@@ -350,5 +351,17 @@ describe('THE TITLE BAR\'S CORNER (2026-11-16)', () => {
     expect(added.top[0][0].tools).toEqual(['project-tabs', 'debug', 'audio-setup']);
     expect(withTitleBarItem(added, 'debug')).toBe(added);
     expect(withTitleBarItem(layout, 'play')).toBe(layout);
+  });
+});
+
+describe('TITLE-BAR-ONLY ITEMS (2026-11-16)', () => {
+  it('Get effects and Mixer on a toolbar move to the title bar\'s end; with no title bar they come off; idempotent', () => {
+    const layout = { top: [[{ id: 'title', tools: ['project-tabs', 'debug'] }], [{ id: 'main', tools: ['mixer-button', 'play', 'get-effects'] }]], bottom: [], left: [], right: [] } as never;
+    const moved = withTitleBarOnlyItems(layout);
+    expect(moved.top[0][0].tools).toEqual(['project-tabs', 'debug', 'get-effects', 'mixer-button']);
+    expect(moved.top[1][0].tools).toEqual(['play']);
+    expect(withTitleBarOnlyItems(moved)).toBe(moved);
+    const noTitle = { top: [[{ id: 'main', tools: ['mixer-button', 'play'] }]], bottom: [], left: [], right: [] } as never;
+    expect(withTitleBarOnlyItems(noTitle).top[0][0].tools).toEqual(['play']);
   });
 });
