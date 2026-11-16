@@ -25,7 +25,7 @@ import { CopyingProjectDialog } from './components/CopyingProjectDialog';
 import { useTimerRecord } from './hooks/useTimerRecord';
 import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
-import { KeyboardMap, SHORTCUT_ROWS, isToolSeparator, TITLE_BAR_ID, titleBarItems } from '@audacity-ui/components';
+import { KeyboardMap, SHORTCUT_ROWS, isToolSeparator, TITLE_BAR_ID, titleBarItems, removeTool, PROJECT_TAB_TOOL_ID } from '@audacity-ui/components';
 import { transportStatusText } from './utils/transportStatus';
 import { useStatusInfo } from './hooks/useStatusInfo';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
@@ -109,6 +109,9 @@ import { useProjectLifecycle } from './hooks/useProjectLifecycle';
 import { useProjectTabs } from './hooks/useProjectTabs';
 import { useMenuDefinitions } from './hooks/useMenuDefinitions';
 import { useElectronMenuBridge } from './hooks/useElectronMenuBridge';
+
+/** Never taken off the toolbars by a ⌘-drag: the tabs, the way back to Home */
+const UNREMOVABLE_TOOLS: ReadonlySet<string> = new Set([PROJECT_TAB_TOOL_ID]);
 
 type Workspace = 'classic' | 'spectral-editing' | 'modern' | 'music';
 
@@ -379,11 +382,21 @@ function CanvasDemoContent() {
   const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }) => setBarMenu({ barId, ...anchor }), []);
   const toolFitsVertical = (id: string) =>
     (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
+  // ⌘-DRAG A TOOL (2026-11-16): released off the toolbars it comes off them,
+  // with a toast whose Undo puts the layout back
   const toolDrag = useToolbarToolDrag({
     layout: toolbarLayout.layout,
     toolFitsVertical,
     onMoveInto: toolbarLayout.moveToolInto,
     onMoveToNewBar: toolbarLayout.moveToolToNewBar,
+    onRemove: (toolId) => {
+      const before = toolbarLayout.layout;
+      toolbarLayout.editLayout((base) => removeTool(base, toolId));
+      toast.info('Tool removed', 'It is under Not on a toolbar in Edit toolbars', [
+        { label: 'Undo', onClick: () => toolbarLayout.editLayout(() => before) },
+      ]);
+    },
+    unremovable: UNREMOVABLE_TOOLS,
   });
   React.useEffect(() => {
     if (activeMenuItem !== 'project') setToolbarEditing(false);
@@ -1372,10 +1385,14 @@ function CanvasDemoContent() {
       : transportStatusText({ isRecording: state.isRecording, isPlaying, isSeeking, speed: playback.varispeed }),
     // While the toolbars are being rearranged the line says what a drag
     // will do — and, with a tool in hand, what this release will do
-    infoText: toolbarEditing
-      ? (toolDrag.target?.refused ? 'This tool has no vertical form'
+    // (and while a ⌘-drag has a tool in hand, 2026-11-16)
+    infoText: toolbarEditing || toolDrag.draggingToolId
+      ? (toolDrag.target?.refused
+          ? (toolDrag.target.kind === 'into' && toolDrag.target.barId === TITLE_BAR_ID ? 'The title bar takes app controls only' : 'This tool has no vertical form')
         : toolDrag.target?.kind === 'new' ? ('newRowAt' in toolDrag.target.placement ? 'Release to give it a row of its own' : 'Release to give it a toolbar of its own')
         : toolDrag.target?.kind === 'into' ? 'Release to add it to this toolbar'
+        : toolDrag.removing ? 'Release to take it off the toolbars'
+        : toolDrag.draggingToolId ? 'Drag onto a toolbar, beside one, or between rows'
         : 'Drag a tool onto a toolbar, beside one, or between rows. Escape when done')
       : handleHint
         ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled })

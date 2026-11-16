@@ -399,6 +399,15 @@ export function ToolbarDock({
     ...(!vertical && trailingWidth ? { '--toolbar-dock-end-pad': `${ROW_END_PAD + trailingWidth + ROW_END_PAD}px` } : null),
   } as React.CSSProperties;
 
+  // A ⌘-press on a tool began a move: the click it ends in presses nothing
+  const cmdPressRef = useRef(false);
+  useEffect(() => {
+    // …and a ⌘-press released elsewhere leaves no stale flag behind
+    const clear = () => { window.setTimeout(() => { cmdPressRef.current = false; }, 0); };
+    document.addEventListener('mouseup', clear);
+    return () => document.removeEventListener('mouseup', clear);
+  }, []);
+
   // Where a dragged tool would JOIN a bar: a short caret among its tools
   const caret = <div className="toolbar-dock__caret" aria-hidden="true" />;
 
@@ -475,6 +484,24 @@ export function ToolbarDock({
                 e.stopPropagation();
                 onToolMouseDown(t.id, d.bar.id, e, e.currentTarget.getBoundingClientRect());
               } : undefined}
+              // ⌘-DRAG MOVES A TOOL, NO MODE (2026-11-16, "let's try the Cmd +
+              // drag to move things" — the macOS menu bar's gesture): a ⌘ (Ctrl
+              // on Windows) press on ANY tool is taken in the capture phase,
+              // before the tool sees it, and starts the tool's drag; the click
+              // it would end in is swallowed, so a ⌘-click presses nothing
+              onMouseDownCapture={!editing && onToolMouseDown ? (e) => {
+                if (e.button !== 0 || !isMoveModifier(e)) return;
+                e.preventDefault();
+                e.stopPropagation();
+                cmdPressRef.current = true;
+                onToolMouseDown(t.id, d.bar.id, e, e.currentTarget.getBoundingClientRect());
+              } : undefined}
+              onClickCapture={(e) => {
+                if (!cmdPressRef.current) return;
+                cmdPressRef.current = false;
+                e.preventDefault();
+                e.stopPropagation();
+              }}
             >
               {/* INERT while editing: the tool cannot be pressed, focused
                   or typed into, and the press lands on the wrapper. Set
@@ -672,6 +699,13 @@ export function ToolbarDock({
 
 /** The id an empty toolbar's slot is drawn under */
 const EMPTY_SLOT_ID = '__empty-toolbar';
+
+/** The modifier that turns a press on a tool into a move: ⌘ on a Mac, Ctrl
+ *  elsewhere (a Mac's Ctrl-click is the secondary click) */
+function isMoveModifier(e: { metaKey: boolean; ctrlKey: boolean }): boolean {
+  const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  return mac ? e.metaKey : e.ctrlKey || e.metaKey;
+}
 
 /** One drawn line of bars: the row it belongs to, and its bars */
 interface DockLine { row: number; ids: string[] }

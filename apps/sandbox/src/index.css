@@ -180,3 +180,7 @@ html.pan-active * {
   height: min(640px, calc(100vh - 32px));
 }
 .dialog.toolbar-builder-dialog .dialog__body { min-height: 0; }
+
+/* A ⌘-DRAGGED TOOL (2026-11-16): the closed hand everywhere while it is in hand */
+body[data-toolbar-tool-drag],
+body[data-toolbar-tool-drag] * { cursor: grabbing !important; }

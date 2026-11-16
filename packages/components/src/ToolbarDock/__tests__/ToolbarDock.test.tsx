@@ -412,4 +412,42 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
       expect(plain.container.querySelector('[data-toolbar-grip]')).toBeNull();
     });
   });
+
+  describe('⌘-DRAG A TOOL, NO MODE (2026-11-16)', () => {
+    const rows = [[{ id: 'a', tools: ['one', 'two'] }]];
+
+    it('a ⌘ press on a tool starts its move, before the tool sees the press, and the click it ends in presses nothing', () => {
+      const onToolMouseDown = vi.fn();
+      const pressed = vi.fn();
+      const clicked = vi.fn();
+      const { container } = renderDock({
+        rows,
+        onToolMouseDown,
+        renderTool: (id) => <button aria-label={id} onMouseDown={pressed} onClick={clicked}>{id}</button>,
+      });
+      const two = container.querySelector('button[aria-label="two"]') as HTMLElement;
+      fireEvent.mouseDown(two, { button: 0, metaKey: true, ctrlKey: true });
+      expect(onToolMouseDown).toHaveBeenCalledTimes(1);
+      expect(onToolMouseDown.mock.calls[0][0]).toBe('two');
+      expect(onToolMouseDown.mock.calls[0][1]).toBe('a');
+      expect(pressed).not.toHaveBeenCalled();
+      fireEvent.click(two, { metaKey: true });
+      expect(clicked).not.toHaveBeenCalled();
+    });
+
+    it('a plain press is the tool\'s own', () => {
+      const onToolMouseDown = vi.fn();
+      const clicked = vi.fn();
+      const { container } = renderDock({
+        rows,
+        onToolMouseDown,
+        renderTool: (id) => <button aria-label={id} onClick={clicked}>{id}</button>,
+      });
+      const one = container.querySelector('button[aria-label="one"]') as HTMLElement;
+      fireEvent.mouseDown(one, { button: 0 });
+      fireEvent.click(one);
+      expect(onToolMouseDown).not.toHaveBeenCalled();
+      expect(clicked).toHaveBeenCalledTimes(1);
+    });
+  });
 });
