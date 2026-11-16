@@ -393,14 +393,14 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 
 /* AN EMPTY TOOLBAR: a dashed slot the tools' height, so it shows and its
    grip can move it; filled from the toolbar builder */
+/* AN EMPTY TOOLBAR IS EMPTY (2026-11-16, "can we lose the dashed line? The
+   empty toolbar can just be empty for now until we allow the user to
+   quickly add tools via a flyout"): a blank space the size of one tool
+   after its grip, nothing drawn */
 .toolbar-dock__empty {
   display: block;
   width: 28px;
   height: 28px;
-  box-sizing: border-box;
-  border: 1px dashed var(--toolbar-divider);
-  border-radius: 3px;
-  opacity: 0.7;
 }
 
 /* THE SEPARATOR RUNS THE ROW'S FULL HEIGHT (2026-11-11), through the row's

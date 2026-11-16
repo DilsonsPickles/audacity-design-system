@@ -215,9 +215,9 @@ export function ToolbarDock({
     ));
     if (bar.tools.length === 0) {
       // No words in the slot (2026-11-16, "when I have an empty toolbar,
-      // can we please not show 'empty toolbar'?") — a blank dashed square
-      // the tools' size, so the toolbar still shows; the name is for
-      // screen readers alone
+      // can we please not show 'empty toolbar'?", then "lose the dashed
+      // line") — a blank space a tool's size after the grip; the name is
+      // for screen readers alone
       nodes.push({ id: EMPTY_SLOT_ID, node: <span className="toolbar-dock__empty" data-toolbar-empty={bar.id} role="img" aria-label="Empty toolbar" /> });
     }
     const grow = nodes.some((t) => toolMeta?.(t.id, orientation)?.grow);
