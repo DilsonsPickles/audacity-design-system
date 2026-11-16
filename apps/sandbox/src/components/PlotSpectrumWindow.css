@@ -1,6 +1,11 @@
 /* Plot spectrum (2026-11-16) — the graph is the Filter curve EQ's dark
    plot ("1.0 - Existing graphs"), dark in both themes */
 
+/* A SENSIBLE MINIMUM (2026-11-16): 560px fits the selection line, the three
+   settings side by side and the table's six columns with their times whole;
+   the OS window's floor is main.cjs's POPOUT_MIN_SIZES */
+.plot-spectrum-window.dialog { min-width: 560px; }
+
 .plot-spectrum {
   flex: 1;
   display: flex;

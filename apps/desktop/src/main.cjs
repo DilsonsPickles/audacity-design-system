@@ -196,6 +196,10 @@ function createWindow(url) {
   // Open external links in the system browser rather than spawning a
   // second BrowserWindow — keeps "View on audio.com" feeling like a
   // normal handoff to the user's default browser.
+  /** Minimum sizes for popouts whose content needs more than a panel's */
+  const POPOUT_MIN_SIZES = {
+    'audacity-panel-popout-Plot-spectrum': { minWidth: 560, minHeight: 480 },
+  };
   win.webContents.setWindowOpenHandler(({ url: target, frameName }) => {
     if (/^https?:\/\//.test(target)) {
       void shell.openExternal(target);
@@ -210,8 +214,9 @@ function createWindow(url) {
         overrideBrowserWindowOptions: {
           frame: false,
           resizable: true,
-          minWidth: 240,
-          minHeight: 200,
+          // a popout with a known content has its own floor (2026-11-16,
+          // Plot spectrum: "a sensible min width"); panels keep 240 × 200
+          ...(POPOUT_MIN_SIZES[frameName] ?? { minWidth: 240, minHeight: 200 }),
           // The renderer draws its own 4px corner radius (PopoutPanel),
           // matching the app's dialogs — macOS's default frameless
           // rounding is far larger. Square OS corners + a transparent
