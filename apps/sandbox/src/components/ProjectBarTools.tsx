@@ -32,6 +32,11 @@ export interface ProjectBarToolsDeps {
   onRenameProject?: (id: string, title: string) => void;
   /** The title bar's Debug button — the Debug panel (2026-11-16) */
   onOpenDebug?: () => void;
+  /** The title bar's corner items, in order (the tabs left out) — what the
+   *  desktop window's title bar draws at its right end (2026-11-16) */
+  titleItems?: string[];
+  /** A right-click on the title bar's corner: its checklist (2026-11-16) */
+  onTitleBarMenu?: (anchor: { x: number; y: number }) => void;
   /** The + after the tabs: a new project in a new tab */
   onNewProject?: () => void;
   /** The tabs, the workspace picker and Share audio live in the app's
@@ -281,11 +286,15 @@ export function renderProjectTool(id: string, orientation: ToolbarOrientation, d
     case 'project-tabs':
       // In the title bar instead when the app draws one (2026-11-11)
       return deps.tabsInTitleBar ? null : <ProjectTabs {...deps} />;
+    case 'debug':
+      // The Debug panel — a title bar corner item (2026-11-16), a toolbar
+      // button anywhere else
+      return deps.onOpenDebug ? action('menu', 'Debug', () => deps.onOpenDebug?.()) : null;
     case 'mixer-button':
       return deps.showMixer ? action('mixer', 'Mixer', () => deps.onToggleMixer()) : null;
     case 'audio-setup':
-      // In the title bar instead when the app draws one (2026-11-11)
-      if (deps.tabsInTitleBar) return null;
+      // (the desktop window's title bar draws its own row; the docks do not
+      // draw the title bar's toolbar there — App filters it out, 2026-11-16)
       // AN ICON BUTTON BESIDE THE METERS since 2026-11-11 — the toolbar's
       // standard 28px button, as its neighbours the mic and volume are;
       // its name stays "Audio setup" for the screen reader and status bar
@@ -303,13 +312,10 @@ export function renderProjectTool(id: string, orientation: ToolbarOrientation, d
         </span>
       );
     case 'share-audio':
-      // In the title bar instead when the app draws one (2026-11-11)
-      if (deps.tabsInTitleBar) return null;
       return action('cloud', 'Share audio', () => deps.onShareAudio());
     case 'get-effects':
       return action('plugins', 'Get effects', (e) => deps.onGetEffects(e.currentTarget.getBoundingClientRect()));
     case 'workspace':
-      if (deps.tabsInTitleBar) return null;
       return (
         <div className="project-workspace" data-project-tool="workspace" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}>Workspace</span>
@@ -332,7 +338,7 @@ export function renderProjectTool(id: string, orientation: ToolbarOrientation, d
 export function projectToolMeta(id: string): ToolMeta | undefined {
   switch (id) {
     case 'project-tabs': case 'workspace': return { vertical: false };
-    case 'mixer-button': case 'audio-setup': case 'share-audio': case 'get-effects': case 'undo': case 'redo': return { vertical: true };
+    case 'mixer-button': case 'audio-setup': case 'share-audio': case 'get-effects': case 'undo': case 'redo': case 'debug': return { vertical: true };
     default: return undefined;
   }
 }

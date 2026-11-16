@@ -96,6 +96,9 @@ export interface PreferencesState {
   toolbarHiddenTools: string[];
   /** The project buttons' move has been applied to this profile's hidden list once (2026-11-11) */
   projectButtonsMoved?: boolean;
+  /** Debug has been put into this profile's stored layouts' title bars once
+   *  (2026-11-16, the title bar's corner — not defaulted, as above) */
+  titleBarDebugAdded?: boolean;
   /** The user's toolbar LAYOUTS, one per workspace (custom toolbars,
    *  2026-11-09): which bars sit in which dock, which tools on each bar.
    *  A workspace with no entry draws its built-in seed layout. */

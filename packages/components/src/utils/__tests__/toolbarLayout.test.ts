@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   coerceToolbarLayout, defaultToolbarLayout, dockBars, findBar, findTool, moveBar, moveTool, moveToolToNewBar, nextBarId, insertSeparator, isToolSeparator, addEmptyBar, removeBar, renameBar, barDisplayName,
-  normaliseLayout, isToolbarLayout, setBarSize, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID, type ToolbarLayout, type ToolbarRegion,
+  normaliseLayout, isToolbarLayout, setBarSize, titleBarItems, withTitleBarItem, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID, type ToolbarLayout, type ToolbarRegion,
 } from '../toolbarLayout';
 
 /** A seed WITHOUT the project row (2026-11-10, the project toolbar's
@@ -38,7 +38,7 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
       const layout = defaultToolbarLayout(ws);
       // THE TITLE BAR a toolbar of its own, first; then the main toolbar
       expect(rows(layout, 'top')).toEqual([['title'], ['main']]);
-      expect(layout.top[0][0].tools).toEqual(['project-tabs', 'audio-setup', 'workspace', 'share-audio']);
+      expect(layout.top[0][0].tools).toEqual(['project-tabs', 'debug', 'audio-setup', 'workspace', 'share-audio']);
       expect(barDisplayName(layout.top[0][0])).toBe('Title bar');
       expect(rows(layout, 'bottom')).toEqual([['status']]);
       expect(layout.left).toEqual([]);
@@ -334,5 +334,21 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(findBar(gone, id)).toBeNull();
     expect(findTool(gone, 'loop')).toBeNull();
     expect(gone.top).toHaveLength(two.top.length);
+  });
+});
+
+describe('THE TITLE BAR\'S CORNER (2026-11-16)', () => {
+  it('lists its app-level items in order, the tabs left out — or the seed\'s when a layout has no title bar', () => {
+    const layout = { top: [[{ id: 'title', tools: ['project-tabs', 'share-audio', 'debug'] }]], bottom: [], left: [], right: [] } as never;
+    expect(titleBarItems(layout)).toEqual(['share-audio', 'debug']);
+    expect(titleBarItems({ top: [], bottom: [], left: [], right: [] } as never)).toEqual(['debug', 'audio-setup', 'workspace', 'share-audio']);
+  });
+
+  it('withTitleBarItem puts a new item just after the tabs, once; not when it is anywhere already', () => {
+    const layout = { top: [[{ id: 'title', tools: ['project-tabs', 'audio-setup'] }], [{ id: 'main', tools: ['play'] }]], bottom: [], left: [], right: [] } as never;
+    const added = withTitleBarItem(layout, 'debug');
+    expect(added.top[0][0].tools).toEqual(['project-tabs', 'debug', 'audio-setup']);
+    expect(withTitleBarItem(added, 'debug')).toBe(added);
+    expect(withTitleBarItem(layout, 'play')).toBe(layout);
   });
 });

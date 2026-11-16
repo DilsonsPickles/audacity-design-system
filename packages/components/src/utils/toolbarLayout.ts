@@ -153,7 +153,31 @@ export const PROJECT_TOOL_IDS: ReadonlyArray<string> = legacyProjectBars().flatM
  *  browser build it is the top dock's first row. The builder lists it on
  *  its own, fixed: its tools can be shown or hidden, never moved */
 export const TITLE_BAR_ID = 'title';
-export const TITLE_BAR_TOOLS: ReadonlyArray<string> = [PROJECT_TAB_TOOL_ID, 'audio-setup', 'workspace', 'share-audio'];
+export const TITLE_BAR_TOOLS: ReadonlyArray<string> = [PROJECT_TAB_TOOL_ID, 'debug', 'audio-setup', 'workspace', 'share-audio'];
+/** THE TITLE BAR IS THE APP'S CORNER, NOT A TOOLBAR (2026-11-16, "that area at
+ *  the top right with debug, setup, get effects etc is a special area… how do
+ *  we deal with it?" → "build the title bar area first"): after the tabs it
+ *  holds only these APP-LEVEL items — never an editing tool — in the order
+ *  the user gives them; an item is in the corner or on a toolbar, never both */
+export const TITLE_BAR_ALLOWED: ReadonlyArray<string> = ['debug', 'audio-setup', 'workspace', 'share-audio', 'get-effects', 'mixer-button'];
+
+/** The title bar's corner items, in order (the tabs left out): the layout's
+ *  Title bar toolbar, or the seed's when a layout has none */
+export function titleBarItems(layout: ToolbarLayout): string[] {
+  const bar = findBar(layout, TITLE_BAR_ID)?.bar;
+  const tools = bar ? bar.tools : TITLE_BAR_TOOLS;
+  return tools.filter((t) => TITLE_BAR_ALLOWED.includes(t));
+}
+
+/** A layout with `id` in its title bar, just after the tabs — when it has a
+ *  title bar and the item is nowhere yet (a one-time move for an item new to
+ *  the corner); the same layout otherwise */
+export function withTitleBarItem(layout: ToolbarLayout, id: string): ToolbarLayout {
+  const found = findBar(layout, TITLE_BAR_ID);
+  if (!found || findTool(layout, id)) return layout;
+  const tabsAt = found.bar.tools.indexOf(PROJECT_TAB_TOOL_ID);
+  return insertTool(layout, id, TITLE_BAR_ID, found.bar.tools[tabsAt + 1] ?? null);
+}
 /** The project tools hidden by default (Customise toolbar brings them back) */
 export const PROJECT_TOOLS_HIDDEN_BY_DEFAULT: ReadonlyArray<string> = ['mixer-button', 'get-effects'];
 

@@ -18,7 +18,7 @@
 import React from 'react';
 import {
   ContextMenu, ContextMenuItem, Dialog, DialogFooter, TextInput, toast, useTheme,
-  TITLE_BAR_ID, barDisplayName, findBar, insertSeparator, isVerticalRegion, moveBar, removeBar, renameBar, rowsOf, setBarSize,
+  TITLE_BAR_ID, TITLE_BAR_ALLOWED, barDisplayName, findBar, findTool, insertSeparator, insertTool, isVerticalRegion, moveBar, removeBar, removeTool, renameBar, rowsOf, setBarSize, usePreferences,
   type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
 
@@ -41,6 +41,16 @@ export interface ToolbarBarMenuProps {
   os?: 'macos' | 'windows';
 }
 
+/** The corner's items by name (2026-11-16) */
+const CORNER_NAMES: Record<string, string> = {
+  debug: 'Debug',
+  'audio-setup': 'Audio setup',
+  workspace: 'Workspace',
+  'share-audio': 'Share audio',
+  'get-effects': 'Get effects',
+  'mixer-button': 'Mixer',
+};
+
 const MOVE_TARGETS: ReadonlyArray<{ region: ToolbarRegion; label: string }> = [
   { region: 'top', label: 'Top' },
   { region: 'bottom', label: 'Bottom' },
@@ -50,6 +60,8 @@ const MOVE_TARGETS: ReadonlyArray<{ region: ToolbarRegion; label: string }> = [
 
 export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical, onEditToolbars, os = 'macos' }: ToolbarBarMenuProps) {
   const { theme } = useTheme();
+  const { preferences, updatePreference } = usePreferences();
+  const hidden = new Set(preferences.toolbarHiddenTools ?? []);
   const [renaming, setRenaming] = React.useState<{ barId: string; draft: string } | null>(null);
   const renameRef = React.useRef<HTMLDivElement>(null);
   // The field takes the focus with its text selected, and its name (the
@@ -126,7 +138,35 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
         )}
         {menu && bar && <ContextMenuItem isDivider />}
         {menu && bar && region && (fixed ? (
-          <ContextMenuItem label="Edit toolbars…" onClick={() => onEditToolbars(menu.barId)} onClose={onClose} />
+          // THE CORNER'S CHECKLIST (2026-11-16): its app-level items, ticked
+          // when shown there; a tick adds one at the end (moving it off a
+          // toolbar, unhiding it), an untick takes it out of the corner — to
+          // Not on a toolbar in Edit toolbars
+          <>
+            {TITLE_BAR_ALLOWED.map((id) => {
+              const at = findTool(layout, id);
+              const inCorner = at?.bar.id === TITLE_BAR_ID;
+              const shown = inCorner && !hidden.has(id);
+              return (
+                <ContextMenuItem
+                  key={id}
+                  label={CORNER_NAMES[id] ?? id}
+                  checked={shown}
+                  onClick={() => {
+                    if (shown) {
+                      editLayout((base) => removeTool(base, id));
+                      return;
+                    }
+                    if (hidden.has(id)) updatePreference('toolbarHiddenTools', [...hidden].filter((t) => t !== id));
+                    if (!inCorner) editLayout((base) => insertTool(base, id, TITLE_BAR_ID, null));
+                  }}
+                  onClose={onClose}
+                />
+              );
+            })}
+            <ContextMenuItem isDivider />
+            <ContextMenuItem label="Edit toolbars…" onClick={() => onEditToolbars(menu.barId)} onClose={onClose} />
+          </>
         ) : (
           <>
             <ContextMenuItem

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import {
-  coerceToolbarLayout, defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, moveBar, moveTool, moveToolToNewBar, normaliseLayout, setBarSize, usePreferences, withProjectTools, withProjectRowMoves, PROJECT_TOOLS_HIDDEN_BY_DEFAULT,
+  coerceToolbarLayout, defaultToolbarLayout, EXPORT_TOOLBAR_LAYOUT, moveBar, moveTool, moveToolToNewBar, normaliseLayout, setBarSize, usePreferences, withProjectTools, withTitleBarItem, withProjectRowMoves, PROJECT_TOOLS_HIDDEN_BY_DEFAULT,
   type BarPlacement, type ToolbarBarAxis, type ToolbarLayout, type ToolbarWorkspace,
 } from '@audacity-ui/components';
 
@@ -48,6 +48,25 @@ export function useToolbarLayout(workspace: ToolbarWorkspace, activeMenuItem: st
     updatePreference('toolbarHiddenTools', [...hidden]);
     updatePreference('projectButtonsMoved', true);
   }, [preferences.projectButtonsMoved, preferences.toolbarHiddenTools, updatePreference]);
+  // ONCE PER PROFILE (2026-11-16, the title bar's corner): DEBUG was drawn
+  // in the title bar by hand; it is a corner item now, so every stored
+  // layout gets it just after the tabs — after that it is the user's to
+  // remove or move
+  useEffect(() => {
+    if (preferences.titleBarDebugAdded) return;
+    const layouts = preferences.toolbarLayouts ?? {};
+    const next: Record<string, unknown> = {};
+    let changed = false;
+    for (const [key, value] of Object.entries(layouts)) {
+      const coerced = coerceToolbarLayout(value);
+      if (!coerced) { next[key] = value; continue; }
+      const added = withTitleBarItem(coerced, 'debug');
+      if (added !== coerced) changed = true;
+      next[key] = added;
+    }
+    if (changed) updatePreference('toolbarLayouts', next as typeof layouts);
+    updatePreference('titleBarDebugAdded', true);
+  }, [preferences.titleBarDebugAdded, preferences.toolbarLayouts, updatePreference]);
   const custom = useMemo(() => coerceToolbarLayout(stored), [stored]);
   const layout = useMemo(() => {
     if (activeMenuItem === 'export') return EXPORT_TOOLBAR_LAYOUT;

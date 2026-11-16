@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Button, Checkbox, Dialog, DialogFooter, Icon, SearchField, useTheme, usePreferences,
   CUSTOMISE_TOOLBAR_ENTRIES, CUSTOMISE_TOOL_ID, PROJECT_TAB_TOOL_ID,
-  TOOLBAR_REGIONS, TITLE_BAR_ID, addEmptyBar, findBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertTool, isToolSeparator,
+  TOOLBAR_REGIONS, TITLE_BAR_ID, TITLE_BAR_ALLOWED, addEmptyBar, findBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertTool, isToolSeparator,
   moveBar, moveTool, nextBarId, removeBar, removeTool, renameBar, rowsOf,
   type BarPlacement, type ToolbarBar, type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
@@ -50,6 +50,7 @@ const REGION_NAMES: Record<ToolbarRegion, string> = {
 const EXTRA_NAMES: Record<string, string> = {
   [PROJECT_TAB_TOOL_ID]: 'Project tabs',
   [CUSTOMISE_TOOL_ID]: 'Customise toolbar',
+  debug: 'Debug',
   split: 'Split mode',
   'waveform-view': 'Waveform view',
   'status-cue': 'Playback status',
@@ -71,6 +72,7 @@ const ALL_TOOLS: ReadonlyArray<string> = [
   // The cog removes like any tool since 2026-11-16 (a right-click on any
   // toolbar opens this builder), and is added back from here
   CUSTOMISE_TOOL_ID,
+  'debug',
 ];
 
 /** Put back by the layout's guards when missing: hide, never remove */
@@ -246,8 +248,10 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     return null;
   })() : null;
 
-  const canAdd = leftSel !== null && sel !== null
-    && !(sel.kind === 'bar' && sel.barId === TITLE_BAR_ID) && selTool?.bar.id !== TITLE_BAR_ID;
+  // THE TITLE BAR TAKES APP-LEVEL ITEMS ONLY (2026-11-16, the corner):
+  // Debug, Audio setup, Workspace, Share audio, Get effects, Mixer
+  const targetIsTitle = (sel?.kind === 'bar' && sel.barId === TITLE_BAR_ID) || selTool?.bar.id === TITLE_BAR_ID;
+  const canAdd = leftSel !== null && sel !== null && (!targetIsTitle || TITLE_BAR_ALLOWED.includes(leftSel));
   const add = () => {
     if (!leftSel || !sel) return;
     const id = leftSel;
@@ -291,8 +295,15 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     rowsOf(layout, region).flatMap((row, i) => row.map((bar) => ({ region, row: i, bar })))).filter((b) => b.bar.id !== TITLE_BAR_ID);
   const inTitle = (sel?.kind === 'bar' && sel.barId === TITLE_BAR_ID) || (selTool?.bar.id === TITLE_BAR_ID);
   const barAt = selTool ? allBars.findIndex((b) => b.bar.id === selTool.bar.id) : -1;
-  const canUp = inTitle ? false : selTool ? selTool.index > 0 || barAt > 0 : selBar ? selBar.index > 0 : false;
-  const canDown = inTitle ? false : selTool ? selTool.index < selTool.bar.tools.length - 1 || barAt < allBars.length - 1 : selBar ? selBar.index < selBar.bars.length - 1 : false;
+  // In the title bar its items reorder among themselves — the tabs stay first
+  // and nothing steps in or out (2026-11-16)
+  const titleTool = inTitle && selTool && sel?.kind === 'tool' && sel.toolId !== PROJECT_TAB_TOOL_ID ? selTool : null;
+  const canUp = inTitle
+    ? !!titleTool && titleTool.index > 0 && titleTool.bar.tools[titleTool.index - 1] !== PROJECT_TAB_TOOL_ID
+    : selTool ? selTool.index > 0 || barAt > 0 : selBar ? selBar.index > 0 : false;
+  const canDown = inTitle
+    ? !!titleTool && titleTool.index < titleTool.bar.tools.length - 1
+    : selTool ? selTool.index < selTool.bar.tools.length - 1 || barAt < allBars.length - 1 : selBar ? selBar.index < selBar.bars.length - 1 : false;
   const move = (dir: -1 | 1) => {
     if (selTool && sel?.kind === 'tool') {
       const tools = selTool.bar.tools;
@@ -614,7 +625,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
                   >
                     {r.label}
                     {r.empty && <span style={muted}> (empty)</span>}
-                    {r.fixed && r.level === 1 && <span style={{ ...muted, fontWeight: 400 }}> · fixed, show or hide only</span>}
+                    {r.fixed && r.level === 1 && <span style={{ ...muted, fontWeight: 400 }}> · the app's corner: app controls only</span>}
                     {r.barId && collapsed.has(r.key) && (() => {
                       const n = allBars.find((b) => b.bar.id === r.barId)?.bar.tools.filter((t) => !isToolSeparator(t)).length ?? 0;
                       return n > 0 ? <span style={muted}>{` · ${n} ${n === 1 ? 'tool' : 'tools'}`}</span> : null;

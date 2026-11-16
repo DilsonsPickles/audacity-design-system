@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
-import { ThemeProvider, type ToolbarLayout } from '@audacity-ui/components';
+import { PreferencesProvider, ThemeProvider, type ToolbarLayout } from '@audacity-ui/components';
 import { ToolbarBarMenu } from '../ToolbarBarMenu';
 
 afterEach(cleanup);
@@ -18,6 +18,7 @@ function renderMenu(barId: string, opts: { fits?: boolean } = {}) {
   const editLayout = vi.fn((change: (base: ToolbarLayout) => ToolbarLayout) => { layout = change(layout); });
   const onEditToolbars = vi.fn();
   const utils = render(
+    <PreferencesProvider>
     <ThemeProvider>
       <ToolbarBarMenu
         menu={{ barId, x: 10, y: 10 }}
@@ -27,7 +28,8 @@ function renderMenu(barId: string, opts: { fits?: boolean } = {}) {
         fitsVertical={() => opts.fits ?? true}
         onEditToolbars={onEditToolbars}
       />
-    </ThemeProvider>,
+    </ThemeProvider>
+    </PreferencesProvider>,
   );
   const labels = () => Array.from(document.querySelectorAll('.context-menu-item-label')).map((e) => e.textContent);
   const item = (label: string) => Array.from(document.querySelectorAll('.context-menu-item')).find((e) => e.querySelector('.context-menu-item-label')?.textContent === label) as HTMLElement;
@@ -41,9 +43,12 @@ describe('ToolbarBarMenu', () => {
     expect(labels()).toEqual(['Rename…', 'Move to', 'Add separator', 'Reset width', 'Edit toolbars…', 'Remove toolbar']);
   });
 
-  it('the fixed Title bar toolbar offers Edit toolbars… alone', () => {
-    const { labels } = renderMenu('title');
-    expect(labels()).toEqual(['Edit toolbars…']);
+  it('the Title bar is the app\'s corner: a checklist of its app-level items, then Edit toolbars… (2026-11-16)', () => {
+    const { labels, item, layout } = renderMenu('title');
+    expect(labels()).toEqual(['Debug', 'Audio setup', 'Workspace', 'Share audio', 'Get effects', 'Mixer', 'Edit toolbars…']);
+    // a tick adds an item at the corner's end
+    fireEvent.click(item('Share audio'));
+    expect(layout().top[0][0].tools).toEqual(['project-tabs', 'share-audio']);
   });
 
   it('Reset width clears the width; Edit toolbars… asks for the builder on this toolbar', () => {

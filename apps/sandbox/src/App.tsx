@@ -25,7 +25,7 @@ import { CopyingProjectDialog } from './components/CopyingProjectDialog';
 import { useTimerRecord } from './hooks/useTimerRecord';
 import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
-import { KeyboardMap, SHORTCUT_ROWS, isToolSeparator } from '@audacity-ui/components';
+import { KeyboardMap, SHORTCUT_ROWS, isToolSeparator, TITLE_BAR_ID, titleBarItems } from '@audacity-ui/components';
 import { transportStatusText } from './utils/transportStatus';
 import { useStatusInfo } from './hooks/useStatusInfo';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
@@ -1426,6 +1426,10 @@ function CanvasDemoContent() {
     },
     onNewProject: () => { void newProjectInTab(); },
     onOpenDebug: () => setIsDebugPanelOpen(true),
+    // The title bar's corner (2026-11-16): its app-level items in order, and
+    // its right-click checklist (the Title bar toolbar's menu)
+    titleItems: titleBarItems(toolbarLayout.layout),
+    onTitleBarMenu: (anchor) => setBarMenu({ barId: TITLE_BAR_ID, ...anchor }),
     tabsInTitleBar: customTitleBar,
     showMixer,
     onToggleMixer: () => setMixerPanelOpen((prev) => !prev),
@@ -1608,7 +1612,9 @@ function CanvasDemoContent() {
       {activeMenuItem !== 'home' && (
         <AppToolbarDock
           region="top"
-          rows={toolbarLayout.layout.top}
+          // In the desktop app the window's title bar draws the Title bar
+          // toolbar, so the docks do not (2026-11-16)
+          rows={customTitleBar ? toolbarLayout.layout.top.map((row) => row.filter((b) => b.id !== TITLE_BAR_ID)).filter((row) => row.length > 0) : toolbarLayout.layout.top}
           renderExtraTool={renderAppTool}
           extraToolMeta={appToolMeta}
           drag={dockDrag}

@@ -18,10 +18,11 @@ import { ProjectTabs, type ProjectBarToolsDeps } from './ProjectBarTools';
  */
 export const TRAFFIC_LIGHTS_PX = 76;
 
-// THE RIGHT END (2026-11-11, the first row's buttons moved out): the
-// WORKSPACE picker, then SHARE AUDIO, flat buttons — Figma's file-
-// level controls; both honour Customise toolbar's hidden list, and both are
-// out of the window's drag region so they take clicks.
+// THE RIGHT END (2026-11-11, the first row's buttons moved out) — THE
+// CORNER since 2026-11-16: the layout's app-level title bar items (Debug,
+// Audio setup, Workspace, Share audio, Get effects, Mixer) in the user's
+// order, flat compact buttons, out of the window's drag region so they take
+// clicks; each honours the hidden list.
 export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: { deps: ProjectBarToolsDeps; insetForTrafficLights: boolean; vibrancy?: boolean }) {
   const { activeMenuItem } = deps;
   // THE WORKSPACE IS MUSESCORE'S "Workspace: Default" (2026-11-11, "can we
@@ -59,74 +60,78 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
     >
       <ProjectTabs {...deps} />
       {activeMenuItem !== 'home' && (
-        <div className="app-title-bar__end" data-app-title-bar-end>
-          {/* DEBUG in the same flat style, beside Audio setup (2026-11-16,
-              "put the debug menu action up in the top right alongside audio
-              setup in same button style") — the Debug panel, also Help ›
-              Debug panel… */}
-          {deps.onOpenDebug && (
-            <GhostButton
-              icon="menu"
-              size="compact"
-              label="Debug"
-              ariaLabel="Debug panel"
-              onClick={() => {
-                setWorkspaceMenu(null);
-                deps.onOpenDebug?.();
-              }}
-            />
-          )}
-          {/* AUDIO SETUP in the same style (the same day, "can we also try
-              doing the audio setup in that style?"): a flat cog-and-label
-              button, opening the Audio setup menu under it */}
-          {!deps.hidden.has('audio-setup') && (
-            <GhostButton
-              icon="cog"
-              size="compact"
-              label="Audio setup"
-              ariaLabel="Audio setup"
-              onClick={(e) => {
-                // One title-bar menu at a time (2026-11-11, "if I click
-                // workspaces and then audio setup, the workspace dropdown
-                // isn't hiding")
-                setWorkspaceMenu(null);
-                const r = e.currentTarget.getBoundingClientRect();
-                deps.onAudioSetup({ x: r.left, y: r.bottom + 4 });
-              }}
-            />
-          )}
-          {!deps.hidden.has('workspace') && (
-            <div className="project-workspace" data-project-tool="workspace">
-              <GhostButton
-                icon="workspace"
-                size="compact"
-                label={`Workspace: ${workspaceName}`}
-                ariaLabel={`Workspace: ${workspaceName}`}
-                active={workspaceMenu !== null}
-                onClick={(e) => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  setWorkspaceMenu((open) => (open ? null : { x: r.left, y: r.bottom + 4 }));
-                }}
-              />
-              <ContextMenu isOpen={workspaceMenu !== null} onClose={() => setWorkspaceMenu(null)} x={workspaceMenu?.x ?? 0} y={workspaceMenu?.y ?? 0} portalTo={typeof document === 'undefined' ? null : document.body}>
-                {deps.workspaceOptions.map((o) => (
-                  <ContextMenuItem
-                    key={o.value}
-                    label={o.label}
-                    checked={o.value === deps.workspace}
-                    onClick={() => deps.onWorkspacePick(o.value)}
-                    onClose={() => setWorkspaceMenu(null)}
-                  />
-                ))}
-              </ContextMenu>
-            </div>
-          )}
-          {!deps.hidden.has('share-audio') && (
-            // The flat style of Audio setup and Workspace (the same day,
-            // "make the share audio the same style as setup and workspace";
-            // it was a secondary Button, a primary one before that)
-            <GhostButton icon="cloud" size="compact" label="Share audio" ariaLabel="Share audio" onClick={() => deps.onShareAudio()} />
-          )}
+        // THE CORNER (2026-11-16, "that area at the top right with debug,
+        // setup, get effects etc is a special area"): the layout's title bar
+        // items, in their order — app-level controls only, never an editing
+        // tool. A right-click here is the corner's checklist (ToolbarBarMenu
+        // for the Title bar), Edit toolbars… among it.
+        <div
+          className="app-title-bar__end"
+          data-app-title-bar-end
+          onContextMenu={(e) => {
+            if (!deps.onTitleBarMenu) return;
+            e.preventDefault();
+            setWorkspaceMenu(null);
+            deps.onTitleBarMenu({ x: e.clientX, y: e.clientY });
+          }}
+        >
+          {(deps.titleItems ?? []).filter((id) => !deps.hidden.has(id)).map((id) => {
+            switch (id) {
+              case 'debug':
+                return deps.onOpenDebug ? (
+                  <GhostButton key={id} icon="menu" size="compact" label="Debug" ariaLabel="Debug panel"
+                    onClick={() => { setWorkspaceMenu(null); deps.onOpenDebug?.(); }} />
+                ) : null;
+              case 'audio-setup':
+                return (
+                  <GhostButton key={id} icon="cog" size="compact" label="Audio setup" ariaLabel="Audio setup"
+                    onClick={(e) => {
+                      // One title-bar menu at a time (2026-11-11)
+                      setWorkspaceMenu(null);
+                      const r = e.currentTarget.getBoundingClientRect();
+                      deps.onAudioSetup({ x: r.left, y: r.bottom + 4 });
+                    }} />
+                );
+              case 'workspace':
+                return (
+                  <div key={id} className="project-workspace" data-project-tool="workspace">
+                    <GhostButton
+                      icon="workspace"
+                      size="compact"
+                      label={`Workspace: ${workspaceName}`}
+                      ariaLabel={`Workspace: ${workspaceName}`}
+                      active={workspaceMenu !== null}
+                      onClick={(e) => {
+                        const r = e.currentTarget.getBoundingClientRect();
+                        setWorkspaceMenu((open) => (open ? null : { x: r.left, y: r.bottom + 4 }));
+                      }}
+                    />
+                    <ContextMenu isOpen={workspaceMenu !== null} onClose={() => setWorkspaceMenu(null)} x={workspaceMenu?.x ?? 0} y={workspaceMenu?.y ?? 0} portalTo={typeof document === 'undefined' ? null : document.body}>
+                      {deps.workspaceOptions.map((o) => (
+                        <ContextMenuItem
+                          key={o.value}
+                          label={o.label}
+                          checked={o.value === deps.workspace}
+                          onClick={() => deps.onWorkspacePick(o.value)}
+                          onClose={() => setWorkspaceMenu(null)}
+                        />
+                      ))}
+                    </ContextMenu>
+                  </div>
+                );
+              case 'share-audio':
+                return <GhostButton key={id} icon="cloud" size="compact" label="Share audio" ariaLabel="Share audio" onClick={() => deps.onShareAudio()} />;
+              case 'get-effects':
+                return (
+                  <GhostButton key={id} icon="plugins" size="compact" label="Get effects" ariaLabel="Get effects"
+                    onClick={(e) => { setWorkspaceMenu(null); deps.onGetEffects(e.currentTarget.getBoundingClientRect()); }} />
+                );
+              case 'mixer-button':
+                return deps.showMixer ? <GhostButton key={id} icon="mixer" size="compact" label="Mixer" ariaLabel="Mixer" onClick={() => deps.onToggleMixer()} /> : null;
+              default:
+                return null;
+            }
+          })}
         </div>
       )}
     </div>
