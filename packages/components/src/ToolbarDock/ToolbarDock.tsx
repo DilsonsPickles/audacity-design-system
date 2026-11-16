@@ -236,7 +236,12 @@ export function ToolbarDock({
     // resizable. it's only when it's totally on its own"): beside another
     // toolbar its width spaces them apart; alone there is nothing to size,
     // so no resize edge and a stored size is ignored
-    const resizable = bar.tools.length > 0 || row.length > 1;
+    // …and IN A SIDE DOCK A TOOLBAR ALONE IN ITS COLUMN HAS NO SIZE either
+    // (the same day, "I've got the playback meters in a side tab but it's
+    // the only toolbar in that column. So... it shouldn't be resizable
+    // right?"): the column is the window's height, so a lone toolbar could
+    // only be made shorter, leaving empty space; its growing tools fill it
+    const resizable = vertical ? row.length > 1 : bar.tools.length > 0 || row.length > 1;
     const size = resizable ? sizeOf(bar) : undefined;
     const overflow = overflowOf(nodes.map((t) => t.id), size);
     const allIds = nodes.map((t) => t.id);
@@ -439,7 +444,8 @@ export function ToolbarDock({
           onBarMenu(d.bar.id, { x: e.clientX, y: e.clientY });
         }}
         onMouseDown={(e) => {
-          if (!onGripMouseDown || e.button !== 0) return;
+          // A wrapped toolbar's later line has no grip (2026-11-16)
+          if (!onGripMouseDown || e.button !== 0 || d.continued) return;
           const rect = barRefs.current.get(d.bar.id)?.getBoundingClientRect();
           if (!rect) return;
           e.preventDefault();
@@ -448,7 +454,11 @@ export function ToolbarDock({
         }}
       >
         {!leading && <span className="toolbar-dock__grip-line" />}
-        <span className="toolbar-dock__grip-dots musescore-icon">{GRIP_GLYPH}</span>
+        {/* A WRAPPED TOOLBAR'S LATER LINES HAVE NO GRIP (2026-11-16, "when you
+            wrap a toolbar, it shouldn't have a gripper"): the toolbar has one
+            grip, on its first line; a later line keeps the gutter's room, so
+            its tools line up under the first line's, with nothing in it */}
+        {!d.continued && <span className="toolbar-dock__grip-dots musescore-icon">{GRIP_GLYPH}</span>}
         {insertHere && indicator}
       </span>
       <div className="toolbar-dock__tools">

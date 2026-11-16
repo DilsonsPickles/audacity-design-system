@@ -420,4 +420,7 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 
 /* A WRAPPED TOOLBAR'S LATER SEGMENTS (2026-11-11): the same toolbar, so the
    gripper is quieter there; it still moves the whole toolbar */
-.toolbar-dock__grip--continued .toolbar-dock__grip-dots { opacity: 0.2; }
+/* A wrapped toolbar's later line: the gutter's room, no grip — no dots, no
+   grab cursor, no hover fill (2026-11-16) */
+.toolbar-dock__grip--continued,
+.toolbar-dock__grip--continued:hover { cursor: default; background-color: transparent; }

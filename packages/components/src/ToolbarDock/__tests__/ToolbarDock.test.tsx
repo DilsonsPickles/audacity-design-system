@@ -235,11 +235,12 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     it('a vertical dock sizes by HEIGHT and ignores the width', () => {
       const restore = measured();
       try {
-        const { container } = render(wrap({ region: 'left', rows: [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'], width: 50, height: 117 }]] }));
+        // (with a second toolbar in its column — one alone has no size, 2026-11-16)
+        const { container } = render(wrap({ region: 'left', rows: [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'], width: 50, height: 117 }, { id: 'f', tools: ['t9'] }]] }));
         const bar = container.querySelector('[data-toolbar-bar="e"]') as HTMLElement;
         expect(bar.style.height).toBe('117px');
         expect(bar.style.width).toBe('');
-        expect(inline(container)).toEqual(['t1', 't2']);
+        expect(inline(container).filter((t) => t !== 't9')).toEqual(['t1', 't2']);
       } finally { restore(); }
     });
 
@@ -307,6 +308,19 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
       expect(() => renderDock({})).not.toThrow();
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('did not settle'));
     } finally { w.mockRestore(); warn.mockRestore(); }
+  });
+
+  it('IN A SIDE DOCK a toolbar alone in its column has no resize edge and ignores a stored height; two in a column keep theirs (2026-11-16)', () => {
+    const { container } = renderDock({
+      region: 'right',
+      rows: [[{ id: 'meters', tools: ['one'], height: 300 }], [{ id: 'p', tools: ['two'] }, { id: 'q', tools: ['three'] }]],
+      onBarResize: vi.fn(),
+    });
+    const meters = container.querySelector('[data-toolbar-bar="meters"]') as HTMLElement;
+    expect(meters.querySelector('[data-toolbar-resize]')).toBeNull();
+    expect(meters.classList.contains('toolbar-dock__bar--sized')).toBe(false);
+    expect(container.querySelector('[data-toolbar-resize="p"]')).not.toBeNull();
+    expect(container.querySelector('[data-toolbar-resize="q"]')).not.toBeNull();
   });
 
   it('AN EMPTY TOOLBAR ALONE IN ITS ROW has no resize edge and ignores a stored width (2026-11-16)', () => {
