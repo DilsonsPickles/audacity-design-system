@@ -81,6 +81,7 @@
 }
 
 .plot-spectrum__curve[data-focused] { stroke-width: 2; }
+.plot-spectrum__fill { opacity: 0.28; stroke: none; }
 .plot-spectrum__curve[data-dimmed] { opacity: 0.3; }
 
 .plot-spectrum__crosshair {

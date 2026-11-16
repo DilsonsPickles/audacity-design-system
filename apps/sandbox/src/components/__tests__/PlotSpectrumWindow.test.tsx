@@ -39,6 +39,8 @@ describe('PlotSpectrumWindow', () => {
     expect(props.readRegion).toHaveBeenLastCalledWith([1, 2], 600, 616);
     const rows = document.querySelectorAll('[data-plot-row]');
     expect(rows).toHaveLength(2);
+    // two curves, none focused: lines only
+    expect(document.querySelectorAll('[data-plot-fill]')).toHaveLength(0);
     expect(rows[0].textContent).toContain('0:05:00.00');
     expect(rows[1].textContent).toContain('2 tracks');
     expect(document.querySelectorAll('[data-plot-curve]')).toHaveLength(2);
@@ -54,6 +56,9 @@ describe('PlotSpectrumWindow', () => {
     expect(document.querySelector('[data-plot-curve="2"]')?.hasAttribute('data-dimmed')).toBe(true);
     expect(document.querySelector('[data-plot-curve="1"]')?.hasAttribute('data-dimmed')).toBe(false);
     expect(props.onSelectRange).not.toHaveBeenCalled();
+    // the focused curve is filled, the others stay lines
+    expect(document.querySelector('[data-plot-fill="1"]')).not.toBeNull();
+    expect(document.querySelector('[data-plot-fill="2"]')).toBeNull();
     // a second click lets go
     fireEvent.click(document.querySelector('[data-plot-row="1"]') as HTMLElement);
     expect(document.querySelector('[data-plot-curve="2"]')?.hasAttribute('data-dimmed')).toBe(false);
@@ -62,6 +67,8 @@ describe('PlotSpectrumWindow', () => {
   it('Select puts the project selection back to the plotted range, without focusing', () => {
     const { plotButton, props } = renderWindow(A);
     fireEvent.click(plotButton());
+    // a single curve is filled
+    expect(document.querySelector('[data-plot-fill="1"]')).not.toBeNull();
     fireEvent.click(document.querySelector('[data-plot-select="1"]') as HTMLElement);
     expect(props.onSelectRange).toHaveBeenCalledWith(A);
     expect(document.querySelector('[data-plot-row="1"]')?.hasAttribute('data-focused')).toBe(false);
