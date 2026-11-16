@@ -48,7 +48,9 @@ export function Menu({
     position: 'absolute' as const,
     top: `${rect.bottom}px`,
     left: `${rect.left}px`,
-    zIndex: 1000,
+    // Above the vertical project tabs' rail (1050, 2026-11-16), which a
+    // menu bar dropdown opens down over
+    zIndex: 1500,
   } as React.CSSProperties;
 
   return (

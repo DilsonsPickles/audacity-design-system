@@ -189,7 +189,13 @@ body[data-toolbar-tool-drag] * { cursor: grabbing !important; }
    rail takes 48px in the layout (its width when pinned); its PANEL is the
    column you see, widening over the content on hover / focus. Window
    chrome, the title bar's colour — not a panel. */
-.project-rail { position: relative; flex-shrink: 0; align-self: stretch; z-index: 30; }
+/* z-index 1050 (2026-11-16, "the stroke of the focused track is
+   overlapping the vertical tab panel"): above the editor's own layers —
+   the focused track's bars are 1000 — and below every modal and popover
+   (the marketplace 1100, the account menus 1200–1400, the in-app menu
+   bar's dropdowns 1500, toasts and dialogs 9400 and up), which the app
+   draws inside the same column */
+.project-rail { position: relative; flex-shrink: 0; align-self: stretch; z-index: 1050; }
 .project-rail__panel {
   position: absolute; top: 0; bottom: 0; left: 0;
   display: flex; flex-direction: column; gap: 2px;
