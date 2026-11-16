@@ -87,7 +87,8 @@ const ALL_TOOLS: ReadonlyArray<string> = [
 // toolbar now opens this builder, so the cog is no longer the only way in
 const UNREMOVABLE = new Set<string>([PROJECT_TAB_TOOL_ID]);
 /** The way back to Home and the cog that opens this: never hidden */
-const UNHIDEABLE = new Set<string>([PROJECT_TAB_TOOL_ID, CUSTOMISE_TOOL_ID]);
+// (the cog hides since 2026-11-16 — a right-click on any toolbar opens this)
+const UNHIDEABLE = new Set<string>([PROJECT_TAB_TOOL_ID]);
 
 function ToolGlyph({ id }: { id: string }) {
   const entry = ENTRY_BY_ID.get(id);

@@ -805,8 +805,11 @@ export function TransportTools({
           </ToolbarButtonGroup>
         );
 
-      // The Customise toolbar cog (Done while the layout is being edited)
-      case CUSTOMISE_TOOL_ID: return settingsCog;
+      // The Customise toolbar cog (Done while the layout is being edited) —
+      // HIDEABLE since 2026-11-16 ("with the right-click menu we should now
+      // be able to hide the customise toolbar button right?"): a right-click
+      // on any toolbar is the way into the builder now
+      case CUSTOMISE_TOOL_ID: return show(CUSTOMISE_TOOL_ID) || layoutEditing ? settingsCog : null;
 
       // The Export tab's own tools
       case 'export-share': return <Button variant="secondary" size="default" icon={''} onClick={onShareClick}>Share on audio.com</Button>;
