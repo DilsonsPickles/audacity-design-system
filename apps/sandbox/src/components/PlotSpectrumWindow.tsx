@@ -84,7 +84,9 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   const [plots, setPlots] = React.useState<Plot[]>([]);
   const [focusedId, setFocusedId] = React.useState<number | null>(null);
   const [linear, setLinear] = React.useState(false);
-  const [grid, setGrid] = React.useState(false);
+  // Grid lines are ON by default (2026-11-17, "grid lines should be on
+  // by default") — the checkbox turns them off
+  const [grid, setGrid] = React.useState(true);
   const [rangeIndex, setRangeIndex] = React.useState(DEFAULT_RANGE_INDEX);
   const [windowFn, setWindowFn] = React.useState<WindowFunctionId>('hann');
   const [size, setSize] = React.useState(2048);
@@ -145,6 +147,31 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
     setPlots((ps) => ps.filter((p) => p.id !== id));
     if (focusedId === id) setFocusedId(null);
   };
+
+  // OPENING WITH A SELECTION PLOTS IT (2026-11-17, "when I have a
+  // selection and I use Analyze -> Plot spectrum, it should plot the
+  // selection I have"): the menu lands on a drawn curve, not an empty
+  // graph; the Plot selection button stays the door for further curves.
+  // The window keeps its state across close (it renders null, mounted),
+  // so a reopen with a range already plotted adds no duplicate curve.
+  const autoPlotArmedRef = React.useRef(true);
+  React.useEffect(() => {
+    if (!isOpen) {
+      autoPlotArmedRef.current = true;
+      return;
+    }
+    if (!autoPlotArmedRef.current) return;
+    autoPlotArmedRef.current = false;
+    if (!selection) return;
+    const already = plots.some((p) =>
+      p.source.startTime === selection.startTime
+      && p.source.endTime === selection.endTime
+      && p.source.tracks.length === selection.tracks.length
+      && p.source.tracks.every((t, i) => t.id === selection.tracks[i].id));
+    if (!already) plotSelection();
+    // Only the open/close edge arms it — the selection is read at open
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const exportCsv = () => {
     const curves = plots.map((p) => ({ name: p.name, spectrum: spectra.get(p.id)! }));

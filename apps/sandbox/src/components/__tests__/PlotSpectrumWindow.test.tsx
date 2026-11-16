@@ -16,8 +16,8 @@ function renderWindow(selection: PlotSpectrumSource | null, region: Float32Array
     <PreferencesProvider><ThemeProvider><PlotSpectrumWindow {...props} /></ThemeProvider></PreferencesProvider>,
   );
   const plotButton = () => Array.from(document.querySelectorAll('[data-plot-selection] button')).find((b) => b.textContent === 'Plot selection') as HTMLButtonElement;
-  return { ...utils, props, plotButton, rerenderWith: (sel: PlotSpectrumSource | null) => utils.rerender(
-    <PreferencesProvider><ThemeProvider><PlotSpectrumWindow {...props} selection={sel} /></ThemeProvider></PreferencesProvider>,
+  return { ...utils, props, plotButton, rerenderWith: (sel: PlotSpectrumSource | null, open = true) => utils.rerender(
+    <PreferencesProvider><ThemeProvider><PlotSpectrumWindow {...props} selection={sel} isOpen={open} /></ThemeProvider></PreferencesProvider>,
   ) };
 }
 
@@ -31,9 +31,30 @@ describe('PlotSpectrumWindow', () => {
     expect(document.querySelector('[data-plot-selection]')?.textContent).toContain('None');
   });
 
+  it('opening with a selection plots it at once; a reopen adds no duplicate', () => {
+    const { rerenderWith, props } = renderWindow(A);
+    // no button press — the open itself plotted the selection
+    expect(props.readRegion).toHaveBeenCalledWith([1], 300, 330);
+    expect(document.querySelectorAll('[data-plot-row]')).toHaveLength(1);
+    // close and reopen with the same selection: the curve is already there
+    rerenderWith(A, false);
+    rerenderWith(A, true);
+    expect(document.querySelectorAll('[data-plot-row]')).toHaveLength(1);
+    // reopen with a NEW selection plots it
+    rerenderWith(B, false);
+    rerenderWith(B, true);
+    expect(document.querySelectorAll('[data-plot-row]')).toHaveLength(2);
+  });
+
+  it('grid lines are on by default', () => {
+    renderWindow(A);
+    const grid = document.querySelector('[role="checkbox"][aria-label="Grid lines"]');
+    expect(grid?.getAttribute('aria-checked')).toBe('true');
+  });
+
   it('each Plot selection adds a curve and a row; the second shows the tracks it spans', () => {
     const { plotButton, rerenderWith, props } = renderWindow(A);
-    fireEvent.click(plotButton());
+    // the open auto-plotted A; a new selection is plotted by the button
     rerenderWith(B);
     fireEvent.click(plotButton());
     expect(props.readRegion).toHaveBeenLastCalledWith([1, 2], 600, 616);
@@ -48,7 +69,6 @@ describe('PlotSpectrumWindow', () => {
 
   it('a click on a row FOCUSES its curve — the others dim — and never touches the project', () => {
     const { plotButton, rerenderWith, props } = renderWindow(A);
-    fireEvent.click(plotButton());
     rerenderWith(B);
     fireEvent.click(plotButton());
     fireEvent.click(document.querySelector('[data-plot-row="1"]') as HTMLElement);
@@ -64,8 +84,7 @@ describe('PlotSpectrumWindow', () => {
   });
 
   it('Select puts the project selection back to the plotted range, without focusing', () => {
-    const { plotButton, props } = renderWindow(A);
-    fireEvent.click(plotButton());
+    const { props } = renderWindow(A);
     // a single curve is filled
     expect(document.querySelector('[data-plot-fill="1"]')).not.toBeNull();
     fireEvent.click(document.querySelector('[data-plot-select="1"]') as HTMLElement);
@@ -75,7 +94,6 @@ describe('PlotSpectrumWindow', () => {
 
   it('Remove, and Delete on a row, take the curve away', () => {
     const { plotButton, rerenderWith } = renderWindow(A);
-    fireEvent.click(plotButton());
     rerenderWith(B);
     fireEvent.click(plotButton());
     fireEvent.click(document.querySelector('[data-plot-remove="1"]') as HTMLElement);
@@ -84,8 +102,8 @@ describe('PlotSpectrumWindow', () => {
   });
 
   it('a selection with no audio says so and plots nothing', () => {
-    const { plotButton } = renderWindow(A, null);
-    fireEvent.click(plotButton());
+    renderWindow(A, null);
+    // the auto-plot at open already found nothing
     expect(document.querySelector('[data-plot-selection]')?.textContent).toContain('No audio in the selection');
     expect(document.querySelectorAll('[data-plot-row]')).toHaveLength(0);
   });
