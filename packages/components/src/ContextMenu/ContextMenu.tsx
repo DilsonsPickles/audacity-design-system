@@ -148,27 +148,45 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     }
   }, [isOpen, autoFocus]);
 
-  // Handle click outside to close
+  // Handle click outside to close. Bound ONCE per opening, the close read
+  // through a ref (the ref-mirror rule): hosts pass an inline onClose, and a
+  // host that re-renders faster than the timer below re-armed it on every
+  // render — clearing it before it fired, so the menu NEVER heard a click
+  // outside and stuck open (2026-11-16, the desktop app's title bar).
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
   useEffect(() => {
     if (!isOpen) return;
 
+    // In the CAPTURE phase, and on pointerdown as well as mousedown: plenty of
+    // the app stops a press on its way up (the ruler, the clip handles) or
+    // default-prevents its pointerdown (which suppresses the mousedown), and
+    // a menu that only heard a bubbling mousedown stayed open over them.
+    let closed = false;
     const handleClickOutside = (e: MouseEvent) => {
+      if (closed) return;
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        closed = true;
         closedByPointerRef.current = true; // the pointer put the focus where it wanted
-        onClose();
+        onCloseRef.current();
       }
     };
 
     // Add slight delay to prevent immediate close from the button click that opened it
     const doc = ownerDoc();
     const timer = setTimeout(() => {
-      doc.addEventListener('mousedown', handleClickOutside);
+      doc.addEventListener('pointerdown', handleClickOutside, true);
+      doc.addEventListener('mousedown', handleClickOutside, true);
     }, 0);
 
     // (the timer too: a re-render before it fired used to add a listener
     // that no cleanup ever removed — 2026-11-11)
-    return () => { clearTimeout(timer); doc.removeEventListener('mousedown', handleClickOutside); };
-  }, [isOpen, onClose]);
+    return () => {
+      clearTimeout(timer);
+      doc.removeEventListener('pointerdown', handleClickOutside, true);
+      doc.removeEventListener('mousedown', handleClickOutside, true);
+    };
+  }, [isOpen]);
 
   // Handle keyboard navigation
   useEffect(() => {
