@@ -27,7 +27,7 @@ describe('CopyingProjectDialog', () => {
     const bar = document.querySelector('[data-copying-project] [role="progressbar"]') as HTMLElement;
     expect(bar.getAttribute('data-indeterminate')).toBe('true');
     expect(bar.hasAttribute('aria-valuenow')).toBe(false);
-    expect(document.querySelector('[data-copying-project-elapsed]')?.textContent).toBe('Elapsed time: 0:00:22');
+    expect(document.querySelector('[data-copying-project-elapsed]')?.textContent).toBe('Elapsed time0:00:22');
     // nothing to press — no close, no cancel (the macOS dots are drawn, disabled, as AU3's are)
     expect(document.querySelectorAll('.copying-project-dialog button:not(:disabled)').length).toBe(0);
     fireEvent.keyDown(document, { key: 'Escape' });

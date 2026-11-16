@@ -5,7 +5,8 @@
  * Project" window): a modal with no buttons, no × and no Escape — the copy
  * cannot be abandoned half-way — reading "This may take several seconds",
  * an INDETERMINATE bar (the length of a copy to slow media is unknown) and
- * the ELAPSED TIME, h:mm:ss as Audacity 3 writes it. It closes itself when
+ * the ELAPSED TIME, h:mm:ss as Audacity 3 writes it — the label at the
+ * left and the time at the right, across the dialog's width. It closes itself when
  * the copy is done.
  */
 import { Dialog, ProgressBar, useTheme } from '@audacity-ui/components';
@@ -50,9 +51,12 @@ export function CopyingProjectDialog({ isOpen, startedAt, now, os = 'macos' }: C
       >
         <span>This may take several seconds</span>
         <ProgressBar indeterminate width="100%" ariaLabel="Copying project" />
-        <span data-copying-project-elapsed style={{ alignSelf: 'center', fontVariantNumeric: 'tabular-nums', color: theme.foreground.text.secondary }}>
-          Elapsed time: <span style={{ color: theme.foreground.text.primary }}>{formatElapsed(now - startedAt)}</span>
-        </span>
+        {/* The label at the left, the time at the right (2026-11-16, "Elapsed
+            time and then space-between with the time") */}
+        <div data-copying-project-elapsed style={{ display: 'flex', justifyContent: 'space-between', color: theme.foreground.text.secondary }}>
+          <span>Elapsed time</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', color: theme.foreground.text.primary }}>{formatElapsed(now - startedAt)}</span>
+        </div>
       </div>
     </Dialog>
   );
