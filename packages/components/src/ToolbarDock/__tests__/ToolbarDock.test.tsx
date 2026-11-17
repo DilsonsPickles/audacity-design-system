@@ -365,7 +365,7 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
       const { container } = renderDock({ rows, onBarMenu, tabGroupId: 'tool-toolbar' });
       const grip = container.querySelector('[data-toolbar-grip="b"]') as HTMLElement;
       fireEvent.contextMenu(grip, { clientX: 40, clientY: 12 });
-      expect(onBarMenu).toHaveBeenCalledWith('b', { x: 40, y: 12 });
+      expect(onBarMenu).toHaveBeenCalledWith('b', { x: 40, y: 12 }, 'top');
     });
 
     it('the grip is a button named for its toolbar, and Shift+F10 / the Menu key / Enter open the menu', () => {
@@ -393,12 +393,12 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
           : <button aria-label={id}>{id}</button>),
       });
       fireEvent.contextMenu(container.querySelector('button[aria-label="three"]')!, { clientX: 5, clientY: 6 });
-      expect(onBarMenu).toHaveBeenLastCalledWith('b', { x: 5, y: 6 });
+      expect(onBarMenu).toHaveBeenLastCalledWith('b', { x: 5, y: 6 }, 'top');
       onBarMenu.mockClear();
       fireEvent.contextMenu(container.querySelector('button[aria-label="two"]')!);
       expect(onBarMenu).not.toHaveBeenCalled();
       fireEvent.contextMenu(container.querySelector('.toolbar-dock__row')!, { clientX: 1, clientY: 2 });
-      expect(onBarMenu).toHaveBeenLastCalledWith(null, { x: 1, y: 2 });
+      expect(onBarMenu).toHaveBeenLastCalledWith(null, { x: 1, y: 2 }, 'top');
     });
 
     it('Tab enters on the first TOOL, never a grip; without a menu the grips are not buttons', () => {

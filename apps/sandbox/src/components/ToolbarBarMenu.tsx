@@ -18,7 +18,7 @@
 import React from 'react';
 import {
   ContextMenu, ContextMenuItem, Dialog, DialogFooter, TextInput, toast, useTheme,
-  TITLE_BAR_ID, TITLE_BAR_ALLOWED, barDisplayName, findBar, findTool, insertSeparator, insertTool, isVerticalRegion, moveBar, removeBar, removeTool, renameBar, rowsOf, setBarSize, usePreferences,
+  TITLE_BAR_ID, TITLE_BAR_ALLOWED, TOOLBAR_REGIONS, addEmptyBar, barDisplayName, dockBars, findBar, findTool, insertSeparator, insertTool, isVerticalRegion, moveBar, removeBar, removeTool, renameBar, rowsOf, setBarSize, usePreferences,
   type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
 
@@ -27,6 +27,16 @@ export interface ToolbarBarMenuState {
   barId: string | null;
   x: number;
   y: number;
+  /** The dock the menu was opened in — the empty-space New toolbar's target */
+  region?: ToolbarRegion;
+}
+
+/** The builder's fresh name: "Toolbar 1", "Toolbar 2", … not already in use */
+function freshName(base: ToolbarLayout): string {
+  const names = new Set(TOOLBAR_REGIONS.flatMap((r) => dockBars(base, r)).map(barDisplayName));
+  let n = 1;
+  while (names.has(`Toolbar ${n}`)) n++;
+  return `Toolbar ${n}`;
 }
 
 export interface ToolbarBarMenuProps {
@@ -111,7 +121,26 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
     <>
       <ContextMenu isOpen={!!menu && (!!bar || docksMenu)} onClose={onClose} x={menu?.x ?? 0} y={menu?.y ?? 0} portalTo={portal}>
         {docksMenu && (
-          <ContextMenuItem label="Edit toolbars…" onClick={() => onEditToolbars(null)} onClose={onClose} />
+          <>
+            {/* NEW TOOLBAR from the dock's empty space (2026-11-17, "I'd
+                like to add a 'New toolbar' action to the right click menu
+                for toolbars"): an empty, named toolbar at the end of THIS
+                dock's last row — the grip's drag and the builder fill it */}
+            {menu.region && (
+              <ContextMenuItem
+                label="New toolbar"
+                onClick={() => {
+                  const region = menu.region!;
+                  editLayout((base) => {
+                    const rows = rowsOf(base, region);
+                    return addEmptyBar(base, { region, row: Math.max(0, rows.length - 1), beforeBarId: null }, freshName(base));
+                  });
+                }}
+                onClose={onClose}
+              />
+            )}
+            <ContextMenuItem label="Edit toolbars…" onClick={() => onEditToolbars(null)} onClose={onClose} />
+          </>
         )}
         {/* THE TOOLBAR'S NAME HEADS ITS MENU, read-only (2026-11-16, "can we
             put the toolbar name at the top in readonly text? The rename feels
@@ -205,6 +234,21 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
               />
             )}
             <ContextMenuItem isDivider />
+            {/* NEW TOOLBAR beside this one (2026-11-17): an empty, named
+                toolbar right after the clicked toolbar in its row */}
+            <ContextMenuItem
+              label="New toolbar"
+              onClick={() => {
+                editLayout((base) => {
+                  const at = findBar(base, bar.id);
+                  if (!at) return base;
+                  const row = rowsOf(base, at.region)[at.row] ?? [];
+                  const after = row[at.index + 1]?.id ?? null;
+                  return addEmptyBar(base, { region: at.region, row: at.row, beforeBarId: after }, freshName(base));
+                });
+              }}
+              onClose={onClose}
+            />
             <ContextMenuItem label="Edit toolbars…" onClick={() => onEditToolbars(bar.id)} onClose={onClose} />
             <ContextMenuItem isDivider />
             <ContextMenuItem label="Remove toolbar" onClick={() => removeToolbar(bar.id)} onClose={onClose} />

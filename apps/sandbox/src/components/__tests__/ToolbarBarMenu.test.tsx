@@ -40,7 +40,7 @@ describe('ToolbarBarMenu', () => {
   it('heads the menu with the toolbar\'s name, read-only, then its items', () => {
     const { labels } = renderMenu('main');
     expect(document.querySelector('[data-toolbar-menu-name]')?.textContent).toBe('Main toolbar');
-    expect(labels()).toEqual(['Rename…', 'Move to', 'Add separator', 'Reset width', 'Edit toolbars…', 'Remove toolbar']);
+    expect(labels()).toEqual(['Rename…', 'Move to', 'Add separator', 'Reset width', 'New toolbar', 'Edit toolbars…', 'Remove toolbar']);
   });
 
   it('the Title bar is the app\'s corner: a checklist of its app-level items, then Edit toolbars… (2026-11-16)', () => {

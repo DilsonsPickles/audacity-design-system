@@ -45,7 +45,7 @@ export interface ToolbarDockProps {
    *  dock's empty space asks with a null bar (2026-11-16, "I hate having to
    *  rely on the cog") — a tool with its own right-click menu prevents the
    *  default first and keeps it. */
-  onBarMenu?: (barId: string | null, anchor: { x: number; y: number }) => void;
+  onBarMenu?: (barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion) => void;
   /** The bar in hand, drawn faint in place */
   draggingBarId?: string | null;
   /** Where a CONTAINER would land (a bar by its grip, or a new bar for a
@@ -443,14 +443,14 @@ export function ToolbarDock({
             e.preventDefault();
             e.stopPropagation();
             const r = e.currentTarget.getBoundingClientRect();
-            onBarMenu(d.bar.id, { x: r.left, y: r.bottom + 4 });
+            onBarMenu(d.bar.id, { x: r.left, y: r.bottom + 4 }, region);
           },
         } : { 'aria-hidden': true, role: 'presentation' })}
         onContextMenu={(e) => {
           if (!onBarMenu) return;
           e.preventDefault();
           e.stopPropagation();
-          onBarMenu(d.bar.id, { x: e.clientX, y: e.clientY });
+          onBarMenu(d.bar.id, { x: e.clientX, y: e.clientY }, region);
         }}
         onMouseDown={(e) => {
           // A wrapped toolbar's later line has no grip (2026-11-16)
@@ -640,7 +640,7 @@ export function ToolbarDock({
         const barEl = target.closest('[data-toolbar-bar], [data-toolbar-bar-continued]');
         const barId = barEl?.getAttribute('data-toolbar-bar') ?? barEl?.getAttribute('data-toolbar-bar-continued') ?? null;
         e.preventDefault();
-        onBarMenu(barId, { x: e.clientX, y: e.clientY });
+        onBarMenu(barId, { x: e.clientX, y: e.clientY }, region);
       } : undefined}
     >
       {!empty && drawnLines.map((line, lineIndex) => (

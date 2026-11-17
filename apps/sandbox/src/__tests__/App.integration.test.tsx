@@ -431,6 +431,35 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     await waitFor(() => expect(document.body.querySelector('[data-toolbar-builder]')).toBeTruthy());
   });
 
+  it('NEW TOOLBAR FROM THE RIGHT-CLICK MENU (2026-11-17): a toolbar\'s menu makes an empty one beside it; the dock\'s empty-space menu makes one at the dock\'s end', async () => {
+    const { container } = renderApp({
+      toolbarLayouts: { classic: { top: [[{ id: 'transport', tools: ['play', 'stop'] }, { id: 'customise', tools: ['customise'] }]], bottom: [[{ id: 'status', tools: ['status-cue', 'status-info'] }]], left: [], right: [] } },
+    });
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
+    await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
+    const menuItem = async (label: string) => waitFor(() => {
+      const item = Array.from(document.body.querySelectorAll('.context-menu-item')).find((e) => e.textContent?.includes(label));
+      if (!item) throw new Error('not yet');
+      return item as HTMLElement;
+    });
+    const topBarIds = () => Array.from(container.querySelectorAll('[data-toolbar-dock="top"] [data-toolbar-bar]')).map((b) => b.getAttribute('data-toolbar-bar'));
+    // From a toolbar's grip menu: the empty toolbar lands right AFTER it
+    // (withProjectTools gave the seeded layout its project-tabs row)
+    fireEvent.contextMenu(container.querySelector('[data-toolbar-bar="transport"] [data-toolbar-grip]')!, { clientX: 20, clientY: 20 });
+    fireEvent.click(await menuItem('New toolbar'));
+    await waitFor(() => expect(topBarIds()).toEqual(['project-tabs', 'transport', 'bar-1', 'customise']));
+    // The new toolbar is empty and named
+    fireEvent.contextMenu(container.querySelector('[data-toolbar-bar="bar-1"] [data-toolbar-grip]')!, { clientX: 20, clientY: 20 });
+    await waitFor(() => expect(document.body.querySelector('[data-toolbar-menu-name]')?.textContent).toBe('Toolbar 1'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    // From the dock's EMPTY SPACE: one at the end of that dock's last row
+    fireEvent.contextMenu(container.querySelector('[data-toolbar-dock="bottom"]')!, { clientX: 400, clientY: 10 });
+    fireEvent.click(await menuItem('New toolbar'));
+    await waitFor(() => expect(
+      Array.from(container.querySelectorAll('[data-toolbar-dock="bottom"] [data-toolbar-bar]')).map((b) => b.getAttribute('data-toolbar-bar')),
+    ).toEqual(['status', 'bar-2']));
+  });
+
   it('THE TOOLBAR BUILDER: the cog\'s "Rearrange tools…" opens it; Remove, Add, hide, New toolbar (empty) and Add separator apply live; Cancel puts it all back; Reset layout restores (2026-11-11)', async () => {
     const { container, getByText } = renderApp();
     fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);

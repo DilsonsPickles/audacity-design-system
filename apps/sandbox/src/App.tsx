@@ -389,7 +389,7 @@ function CanvasDemoContent() {
   // The tab strip's / the rail's own small menu (2026-11-16, vertical tabs)
   const [tabsMenu, setTabsMenu] = React.useState<{ x: number; y: number; from: 'tabs' | 'rail' } | null>(null);
   const [builderBarId, setBuilderBarId] = React.useState<string | null>(null);
-  const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }) => setBarMenu({ barId, ...anchor }), []);
+  const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion) => setBarMenu({ barId, ...anchor, region }), []);
   const toolFitsVertical = (id: string) =>
     (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
   // ⌘-DRAG A TOOL (2026-11-16): released off the toolbars it comes off them,
