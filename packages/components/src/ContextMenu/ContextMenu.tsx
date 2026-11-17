@@ -4,6 +4,7 @@ import React, { useRef, useEffect, useLayoutEffect, useState } from 'react';
 const EDGE_MARGIN = 10;
 import { createPortal } from 'react-dom';
 import { useTheme } from '../ThemeProvider';
+import { FLOATING_WINDOW_PREFIX, isElectronHost, openFloatingWindow } from '../utils/floatingWindow';
 import './ContextMenu.css';
 
 export interface ContextMenuProps {
@@ -88,7 +89,15 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const probeRef = React.useCallback((el: HTMLElement | null) => {
     if (el) setOwnBody((prev) => (prev === el.ownerDocument.body ? prev : el.ownerDocument.body));
   }, []);
-  const host = portalTo ?? ownBody ?? (typeof document === 'undefined' ? null : document.body);
+  // THE MENU AS ITS OWN OS WINDOW (2026-11-17, "Do the same for the
+  // context menus in popout windows"): under Electron a menu that would
+  // run past its window's edge opens at its TRUE position in a frameless
+  // child window and overlaps the edge like a native menu, instead of
+  // being clamped inside (the clamp stays as the plain browser's rule).
+  const [menuWin, setMenuWin] = useState<Window | null>(null);
+  const menuWinNameRef = useRef(`${FLOATING_WINDOW_PREFIX}-menu-${Math.random().toString(36).slice(2)}`);
+  const popupBody = menuWin && !menuWin.closed ? menuWin.document.body : null;
+  const host = popupBody ?? portalTo ?? ownBody ?? (typeof document === 'undefined' ? null : document.body);
 
   const internalStyle = {
     '--context-menu-bg': theme.background.menu.background,
@@ -104,12 +113,16 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   // document the menu actually lives in, not the module-global one.
   const ownerDoc = () => menuRef.current?.ownerDocument ?? document;
 
-  // Store the trigger element when menu opens (re-read if the probe
-  // moves the menu to another document's body)
+  // Store the trigger element when menu opens — on the OPENING edge
+  // only: a later host change (the probe's correction, or the menu
+  // moving into its own OS window) must not overwrite the trigger with
+  // the new document's activeElement
+  const wasOpenRef = useRef(false);
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !wasOpenRef.current) {
       triggerElementRef.current = ownerDoc().activeElement as HTMLElement;
     }
+    wasOpenRef.current = isOpen;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, host]);
 
@@ -191,19 +204,27 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       }
     };
 
-    // Add slight delay to prevent immediate close from the button click that opened it
-    const doc = ownerDoc();
+    // Add slight delay to prevent immediate close from the button click
+    // that opened it. In child-window mode the menu's document and the
+    // OPENER's are different documents — a press in either closes it.
+    const docs = new Set<Document>([ownerDoc()]);
+    const openerDoc = (ownBody ?? (typeof document === 'undefined' ? null : document.body))?.ownerDocument;
+    if (openerDoc) docs.add(openerDoc);
     const timer = setTimeout(() => {
-      doc.addEventListener('pointerdown', handleClickOutside, true);
-      doc.addEventListener('mousedown', handleClickOutside, true);
+      docs.forEach((doc) => {
+        doc.addEventListener('pointerdown', handleClickOutside, true);
+        doc.addEventListener('mousedown', handleClickOutside, true);
+      });
     }, 0);
 
     // (the timer too: a re-render before it fired used to add a listener
     // that no cleanup ever removed — 2026-11-11)
     return () => {
       clearTimeout(timer);
-      doc.removeEventListener('pointerdown', handleClickOutside, true);
-      doc.removeEventListener('mousedown', handleClickOutside, true);
+      docs.forEach((doc) => {
+        doc.removeEventListener('pointerdown', handleClickOutside, true);
+        doc.removeEventListener('mousedown', handleClickOutside, true);
+      });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, host]);
@@ -328,12 +349,25 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
   const [clamped, setClamped] = useState<{ x: number; y: number } | null>(null);
   useLayoutEffect(() => {
     if (!isOpen || !menuRef.current) { setClamped(null); return; }
+    if (menuWin) return; // the child window holds the menu at 0,0
     const menu = menuRef.current;
     const win = menu.ownerDocument.defaultView ?? window;
     const vw = win.innerWidth;
     const vh = win.innerHeight;
     const w = menu.offsetWidth;
     const h = menu.offsetHeight;
+    // UNDER ELECTRON a menu that runs past the window's right or bottom
+    // edge opens at its true position in a frameless child window and
+    // OVERLAPS the edge (2026-11-17), instead of being clamped inside;
+    // Chromium still keeps the popup on the display
+    if ((x + w > vw - EDGE_MARGIN || y + h > vh - EDGE_MARGIN) && isElectronHost()) {
+      const popup = openFloatingWindow(menu, menuWinNameRef.current, x, y, w + 2, h + 2);
+      if (popup) {
+        setMenuWin(popup);
+        setClamped(null);
+        return;
+      }
+    }
     let ax = x;
     let ay = y;
     if (ax + w > vw - EDGE_MARGIN) ax = vw - w - EDGE_MARGIN;
@@ -342,7 +376,56 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     if (ay < EDGE_MARGIN) ay = EDGE_MARGIN;
     setClamped(ax !== x || ay !== y ? { x: ax, y: ay } : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, x, y, host]);
+  }, [isOpen, x, y, host, menuWin]);
+
+  // The menu window's life follows the menu's: closing or unmounting the
+  // menu closes the window; the user closing the window closes the menu
+  useEffect(() => {
+    if (!isOpen && menuWin) {
+      setMenuWin(null);
+      if (!menuWin.closed) menuWin.close();
+    }
+  }, [isOpen, menuWin]);
+  useEffect(() => {
+    if (!menuWin) return;
+    const closeMenu = () => onCloseRef.current();
+    menuWin.addEventListener('pagehide', closeMenu);
+    return () => {
+      menuWin.removeEventListener('pagehide', closeMenu);
+      if (!menuWin.closed) menuWin.close();
+    };
+  }, [menuWin]);
+
+  // SUBMENUS GROW THE WINDOW: a submenu opens absolutely at the item's
+  // right edge, past the window sized to the root menu — so the window
+  // grows to the content's reach while one is open (growing only: the
+  // transparent remainder after it closes takes a press as an outside
+  // press, which closes the menu — ordinary menu behaviour)
+  useEffect(() => {
+    if (!menuWin || menuWin.closed || !menuRef.current) return;
+    const menu = menuRef.current;
+    const fit = () => {
+      if (menuWin.closed || !menuRef.current) return;
+      let right = 0;
+      let bottom = 0;
+      for (const el of [menu, ...Array.from(menu.querySelectorAll<HTMLElement>('*'))]) {
+        const r = el.getBoundingClientRect();
+        if (r.right > right) right = r.right;
+        if (r.bottom > bottom) bottom = r.bottom;
+      }
+      const w = Math.ceil(right) + 2;
+      const h = Math.ceil(bottom) + 2;
+      if (w > menuWin.innerWidth || h > menuWin.innerHeight) {
+        menuWin.resizeTo(Math.max(w, menuWin.innerWidth), Math.max(h, menuWin.innerHeight));
+      }
+    };
+    fit();
+    const MO = (menuWin as Window & typeof globalThis).MutationObserver ?? MutationObserver;
+    const mo = new MO(fit);
+    mo.observe(menu, { childList: true, subtree: true, attributes: true });
+    return () => mo.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menuWin, host]);
 
   if (!isOpen) return null;
 
@@ -353,12 +436,16 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       role="menu"
       style={{
         position: 'fixed',
-        left: `${clamped?.x ?? x}px`,
-        top: `${clamped?.y ?? y}px`,
+        // in its own OS window the menu sits at the window's origin, and
+        // the native shadow replaces the CSS one (which the window's
+        // bounds would clip)
+        left: popupBody ? 0 : `${clamped?.x ?? x}px`,
+        top: popupBody ? 0 : `${clamped?.y ?? y}px`,
         // above the Dialog's 10000: a menu is transient top-layer UI,
         // and a tie loses on DOM order to a later-mounted window
         zIndex: 10010,
         ...style,
+        ...(popupBody ? ({ '--context-menu-shadow': 'none' } as React.CSSProperties) : null),
       }}
     >
       {children}

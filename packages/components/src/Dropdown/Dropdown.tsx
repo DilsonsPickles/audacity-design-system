@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTheme } from '../ThemeProvider';
+import { FLOATING_WINDOW_PREFIX, isElectronHost, openFloatingWindow } from '../utils/floatingWindow';
 import '../assets/fonts/musescore-icon.css';
 import './Dropdown.css';
 
@@ -48,47 +49,6 @@ export interface DropdownProps {
   size?: 'default' | 'small';
 }
 
-/** Opens the frameless child window a clipped list drops into (Electron:
- *  main.cjs gives the `audacity-dropdown-popout` frame-name prefix a
- *  frameless, transparent, unresizable child window at these screen
- *  coordinates). Returns null when the popup is refused — the caller
- *  falls back to flipping the list above the trigger. */
-function openListWindow(trigger: HTMLElement, name: string, menuHeight: number): Window | null {
-  const doc = trigger.ownerDocument;
-  const win = doc.defaultView ?? window;
-  const rect = trigger.getBoundingClientRect();
-  // screen coordinates: the window's origin, plus whatever chrome sits
-  // above the content (outer − inner height; 0 for a frameless popout),
-  // plus the trigger's place in the content
-  const chromeY = (win.outerHeight || 0) - (win.innerHeight || 0);
-  const left = Math.round((win.screenX || 0) + rect.left);
-  const top = Math.round((win.screenY || 0) + chromeY + rect.bottom + 4);
-  const w = Math.ceil(rect.width);
-  const h = Math.ceil(menuHeight) + 2;
-  let popup: Window | null = null;
-  try {
-    popup = win.open('', name, `popup=yes,width=${w},height=${h},left=${left},top=${top}`);
-  } catch {
-    return null;
-  }
-  if (!popup) return null;
-  adoptStyles(popup.document, doc);
-  popup.document.documentElement.style.background = 'transparent';
-  popup.document.body.style.cssText = 'margin:0;background:transparent;overflow:hidden;';
-  return popup;
-}
-
-/** The PopoutPanel style-adoption trick: a base href so relative URLs
- *  resolve, then every stylesheet cloned into the list window */
-function adoptStyles(into: Document, from: Document): void {
-  const base = into.createElement('base');
-  base.href = from.baseURI;
-  into.head.appendChild(base);
-  from.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => {
-    into.head.appendChild(node.cloneNode(true));
-  });
-}
-
 export const Dropdown: React.FC<DropdownProps> = ({
   options,
   value,
@@ -110,7 +70,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
   // behaviour — instead of flipping above the trigger (the flip stays
   // as the plain browser's fallback, where popups cannot be chromeless).
   const [popupWin, setPopupWin] = useState<Window | null>(null);
-  const popupNameRef = useRef(`audacity-dropdown-popout-${Math.random().toString(36).slice(2)}`);
+  const popupNameRef = useRef(`${FLOATING_WINDOW_PREFIX}-${Math.random().toString(36).slice(2)}`);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -247,9 +207,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
     const EDGE = 10;
     if (rect.bottom + 4 + h <= win.innerHeight - EDGE) return; // fits below
 
-    const isElectron = typeof window !== 'undefined' && Boolean((window as { electronMenu?: unknown }).electronMenu);
-    if (isElectron) {
-      const popup = openListWindow(trigger, popupNameRef.current, h);
+    if (isElectronHost()) {
+      const popup = openFloatingWindow(trigger, popupNameRef.current, rect.left, rect.bottom + 4, rect.width, h + 2);
       if (popup) {
         setPopupWin(popup);
         return;
