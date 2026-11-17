@@ -49,6 +49,10 @@ export interface DropdownProps {
   size?: 'default' | 'small';
 }
 
+// THE LIST TOUCHES ITS TRIGGER (2026-11-18, "they should be touching
+// edges"): no gap between the trigger's edge and the list's, below or above
+const MENU_GAP = 0;
+
 export const Dropdown: React.FC<DropdownProps> = ({
   options,
   value,
@@ -166,7 +170,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
       if (triggerRef.current) {
         const rect = triggerRef.current.getBoundingClientRect();
         setMenuPosition({
-          top: rect.bottom + 4,
+          top: rect.bottom + MENU_GAP,
           left: rect.left,
           width: rect.width,
         });
@@ -205,16 +209,16 @@ export const Dropdown: React.FC<DropdownProps> = ({
     const win = menu.ownerDocument.defaultView ?? window;
     const h = menu.offsetHeight;
     const EDGE = 10;
-    if (rect.bottom + 4 + h <= win.innerHeight - EDGE) return; // fits below
+    if (rect.bottom + MENU_GAP + h <= win.innerHeight - EDGE) return; // fits below
 
     if (isElectronHost()) {
-      const popup = openFloatingWindow(trigger, popupNameRef.current, rect.left, rect.bottom + 4, rect.width, h + 2);
+      const popup = openFloatingWindow(trigger, popupNameRef.current, rect.left, rect.bottom + MENU_GAP, rect.width, h + 2);
       if (popup) {
         setPopupWin(popup);
         return;
       }
     }
-    const above = rect.top - 4 - h;
+    const above = rect.top - MENU_GAP - h;
     const top = above >= EDGE ? above : Math.max(EDGE, win.innerHeight - EDGE - h);
     if (Math.abs(top - menuPosition.top) > 0.5) {
       setMenuPosition((p) => (p ? { ...p, top } : p));

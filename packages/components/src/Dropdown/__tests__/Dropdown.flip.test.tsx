@@ -39,14 +39,14 @@ describe('Dropdown list stays inside the window', () => {
   it('opens below the trigger when there is room', () => {
     mockLayout(100);
     const menu = openDropdown();
-    // below: trigger bottom 128 + 4
-    expect(menu.style.top).toBe('132px');
+    // below, touching: the trigger's bottom, 128
+    expect(menu.style.top).toBe('128px');
   });
 
   it('flips above the trigger when the room below runs out', () => {
-    mockLayout(560); // bottom 588 + 4 + 150 runs past 600 − 10
+    mockLayout(560); // bottom 588 + 150 runs past 600 − 10
     const menu = openDropdown();
-    // above: trigger top 560 − 4 − 150
-    expect(menu.style.top).toBe('406px');
+    // above, touching: trigger top 560 − 150
+    expect(menu.style.top).toBe('410px');
   });
 });
