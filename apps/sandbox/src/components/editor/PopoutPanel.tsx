@@ -71,14 +71,46 @@ function screenToMainViewport(screenX: number, screenY: number): { x: number; y:
  *  against nothing. Also injects the popout's own chrome styles: the
  *  header is the frameless window's drag region (-webkit-app-region),
  *  with interactive children opted back out. */
-function adoptParentStyles(popoutDocument: Document) {
+function cloneParentSheets(popoutDocument: Document, before: Node | null) {
+  document.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => {
+    const copy = node.cloneNode(true) as HTMLElement;
+    copy.setAttribute('data-popout-adopted', '');
+    popoutDocument.head.insertBefore(copy, before);
+  });
+}
+
+/** KEEP THE POPOUT'S STYLES IN STEP WITH THE APP'S (2026-11-17: the Plot
+ *  spectrum readout pinned top-left in the browser pane but landed half
+ *  off the OS window's corner — the window had cloned the sheets when it
+ *  opened, and Vite's hot reload rewrote only the main document's, so a
+ *  popout kept stale CSS for its whole life). Any change under the main
+ *  document's <head> — a sheet added, removed or rewritten — re-clones
+ *  the set into the popout, once per frame. Returns the disconnect. */
+export function syncParentStyles(popoutDocument: Document): () => void {
+  let frame = 0;
+  const resync = () => {
+    frame = 0;
+    if (popoutDocument.defaultView?.closed) return;
+    popoutDocument.querySelectorAll('[data-popout-adopted]').forEach((n) => n.remove());
+    cloneParentSheets(popoutDocument, popoutDocument.querySelector('[data-popout-chrome]'));
+  };
+  const mo = new MutationObserver(() => {
+    if (!frame) frame = window.requestAnimationFrame(resync);
+  });
+  mo.observe(document.head, { childList: true, subtree: true, characterData: true, attributes: true });
+  return () => {
+    mo.disconnect();
+    if (frame) window.cancelAnimationFrame(frame);
+  };
+}
+
+export function adoptParentStyles(popoutDocument: Document) {
   const base = popoutDocument.createElement('base');
   base.href = document.baseURI;
   popoutDocument.head.appendChild(base);
-  document.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => {
-    popoutDocument.head.appendChild(node.cloneNode(true));
-  });
+  cloneParentSheets(popoutDocument, null);
   const chrome = popoutDocument.createElement('style');
+  chrome.setAttribute('data-popout-chrome', '');
   // Mirrors PanelHeader's docked chrome: an elevated 32px strip whose
   // bottom hairline the active tab overlaps, tab on the default surface
   chrome.textContent = `
@@ -143,6 +175,8 @@ interface PopoutEntry {
   root: HTMLElement;
   /** Pending deferred-close timer (see cleanup below) */
   closeTimer: number | null;
+  /** disconnects the popout's live style sync */
+  stopStyleSync: () => void;
 }
 
 /** Live popout windows by frame name. Module-scoped so a StrictMode
@@ -320,7 +354,7 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
       }
       popout.document.body.appendChild(root);
 
-      entry = { win: popout, root, closeTimer: null };
+      entry = { win: popout, root, closeTimer: null, stopStyleSync: syncParentStyles(popout.document) };
       popoutEntries.set(frameName, entry);
     }
 
@@ -346,6 +380,7 @@ export function PopoutPanel({ title, width, height, onClose, onDragMove, onDragE
       // unmount lets it fire.
       claimed.closeTimer = window.setTimeout(() => {
         if (popoutEntries.get(frameName) === claimed) popoutEntries.delete(frameName);
+        claimed.stopStyleSync();
         try {
           root.remove();
           popout.close();
