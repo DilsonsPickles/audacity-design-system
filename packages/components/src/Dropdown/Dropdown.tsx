@@ -48,6 +48,47 @@ export interface DropdownProps {
   size?: 'default' | 'small';
 }
 
+/** Opens the frameless child window a clipped list drops into (Electron:
+ *  main.cjs gives the `audacity-dropdown-popout` frame-name prefix a
+ *  frameless, transparent, unresizable child window at these screen
+ *  coordinates). Returns null when the popup is refused — the caller
+ *  falls back to flipping the list above the trigger. */
+function openListWindow(trigger: HTMLElement, name: string, menuHeight: number): Window | null {
+  const doc = trigger.ownerDocument;
+  const win = doc.defaultView ?? window;
+  const rect = trigger.getBoundingClientRect();
+  // screen coordinates: the window's origin, plus whatever chrome sits
+  // above the content (outer − inner height; 0 for a frameless popout),
+  // plus the trigger's place in the content
+  const chromeY = (win.outerHeight || 0) - (win.innerHeight || 0);
+  const left = Math.round((win.screenX || 0) + rect.left);
+  const top = Math.round((win.screenY || 0) + chromeY + rect.bottom + 4);
+  const w = Math.ceil(rect.width);
+  const h = Math.ceil(menuHeight) + 2;
+  let popup: Window | null = null;
+  try {
+    popup = win.open('', name, `popup=yes,width=${w},height=${h},left=${left},top=${top}`);
+  } catch {
+    return null;
+  }
+  if (!popup) return null;
+  adoptStyles(popup.document, doc);
+  popup.document.documentElement.style.background = 'transparent';
+  popup.document.body.style.cssText = 'margin:0;background:transparent;overflow:hidden;';
+  return popup;
+}
+
+/** The PopoutPanel style-adoption trick: a base href so relative URLs
+ *  resolve, then every stylesheet cloned into the list window */
+function adoptStyles(into: Document, from: Document): void {
+  const base = into.createElement('base');
+  base.href = from.baseURI;
+  into.head.appendChild(base);
+  from.querySelectorAll('style, link[rel="stylesheet"]').forEach((node) => {
+    into.head.appendChild(node.cloneNode(true));
+  });
+}
+
 export const Dropdown: React.FC<DropdownProps> = ({
   options,
   value,
@@ -62,6 +103,14 @@ export const Dropdown: React.FC<DropdownProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState<number>(-1);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+  // THE LIST AS ITS OWN OS WINDOW (2026-11-17, "I want those dropdowns
+  // dropping down and overlapping the window"): under Electron a list
+  // that would run past its window's bottom edge opens DOWNWARD in a
+  // frameless child window at screen coordinates — a native menu's
+  // behaviour — instead of flipping above the trigger (the flip stays
+  // as the plain browser's fallback, where popups cannot be chromeless).
+  const [popupWin, setPopupWin] = useState<Window | null>(null);
+  const popupNameRef = useRef(`audacity-dropdown-popout-${Math.random().toString(36).slice(2)}`);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -178,26 +227,63 @@ export const Dropdown: React.FC<DropdownProps> = ({
     }
   }, [isOpen]);
 
-  // KEEP THE LIST INSIDE THE WINDOW (2026-11-17, the popout Plot spectrum
-  // window's Size list ran past the window's bottom edge — an OS window's
-  // content cannot overflow the window): once the menu has a size, FLIP it
-  // ABOVE the trigger when the room below runs out, and clamp it to the
-  // viewport when neither side fits (its max-height scroll takes over).
-  // A layout effect, so the first paint is already in place.
+  // THE LIST STAYS REACHABLE WHEN THE WINDOW ENDS BELOW IT (2026-11-17,
+  // the popout Plot spectrum window's Size list ran past the window's
+  // bottom edge — an OS window's content cannot overflow the window):
+  // once the menu has a size and the room below runs out, UNDER ELECTRON
+  // it moves into a frameless child window at screen coordinates and
+  // keeps dropping DOWN, overlapping the window edge like a native menu
+  // ("I want those dropdowns dropping down and overlapping the window");
+  // in a plain browser it FLIPS above the trigger, or clamps when
+  // neither side fits (its max-height scroll takes over). A layout
+  // effect, so the first paint is already in place.
   useLayoutEffect(() => {
-    if (!isOpen || !menuRef.current || !triggerRef.current || !menuPosition) return;
+    if (!isOpen || popupWin || !menuRef.current || !triggerRef.current || !menuPosition) return;
     const menu = menuRef.current;
-    const rect = triggerRef.current.getBoundingClientRect();
+    const trigger = triggerRef.current;
+    const rect = trigger.getBoundingClientRect();
     const win = menu.ownerDocument.defaultView ?? window;
     const h = menu.offsetHeight;
     const EDGE = 10;
     if (rect.bottom + 4 + h <= win.innerHeight - EDGE) return; // fits below
+
+    const isElectron = typeof window !== 'undefined' && Boolean((window as { electronMenu?: unknown }).electronMenu);
+    if (isElectron) {
+      const popup = openListWindow(trigger, popupNameRef.current, h);
+      if (popup) {
+        setPopupWin(popup);
+        return;
+      }
+    }
     const above = rect.top - 4 - h;
     const top = above >= EDGE ? above : Math.max(EDGE, win.innerHeight - EDGE - h);
     if (Math.abs(top - menuPosition.top) > 0.5) {
       setMenuPosition((p) => (p ? { ...p, top } : p));
     }
-  }, [isOpen, menuPosition]);
+  }, [isOpen, menuPosition, popupWin]);
+
+  // The list window's life follows the dropdown's: closing the dropdown
+  // closes the window, and the user closing the window closes the dropdown
+  useEffect(() => {
+    if (!isOpen && popupWin) {
+      setPopupWin(null);
+      if (!popupWin.closed) popupWin.close();
+    }
+  }, [isOpen, popupWin]);
+  useEffect(() => {
+    if (!popupWin) return;
+    const closeDropdown = () => setIsOpen(false);
+    popupWin.addEventListener('pagehide', closeDropdown);
+    // scrolling the opener moves the trigger out from under the list —
+    // a native menu would close, so this one does
+    const openerWin = triggerRef.current?.ownerDocument.defaultView ?? window;
+    openerWin.addEventListener('scroll', closeDropdown, true);
+    return () => {
+      popupWin.removeEventListener('pagehide', closeDropdown);
+      openerWin.removeEventListener('scroll', closeDropdown, true);
+      if (!popupWin.closed) popupWin.close();
+    };
+  }, [popupWin]);
 
   // Focus management: when dropdown opens, focus the menu
   useEffect(() => {
@@ -261,17 +347,20 @@ export const Dropdown: React.FC<DropdownProps> = ({
           role="listbox"
           tabIndex={-1}
           style={{
-            position: 'fixed',
-            top: `${menuPosition.top}px`,
-            left: `${menuPosition.left}px`,
-            width: `${menuPosition.width}px`,
-            '--dropdown-menu-bg': controlBg,
-            '--dropdown-border': theme.border.input.idle,
-            '--dropdown-menu-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)',
-            '--dropdown-text': theme.foreground.text.primary,
-            '--dropdown-option-hover-bg': theme.background.surface.hover,
-            '--dropdown-option-hover-outline': theme.border.focus,
-          } as React.CSSProperties}
+            // in its own OS window the list IS the window: it fills it,
+            // and the window's native shadow replaces the CSS one (which
+            // the window's bounds would clip)
+            ...(popupWin
+              ? ({ position: 'fixed', top: 0, left: 0, right: 0, '--dropdown-menu-shadow': 'none' } as React.CSSProperties)
+              : ({ position: 'fixed', top: `${menuPosition.top}px`, left: `${menuPosition.left}px`, width: `${menuPosition.width}px`, '--dropdown-menu-shadow': '0px 10px 30px 0px rgba(20, 21, 26, 0.3)' } as React.CSSProperties)),
+            ...({
+              '--dropdown-menu-bg': controlBg,
+              '--dropdown-border': theme.border.input.idle,
+              '--dropdown-text': theme.foreground.text.primary,
+              '--dropdown-option-hover-bg': theme.background.surface.hover,
+              '--dropdown-option-hover-outline': theme.border.focus,
+            } as React.CSSProperties),
+          }}
         >
           {options.map((option, index) => {
             if (option.disabled) {
@@ -301,7 +390,9 @@ export const Dropdown: React.FC<DropdownProps> = ({
             );
           })}
         </div>,
-        triggerRef.current?.ownerDocument.body ?? document.body
+        popupWin && !popupWin.closed
+          ? popupWin.document.body
+          : triggerRef.current?.ownerDocument.body ?? document.body
       )}
     </div>
   );

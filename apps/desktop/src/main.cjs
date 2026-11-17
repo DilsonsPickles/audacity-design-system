@@ -205,6 +205,13 @@ function createWindow(url) {
       void shell.openExternal(target);
       return { action: 'deny' };
     }
+    // A dropdown list that would clip at its window's edge opens as its
+    // own tiny frameless child window and drops PAST the edge, like a
+    // native menu (2026-11-17, "I want those dropdowns dropping down and
+    // overlapping the window"; Dropdown.tsx opens with this prefix)
+    if (frameName && frameName.startsWith('audacity-dropdown-popout')) {
+      return { action: 'allow', overrideBrowserWindowOptions: dropdownPopoutOptions(win) };
+    }
     // Panel popouts (PopoutPanel.tsx opens with this frame-name prefix)
     // become FRAMELESS child windows — the panel draws its own header,
     // which carries the drag region and close button.
@@ -403,6 +410,40 @@ ipcMain.handle('mic:open-settings', () => shell.openExternal(
     ? 'x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone'
     : 'ms-settings:privacy-microphone',
 ));
+
+/** The frameless child window a dropdown list drops into — positioned by
+ *  the renderer at screen coordinates, exactly the list's size, closed by
+ *  the dropdown; the native shadow draws under the opaque list. */
+function dropdownPopoutOptions(parent) {
+  return {
+    frame: false,
+    transparent: true,
+    roundedCorners: false,
+    resizable: false,
+    movable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    minWidth: 1,
+    minHeight: 1,
+    parent,
+  };
+}
+
+// A dropdown inside a PANEL POPOUT opens its list window from THAT
+// window's webContents, which the per-window handler above never sees —
+// this app-level hook covers every webContents; the main window's own
+// setWindowOpenHandler (set after creation) takes precedence there.
+app.on('web-contents-created', (_event, contents) => {
+  contents.setWindowOpenHandler(({ frameName }) => {
+    if (frameName && frameName.startsWith('audacity-dropdown-popout')) {
+      const parent = BrowserWindow.fromWebContents(contents) ?? undefined;
+      return { action: 'allow', overrideBrowserWindowOptions: dropdownPopoutOptions(parent) };
+    }
+    return { action: 'allow' };
+  });
+});
 
 // A renderer console for diagnosis: ELECTRON_REMOTE_DEBUG_PORT=9222 pnpm dev
 // opens Chromium's remote-debugging port (http://localhost:9222/json)
