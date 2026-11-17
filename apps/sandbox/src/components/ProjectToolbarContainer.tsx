@@ -1,13 +1,9 @@
 import React from 'react';
-import { ProjectToolbar, type TransportToolbarProps } from '@audacity-ui/components';
+import { ProjectToolbar } from '@audacity-ui/components';
 import { useDialogs } from '../contexts/DialogContext';
 import { useTracks } from '../contexts/useTracks';
 import { getProjects } from '../utils/projectDatabase';
 import type { StoredProject } from '@audacity-ui/components';
-
-// TransportToolbar is the module that owns the Workspace union — reuse its
-// type rather than duplicating the literal list here.
-type Workspace = TransportToolbarProps['workspace'];
 
 export interface ProjectToolbarContainerProps {
   activeMenuItem: 'home' | 'project' | 'export' | 'debug';
@@ -33,8 +29,10 @@ export interface ProjectToolbarContainerProps {
   }>>;
 
   // Workspace selector
-  workspace: Workspace;
-  onWorkspacePick: (next: Workspace) => void;
+  /** The workspace in use, by id — a built-in or the user's own (2026-11-17) */
+  workspace: string;
+  workspaceOptions: ReadonlyArray<{ value: string; label: string }>;
+  onWorkspacePick: (next: string) => void;
 }
 
 /**
@@ -97,6 +95,7 @@ export function ProjectToolbarContainer({
   setAudioSetupMenuAnchor,
   setMarketplaceModal,
   workspace,
+  workspaceOptions,
   onWorkspacePick,
 }: ProjectToolbarContainerProps) {
   const { setIsShareDialogOpen } = useDialogs();
@@ -143,13 +142,8 @@ export function ProjectToolbarContainer({
       ] : undefined}
       workspaceSelector={activeMenuItem !== 'export' ? {
         value: workspace,
-        options: [
-          { value: 'music', label: 'Music' },
-          { value: 'classic', label: 'Classic' },
-          { value: 'modern', label: 'Modern' },
-          { value: 'spectral-editing', label: 'Spectral editing' },
-        ],
-        onChange: (next: string) => onWorkspacePick(next as Workspace),
+        options: [...workspaceOptions],
+        onChange: (next: string) => onWorkspacePick(next),
       } : undefined}
       historyActions={activeMenuItem !== 'export' ? {
         onUndo: () => dispatch({ type: 'UNDO' }),

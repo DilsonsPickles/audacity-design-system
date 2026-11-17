@@ -59,6 +59,7 @@ export interface UseMenuDefinitionsOptions {
   /** Analyze › Plot spectrum… (2026-11-16) */
   onOpenPlotSpectrum?: () => void;
   onResetWorkspace?: () => void;
+  onNewWorkspace?: () => void;
   onCloseProject?: () => void;
 }
 
@@ -110,6 +111,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onSaveProjectAs,
     onOpenPlotSpectrum,
     onResetWorkspace,
+    onNewWorkspace,
   } = options;
 
   const dispatch = useTracksDispatch();
@@ -187,6 +189,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onSaveProjectAs,
     onOpenPlotSpectrum,
     onResetWorkspace,
+    onNewWorkspace,
     onOpenLabelEditor: () => setIsLabelEditorOpen(true),
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
     onOpenGoTo: () => setIsGoToOpen(true),

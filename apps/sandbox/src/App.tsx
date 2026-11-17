@@ -112,6 +112,7 @@ import { useProjectLifecycle } from './hooks/useProjectLifecycle';
 import { useProjectTabs } from './hooks/useProjectTabs';
 import { useMenuDefinitions } from './hooks/useMenuDefinitions';
 import { useElectronMenuBridge } from './hooks/useElectronMenuBridge';
+import { WorkspaceNameDialog } from './components/WorkspaceNameDialog';
 
 /** Never taken off the toolbars by a ⌘-drag: the tabs, the way back to Home */
 const UNREMOVABLE_TOOLS: ReadonlySet<string> = new Set([PROJECT_TAB_TOOL_ID]);
@@ -125,6 +126,7 @@ const WORKSPACE_NAMES: Record<Workspace, string> = {
   modern: 'Modern',
   'spectral-editing': 'Spectral editing',
 };
+const isBuiltinWorkspace = (id: string | undefined): id is Workspace => !!id && id in WORKSPACE_NAMES;
 
 function CanvasDemoContent() {
   const { theme: baseTheme } = useTheme();
@@ -156,7 +158,20 @@ function CanvasDemoContent() {
   const [homeTabKey, setHomeTabKey] = React.useState(0);
   const [currentProjectId, setCurrentProjectId] = React.useState<string | null>(null);
   const [indexedDBProjects, setIndexedDBProjects] = React.useState<StoredProject[]>([]);
-  const [workspace, setWorkspace] = React.useState<Workspace>('classic');
+  // THE WORKSPACE IN USE (2026-11-17): a built-in or one of the user's own,
+  // by id, kept in the preferences; `baseWorkspace` is the built-in at the
+  // bottom of its chain — its seed layout and its behaviour
+  const customWorkspaces = preferences.customWorkspaces ?? [];
+  const workspace: string = isBuiltinWorkspace(preferences.activeWorkspace) || customWorkspaces.some((w) => w.id === preferences.activeWorkspace)
+    ? preferences.activeWorkspace
+    : 'classic';
+  const baseOf = (id: string): Workspace => (isBuiltinWorkspace(id) ? id : customWorkspaces.find((w) => w.id === id)?.base ?? 'classic');
+  const baseWorkspace = baseOf(workspace);
+  const workspaceName = (id: string) => (isBuiltinWorkspace(id) ? WORKSPACE_NAMES[id] : customWorkspaces.find((w) => w.id === id)?.name ?? id);
+  const workspaceOptions = [
+    ...Object.entries(WORKSPACE_NAMES).map(([value, label]) => ({ value, label })),
+    ...customWorkspaces.map((w) => ({ value: w.id, label: w.name })),
+  ];
   const {
     timeCodeFormat,
     setTimeCodeFormat,
@@ -367,7 +382,7 @@ function CanvasDemoContent() {
   // of bars with persistent grips, one layout per workspace, in the
   // preferences; a grip drag moves a whole bar between docks, along a
   // row, or onto a new row (2026-11-10)
-  const toolbarLayout = useToolbarLayout(workspace, activeMenuItem);
+  const toolbarLayout = useToolbarLayout(workspace, baseWorkspace, activeMenuItem);
   // Whether a side dock takes a toolbar: every tool on it has a vertical form
   const barFitsVertical = (barId: string) => {
     const bar = findBar(toolbarLayout.layout, barId)?.bar;
@@ -411,12 +426,54 @@ function CanvasDemoContent() {
     delete vertical[workspace];
     updatePreference('workspaceTabsVertical', vertical);
     updatePreference('toolbarHiddenTools', [...DEFAULT_TOOLBAR_HIDDEN_TOOLS]);
-    const name = WORKSPACE_NAMES[workspace] ?? workspace;
+    const name = workspaceName(workspace);
     toast.info('Workspace reset', `${name} is back to its default toolbars`, [
       { label: 'Undo', onClick: () => {
         updatePreference('toolbarLayouts', before.layouts);
         updatePreference('workspaceTabsVertical', before.vertical);
         updatePreference('toolbarHiddenTools', before.hidden);
+      } },
+    ]);
+  };
+  // NEW WORKSPACE… (2026-11-17, "allow me to create new workspaces"): a
+  // named COPY of the workspace in use — its toolbar layout and tab
+  // orientation — based on the same built-in, and switched to. The user's
+  // own workspaces can be renamed and deleted (a toast with Undo); the
+  // built-ins cannot. The hidden tools are one list for every workspace.
+  const [workspaceDialog, setWorkspaceDialog] = React.useState<{ mode: 'new' | 'rename'; id?: string } | null>(null);
+  const createWorkspace = (name: string) => {
+    const id = `custom-${Date.now().toString(36)}`;
+    updatePreference('customWorkspaces', [...customWorkspaces, { id, name, base: baseWorkspace }]);
+    updatePreference('toolbarLayouts', { ...(preferences.toolbarLayouts ?? {}), [id]: toolbarLayout.layout });
+    if (tabsVertical) updatePreference('workspaceTabsVertical', { ...(preferences.workspaceTabsVertical ?? {}), [id]: true });
+    updatePreference('activeWorkspace', id);
+  };
+  const renameWorkspace = (id: string, name: string) =>
+    updatePreference('customWorkspaces', customWorkspaces.map((w) => (w.id === id ? { ...w, name } : w)));
+  const deleteWorkspace = (id: string) => {
+    const gone = customWorkspaces.find((w) => w.id === id);
+    if (!gone) return;
+    const before = {
+      list: customWorkspaces,
+      layouts: preferences.toolbarLayouts,
+      vertical: preferences.workspaceTabsVertical,
+      active: workspace,
+    };
+    updatePreference('customWorkspaces', customWorkspaces.filter((w) => w.id !== id));
+    const layouts = { ...(preferences.toolbarLayouts ?? {}) };
+    delete layouts[id];
+    updatePreference('toolbarLayouts', layouts);
+    const vertical = { ...(preferences.workspaceTabsVertical ?? {}) };
+    delete vertical[id];
+    updatePreference('workspaceTabsVertical', vertical);
+    // Deleting the one in use falls back to the built-in it was made from
+    if (workspace === id) handleWorkspacePick(gone.base);
+    toast.info('Workspace deleted', `"${gone.name}" and its toolbar layout`, [
+      { label: 'Undo', onClick: () => {
+        updatePreference('customWorkspaces', before.list);
+        updatePreference('toolbarLayouts', before.layouts);
+        updatePreference('workspaceTabsVertical', before.vertical);
+        handleWorkspacePick(before.active);
       } },
     ]);
   };
@@ -511,11 +568,12 @@ function CanvasDemoContent() {
   // Project-toolbar responsiveness (compact icon swap + label drop) is
   // now handled inside ProjectToolbar itself. We just provide the
   // workspace value/options and a single change handler.
-  const handleWorkspacePick = (next: Workspace) => {
-    setWorkspace(next);
-    if (next === 'spectral-editing') dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: true });
-    else if (next === 'classic') dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: false });
-  };
+  function handleWorkspacePick(next: string) {
+    updatePreference('activeWorkspace', next);
+    const base = baseOf(next);
+    if (base === 'spectral-editing') dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: true });
+    else if (base === 'classic') dispatch({ type: 'SET_SPECTROGRAM_MODE', payload: false });
+  }
   const [beatsPerMeasure, setBeatsPerMeasure] = React.useState(4);
   const [noteValue, setNoteValue] = React.useState(4);
 
@@ -1415,6 +1473,7 @@ function CanvasDemoContent() {
     onSaveProjectAs: currentProjectId ? () => { void handleSaveProjectAs(); } : undefined,
     onOpenPlotSpectrum: () => setIsPlotSpectrumOpen(true),
     onResetWorkspace: activeMenuItem === 'home' ? undefined : resetWorkspace,
+    onNewWorkspace: activeMenuItem === 'home' ? undefined : () => setWorkspaceDialog({ mode: 'new' }),
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu
@@ -1516,9 +1575,12 @@ function CanvasDemoContent() {
     onShareAudio: () => setIsShareDialogOpen(true),
     onGetEffects: (anchorRect) => setMarketplaceModal({ open: true, anchorRect }),
     workspace,
-    workspaceOptions: Object.entries(WORKSPACE_NAMES).map(([value, label]) => ({ value, label })),
-    onWorkspacePick: (next) => handleWorkspacePick(next as Workspace),
+    workspaceOptions,
+    onWorkspacePick: handleWorkspacePick,
     onResetWorkspace: resetWorkspace,
+    onNewWorkspace: () => setWorkspaceDialog({ mode: 'new' }),
+    onRenameWorkspace: isBuiltinWorkspace(workspace) ? undefined : () => setWorkspaceDialog({ mode: 'rename', id: workspace }),
+    onDeleteWorkspace: isBuiltinWorkspace(workspace) ? undefined : () => deleteWorkspace(workspace),
     onUndo: () => dispatch({ type: 'UNDO' }),
     onRedo: () => dispatch({ type: 'REDO' }),
     hidden: new Set(preferences.toolbarHiddenTools),
@@ -1529,7 +1591,7 @@ function CanvasDemoContent() {
   const transportToolbarProps: TransportToolbarContainerProps = {
     transport: {
       activeMenuItem,
-      workspace,
+      workspace: baseWorkspace,
       layoutEditing: toolbarEditing,
       onLayoutEditingChange: (on: boolean) => { if (on) { setBuilderBarId(null); setToolbarBuilderOpen(true); } else setToolbarEditing(false); },
       onResetLayout: toolbarLayout.resetLayout,
@@ -1703,6 +1765,7 @@ function CanvasDemoContent() {
         setAudioSetupMenuAnchor={setAudioSetupMenuAnchor}
         setMarketplaceModal={setMarketplaceModal}
         workspace={workspace}
+        workspaceOptions={workspaceOptions}
         onWorkspacePick={handleWorkspacePick}
       />}
       {/* The TOP DOCK: the tools, in the workspace's bars (2026-11-09) */}
@@ -2070,6 +2133,20 @@ function CanvasDemoContent() {
         fitsVertical={barFitsVertical}
         onEditToolbars={(barId) => { setBuilderBarId(barId); setToolbarBuilderOpen(true); }}
         os={preferences.operatingSystem}
+      />
+      <WorkspaceNameDialog
+        isOpen={workspaceDialog !== null}
+        mode={workspaceDialog?.mode ?? 'new'}
+        initialName={workspaceDialog?.mode === 'rename' && workspaceDialog.id ? workspaceName(workspaceDialog.id) : `${workspaceName(workspace)} copy`}
+        takenNames={workspaceOptions.filter((o) => o.value !== workspaceDialog?.id).map((o) => o.label)}
+        basedOn={workspaceName(workspace)}
+        os={preferences.operatingSystem}
+        onClose={() => setWorkspaceDialog(null)}
+        onCommit={(name) => {
+          if (workspaceDialog?.mode === 'rename' && workspaceDialog.id) renameWorkspace(workspaceDialog.id, name);
+          else createWorkspace(name);
+          setWorkspaceDialog(null);
+        }}
       />
       <PlotSpectrumWindow
         isOpen={isPlotSpectrumOpen}

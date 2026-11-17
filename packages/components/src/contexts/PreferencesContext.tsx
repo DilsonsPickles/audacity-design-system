@@ -4,8 +4,16 @@
  * Manages all user preferences with localStorage persistence
  */
 
-import type { ToolbarLayout } from '../utils/toolbarLayout';
+import type { ToolbarLayout, ToolbarWorkspace } from '../utils/toolbarLayout';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
+
+/** A workspace the user made (2026-11-17) */
+export interface CustomWorkspace {
+  id: string;
+  name: string;
+  /** The built-in it was made from, at the bottom of the chain */
+  base: ToolbarWorkspace;
+}
 
 export interface PreferencesState {
   // General
@@ -112,6 +120,16 @@ export interface PreferencesState {
    *  2026-11-09): which bars sit in which dock, which tools on each bar.
    *  A workspace with no entry draws its built-in seed layout. */
   toolbarLayouts: Partial<Record<string, ToolbarLayout>>;
+  /** THE USER'S OWN WORKSPACES (2026-11-17, "allow me to create new
+   *  workspaces"): each named, made as a copy of the workspace in use, and
+   *  BASED ON a built-in one — whose seed its Reset goes back to and whose
+   *  behaviour (the spectral view, the music tools' defaults) it keeps. Its
+   *  layout and tab orientation live by its id in toolbarLayouts /
+   *  workspaceTabsVertical, as a built-in's do. */
+  customWorkspaces: CustomWorkspace[];
+  /** The workspace in use, by id (a built-in or a custom one); kept across
+   *  launches since 2026-11-17 */
+  activeWorkspace: string;
   /** The meters on their toolbars (2026-11-10): shown there (horizontal or
    *  vertical by the dock their toolbar is in), or only in their button's
    *  flyout — kept with the layouts, since where a meter is persists */
@@ -204,6 +222,8 @@ const defaultPreferences: PreferencesState = {
   // (projectButtonsMoved is NOT defaulted: profiles merge onto these
   // defaults, so an old profile must read it as absent)
   toolbarLayouts: {},
+  customWorkspaces: [],
+  activeWorkspace: 'classic',
   workspaceTabsVertical: {},
   projectTabRailPinned: false,
   projectTabRailWidth: 220,

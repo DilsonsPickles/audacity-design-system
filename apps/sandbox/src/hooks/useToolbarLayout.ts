@@ -35,7 +35,7 @@ export interface UseToolbarLayoutReturn {
  * dock a flat list of bars, 2026-11-09) is read as one row a dock;
  * anything else that is not a layout is ignored.
  */
-export function useToolbarLayout(workspace: ToolbarWorkspace, activeMenuItem: string): UseToolbarLayoutReturn {
+export function useToolbarLayout(workspace: string, seedWorkspace: ToolbarWorkspace, activeMenuItem: string): UseToolbarLayoutReturn {
   const { preferences, updatePreference } = usePreferences();
   const stored = preferences.toolbarLayouts?.[workspace];
   // ONCE PER PROFILE (2026-11-11): a profile saved before the first row's
@@ -72,17 +72,17 @@ export function useToolbarLayout(workspace: ToolbarWorkspace, activeMenuItem: st
     if (activeMenuItem === 'export') return EXPORT_TOOLBAR_LAYOUT;
     // (the cog is NOT put back since 2026-11-16 — it removes like any tool,
     // and a right-click on any toolbar opens the builder)
-    return normaliseLayout(withTitleBarOnlyItems(withProjectRowMoves(withProjectTools(custom ?? defaultToolbarLayout(workspace)))));
-  }, [activeMenuItem, custom, workspace]);
+    return normaliseLayout(withTitleBarOnlyItems(withProjectRowMoves(withProjectTools(custom ?? defaultToolbarLayout(seedWorkspace)))));
+  }, [activeMenuItem, custom, seedWorkspace]);
 
   // One edit of the layout in force, stored for this workspace
   const edit = useCallback((change: (base: ToolbarLayout) => ToolbarLayout) => {
     if (activeMenuItem === 'export') return;
-    const base = withTitleBarOnlyItems(withProjectRowMoves(withProjectTools(custom ?? defaultToolbarLayout(workspace))));
+    const base = withTitleBarOnlyItems(withProjectRowMoves(withProjectTools(custom ?? defaultToolbarLayout(seedWorkspace))));
     const next = change(base);
     if (next === base) return;
     updatePreference('toolbarLayouts', { ...(preferences.toolbarLayouts ?? {}), [workspace]: next });
-  }, [activeMenuItem, custom, preferences.toolbarLayouts, updatePreference, workspace]);
+  }, [activeMenuItem, custom, preferences.toolbarLayouts, updatePreference, workspace, seedWorkspace]);
 
   const moveBarTo = useCallback((barId: string, placement: BarPlacement) => {
     edit((base) => moveBar(base, barId, placement));

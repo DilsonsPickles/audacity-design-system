@@ -14,6 +14,7 @@ export interface MenuDefinitionDeps {
   /** Analyze › Plot spectrum… (2026-11-16, the Figma flow in 44 - Analyzers) */
   onOpenPlotSpectrum?: () => void;
   onResetWorkspace?: () => void;
+  onNewWorkspace?: () => void;
   /** File › New project ⌘N / Close project — the project tabs (2026-11-12) */
   onNewProject?: () => void;
   onCloseProject?: () => void;
@@ -230,6 +231,7 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Keyboard map',
       onClick: deps.onOpenKeyboardMap,
     },
+    ...(deps.onNewWorkspace ? [{ label: 'New workspace...', onClick: deps.onNewWorkspace }] : []),
     ...(deps.onResetWorkspace ? [{ label: 'Reset workspace to default', onClick: deps.onResetWorkspace }] : []),
   ];
 

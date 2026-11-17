@@ -16,6 +16,11 @@ export interface ProjectBarToolsDeps {
   onWorkspacePick: (next: string) => void;
   /** Reset workspace to default: its toolbars, hidden tools and tab orientation (2026-11-17) */
   onResetWorkspace?: () => void;
+  /** New workspace… — a named copy of the one in use (2026-11-17) */
+  onNewWorkspace?: () => void;
+  /** Rename / delete: only for the user's own workspaces */
+  onRenameWorkspace?: () => void;
+  onDeleteWorkspace?: () => void;
   onUndo: () => void;
   onRedo: () => void;
   /** The tools hidden in Customise toolbar (the tabs cannot be) */
