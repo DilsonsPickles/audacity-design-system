@@ -270,8 +270,25 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
   const cursorReading = hover && readoutSpectrum
     ? { hz: xToHz(hover.x), db: dbTop - (hover.y / graphH) * range }
     : null;
-  const lineReading = hover && readoutSpectrum
-    ? columnPeak(readoutSpectrum, Math.min(graphW, Math.floor(hover.x)))
+  // THE DOT SNAPS TO THE NEAREST PEAK (2026-11-17, "the little circle
+  // should snap to the nearest peak. It's how you designed it before" —
+  // Audacity 3's peak search): from the pointer's column the dot
+  // hill-climbs the drawn line to the local maximum, so it sits on the
+  // summit nearest the cursor rather than wherever the line happens to be
+  const nearestPeakAt = (spectrum: Spectrum, x0: number): { x: number; db: number } => {
+    let px = Math.max(0, Math.min(graphW, Math.round(x0)));
+    let v = columnPeak(spectrum, px).db;
+    for (let i = 0; i < graphW; i++) {
+      const left = px > 0 ? columnPeak(spectrum, px - 1).db : -Infinity;
+      const right = px < graphW ? columnPeak(spectrum, px + 1).db : -Infinity;
+      if (left > v && left >= right) { px -= 1; v = left; }
+      else if (right > v) { px += 1; v = right; }
+      else break;
+    }
+    return { x: px, db: v };
+  };
+  const peakNear = hover && readoutSpectrum
+    ? nearestPeakAt(readoutSpectrum, Math.floor(hover.x))
     : null;
 
   const drawOrder = [...plots].sort((a, b) => (a.id === focusedId ? 1 : 0) - (b.id === focusedId ? 1 : 0));
@@ -409,15 +426,14 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
                 ))}
               </ul>
             )}
-            {cursorReading && lineReading && readoutPlot && (() => {
+            {cursorReading && peakNear && readoutPlot && (() => {
               const yPct = (db: number) => (Math.max(0, Math.min(graphH, dbToY(db))) / graphH) * 100;
-              // the DOT marks the line's value under the pointer
+              // the DOT marks the nearest peak of the drawn line
               const cx = (hover!.x / graphW) * 100;
               const cy = (hover!.y / graphH) * 100;
-              const ly = yPct(lineReading.db);
               return (
                 <>
-                  <span className="plot-spectrum__line-dot" data-plot-line-dot style={{ left: `${cx}%`, top: `${ly}%`, background: readoutPlot.colour }} />
+                  <span className="plot-spectrum__line-dot" data-plot-line-dot style={{ left: `${(peakNear.x / graphW) * 100}%`, top: `${yPct(peakNear.db)}%`, background: readoutPlot.colour }} />
                   <div
                     className="plot-spectrum__readout"
                     data-plot-readout
