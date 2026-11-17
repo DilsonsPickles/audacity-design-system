@@ -5,7 +5,7 @@
  * key / Enter / Space on a grip reached by the arrow keys. The menu form of
  * what the grip's drag, the resize edge and the builder do:
  *
- *   Rename… · Move to ▸ Top / Bottom / Left / Right · Add tool ▸ · Add separator ·
+ *   Rename… · Move to ▸ Top / Bottom / Left / Right | after <toolbar> · Add tool ▸ · Add separator ·
  *   Reset width (only when sized) | Edit toolbars… | Remove toolbar
  *
  * Move to puts the toolbar on a NEW ROW (a column, at a side) at the end of
@@ -123,6 +123,21 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
   const offToolbars = addable.filter((id) => !findTool(layout, id));
   const hiddenTools = addable.filter((id) => findTool(layout, id) && hidden.has(id));
   const sideDock = !!region && isVerticalRegion(region);
+  // Move to's other toolbars, in reading order (never the Title bar)
+  const besideTargets = (() => {
+    if (!bar || fixed) return [];
+    const all: { id: string; label: string; region: ToolbarRegion; already: boolean }[] = [];
+    for (const r of TOOLBAR_REGIONS) {
+      rowsOf(layout, r).forEach((row) => row.forEach((b, i) => {
+        if (b.id === bar.id || b.id === TITLE_BAR_ID) return;
+        all.push({ id: b.id, label: barDisplayName(b), region: r, already: row[i + 1]?.id === bar.id });
+      }));
+    }
+    const count = new Map<string, number>();
+    all.forEach((t) => count.set(t.label, (count.get(t.label) ?? 0) + 1));
+    const dock = (r: ToolbarRegion) => MOVE_TARGETS.find((m) => m.region === r)?.label ?? (r.startsWith('left') ? 'Left' : 'Right');
+    return all.map((t) => ((count.get(t.label) ?? 0) > 1 ? { ...t, label: `${t.label} (${dock(t.region)})` } : t));
+  })();
   const addTool = (id: string) => {
     if (!bar) return;
     if (hidden.has(id)) setHidden([...hidden].filter((t) => t !== id));
@@ -278,6 +293,37 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
                   />
                 );
               })}
+              {/* BESIDE ANOTHER TOOLBAR (2026-11-17, "that 'Move to' should
+                  include custom named toolbars right?"): every other
+                  toolbar by name — the pick puts this one right AFTER it, in
+                  its row (a side dock's column); the one it already follows
+                  is checked and dimmed, a side dock's dimmed when this
+                  toolbar has no vertical form; a name two toolbars share
+                  says its dock */}
+              {besideTargets.length > 0 && (
+                <>
+                  <ContextMenuItem isDivider />
+                  <MenuHeading color={theme.foreground.text.secondary}>After toolbar</MenuHeading>
+                  {besideTargets.map((t) => (
+                    <ContextMenuItem
+                      key={t.id}
+                      label={t.label}
+                      checked={t.already}
+                      disabled={t.already || (isVerticalRegion(t.region) && !fitsVertical(bar.id))}
+                      onClick={() => {
+                        onClose();
+                        editLayout((base) => {
+                          const at = findBar(base, t.id);
+                          if (!at) return base;
+                          const after = rowsOf(base, at.region)[at.row][at.index + 1]?.id ?? null;
+                          return moveBar(base, bar.id, { region: at.region, row: at.row, beforeBarId: after });
+                        });
+                      }}
+                      onClose={onClose}
+                    />
+                  ))}
+                </>
+              )}
             </ContextMenuItem>
             <ContextMenuItem label="Add tool" hasSubmenu onClick={() => {}}>
               {addToolItems(true)}

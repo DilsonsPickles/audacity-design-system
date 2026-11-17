@@ -13,8 +13,9 @@ const LAYOUT: ToolbarLayout = {
   right: [],
 };
 
-function renderMenu(barId: string, opts: { fits?: boolean; addOnly?: boolean } = {}) {
-  let layout = LAYOUT;
+function renderMenu(barId: string, opts: { fits?: boolean; addOnly?: boolean; layout?: ToolbarLayout } = {}) {
+  const start = opts.layout ?? LAYOUT;
+  let layout = start;
   const editLayout = vi.fn((change: (base: ToolbarLayout) => ToolbarLayout) => { layout = change(layout); });
   const onEditToolbars = vi.fn();
   const utils = render(
@@ -23,7 +24,7 @@ function renderMenu(barId: string, opts: { fits?: boolean; addOnly?: boolean } =
       <ToolbarBarMenu
         menu={{ barId, x: 10, y: 10, addOnly: opts.addOnly }}
         onClose={() => {}}
-        layout={LAYOUT}
+        layout={start}
         editLayout={editLayout}
         fitsVertical={() => opts.fits ?? true}
         onEditToolbars={onEditToolbars}
@@ -60,6 +61,18 @@ describe('ToolbarBarMenu', () => {
     const stored = JSON.parse(localStorage.getItem('audacity-preferences') ?? '{}');
     expect(stored.workspaceHiddenTools.classic).toEqual([]);
     expect(stored.workspaceHiddenTools.music).toEqual(['timecode']);
+  });
+
+  it('Move to lists the other toolbars by name; a pick puts this one right after it (2026-11-17)', () => {
+    const two: ToolbarLayout = { ...LAYOUT, bottom: [[{ id: 'mine', tools: ['stop'], name: 'Podcast tools' }]] };
+    const { item, layout } = renderMenu('mine', { layout: two });
+    fireEvent.mouseEnter(item('Move to'));
+    expect(Array.from(document.querySelectorAll('[data-menu-heading]')).map((e) => e.textContent)).toContain('After toolbar');
+    // the Title bar is never a target
+    expect(item('Main toolbar')).toBeTruthy();
+    fireEvent.click(item('Main toolbar'));
+    expect(layout().top[1].map((b) => b.id)).toEqual(['main', 'mine']);
+    expect(layout().bottom).toEqual([]);
   });
 
   it('heads the menu with the toolbar\'s name, read-only, then its items', () => {
