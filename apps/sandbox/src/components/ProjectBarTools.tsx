@@ -14,6 +14,8 @@ export interface ProjectBarToolsDeps {
   workspace: string;
   workspaceOptions: ReadonlyArray<{ value: string; label: string }>;
   onWorkspacePick: (next: string) => void;
+  /** Reset workspace to default: its toolbars, hidden tools and tab orientation (2026-11-17) */
+  onResetWorkspace?: () => void;
   onUndo: () => void;
   onRedo: () => void;
   /** The tools hidden in Customise toolbar (the tabs cannot be) */

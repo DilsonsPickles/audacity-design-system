@@ -119,6 +119,16 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
                           onClose={() => setWorkspaceMenu(null)}
                         />
                       ))}
+                      {deps.onResetWorkspace && (
+                        <>
+                          <ContextMenuItem isDivider />
+                          <ContextMenuItem
+                            label="Reset workspace to default"
+                            onClick={() => deps.onResetWorkspace?.()}
+                            onClose={() => setWorkspaceMenu(null)}
+                          />
+                        </>
+                      )}
                     </ContextMenu>
                   </div>
                 );

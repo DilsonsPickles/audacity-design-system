@@ -131,6 +131,9 @@ export interface PreferencesState {
   spectralZeroPadding: string;
 }
 
+/** A fresh profile's hidden tools — what Reset workspace to default puts back */
+export const DEFAULT_TOOLBAR_HIDDEN_TOOLS: readonly string[] = ['collapse-tracks', 'expand-tracks', 'fit-tracks-height', 'bpm', 'time-signature', 'mixer-button', 'get-effects'];
+
 const defaultPreferences: PreferencesState = {
   // General
   showWelcomeDialog: true,
@@ -197,7 +200,7 @@ const defaultPreferences: PreferencesState = {
   // "playback-time-signature" off). A stored preference keeps whatever it
   // has — this is the default for a fresh profile.
   // Mixer and Get effects hidden too since 2026-11-11 (the first row's buttons moved out)
-  toolbarHiddenTools: ['collapse-tracks', 'expand-tracks', 'fit-tracks-height', 'bpm', 'time-signature', 'mixer-button', 'get-effects'],
+  toolbarHiddenTools: [...DEFAULT_TOOLBAR_HIDDEN_TOOLS],
   // (projectButtonsMoved is NOT defaulted: profiles merge onto these
   // defaults, so an old profile must read it as absent)
   toolbarLayouts: {},

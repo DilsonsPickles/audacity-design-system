@@ -1,7 +1,7 @@
 import React from 'react';
 import { TracksProvider } from './contexts/TracksProvider';
 import { SpectralSelectionProvider } from './contexts/SpectralSelectionContext';
-import { ApplicationHeader, ToastContainer, toast, useSelectionToolbarStyle, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, DEFAULT_PLAYBACK_METER_LOOK, type PlaybackMeterLook, type StoredProject } from '@audacity-ui/components';
+import { ApplicationHeader, ToastContainer, toast, useSelectionToolbarStyle, HomeTab, AccessibilityProfileProvider, PreferencesProvider, useAccessibilityProfile, usePreferences, useAppearancePrefs, useWelcomeDialog, ThemeProvider, useTheme, lightTheme, darkTheme, ContextMenu, ContextMenuItem, Dialog, Button, Footer, ProgressBar, DEFAULT_PLAYBACK_METER_LOOK, DEFAULT_TOOLBAR_HIDDEN_TOOLS, type PlaybackMeterLook, type StoredProject } from '@audacity-ui/components';
 import { ADIEU_BASE } from './lib/adieu-client';
 import { type EnvelopePointStyleKey, yToTrackIndex } from '@audacity-ui/core';
 import { createWheelTargetLock } from './utils/canvasWheelTarget';
@@ -117,6 +117,14 @@ import { useElectronMenuBridge } from './hooks/useElectronMenuBridge';
 const UNREMOVABLE_TOOLS: ReadonlySet<string> = new Set([PROJECT_TAB_TOOL_ID]);
 
 type Workspace = 'classic' | 'spectral-editing' | 'modern' | 'music';
+
+/** The workspaces, in the workspace menu's order, by their display names */
+const WORKSPACE_NAMES: Record<Workspace, string> = {
+  music: 'Music',
+  classic: 'Classic',
+  modern: 'Modern',
+  'spectral-editing': 'Spectral editing',
+};
 
 function CanvasDemoContent() {
   const { theme: baseTheme } = useTheme();
@@ -386,6 +394,32 @@ function CanvasDemoContent() {
   const tabsVertical = preferences.workspaceTabsVertical?.[workspace] ?? false;
   const setTabsVertical = (on: boolean) =>
     updatePreference('workspaceTabsVertical', { ...(preferences.workspaceTabsVertical ?? {}), [workspace]: on });
+  // RESET WORKSPACE TO DEFAULT (2026-11-17, "I need a reset workspace to
+  // default option"): the workspace menu's last item and View's — the
+  // workspace's toolbar layout (bars, rows, sizes, names) back to its seed,
+  // its tab orientation back to horizontal, and the hidden tools back to a
+  // fresh profile's (that list is shared by every workspace, so it resets
+  // there too). One toast with Undo puts all three back.
+  const resetWorkspace = () => {
+    const before = {
+      layouts: preferences.toolbarLayouts,
+      vertical: preferences.workspaceTabsVertical,
+      hidden: preferences.toolbarHiddenTools,
+    };
+    toolbarLayout.resetLayout();
+    const vertical = { ...(preferences.workspaceTabsVertical ?? {}) };
+    delete vertical[workspace];
+    updatePreference('workspaceTabsVertical', vertical);
+    updatePreference('toolbarHiddenTools', [...DEFAULT_TOOLBAR_HIDDEN_TOOLS]);
+    const name = WORKSPACE_NAMES[workspace] ?? workspace;
+    toast.info('Workspace reset', `${name} is back to its default toolbars`, [
+      { label: 'Undo', onClick: () => {
+        updatePreference('toolbarLayouts', before.layouts);
+        updatePreference('workspaceTabsVertical', before.vertical);
+        updatePreference('toolbarHiddenTools', before.hidden);
+      } },
+    ]);
+  };
   // The tab strip's / the rail's own small menu (2026-11-16, vertical tabs)
   const [tabsMenu, setTabsMenu] = React.useState<{ x: number; y: number; from: 'tabs' | 'rail' } | null>(null);
   const [builderBarId, setBuilderBarId] = React.useState<string | null>(null);
@@ -1380,6 +1414,7 @@ function CanvasDemoContent() {
     onCloseProject: currentProjectId ? () => projectTabs.closeProject(currentProjectId) : undefined,
     onSaveProjectAs: currentProjectId ? () => { void handleSaveProjectAs(); } : undefined,
     onOpenPlotSpectrum: () => setIsPlotSpectrumOpen(true),
+    onResetWorkspace: activeMenuItem === 'home' ? undefined : resetWorkspace,
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu
@@ -1481,13 +1516,9 @@ function CanvasDemoContent() {
     onShareAudio: () => setIsShareDialogOpen(true),
     onGetEffects: (anchorRect) => setMarketplaceModal({ open: true, anchorRect }),
     workspace,
-    workspaceOptions: [
-      { value: 'music', label: 'Music' },
-      { value: 'classic', label: 'Classic' },
-      { value: 'modern', label: 'Modern' },
-      { value: 'spectral-editing', label: 'Spectral editing' },
-    ],
+    workspaceOptions: Object.entries(WORKSPACE_NAMES).map(([value, label]) => ({ value, label })),
     onWorkspacePick: (next) => handleWorkspacePick(next as Workspace),
+    onResetWorkspace: resetWorkspace,
     onUndo: () => dispatch({ type: 'UNDO' }),
     onRedo: () => dispatch({ type: 'REDO' }),
     hidden: new Set(preferences.toolbarHiddenTools),
