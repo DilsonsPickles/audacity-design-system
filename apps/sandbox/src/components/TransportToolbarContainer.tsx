@@ -1,6 +1,7 @@
 import React from 'react';
 import { TransportTools, usePreferences, type TransportToolbarProps } from '@audacity-ui/components';
 import { useLoopRegionContext } from '../contexts/LoopRegionContext';
+import { useHiddenTools } from '../hooks/useHiddenTools';
 import type { UseMasterMeterReturn } from '../hooks/useMasterMeter';
 
 /**
@@ -85,9 +86,9 @@ export function TransportToolbarContainer({
   // The cog's Customise toolbar popover: which tools are hidden lives in
   // the preferences blob (2026-10-07)
   const { preferences, updatePreference } = usePreferences();
-  const hiddenTools = preferences.toolbarHiddenTools;
-  const toggleTool = (id: string) => updatePreference(
-    'toolbarHiddenTools',
+  // — the WORKSPACE's own list since 2026-11-17
+  const { hidden: hiddenTools, setHidden } = useHiddenTools();
+  const toggleTool = (id: string) => setHidden(
     hiddenTools.includes(id) ? hiddenTools.filter((t) => t !== id) : [...hiddenTools, id],
   );
 

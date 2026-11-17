@@ -113,20 +113,13 @@ import { useProjectTabs } from './hooks/useProjectTabs';
 import { useMenuDefinitions } from './hooks/useMenuDefinitions';
 import { useElectronMenuBridge } from './hooks/useElectronMenuBridge';
 import { WorkspaceNameDialog } from './components/WorkspaceNameDialog';
+import { WORKSPACE_NAMES, isBuiltinWorkspace, activeWorkspaceId, hiddenToolsOf } from './utils/workspaces';
 
 /** Never taken off the toolbars by a ⌘-drag: the tabs, the way back to Home */
 const UNREMOVABLE_TOOLS: ReadonlySet<string> = new Set([PROJECT_TAB_TOOL_ID]);
 
 type Workspace = 'classic' | 'spectral-editing' | 'modern' | 'music';
 
-/** The workspaces, in the workspace menu's order, by their display names */
-const WORKSPACE_NAMES: Record<Workspace, string> = {
-  music: 'Music',
-  classic: 'Classic',
-  modern: 'Modern',
-  'spectral-editing': 'Spectral editing',
-};
-const isBuiltinWorkspace = (id: string | undefined): id is Workspace => !!id && id in WORKSPACE_NAMES;
 
 function CanvasDemoContent() {
   const { theme: baseTheme } = useTheme();
@@ -162,9 +155,7 @@ function CanvasDemoContent() {
   // by id, kept in the preferences; `baseWorkspace` is the built-in at the
   // bottom of its chain — its seed layout and its behaviour
   const customWorkspaces = preferences.customWorkspaces ?? [];
-  const workspace: string = isBuiltinWorkspace(preferences.activeWorkspace) || customWorkspaces.some((w) => w.id === preferences.activeWorkspace)
-    ? preferences.activeWorkspace
-    : 'classic';
+  const workspace = activeWorkspaceId(preferences);
   const baseOf = (id: string): Workspace => (isBuiltinWorkspace(id) ? id : customWorkspaces.find((w) => w.id === id)?.base ?? 'classic');
   const baseWorkspace = baseOf(workspace);
   const workspaceName = (id: string) => (isBuiltinWorkspace(id) ? WORKSPACE_NAMES[id] : customWorkspaces.find((w) => w.id === id)?.name ?? id);
@@ -413,25 +404,25 @@ function CanvasDemoContent() {
   // default option"): the workspace menu's last item and View's — the
   // workspace's toolbar layout (bars, rows, sizes, names) back to its seed,
   // its tab orientation back to horizontal, and the hidden tools back to a
-  // fresh profile's (that list is shared by every workspace, so it resets
-  // there too). One toast with Undo puts all three back.
+  // fresh profile's — this workspace's own list (each workspace keeps one
+  // since 2026-11-17). One toast with Undo puts all three back.
   const resetWorkspace = () => {
     const before = {
       layouts: preferences.toolbarLayouts,
       vertical: preferences.workspaceTabsVertical,
-      hidden: preferences.toolbarHiddenTools,
+      hidden: preferences.workspaceHiddenTools,
     };
     toolbarLayout.resetLayout();
     const vertical = { ...(preferences.workspaceTabsVertical ?? {}) };
     delete vertical[workspace];
     updatePreference('workspaceTabsVertical', vertical);
-    updatePreference('toolbarHiddenTools', [...DEFAULT_TOOLBAR_HIDDEN_TOOLS]);
+    updatePreference('workspaceHiddenTools', { ...(preferences.workspaceHiddenTools ?? {}), [workspace]: [...DEFAULT_TOOLBAR_HIDDEN_TOOLS] });
     const name = workspaceName(workspace);
     toast.info('Workspace reset', `${name} is back to its default toolbars`, [
       { label: 'Undo', onClick: () => {
         updatePreference('toolbarLayouts', before.layouts);
         updatePreference('workspaceTabsVertical', before.vertical);
-        updatePreference('toolbarHiddenTools', before.hidden);
+        updatePreference('workspaceHiddenTools', before.hidden);
       } },
     ]);
   };
@@ -439,13 +430,14 @@ function CanvasDemoContent() {
   // named COPY of the workspace in use — its toolbar layout and tab
   // orientation — based on the same built-in, and switched to. The user's
   // own workspaces can be renamed and deleted (a toast with Undo); the
-  // built-ins cannot. The hidden tools are one list for every workspace.
+  // built-ins cannot. The copy takes the hidden tools too.
   const [workspaceDialog, setWorkspaceDialog] = React.useState<{ mode: 'new' | 'rename'; id?: string } | null>(null);
   const createWorkspace = (name: string) => {
     const id = `custom-${Date.now().toString(36)}`;
     updatePreference('customWorkspaces', [...customWorkspaces, { id, name, base: baseWorkspace }]);
     updatePreference('toolbarLayouts', { ...(preferences.toolbarLayouts ?? {}), [id]: toolbarLayout.layout });
     if (tabsVertical) updatePreference('workspaceTabsVertical', { ...(preferences.workspaceTabsVertical ?? {}), [id]: true });
+    updatePreference('workspaceHiddenTools', { ...(preferences.workspaceHiddenTools ?? {}), [id]: [...hiddenToolsOf(preferences, workspace)] });
     updatePreference('activeWorkspace', id);
   };
   const renameWorkspace = (id: string, name: string) =>
@@ -457,6 +449,7 @@ function CanvasDemoContent() {
       list: customWorkspaces,
       layouts: preferences.toolbarLayouts,
       vertical: preferences.workspaceTabsVertical,
+      hidden: preferences.workspaceHiddenTools,
       active: workspace,
     };
     updatePreference('customWorkspaces', customWorkspaces.filter((w) => w.id !== id));
@@ -466,6 +459,9 @@ function CanvasDemoContent() {
     const vertical = { ...(preferences.workspaceTabsVertical ?? {}) };
     delete vertical[id];
     updatePreference('workspaceTabsVertical', vertical);
+    const hiddenByWs = { ...(preferences.workspaceHiddenTools ?? {}) };
+    delete hiddenByWs[id];
+    updatePreference('workspaceHiddenTools', hiddenByWs);
     // Deleting the one in use falls back to the built-in it was made from
     if (workspace === id) handleWorkspacePick(gone.base);
     toast.info('Workspace deleted', `"${gone.name}" and its toolbar layout`, [
@@ -473,6 +469,7 @@ function CanvasDemoContent() {
         updatePreference('customWorkspaces', before.list);
         updatePreference('toolbarLayouts', before.layouts);
         updatePreference('workspaceTabsVertical', before.vertical);
+        updatePreference('workspaceHiddenTools', before.hidden);
         handleWorkspacePick(before.active);
       } },
     ]);
@@ -480,6 +477,7 @@ function CanvasDemoContent() {
   // The tab strip's / the rail's own small menu (2026-11-16, vertical tabs)
   const [tabsMenu, setTabsMenu] = React.useState<{ x: number; y: number; from: 'tabs' | 'rail' } | null>(null);
   const [builderBarId, setBuilderBarId] = React.useState<string | null>(null);
+  const openAddToolMenu = React.useCallback((barId: string, anchor: { x: number; y: number }) => setBarMenu({ barId, ...anchor, addOnly: true }), []);
   const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion) => setBarMenu({ barId, ...anchor, region }), []);
   const toolFitsVertical = (id: string) =>
     (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
@@ -1583,7 +1581,7 @@ function CanvasDemoContent() {
     onDeleteWorkspace: isBuiltinWorkspace(workspace) ? undefined : () => deleteWorkspace(workspace),
     onUndo: () => dispatch({ type: 'UNDO' }),
     onRedo: () => dispatch({ type: 'REDO' }),
-    hidden: new Set(preferences.toolbarHiddenTools),
+    hidden: new Set(hiddenToolsOf(preferences, workspace)),
   };
   const renderAppTool = (id: string, o: ToolbarOrientation) => renderProjectTool(id, o, projectToolDeps) ?? renderStatusTool(id, o, statusToolDeps);
   const appToolMeta = (id: string) => projectToolMeta(id) ?? statusToolMeta(id);
@@ -1779,6 +1777,7 @@ function CanvasDemoContent() {
           extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarMenu={openBarMenu}
+          onEmptyBarAdd={openAddToolMenu}
           onBarResize={toolbarLayout.resizeBar}
           className="transport-toolbar"
           tabGroupId="tool-toolbar"
@@ -1926,6 +1925,7 @@ function CanvasDemoContent() {
           extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarMenu={openBarMenu}
+          onEmptyBarAdd={openAddToolMenu}
           onBarResize={toolbarLayout.resizeBar}
           tabGroupId="tool-dock-left"
           ariaLabel="Left toolbar dock"
@@ -1941,6 +1941,7 @@ function CanvasDemoContent() {
               extraToolMeta={appToolMeta}
               drag={dockDrag}
           onBarMenu={openBarMenu}
+          onEmptyBarAdd={openAddToolMenu}
               onBarResize={toolbarLayout.resizeBar}
               tabGroupId="tool-dock-left"
               ariaLabel="Toolbar dock beside the left panels"
@@ -1955,6 +1956,7 @@ function CanvasDemoContent() {
               extraToolMeta={appToolMeta}
               drag={dockDrag}
           onBarMenu={openBarMenu}
+          onEmptyBarAdd={openAddToolMenu}
               onBarResize={toolbarLayout.resizeBar}
               tabGroupId="tool-dock-right"
               ariaLabel="Toolbar dock beside the right panels"
@@ -2028,6 +2030,7 @@ function CanvasDemoContent() {
           extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarMenu={openBarMenu}
+          onEmptyBarAdd={openAddToolMenu}
           onBarResize={toolbarLayout.resizeBar}
           tabGroupId="tool-dock-right"
           ariaLabel="Right toolbar dock"
@@ -2047,6 +2050,7 @@ function CanvasDemoContent() {
           extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarMenu={openBarMenu}
+          onEmptyBarAdd={openAddToolMenu}
           onBarResize={toolbarLayout.resizeBar}
           className="selection-toolbar"
           tabGroupId="selection-toolbar"
@@ -2131,6 +2135,7 @@ function CanvasDemoContent() {
         layout={toolbarLayout.layout}
         editLayout={toolbarLayout.editLayout}
         fitsVertical={barFitsVertical}
+        toolFitsVertical={toolFitsVertical}
         onEditToolbars={(barId) => { setBuilderBarId(barId); setToolbarBuilderOpen(true); }}
         os={preferences.operatingSystem}
       />

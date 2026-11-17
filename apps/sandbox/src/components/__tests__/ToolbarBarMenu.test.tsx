@@ -13,7 +13,7 @@ const LAYOUT: ToolbarLayout = {
   right: [],
 };
 
-function renderMenu(barId: string, opts: { fits?: boolean } = {}) {
+function renderMenu(barId: string, opts: { fits?: boolean; addOnly?: boolean } = {}) {
   let layout = LAYOUT;
   const editLayout = vi.fn((change: (base: ToolbarLayout) => ToolbarLayout) => { layout = change(layout); });
   const onEditToolbars = vi.fn();
@@ -21,7 +21,7 @@ function renderMenu(barId: string, opts: { fits?: boolean } = {}) {
     <PreferencesProvider>
     <ThemeProvider>
       <ToolbarBarMenu
-        menu={{ barId, x: 10, y: 10 }}
+        menu={{ barId, x: 10, y: 10, addOnly: opts.addOnly }}
         onClose={() => {}}
         layout={LAYOUT}
         editLayout={editLayout}
@@ -37,10 +37,35 @@ function renderMenu(barId: string, opts: { fits?: boolean } = {}) {
 }
 
 describe('ToolbarBarMenu', () => {
+  afterEach(() => localStorage.clear());
+
+  // ADD TOOL (2026-11-17): the tools not on a toolbar, then this
+  // workspace's hidden ones; a pick puts the tool at this toolbar's end,
+  // shown — the + on an empty toolbar opens the same list alone
+  it('Add tool lists the tools off the toolbars and the hidden ones, and adds a pick at the end', () => {
+    localStorage.setItem('audacity-preferences', JSON.stringify({ activeWorkspace: 'classic', workspaceHiddenTools: { classic: ['timecode'] } }));
+    const { labels, item, layout } = renderMenu('main', { addOnly: true });
+    expect(labels()).toContain('Stop');
+    expect(labels()).toContain('Timecode');
+    expect(labels()).not.toContain('Play');
+    expect(Array.from(document.querySelectorAll('[data-menu-heading]')).map((e) => e.textContent)).toEqual(['Not on a toolbar', 'Hidden']);
+    fireEvent.click(item('Stop'));
+    expect(layout().top[1][0].tools).toEqual(['play', 'timecode', 'stop']);
+  });
+
+  it('picking a hidden tool shows it again — in this workspace only', () => {
+    localStorage.setItem('audacity-preferences', JSON.stringify({ activeWorkspace: 'classic', workspaceHiddenTools: { classic: ['timecode'], music: ['timecode'] } }));
+    const { item } = renderMenu('main', { addOnly: true });
+    fireEvent.click(item('Timecode'));
+    const stored = JSON.parse(localStorage.getItem('audacity-preferences') ?? '{}');
+    expect(stored.workspaceHiddenTools.classic).toEqual([]);
+    expect(stored.workspaceHiddenTools.music).toEqual(['timecode']);
+  });
+
   it('heads the menu with the toolbar\'s name, read-only, then its items', () => {
     const { labels } = renderMenu('main');
     expect(document.querySelector('[data-toolbar-menu-name]')?.textContent).toBe('Main toolbar');
-    expect(labels()).toEqual(['Rename…', 'Move to', 'Add separator', 'Reset width', 'New toolbar', 'Edit toolbars…', 'Remove toolbar']);
+    expect(labels()).toEqual(['Rename…', 'Move to', 'Add tool', 'Add separator', 'Reset width', 'New toolbar', 'Edit toolbars…', 'Remove toolbar']);
   });
 
   it('the Title bar is the app\'s corner: a checklist of its app-level items, then Edit toolbars… (2026-11-16)', () => {

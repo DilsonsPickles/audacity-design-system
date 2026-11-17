@@ -102,6 +102,10 @@ export interface PreferencesState {
   /** Tools hidden from the transport toolbar, by the cog's Customise
    *  toolbar popover (CustomiseToolbarMenu ids; 2026-10-07) */
   toolbarHiddenTools: string[];
+  /** EACH WORKSPACE'S HIDDEN TOOLS (2026-11-17), by workspace id; a
+   *  workspace without an entry reads `toolbarHiddenTools`, the old shared
+   *  list, until its own is first changed */
+  workspaceHiddenTools: Record<string, string[]>;
   /** The project buttons' move has been applied to this profile's hidden list once (2026-11-11) */
   projectButtonsMoved?: boolean;
   /** Debug has been put into this profile's stored layouts' title bars once
@@ -219,6 +223,7 @@ const defaultPreferences: PreferencesState = {
   // has — this is the default for a fresh profile.
   // Mixer and Get effects hidden too since 2026-11-11 (the first row's buttons moved out)
   toolbarHiddenTools: [...DEFAULT_TOOLBAR_HIDDEN_TOOLS],
+  workspaceHiddenTools: {},
   // (projectButtonsMoved is NOT defaulted: profiles merge onto these
   // defaults, so an old profile must read it as absent)
   toolbarLayouts: {},

@@ -1,7 +1,9 @@
 import React from 'react';
+import { useHiddenTools } from '../hooks/useHiddenTools';
+import { ALL_TOOLS, ToolGlyph, toolName } from './toolCatalogue';
 import {
   Button, Checkbox, Dialog, DialogFooter, Icon, SearchField, useTheme, usePreferences,
-  CUSTOMISE_TOOLBAR_ENTRIES, CUSTOMISE_TOOL_ID, PROJECT_TAB_TOOL_ID,
+  PROJECT_TAB_TOOL_ID,
   TOOLBAR_REGIONS, TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, addEmptyBar, findBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertTool, isToolSeparator,
   moveBar, moveTool, nextBarId, removeBar, removeTool, renameBar, rowsOf,
   type BarPlacement, type ToolbarBar, type ToolbarLayout, type ToolbarRegion,
@@ -46,35 +48,6 @@ const REGION_NAMES: Record<ToolbarRegion, string> = {
   'left-inner': 'Left, inside the panel', 'right-inner': 'Right, inside the panel',
 };
 
-/** Names for the tools the Customise list does not carry */
-const EXTRA_NAMES: Record<string, string> = {
-  [PROJECT_TAB_TOOL_ID]: 'Project tabs',
-  [CUSTOMISE_TOOL_ID]: 'Customise toolbar',
-  debug: 'Debug',
-  split: 'Split mode',
-  'waveform-view': 'Waveform view',
-  'status-cue': 'Playback status',
-  'status-info': 'Info line',
-  'selection-timecodes': 'Selection',
-  'selection-duration': 'Selection duration',
-};
-
-const ENTRY_BY_ID = new Map(
-  CUSTOMISE_TOOLBAR_ENTRIES.flatMap((e) => (e.kind === 'tool' ? [[e.id, e] as const] : [])),
-);
-const toolName = (id: string) => ENTRY_BY_ID.get(id)?.label ?? EXTRA_NAMES[id] ?? id;
-
-/** Every tool the builder offers: the Customise list (less the metronome,
- *  which has nothing behind it), then the ones it does not carry */
-const ALL_TOOLS: ReadonlyArray<string> = [
-  ...CUSTOMISE_TOOLBAR_ENTRIES.flatMap((e) => (e.kind === 'tool' && e.id !== 'metronome' ? [e.id] : [])),
-  'split', 'waveform-view', 'status-cue', 'status-info', 'selection-timecodes', 'selection-duration',
-  // The cog removes like any tool since 2026-11-16 (a right-click on any
-  // toolbar opens this builder), and is added back from here
-  CUSTOMISE_TOOL_ID,
-  'debug',
-];
-
 /** Put back by the layout's guards when missing: hide, never remove */
 // Only the LOAD-BEARING two (2026-11-12, "I should be able to remove
 // 'Audio setup'" — every project tool was unremovable before): the tabs
@@ -89,15 +62,6 @@ const UNREMOVABLE = new Set<string>([PROJECT_TAB_TOOL_ID]);
 /** The way back to Home and the cog that opens this: never hidden */
 // (the cog hides since 2026-11-16 — a right-click on any toolbar opens this)
 const UNHIDEABLE = new Set<string>([PROJECT_TAB_TOOL_ID]);
-
-function ToolGlyph({ id }: { id: string }) {
-  const entry = ENTRY_BY_ID.get(id);
-  if (entry?.icon) return <Icon name={entry.icon} size={16} />;
-  if (entry?.glyph) {
-    return <span className="musescore-icon" aria-hidden="true" style={{ fontSize: 16, width: 16, display: 'inline-flex', justifyContent: 'center', color: entry.color }}>{entry.glyph}</span>;
-  }
-  return <span style={{ width: 16, display: 'inline-block' }} />;
-}
 
 export interface ToolbarBuilderDialogProps {
   isOpen: boolean;
@@ -114,7 +78,9 @@ export interface ToolbarBuilderDialogProps {
 export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onResetLayout, os = 'macos', initialBarId = null }: ToolbarBuilderDialogProps) {
   const { theme } = useTheme();
   const { preferences, updatePreference } = usePreferences();
-  const hidden = React.useMemo(() => new Set(preferences.toolbarHiddenTools ?? []), [preferences.toolbarHiddenTools]);
+  // The WORKSPACE's hidden tools (2026-11-17)
+  const { hidden: hiddenList, setHidden } = useHiddenTools();
+  const hidden = React.useMemo(() => new Set(hiddenList), [hiddenList]);
   const [query, setQuery] = React.useState('');
   const [leftSel, setLeftSel] = React.useState<string | null>(null);
   const [sel, setSelRaw] = React.useState<Selection>(null);
@@ -141,10 +107,10 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
   });
 
   // The snapshot Cancel restores, taken when the dialog opens
-  const snapshotRef = React.useRef<{ layouts: typeof preferences.toolbarLayouts; hidden: string[] } | null>(null);
+  const snapshotRef = React.useRef<{ layouts: typeof preferences.toolbarLayouts; hidden: typeof preferences.workspaceHiddenTools } | null>(null);
   React.useEffect(() => {
     if (!isOpen) return;
-    snapshotRef.current = { layouts: preferences.toolbarLayouts, hidden: [...(preferences.toolbarHiddenTools ?? [])] };
+    snapshotRef.current = { layouts: preferences.toolbarLayouts, hidden: preferences.workspaceHiddenTools };
     setSel(initialBarId ? { kind: 'bar', barId: initialBarId } : null); setLeftSel(null); setQuery(''); setRenaming(null);
     // Only at open
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,7 +120,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     const snap = snapshotRef.current;
     if (snap) {
       updatePreference('toolbarLayouts', snap.layouts);
-      updatePreference('toolbarHiddenTools', snap.hidden);
+      updatePreference('workspaceHiddenTools', snap.hidden);
     }
     onClose();
   };
@@ -163,7 +129,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     if (UNHIDEABLE.has(id)) return;
     const next = new Set(hidden);
     if (next.has(id)) next.delete(id); else next.add(id);
-    updatePreference('toolbarHiddenTools', [...next]);
+    setHidden([...next]);
   };
 
   // ── The tree, flattened in reading order (every level expanded) ──
@@ -290,7 +256,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     const next = new Set(hidden);
     const hide = hideable.some((t) => !next.has(t));
     hideable.forEach((t) => (hide ? next.add(t) : next.delete(t)));
-    updatePreference('toolbarHiddenTools', [...next]);
+    setHidden([...next]);
   };
   // Every toolbar in the tree's order, for a tool stepping between them
   // (never the Title bar: nothing steps into or out of it)

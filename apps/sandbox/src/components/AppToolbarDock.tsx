@@ -28,6 +28,8 @@ export interface AppToolbarDockProps {
   /** A toolbar's menu — right-click on it (or its grip), Shift+F10 / Menu
    *  key on the grip; null = the dock's empty space */
   onBarMenu?: (barId: string | null, anchor: { x: number; y: number }) => void;
+  /** An empty toolbar's + — its Add tool list (2026-11-17) */
+  onEmptyBarAdd?: (barId: string, anchor: { x: number; y: number }) => void;
   trailing?: React.ReactNode;
   className?: string;
   tabGroupId?: string;
@@ -44,7 +46,7 @@ export interface AppToolbarDockProps {
  * insertion line (beside a bar, or across the dock for a new row).
  */
 export function AppToolbarDock({
-  region, rows, renderExtraTool, extraToolMeta, drag, onBarResize, onBarMenu,
+  region, rows, renderExtraTool, extraToolMeta, drag, onBarResize, onBarMenu, onEmptyBarAdd,
   trailing, className, tabGroupId, ariaLabel, style, dataAttrs,
 }: AppToolbarDockProps) {
   const { renderTool, toolMeta, hidden } = useTransportTools();
@@ -64,6 +66,7 @@ export function AppToolbarDock({
       onGripMouseDown={drag.onGripMouseDown}
       onBarResize={onBarResize}
       onBarMenu={onBarMenu}
+      onEmptyBarAdd={onEmptyBarAdd}
       draggingBarId={drag.draggingBarId}
       insert={arriving?.placement ?? null}
       insertAfterBarId={arriving?.lineEndAfter ?? null}

@@ -409,6 +409,21 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
   height: 28px;
 }
 
+/* THE EMPTY TOOLBAR'S + (2026-11-17): a quiet icon button where a tool will
+   go, the tool buttons' 28px and 3px corners, the hover fill theirs */
+.toolbar-dock__empty-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.toolbar-dock__empty-add:hover { background: var(--toolbar-dock-empty-hover, rgba(0, 0, 0, 0.08)); }
+
 /* A SEPARATOR IS SHORT, A TOOLBAR BOUNDARY FULL HEIGHT (2026-11-16, "let's
    try 1": a separator inside a toolbar and the line between two toolbars
    were the same full-height line, so a toolbar split into groups read as

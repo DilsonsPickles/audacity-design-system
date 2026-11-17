@@ -3,6 +3,7 @@ import { useTheme } from '../ThemeProvider';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
 import { barDisplayName, isVerticalRegion, regionSide, type BarPlacement, type ToolbarBar, type ToolbarBarAxis, type ToolbarOrientation, type ToolbarRegion, isToolSeparator } from '../utils/toolbarLayout';
 import { Flyout } from '../Flyout';
+import { Icon } from '../Icon';
 import '../assets/fonts/musescore-icon.css';
 import './ToolbarDock.css';
 
@@ -46,6 +47,10 @@ export interface ToolbarDockProps {
    *  rely on the cog") — a tool with its own right-click menu prevents the
    *  default first and keeps it. */
   onBarMenu?: (barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion) => void;
+  /** AN EMPTY TOOLBAR'S "+" (2026-11-17, the flyout to add tools the empty
+   *  toolbar was waiting for): given, an empty toolbar draws a + button that
+   *  asks the host for its Add tool list under it */
+  onEmptyBarAdd?: (barId: string, anchor: { x: number; y: number }) => void;
   /** The bar in hand, drawn faint in place */
   draggingBarId?: string | null;
   /** Where a CONTAINER would land (a bar by its grip, or a new bar for a
@@ -128,7 +133,7 @@ const GROW_BAR_PACK_WIDTH = 160;
  */
 export function ToolbarDock({
   region, rows, renderTool, toolMeta, onBarResize,
-  onGripMouseDown, onBarMenu, draggingBarId = null, insert = null, insertAfterBarId = null, insertRefused = false,
+  onGripMouseDown, onBarMenu, onEmptyBarAdd, draggingBarId = null, insert = null, insertAfterBarId = null, insertRefused = false,
   editing = false, onToolMouseDown, draggingToolId = null, toolInsert = null,
   trailing, className = '', tabGroupId, ariaLabel, dataAttrs, style: styleProp,
 }: ToolbarDockProps) {
@@ -227,7 +232,25 @@ export function ToolbarDock({
       // can we please not show 'empty toolbar'?", then "lose the dashed
       // line") — a blank space a tool's size after the grip; the name is
       // for screen readers alone
-      nodes.push({ id: EMPTY_SLOT_ID, node: <span className="toolbar-dock__empty" data-toolbar-empty={bar.id} role="img" aria-label="Empty toolbar" /> });
+      nodes.push({
+        id: EMPTY_SLOT_ID,
+        node: onEmptyBarAdd ? (
+          <button
+            type="button"
+            className="toolbar-dock__empty toolbar-dock__empty-add"
+            data-toolbar-empty={bar.id}
+            aria-label="Add tool to empty toolbar"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              onEmptyBarAdd(bar.id, isVerticalRegion(region) ? { x: r.right + 4, y: r.top } : { x: r.left, y: r.bottom + 4 });
+            }}
+          >
+            <Icon name="plus" size={16} />
+          </button>
+        ) : (
+          <span className="toolbar-dock__empty" data-toolbar-empty={bar.id} role="img" aria-label="Empty toolbar" />
+        ),
+      });
     }
     const grow = nodes.some((t) => toolMeta?.(t.id, orientation)?.grow);
     // AN EMPTY TOOLBAR ALONE IN ITS ROW HAS NO SIZE (2026-11-16, "an empty
@@ -394,6 +417,7 @@ export function ToolbarDock({
     '--toolbar-divider': theme.border.divider,
     '--toolbar-gripper-color': theme.foreground.text.primary,
     '--toolbar-dock-accent': theme.accent.primary,
+    '--toolbar-dock-empty-hover': `color-mix(in srgb, ${theme.foreground.text.primary} 10%, transparent)`,
     '--toolbar-dock-refuse': theme.semantic.error.border,
     // The end of every line keeps the cog's place free
     ...(!vertical && trailingWidth ? { '--toolbar-dock-end-pad': `${ROW_END_PAD + trailingWidth + ROW_END_PAD}px` } : null),

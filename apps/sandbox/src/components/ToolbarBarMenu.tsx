@@ -5,7 +5,7 @@
  * key / Enter / Space on a grip reached by the arrow keys. The menu form of
  * what the grip's drag, the resize edge and the builder do:
  *
- *   Rename… · Move to ▸ Top / Bottom / Left / Right · Add separator ·
+ *   Rename… · Move to ▸ Top / Bottom / Left / Right · Add tool ▸ · Add separator ·
  *   Reset width (only when sized) | Edit toolbars… | Remove toolbar
  *
  * Move to puts the toolbar on a NEW ROW (a column, at a side) at the end of
@@ -16,9 +16,11 @@
  * Title bar toolbar's menu holds Edit toolbars… alone.
  */
 import React from 'react';
+import { useHiddenTools } from '../hooks/useHiddenTools';
+import { ALL_TOOLS, ToolGlyph, toolName } from './toolCatalogue';
 import {
   ContextMenu, ContextMenuItem, Dialog, DialogFooter, TextInput, toast, useTheme,
-  TITLE_BAR_ID, TITLE_BAR_ALLOWED, TOOLBAR_REGIONS, addEmptyBar, barDisplayName, dockBars, findBar, findTool, insertSeparator, insertTool, isVerticalRegion, moveBar, removeBar, removeTool, renameBar, rowsOf, setBarSize, usePreferences,
+  TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, PROJECT_TAB_TOOL_ID, TOOLBAR_REGIONS, addEmptyBar, barDisplayName, dockBars, findBar, findTool, insertSeparator, insertTool, isVerticalRegion, moveBar, removeBar, removeTool, renameBar, rowsOf, setBarSize,
   type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
 
@@ -29,6 +31,8 @@ export interface ToolbarBarMenuState {
   y: number;
   /** The dock the menu was opened in — the empty-space New toolbar's target */
   region?: ToolbarRegion;
+  /** The ADD TOOL list alone — an empty toolbar's + (2026-11-17) */
+  addOnly?: boolean;
 }
 
 /** The builder's fresh name: "Toolbar 1", "Toolbar 2", … not already in use */
@@ -48,6 +52,8 @@ export interface ToolbarBarMenuProps {
   fitsVertical: (barId: string) => boolean;
   /** Opens the toolbar builder with this toolbar selected (none for null) */
   onEditToolbars: (barId: string | null) => void;
+  /** Whether a tool has a vertical form — a side dock's Add tool dims the rest */
+  toolFitsVertical?: (toolId: string) => boolean;
   os?: 'macos' | 'windows';
 }
 
@@ -68,10 +74,19 @@ const MOVE_TARGETS: ReadonlyArray<{ region: ToolbarRegion; label: string }> = [
   { region: 'right', label: 'Right' },
 ];
 
-export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical, onEditToolbars, os = 'macos' }: ToolbarBarMenuProps) {
+/** A read-only heading inside a menu — not an item, so the arrows skip it */
+function MenuHeading({ children, color }: { children: React.ReactNode; color: string }) {
+  return (
+    <div role="presentation" data-menu-heading style={{ padding: '6px 8px 4px', fontSize: 12, fontWeight: 600, color, whiteSpace: 'nowrap', userSelect: 'none' }}>
+      {children}
+    </div>
+  );
+}
+
+export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical, onEditToolbars, toolFitsVertical, os = 'macos' }: ToolbarBarMenuProps) {
   const { theme } = useTheme();
-  const { preferences, updatePreference } = usePreferences();
-  const hidden = new Set(preferences.toolbarHiddenTools ?? []);
+  const { hidden: hiddenList, setHidden } = useHiddenTools();
+  const hidden = new Set(hiddenList);
   const [renaming, setRenaming] = React.useState<{ barId: string; draft: string } | null>(null);
   const renameRef = React.useRef<HTMLDivElement>(null);
   // The field takes the focus with its text selected, and its name (the
@@ -98,6 +113,45 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
   const docksMenu = !!menu && menu.barId === null;
   const hasTools = (bar?.tools.length ?? 0) > 0;
   const portal = typeof document === 'undefined' ? null : document.body;
+
+  // ADD TOOL (2026-11-17, the flyout to add tools straight onto a toolbar):
+  // the tools NOT ON A TOOLBAR, then the HIDDEN ones (wherever they sit) —
+  // a pick puts the tool at this toolbar's end, shown (a hidden one moves
+  // here from its toolbar). A dock toolbar never takes a title-bar-only
+  // item; a side dock dims a tool with no vertical form.
+  const addable = (bar && !fixed ? ALL_TOOLS.filter((id) => id !== PROJECT_TAB_TOOL_ID && !TITLE_BAR_ONLY.includes(id)) : []);
+  const offToolbars = addable.filter((id) => !findTool(layout, id));
+  const hiddenTools = addable.filter((id) => findTool(layout, id) && hidden.has(id));
+  const sideDock = !!region && isVerticalRegion(region);
+  const addTool = (id: string) => {
+    if (!bar) return;
+    if (hidden.has(id)) setHidden([...hidden].filter((t) => t !== id));
+    editLayout((base) => insertTool(base, id, bar.id, null));
+  };
+  const addToolItems = (closeAfter: boolean) => {
+    if (offToolbars.length + hiddenTools.length === 0) {
+      return <ContextMenuItem label="Every tool is on a toolbar" disabled onClick={() => {}} />;
+    }
+    const item = (id: string) => (
+      <ContextMenuItem
+        key={id}
+        label={toolName(id)}
+        icon={<ToolGlyph id={id} />}
+        disabled={sideDock && toolFitsVertical ? !toolFitsVertical(id) : false}
+        onClick={() => { if (closeAfter) onClose(); addTool(id); }}
+        onClose={onClose}
+      />
+    );
+    return (
+      <>
+        {offToolbars.length > 0 && <MenuHeading color={theme.foreground.text.secondary}>Not on a toolbar</MenuHeading>}
+        {offToolbars.map(item)}
+        {offToolbars.length > 0 && hiddenTools.length > 0 && <ContextMenuItem isDivider />}
+        {hiddenTools.length > 0 && <MenuHeading color={theme.foreground.text.secondary}>Hidden</MenuHeading>}
+        {hiddenTools.map(item)}
+      </>
+    );
+  };
 
   const removeToolbar = (barId: string) => {
     const before = layout;
@@ -146,7 +200,12 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
             put the toolbar name at the top in readonly text? The rename feels
             redundant if we can't see the name") — not a menu item, so the
             arrows and the first focus skip it */}
-        {menu && bar && (
+        {menu?.addOnly && bar && (
+          <>
+            {addToolItems(false)}
+          </>
+        )}
+        {menu && !menu.addOnly && bar && (
           <div
             data-toolbar-menu-name
             role="presentation"
@@ -165,8 +224,8 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
             {barDisplayName(bar)}
           </div>
         )}
-        {menu && bar && <ContextMenuItem isDivider />}
-        {menu && bar && region && (fixed ? (
+        {menu && !menu.addOnly && bar && <ContextMenuItem isDivider />}
+        {menu && !menu.addOnly && bar && region && (fixed ? (
           // THE CORNER'S CHECKLIST (2026-11-16): its app-level items, ticked
           // when shown there; a tick adds one at the end (moving it off a
           // toolbar, unhiding it), an untick takes it out of the corner — to
@@ -186,7 +245,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
                       editLayout((base) => removeTool(base, id));
                       return;
                     }
-                    if (hidden.has(id)) updatePreference('toolbarHiddenTools', [...hidden].filter((t) => t !== id));
+                    if (hidden.has(id)) setHidden([...hidden].filter((t) => t !== id));
                     if (!inCorner) editLayout((base) => insertTool(base, id, TITLE_BAR_ID, null));
                   }}
                   onClose={onClose}
@@ -219,6 +278,9 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
                   />
                 );
               })}
+            </ContextMenuItem>
+            <ContextMenuItem label="Add tool" hasSubmenu onClick={() => {}}>
+              {addToolItems(true)}
             </ContextMenuItem>
             <ContextMenuItem
               label="Add separator"
