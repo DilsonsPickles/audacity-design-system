@@ -413,6 +413,7 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
               const yPct = (db: number) => (Math.max(0, Math.min(graphH, dbToY(db))) / graphH) * 100;
               // the DOT marks the line's value under the pointer
               const cx = (hover!.x / graphW) * 100;
+              const cy = (hover!.y / graphH) * 100;
               const ly = yPct(lineReading.db);
               return (
                 <>
@@ -422,9 +423,11 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
                     data-plot-readout
                     // near either side it hangs inward, so it stays in the window
                     data-edge={hover!.x < graphW * 0.2 ? 'start' : hover!.x > graphW * 0.8 ? 'end' : undefined}
-                    // it RIDES THE CURVE with the dot ("I liked the peak
-                    // riding the curve like that"), the crosshair marks the pointer
-                    style={{ left: `${cx}%`, top: `${ly}%` }}
+                    // ON THE CURSOR (2026-11-17, "Tooltip for plot spectrum
+                    // graph should be on cursor position" — it rode the curve
+                    // while it carried the Peak reading, which is gone): hung
+                    // above the pointer, at the crosshair's crossing
+                    style={{ left: `${cx}%`, top: `${cy}%` }}
                   >
                     <span data-plot-cursor-reading>{formatHz(cursorReading.hz)} ({noteName(cursorReading.hz)})</span>
                     <span>{cursorReading.db.toFixed(1)} dB</span>
