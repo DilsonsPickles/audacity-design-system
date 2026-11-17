@@ -163,6 +163,14 @@
 .plot-spectrum__readout[data-edge='start'] { transform: translate(-8px, calc(-100% - 8px)); }
 .plot-spectrum__readout[data-edge='end'] { transform: translate(calc(-100% + 8px), calc(-100% - 8px)); }
 
+/* PINNED (2026-11-17, a trial): the graph's top-left corner, mirroring
+   the legend's top-right inset; no transform, so it never moves */
+.plot-spectrum__readout--pinned {
+  top: 8px;
+  left: 10px;
+  transform: none;
+}
+
 .plot-spectrum__hz-axis {
   position: relative;
   grid-row: 2;

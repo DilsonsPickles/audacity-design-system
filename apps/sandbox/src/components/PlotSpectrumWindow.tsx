@@ -429,21 +429,18 @@ export function PlotSpectrumWindow({ isOpen, onClose, os, selection, readRegion,
             {cursorReading && peakNear && readoutPlot && (() => {
               const yPct = (db: number) => (Math.max(0, Math.min(graphH, dbToY(db))) / graphH) * 100;
               // the DOT marks the nearest peak of the drawn line
-              const cx = (hover!.x / graphW) * 100;
-              const cy = (hover!.y / graphH) * 100;
               return (
                 <>
                   <span className="plot-spectrum__line-dot" data-plot-line-dot style={{ left: `${(peakNear.x / graphW) * 100}%`, top: `${yPct(peakNear.db)}%`, background: readoutPlot.colour }} />
                   <div
-                    className="plot-spectrum__readout"
+                    className="plot-spectrum__readout plot-spectrum__readout--pinned"
                     data-plot-readout
-                    // near either side it hangs inward, so it stays in the window
-                    data-edge={hover!.x < graphW * 0.2 ? 'start' : hover!.x > graphW * 0.8 ? 'end' : undefined}
-                    // ON THE CURSOR (2026-11-17, "Tooltip for plot spectrum
-                    // graph should be on cursor position" — it rode the curve
-                    // while it carried the Peak reading, which is gone): hung
-                    // above the pointer, at the crosshair's crossing
-                    style={{ left: `${cx}%`, top: `${cy}%` }}
+                    // PINNED TO THE GRAPH (2026-11-17, "can we please try
+                    // pinning the coordinates to the graph rather than have
+                    // them follow the cursor?" — a trial, after an hour on
+                    // the cursor): the graph's top-left corner, the legend
+                    // holding the top-right; the crosshair and the dot mark
+                    // the place, the readout holds still to be read
                   >
                     <span data-plot-cursor-reading>{formatHz(cursorReading.hz)} ({noteName(cursorReading.hz)})</span>
                     <span>{cursorReading.db.toFixed(1)} dB</span>
