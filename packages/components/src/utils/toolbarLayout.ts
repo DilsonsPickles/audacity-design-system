@@ -188,6 +188,30 @@ export function titleBarItems(layout: ToolbarLayout): string[] {
   return tools.filter((t) => TITLE_BAR_ALLOWED.includes(t));
 }
 
+/** A layout WITH its Title bar toolbar (2026-11-17, "Why can't I right
+ *  click top-right area?": a layout stored before the title bar became a
+ *  toolbar has no `title` bar — the corner still DREW, since
+ *  `titleBarItems` falls back to the seed, but everything addressed at the
+ *  bar found nothing: its right-click menu never opened. The guard builds
+ *  the seed's title row as the top dock's first row, moving the seed tools
+ *  in from wherever the old layout kept them — the legacy `project-tabs`
+ *  toolbar loses its tabs tool and goes when that empties it. Idempotent;
+ *  applied on every read beside the other guards. */
+export function withTitleBar(layout: ToolbarLayout): ToolbarLayout {
+  if (findBar(layout, TITLE_BAR_ID)) return layout;
+  let next = layout;
+  for (const id of TITLE_BAR_TOOLS) {
+    const at = findTool(next, id);
+    if (!at) continue;
+    next = removeTool(next, id);
+    const emptied = findBar(next, at.bar.id);
+    if (emptied && emptied.bar.tools.length === 0) next = removeBar(next, emptied.bar.id);
+  }
+  next = cloneLayout(next);
+  next.top = [[{ id: TITLE_BAR_ID, tools: [...TITLE_BAR_TOOLS] }], ...(next.top ?? [])];
+  return normaliseLayout(next);
+}
+
 /** A layout with `id` in its title bar, just after the tabs — when it has a
  *  title bar and the item is nowhere yet (a one-time move for an item new to
  *  the corner); the same layout otherwise */

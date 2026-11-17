@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   coerceToolbarLayout, defaultToolbarLayout, dockBars, findBar, findTool, moveBar, moveTool, moveToolToNewBar, nextBarId, insertSeparator, isToolSeparator, addEmptyBar, removeBar, renameBar, barDisplayName,
-  normaliseLayout, isToolbarLayout, setBarSize, titleBarItems, withTitleBarItem, withTitleBarOnlyItems, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID, type ToolbarLayout, type ToolbarRegion,
+  normaliseLayout, isToolbarLayout, setBarSize, titleBarItems, withTitleBar, withTitleBarItem, withTitleBarOnlyItems, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID, type ToolbarLayout, type ToolbarRegion,
 } from '../toolbarLayout';
 
 /** A seed WITHOUT the project row (2026-11-10, the project toolbar's
@@ -363,5 +363,22 @@ describe('TITLE-BAR-ONLY ITEMS (2026-11-16)', () => {
     expect(withTitleBarOnlyItems(moved)).toBe(moved);
     const noTitle = { top: [[{ id: 'main', tools: ['mixer-button', 'play'] }]], bottom: [], left: [], right: [] } as never;
     expect(withTitleBarOnlyItems(noTitle).top[0][0].tools).toEqual(['play']);
+  });
+});
+
+describe('withTitleBar — an old layout gains the Title bar toolbar (2026-11-17, "Why can\'t I right click top-right area?")', () => {
+  it('builds the seed title row first in the top dock, moving the tabs in; the emptied legacy bar goes', () => {
+    // the 2026-11-10 shape: project-tabs a toolbar of its own on the top dock
+    const legacy = {
+      top: [[{ id: 'project-tabs', tools: ['project-tabs'] }, { id: 'transport', tools: ['play', 'stop'] }], [{ id: 'view', tools: ['zoom-in'] }]],
+      bottom: [], left: [], right: [],
+    } as never as import('../toolbarLayout').ToolbarLayout;
+    const fixed = withTitleBar(legacy);
+    expect(fixed.top[0].map((b) => b.id)).toEqual(['title']);
+    expect(fixed.top[0][0].tools).toEqual(['project-tabs', 'debug', 'audio-setup', 'workspace', 'share-audio']);
+    // the tabs moved out of the legacy bar, which emptied and went
+    expect(fixed.top.flat().map((b) => b.id)).toEqual(['title', 'transport', 'view']);
+    // idempotent: a layout with the title bar is left alone
+    expect(withTitleBar(fixed)).toBe(fixed);
   });
 });

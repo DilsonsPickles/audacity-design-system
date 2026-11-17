@@ -346,9 +346,11 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     const { container } = renderApp({
       toolbarLayouts: { classic: {
         top: [{ id: 'transport', tools: ['play', 'stop', 'record'] }, { id: 'zoom', tools: ['zoom-in', 'zoom-out'] }],
-        // (the cog and the project tools in the status bar, so the top rows are the two bars alone)
+        // (the cog and the TITLE BAR in the status bar — withTitleBar (2026-11-17)
+        // would otherwise build a title row at the top, and the top rows must
+        // stay the two bars alone for the geometry below)
         bottom: [{ id: 'status', tools: ['status-cue', 'status-info'] }, { id: 'customise', tools: ['customise'] },
-          { id: 'project', tools: ['project-tabs', 'mixer-button', 'audio-setup', 'share-audio', 'get-effects', 'workspace', 'undo', 'redo'] }], left: [], right: [],
+          { id: 'title', tools: ['project-tabs', 'mixer-button', 'audio-setup', 'share-audio', 'get-effects', 'workspace', 'undo', 'redo'] }], left: [], right: [],
       } },
     });
     fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
@@ -447,7 +449,8 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     // (withProjectTools gave the seeded layout its project-tabs row)
     fireEvent.contextMenu(container.querySelector('[data-toolbar-bar="transport"] [data-toolbar-grip]')!, { clientX: 20, clientY: 20 });
     fireEvent.click(await menuItem('New toolbar'));
-    await waitFor(() => expect(topBarIds()).toEqual(['project-tabs', 'transport', 'bar-1', 'customise']));
+    // (withTitleBar folded the tabs into a title row, 2026-11-17)
+    await waitFor(() => expect(topBarIds()).toEqual(['title', 'transport', 'bar-1', 'customise']));
     // The new toolbar is empty and named
     fireEvent.contextMenu(container.querySelector('[data-toolbar-bar="bar-1"] [data-toolbar-grip]')!, { clientX: 20, clientY: 20 });
     await waitFor(() => expect(document.body.querySelector('[data-toolbar-menu-name]')?.textContent).toBe('Toolbar 1'));
