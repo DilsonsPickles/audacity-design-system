@@ -146,10 +146,22 @@ export const Flyout: React.FC<FlyoutProps> = ({
     };
   }, [children, isOpen, updatePosition]);
 
+  // A PRESS IN THE FLYOUT'S REACT TREE IS INSIDE IT (2026-11-18, "the same
+  // for the dropdowns in the main toolbar flyouts"): a Dropdown's list or a
+  // ContextMenu portals to the body — outside the flyout's DOM — and React
+  // bubbles a portal's events through the tree, so the root's handler marks
+  // the press before it reaches the document's listener below
+  const pressInsideRef = React.useRef(false);
+  const markPressInside = React.useCallback(() => {
+    pressInsideRef.current = true;
+    window.setTimeout(() => { pressInsideRef.current = false; }, 0);
+  }, []);
+
   React.useEffect(() => {
     if (!isOpen || !closeOnOutsideClick) return;
 
     const handlePointerDown = (event: PointerEvent) => {
+      if (pressInsideRef.current) return;
       if (!flyoutRef.current?.contains(event.target as Node)) onClose();
     };
     const timeout = window.setTimeout(() => {
@@ -208,6 +220,7 @@ export const Flyout: React.FC<FlyoutProps> = ({
       aria-label={ariaLabel}
       tabIndex={autoFocus ? -1 : undefined}
       style={style}
+      onPointerDownCapture={markPressInside}
     >
       {showArrow && <div className="flyout__arrow" aria-hidden="true" />}
       <div className="flyout__content">{children}</div>

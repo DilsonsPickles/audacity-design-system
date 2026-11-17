@@ -3,6 +3,7 @@ import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 import { Flyout } from '../Flyout';
+import { Dropdown } from '../../Dropdown';
 
 const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
 
@@ -84,6 +85,40 @@ describe('Flyout', () => {
     vi.runAllTimers();
     fireEvent.pointerDown(document.body);
 
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  // A DROPDOWN IN A FLYOUT (2026-11-18): the list portals to the body,
+  // outside the flyout's DOM; a press on it is still a press inside
+  it('keeps open for a press on a list its content portals out', () => {
+    vi.useFakeTimers();
+    const onClose = vi.fn();
+    const onChange = vi.fn();
+    render(
+      <ThemeProvider>
+        <Flyout isOpen onClose={onClose} x={100} y={50}>
+          <Dropdown
+            options={[{ value: 'a', label: 'Alpha' }, { value: 'b', label: 'Beta' }]}
+            value="a"
+            onChange={onChange}
+          />
+        </Flyout>
+      </ThemeProvider>,
+    );
+    vi.runAllTimers();
+    fireEvent.click(document.querySelector('.dropdown__trigger')!);
+    const option = Array.from(document.querySelectorAll('.dropdown__option'))
+      .find((o) => o.textContent === 'Beta')!;
+    expect(option.closest('.flyout')).toBeNull();
+    fireEvent.pointerDown(option);
+    vi.runAllTimers();
+    fireEvent.click(option);
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith('b');
+
+    // and a real outside press still closes it
+    fireEvent.pointerDown(document.body);
     expect(onClose).toHaveBeenCalledOnce();
   });
 });
