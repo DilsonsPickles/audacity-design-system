@@ -1534,6 +1534,30 @@ function CanvasDemoContent() {
   // The app's own title bar (2026-11-11): the desktop shell on macOS, or a
   // browser preview by localStorage — read once, it cannot change live
   const [customTitleBar] = React.useState(hasCustomTitleBar);
+  // RIGHT-CLICK REACHES THE TITLE BAR (2026-11-17, "Why can't I right click
+  // top-right area?"): the bar is a -webkit-app-region: drag strip, where
+  // Chromium delivers no DOM mouse events — Electron's native context-menu
+  // event still fires, so main.cjs forwards the point and this synthesises
+  // the DOM contextmenu at it, UNLESS a genuine one already arrived (it
+  // does everywhere outside the drag region, and a double menu must not
+  // open). The synthetic event walks the ordinary handlers: the tabs',
+  // the corner's, the bar's.
+  React.useEffect(() => {
+    const shell = window.electronShell;
+    if (!shell?.onContextMenuFallback) return;
+    let lastNative = 0;
+    const mark = (e: MouseEvent) => { if (e.isTrusted) lastNative = Date.now(); };
+    document.addEventListener('contextmenu', mark, true);
+    const off = shell.onContextMenuFallback(({ x, y }) => {
+      // the DOM event, when delivered, lands before this IPC round trip
+      window.setTimeout(() => {
+        if (Date.now() - lastNative < 200) return;
+        const el = document.elementFromPoint(x, y);
+        el?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: x, clientY: y }));
+      }, 50);
+    });
+    return () => { document.removeEventListener('contextmenu', mark, true); off(); };
+  }, []);
   // The open project's title — the Project tab's text (2026-11-11, the
   // Figma-style tabs)
   const projectTitle = indexedDBProjects.find((p) => p.id === currentProjectId)?.title;

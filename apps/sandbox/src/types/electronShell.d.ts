@@ -23,6 +23,9 @@ declare global {
       requestMicrophoneAccess?: () => Promise<boolean>;
       /** Opens the OS's microphone privacy pane */
       openMicrophoneSettings?: () => Promise<void>;
+      /** The native context-menu event, for right-clicks the title bar's
+       *  drag region eats (2026-11-17); returns unsubscribe */
+      onContextMenuFallback?: (handler: (point: { x: number; y: number }) => void) => () => void;
     };
   }
 }

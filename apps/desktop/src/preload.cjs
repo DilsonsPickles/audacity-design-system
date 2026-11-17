@@ -30,6 +30,13 @@ contextBridge.exposeInMainWorld('electronShell', {
   microphoneAccessStatus: () => ipcRenderer.invoke('mic:access-status'),
   requestMicrophoneAccess: () => ipcRenderer.invoke('mic:request-access'),
   openMicrophoneSettings: () => ipcRenderer.invoke('mic:open-settings'),
+  // The native context-menu event, for right-clicks the drag region eats
+  // (2026-11-17): handler gets { x, y } in CSS pixels; returns unsubscribe
+  onContextMenuFallback: (handler) => {
+    const listener = (_event, point) => handler(point);
+    ipcRenderer.on('window:context-menu', listener);
+    return () => ipcRenderer.removeListener('window:context-menu', listener);
+  },
 });
 
 // Browser-first sign-in (RFC 8252 loopback). The renderer opens muse-id's

@@ -248,6 +248,16 @@ function createWindow(url) {
   // 'move'/'moved' from here can't work either: on macOS 'moved' fires
   // continuously during the drag, so there is no reliable release
   // signal in the main process.
+  // RIGHT-CLICK REACHES THE TITLE BAR (2026-11-17, "Why can't I right
+  // click top-right area?"): the custom title bar is a -webkit-app-region:
+  // drag strip, and Chromium does not deliver right-clicks there as DOM
+  // events — but the webContents' native context-menu event still fires.
+  // Forward the point; the renderer synthesises a DOM contextmenu at it
+  // unless a genuine one already arrived (everywhere else it does).
+  win.webContents.on('context-menu', (_event, params) => {
+    win.webContents.send('window:context-menu', { x: params.x, y: params.y });
+  });
+
   win.loadURL(url);
   return win;
 }

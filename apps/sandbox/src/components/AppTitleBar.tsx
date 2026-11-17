@@ -57,6 +57,16 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
         '--app-title-bar-divider': `color-mix(in srgb, ${theme.foreground.text.primary} 20%, transparent)`,
         paddingLeft: insetForTrafficLights ? TRAFFIC_LIGHTS_PX : 0,
       } as React.CSSProperties}
+      // THE BAR'S EMPTY STRIP TAKES A RIGHT-CLICK TOO (2026-11-17): the
+      // corner's checklist, from anywhere on the bar that nothing else
+      // claimed — the tabs' and the corner's own handlers preventDefault
+      // first, so they keep their menus
+      onContextMenu={(e) => {
+        if (e.defaultPrevented || !deps.onTitleBarMenu) return;
+        e.preventDefault();
+        setWorkspaceMenu(null);
+        deps.onTitleBarMenu({ x: e.clientX, y: e.clientY });
+      }}
     >
       {/* VERTICAL TABS (2026-11-16): the rail holds the projects and marks the
           one in front, so the title bar shows no tabs and no name ("we can
