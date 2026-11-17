@@ -54,6 +54,18 @@ describe('ToolbarBarMenu', () => {
     expect(layout().top[1][0].tools).toEqual(['play', 'timecode', 'stop']);
   });
 
+  it('the search field filters the list by name, and Enter adds the first match (2026-11-17)', () => {
+    const { labels, layout } = renderMenu('main', { addOnly: true });
+    const field = document.querySelector('[data-add-tool-search] input') as HTMLInputElement;
+    fireEvent.change(field, { target: { value: 'stop' } });
+    expect(labels()).toEqual(['Stop']);
+    fireEvent.change(field, { target: { value: 'zzz' } });
+    expect(labels()).toEqual(['No tools match']);
+    fireEvent.change(field, { target: { value: 'stop' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(layout().top[1][0].tools).toEqual(['play', 'timecode', 'stop']);
+  });
+
   it('picking a hidden tool shows it again — in this workspace only', () => {
     localStorage.setItem('audacity-preferences', JSON.stringify({ activeWorkspace: 'classic', workspaceHiddenTools: { classic: ['timecode'], music: ['timecode'] } }));
     const { item } = renderMenu('main', { addOnly: true });

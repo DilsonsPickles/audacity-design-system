@@ -19,7 +19,7 @@ import React from 'react';
 import { useHiddenTools } from '../hooks/useHiddenTools';
 import { ALL_TOOLS, ToolGlyph, toolName } from './toolCatalogue';
 import {
-  ContextMenu, ContextMenuItem, Dialog, DialogFooter, TextInput, toast, useTheme,
+  ContextMenu, ContextMenuItem, Dialog, DialogFooter, SearchField, TextInput, toast, useTheme,
   TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, PROJECT_TAB_TOOL_ID, TOOLBAR_REGIONS, addEmptyBar, barDisplayName, dockBars, findBar, findTool, insertSeparator, insertTool, isVerticalRegion, moveBar, removeBar, removeTool, renameBar, rowsOf, setBarSize,
   type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
@@ -119,9 +119,26 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
   // a pick puts the tool at this toolbar's end, shown (a hidden one moves
   // here from its toolbar). A dock toolbar never takes a title-bar-only
   // item; a side dock dims a tool with no vertical form.
+  // A SEARCH FIELD heads the list (2026-11-17, "a little search box in the
+  // context menu to be able to search for tools?"): it filters both groups
+  // by name as you type, Enter adds the first match, ↓ goes into the list;
+  // it takes the focus when the list opens on its own (the + on an empty
+  // toolbar), and empties whenever the menu opens again
+  const [toolQuery, setToolQuery] = React.useState('');
+  React.useEffect(() => { setToolQuery(''); }, [menu]);
+  const searchRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!menu?.addOnly) return;
+    const t = window.setTimeout(() => searchRef.current?.querySelector('input')?.focus(), 30);
+    return () => window.clearTimeout(t);
+  }, [menu]);
+  const q = toolQuery.trim().toLowerCase();
+  const matches = (id: string) => !q || toolName(id).toLowerCase().includes(q);
   const addable = (bar && !fixed ? ALL_TOOLS.filter((id) => id !== PROJECT_TAB_TOOL_ID && !TITLE_BAR_ONLY.includes(id)) : []);
-  const offToolbars = addable.filter((id) => !findTool(layout, id));
-  const hiddenTools = addable.filter((id) => findTool(layout, id) && hidden.has(id));
+  const offToolbarsAll = addable.filter((id) => !findTool(layout, id));
+  const hiddenToolsAll = addable.filter((id) => findTool(layout, id) && hidden.has(id));
+  const offToolbars = offToolbarsAll.filter(matches);
+  const hiddenTools = hiddenToolsAll.filter(matches);
   const sideDock = !!region && isVerticalRegion(region);
   // Move to's other toolbars, in reading order (never the Title bar)
   const besideTargets = (() => {
@@ -144,21 +161,60 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
     editLayout((base) => insertTool(base, id, bar.id, null));
   };
   const addToolItems = (closeAfter: boolean) => {
-    if (offToolbars.length + hiddenTools.length === 0) {
+    if (offToolbarsAll.length + hiddenToolsAll.length === 0) {
       return <ContextMenuItem label="Every tool is on a toolbar" disabled onClick={() => {}} />;
+    }
+    const fits = (id: string) => !(sideDock && toolFitsVertical && !toolFitsVertical(id));
+    const search = (
+      <div
+        ref={searchRef}
+        data-add-tool-search
+        style={{ padding: '4px 8px 6px' }}
+        // The menu's own keys stay out of the field: a parent item takes
+        // ← → Enter for its submenu, so only ↓ ↑ Escape Tab go on
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            const first = [...offToolbars, ...hiddenTools].find(fits);
+            if (first) { onClose(); addTool(first); }
+            return;
+          }
+          if (!['ArrowDown', 'ArrowUp', 'Escape', 'Tab'].includes(e.key)) e.stopPropagation();
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <SearchField
+          value={toolQuery}
+          onChange={setToolQuery}
+          onClear={() => setToolQuery('')}
+          placeholder="Search tools"
+          fullWidth
+          inputProps={{ 'aria-label': 'Search tools' }}
+        />
+      </div>
+    );
+    if (offToolbars.length + hiddenTools.length === 0) {
+      return (
+        <>
+          {search}
+          <ContextMenuItem label="No tools match" disabled onClick={() => {}} />
+        </>
+      );
     }
     const item = (id: string) => (
       <ContextMenuItem
         key={id}
         label={toolName(id)}
         icon={<ToolGlyph id={id} />}
-        disabled={sideDock && toolFitsVertical ? !toolFitsVertical(id) : false}
+        disabled={!fits(id)}
         onClick={() => { if (closeAfter) onClose(); addTool(id); }}
         onClose={onClose}
       />
     );
     return (
       <>
+        {search}
         {offToolbars.length > 0 && <MenuHeading color={theme.foreground.text.secondary}>Not on a toolbar</MenuHeading>}
         {offToolbars.map(item)}
         {offToolbars.length > 0 && hiddenTools.length > 0 && <ContextMenuItem isDivider />}

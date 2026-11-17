@@ -275,6 +275,12 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         return;
       }
 
+      // A TEXT FIELD IN A MENU (2026-11-17, the Add tool list's search) keeps
+      // its own Home / End — they move the caret, not the menu's focus
+      if ((e.key === 'Home' || e.key === 'End') && (focusedElement as HTMLElement | null)?.matches?.('input, textarea')) {
+        return;
+      }
+
       switch (e.key) {
         case 'Escape':
           // stopImmediatePropagation + capture-phase listener (below)
