@@ -221,6 +221,14 @@ function createWindow(url) {
         overrideBrowserWindowOptions: {
           frame: false,
           resizable: true,
+          // NEVER FULL SCREEN (2026-11-17: the shell died with SIGTRAP —
+          // AppKit's enter-full-screen transition sends
+          // _surrenderToolbarViewForFullScreenWindow to the window's frame,
+          // which a frameless window's NativeWidgetMacNSWindowBorderlessFrame
+          // does not implement; View › Toggle Full Screen (⌃⌘F) acts on the
+          // focused window, so a focused popout took the app down). A tool
+          // window has no use for full screen anyway; zoom still maximises.
+          fullscreenable: false,
           // a popout with a known content has its own floor (2026-11-16,
           // Plot spectrum: "a sensible min width"); panels keep 240 × 200
           ...(POPOUT_MIN_SIZES[frameName] ?? { minWidth: 240, minHeight: 200 }),
