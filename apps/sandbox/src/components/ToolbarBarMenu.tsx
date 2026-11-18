@@ -38,6 +38,9 @@ export interface ToolbarBarMenuState {
   toolId?: string;
   /** The gap nearest the pointer: the tool it comes before, null = the end */
   beforeToolId?: string | null;
+  /** The empty space's ROW right-clicked: its New group goes there
+   *  (2026-11-18); absent = the dock's last row */
+  row?: number;
 }
 
 /** The builder's fresh name: "Toolbar 1", "Toolbar 2", … not already in use */
@@ -301,7 +304,8 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
                   const region = menu.region!;
                   editLayout((base) => {
                     const rows = rowsOf(base, region);
-                    return addEmptyBar(base, { region, row: Math.max(0, rows.length - 1), beforeBarId: null }, freshName(base));
+                    const row = menu.row !== undefined && menu.row < rows.length ? menu.row : Math.max(0, rows.length - 1);
+                    return addEmptyBar(base, { region, row, beforeBarId: null }, freshName(base));
                   });
                 }}
                 onClose={onClose}

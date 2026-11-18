@@ -402,7 +402,14 @@ export function normaliseLayout(layout: ToolbarLayout): ToolbarLayout {
   for (const r of TOOLBAR_REGIONS) {
     // An EMPTY TOOLBAR STAYS (2026-11-11 — a toolbar is a container the
     // user can make and fill); a row with no toolbar in it goes
-    next[r] = rowsOf(layout, r).map((row) => [...row]).filter((row) => row.length > 0);
+    // A GROUP OF DIVIDERS ALONE IS AN EMPTY GROUP (2026-11-18, "pressing new
+    // group is adding new row when there's plenty of space": a group whose
+    // tools had all gone kept its dividers, drew nothing, and hid its row
+    // — a new group landing there looked like a new row): its dividers go,
+    // so it shows as an empty group, with its hover plus
+    next[r] = rowsOf(layout, r)
+      .map((row) => row.map((b) => (b.tools.length > 0 && b.tools.every(isToolSeparator) ? { ...b, tools: [] } : b)))
+      .filter((row) => row.length > 0);
   }
   return next;
 }

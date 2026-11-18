@@ -49,7 +49,7 @@ export interface ToolbarDockProps {
    *  the right-click landed on, and `beforeToolId` the GAP nearest the
    *  pointer along the toolbar — the tool it comes before, null = the
    *  toolbar's end — for items placed by the click (2026-11-18) */
-  onBarMenu?: (barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string, beforeToolId?: string | null) => void;
+  onBarMenu?: (barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string, beforeToolId?: string | null, row?: number) => void;
   /** AN EMPTY TOOLBAR'S "+" (2026-11-17, the flyout to add tools the empty
    *  toolbar was waiting for): given, an empty toolbar draws a + button that
    *  asks the host for its Add tool list under it */
@@ -98,6 +98,12 @@ export interface ToolbarDockProps {
    *  rounded card on a slightly darker strip (2026-11-18, "I wonder if we
    *  made the groups a bit more contained. Like floating islands") */
   groupStyle?: 'lines' | 'islands';
+  /** Groups kept in `rows` but NOT DRAWN here (2026-11-18): the desktop
+   *  window's title bar draws the Title bar group, so the top dock passes
+   *  every row — the row numbers it reports stay the layout's own — and
+   *  hides that group, rather than taking its row out (which shifted every
+   *  row number after it: drops and New group landed one row off) */
+  hiddenBarIds?: ReadonlyArray<string>;
 }
 
 const GRIP_GLYPH = '';
@@ -147,7 +153,7 @@ export function ToolbarDock({
   region, rows, renderTool, toolMeta, onBarResize,
   onGripMouseDown, onBarMenu, onEmptyBarAdd, draggingBarId = null, insert = null, insertAfterBarId = null, insertRefused = false,
   editing = false, onToolMouseDown, draggingToolId = null, toolInsert = null,
-  trailing, className = '', tabGroupId, ariaLabel, dataAttrs, style: styleProp, lastFillsRow = true, groupStyle = 'lines',
+  trailing, className = '', tabGroupId, ariaLabel, dataAttrs, style: styleProp, lastFillsRow = true, groupStyle = 'lines', hiddenBarIds,
 }: ToolbarDockProps) {
   const { theme } = useTheme();
   const vertical = isVerticalRegion(region);
@@ -232,6 +238,7 @@ export function ToolbarDock({
   // whose tools are all hidden draws nothing (2026-11-11)
   const drawn = rows.flatMap((row, rowIndex) => {
     const toolNodes = row.map((bar) => {
+      if (hiddenBarIds?.includes(bar.id)) return [];
       const raw = bar.tools.map((id) => ({
         id,
         node: isToolSeparator(id)
@@ -744,8 +751,12 @@ export function ToolbarDock({
             beforeToolId = i >= 0 ? tools[i + 1] ?? null : null;
           }
         }
+        // the ROW right-clicked, for the empty space's New group (2026-11-18,
+        // "pressing new group is adding new row when there's plenty of space")
+        const rowAttr = target.closest('[data-toolbar-row]')?.getAttribute('data-toolbar-row');
+        const row = rowAttr != null ? Number(rowAttr) : undefined;
         e.preventDefault();
-        onBarMenu(barId, { x: e.clientX, y: e.clientY }, region, toolId, beforeToolId);
+        onBarMenu(barId, { x: e.clientX, y: e.clientY }, region, toolId, beforeToolId, row);
       } : undefined}
     >
       {!empty && drawnLines.map((line, lineIndex) => (

@@ -365,9 +365,9 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(space.querySelector('[data-toolbar-spacer="spacer-1"]')).not.toBeNull();
     expect(renderTool.mock.calls.map((c) => c[0])).not.toContain('spacer-1');
     fireEvent.contextMenu(space.querySelector('[data-toolbar-spacer]')!, { clientX: 5, clientY: 6 });
-    expect(onBarMenu).toHaveBeenLastCalledWith('a', { x: 5, y: 6 }, 'top', 'spacer-1', null);
+    expect(onBarMenu).toHaveBeenLastCalledWith('a', { x: 5, y: 6 }, 'top', 'spacer-1', null, 0);
     fireEvent.contextMenu(container.querySelector('button[aria-label="two"]')!, { clientX: 7, clientY: 8 });
-    expect(onBarMenu).toHaveBeenLastCalledWith('a', { x: 7, y: 8 }, 'top', 'two', null);
+    expect(onBarMenu).toHaveBeenLastCalledWith('a', { x: 7, y: 8 }, 'top', 'two', null, 0);
   });
 
   it('a toolbar holding a flexible space FILLS the row, wherever it is in it, and the last toolbar keeps its natural size (2026-11-18, "I still can\'t drop it between tools")', () => {
@@ -434,6 +434,21 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(container.querySelector('[data-toolbar-bar="hidden"]')).toBeNull();
   });
 
+  it('a right-click names the ROW it is in (the empty space\'s New group goes there), and hiddenBarIds keep a group in the rows without drawing it (2026-11-18)', () => {
+    const onBarMenu = vi.fn();
+    const { container } = renderDock({
+      rows: [[{ id: 'hidden', tools: ['one'] }], [{ id: 'a', tools: ['two'] }], [{ id: 'b', tools: ['three'] }]],
+      hiddenBarIds: ['hidden'],
+      onBarMenu,
+    });
+    expect(container.querySelector('[data-toolbar-bar="hidden"]')).toBeNull();
+    // the row numbers stay the layout's own: 'b' is row 2, not 1
+    const lineOfB = container.querySelector('[data-toolbar-bar="b"]')!.closest('[data-toolbar-row]')!;
+    expect(lineOfB.getAttribute('data-toolbar-row')).toBe('2');
+    fireEvent.contextMenu(lineOfB, { clientX: 3, clientY: 4 });
+    expect(onBarMenu.mock.calls[onBarMenu.mock.calls.length - 1][5]).toBe(2);
+  });
+
   it('GROUPS AS ISLANDS (2026-11-18, "floating islands"): groupStyle="islands" marks the dock; lines by default', () => {
     const rows = [[{ id: 'a', tools: ['one'] }, { id: 'b', tools: ['two'] }]];
     const lines = renderDock({ rows });
@@ -492,12 +507,12 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
           : <button aria-label={id}>{id}</button>),
       });
       fireEvent.contextMenu(container.querySelector('button[aria-label="three"]')!, { clientX: 5, clientY: 6 });
-      expect(onBarMenu).toHaveBeenLastCalledWith('b', { x: 5, y: 6 }, 'top', 'three', null);
+      expect(onBarMenu).toHaveBeenLastCalledWith('b', { x: 5, y: 6 }, 'top', 'three', null, 0);
       onBarMenu.mockClear();
       fireEvent.contextMenu(container.querySelector('button[aria-label="two"]')!);
       expect(onBarMenu).not.toHaveBeenCalled();
       fireEvent.contextMenu(container.querySelector('.toolbar-dock__row')!, { clientX: 1, clientY: 2 });
-      expect(onBarMenu).toHaveBeenLastCalledWith(null, { x: 1, y: 2 }, 'top', undefined, undefined);
+      expect(onBarMenu).toHaveBeenLastCalledWith(null, { x: 1, y: 2 }, 'top', undefined, undefined, 0);
     });
 
     it('Tab enters on the first TOOL, never a grip; without a menu the grips are not buttons', () => {

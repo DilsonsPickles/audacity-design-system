@@ -510,7 +510,7 @@ function CanvasDemoContent() {
   // icon" took the always-on one away the same day): it opens the group's
   // Add tool list alone, under it
   const openAddToolMenu = React.useCallback((barId: string, anchor: { x: number; y: number }) => setBarMenu({ barId, ...anchor, addOnly: true }), []);
-  const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string, beforeToolId?: string | null) => setBarMenu({ barId, ...anchor, region, toolId, beforeToolId }), []);
+  const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string, beforeToolId?: string | null, row?: number) => setBarMenu({ barId, ...anchor, region, toolId, beforeToolId, row }), []);
   // a separator or a flexible space fits a column as it does a row
   const toolFitsVertical = (id: string) => isLayoutItem(id) || isBankLayoutItem(id) || toolStandsInColumn(id);
   // ⌘-DRAG A TOOL (2026-11-16): released off the toolbars it comes off them,
@@ -1853,7 +1853,8 @@ function CanvasDemoContent() {
           region="top"
           // In the desktop app the window's title bar draws the Title bar
           // toolbar, so the docks do not (2026-11-16)
-          rows={customTitleBar ? toolbarLayout.layout.top.map((row) => row.filter((b) => b.id !== TITLE_BAR_ID)).filter((row) => row.length > 0) : toolbarLayout.layout.top}
+          rows={toolbarLayout.layout.top}
+          hiddenBarIds={customTitleBar ? [TITLE_BAR_ID] : undefined}
           renderExtraTool={renderAppTool}
           extraToolMeta={appToolMeta}
           drag={dockDrag}

@@ -423,3 +423,13 @@ describe('moveDock — MOVE A WHOLE TOOLBAR (2026-11-18, "what if we wanted to m
     expect(dockMovableBars(base, 'top').map((b) => b.id)).toEqual(['a', 'b', 'c']);
   });
 });
+
+describe('normaliseLayout — A GROUP OF DIVIDERS ALONE IS AN EMPTY GROUP (2026-11-18, "new group is adding new row")', () => {
+  it('clears a group holding only dividers; a group with a tool or a space keeps its dividers', () => {
+    const l = normaliseLayout({
+      top: [[{ id: 'd', tools: ['separator-1', 'separator-2'] }, { id: 't', tools: ['play', 'separator-3'] }, { id: 's', tools: ['spacer-1', 'separator-4'] }]],
+      bottom: [], left: [], right: [],
+    });
+    expect(l.top[0].map((b) => b.tools)).toEqual([[], ['play', 'separator-3'], ['spacer-1', 'separator-4']]);
+  });
+});

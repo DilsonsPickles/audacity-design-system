@@ -29,7 +29,7 @@ export interface AppToolbarDockProps {
   onBarResize?: (barId: string, axis: ToolbarBarAxis, size: number | null) => void;
   /** A toolbar's menu — right-click on it (or its grip), Shift+F10 / Menu
    *  key on the grip; null = the dock's empty space */
-  onBarMenu?: (barId: string | null, anchor: { x: number; y: number }) => void;
+  onBarMenu?: (barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string, beforeToolId?: string | null, row?: number) => void;
   /** An empty toolbar's + — its Add tool list (2026-11-17) */
   onEmptyBarAdd?: (barId: string, anchor: { x: number; y: number }) => void;
   trailing?: React.ReactNode;
@@ -43,6 +43,8 @@ export interface AppToolbarDockProps {
   lastFillsRow?: boolean;
   /** Groups drawn flat with lines, or as islands (2026-11-18) */
   groupStyle?: 'lines' | 'islands';
+  /** Groups kept in `rows` but not drawn (the title bar's, in the desktop app) */
+  hiddenBarIds?: ReadonlyArray<string>;
 }
 
 /**
@@ -53,7 +55,7 @@ export interface AppToolbarDockProps {
  */
 export function AppToolbarDock({
   region, rows, renderExtraTool, extraToolMeta, drag, onBarResize, onBarMenu, onEmptyBarAdd,
-  trailing, className, tabGroupId, ariaLabel, style, dataAttrs, lastFillsRow, groupStyle,
+  trailing, className, tabGroupId, ariaLabel, style, dataAttrs, lastFillsRow, groupStyle, hiddenBarIds,
 }: AppToolbarDockProps) {
   const { renderTool, toolMeta, hidden } = useTransportTools();
   if (hidden) return null;
@@ -96,6 +98,7 @@ export function AppToolbarDock({
       style={style}
       lastFillsRow={lastFillsRow}
       groupStyle={groupStyle}
+      hiddenBarIds={hiddenBarIds}
     />
   );
   return dock;
