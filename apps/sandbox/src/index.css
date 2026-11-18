@@ -277,3 +277,12 @@ body[data-rail-resize], body[data-rail-resize] * { cursor: ew-resize !important;
 [data-editor-row] > .editor-island:has(+ .toolbar-dock--right:not(.toolbar-dock--empty)) { margin-right: 0; }
 [data-editor-island]:has(.toolbar-dock--top:not(.toolbar-dock--empty):not([data-toolbar-preview])) .editor-island { margin-top: 0; }
 [data-editor-island]:has(.toolbar-dock--bottom:not(.toolbar-dock--empty):not([data-toolbar-preview])) .editor-island { margin-bottom: 0; }
+/* THE SIDE GROUPS LINE UP WITH THE CARD (2026-11-19, "there's some
+   misalignment between the main work area and the groups in the vertical
+   toolbar"): the card runs flush to a populated top or bottom toolbar (their
+   own 4px padding is the gap), but a side toolbar's columns kept 4px of
+   their own at both ends, so its groups started 4px below the card's top and
+   ended 4px above its foot. The same rule for both: no end padding against a
+   populated top or bottom toolbar, 4px against the window's edge. */
+[data-editor-island]:has(.toolbar-dock--top:not(.toolbar-dock--empty):not([data-toolbar-preview])) [data-editor-row] > .toolbar-dock--vertical .toolbar-dock__row { padding-top: 0; }
+[data-editor-island]:has(.toolbar-dock--bottom:not(.toolbar-dock--empty):not([data-toolbar-preview])) [data-editor-row] > .toolbar-dock--vertical .toolbar-dock__row { padding-bottom: 0; }
