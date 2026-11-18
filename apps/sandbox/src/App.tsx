@@ -120,6 +120,11 @@ const UNREMOVABLE_TOOLS: ReadonlySet<string> = new Set([PROJECT_TAB_TOOL_ID]);
 
 type Workspace = 'classic' | 'spectral-editing' | 'modern' | 'music';
 
+/** The toolbar editor's preview drags nothing: tools inert, no grip drag */
+const TOOLBAR_PREVIEW_DRAG: ToolbarDockDrag = {
+  draggingBarId: null, barTarget: null, onGripMouseDown: () => {},
+  editing: true, draggingToolId: null, toolTarget: null, onToolMouseDown: () => {},
+};
 
 function CanvasDemoContent() {
   const { theme: baseTheme } = useTheme();
@@ -2158,6 +2163,21 @@ function CanvasDemoContent() {
         onResetLayout={toolbarLayout.resetLayout}
         os={preferences.operatingSystem}
         initialBarId={builderBarId}
+        renderPreview={(bar, region) => (
+          // THE EDITOR'S PREVIEW (2026-11-18): one toolbar, its real tools,
+          // inert (the edit mode's), keeping the size it has in its row
+          <AppToolbarDock
+            region={region}
+            rows={[[bar]]}
+            renderExtraTool={renderAppTool}
+            extraToolMeta={appToolMeta}
+            drag={TOOLBAR_PREVIEW_DRAG}
+            lastFillsRow={false}
+            ariaLabel="Toolbar preview"
+            dataAttrs={{ 'data-toolbar-preview': '' }}
+            style={selectionToolbarStyle}
+          />
+        )}
       />
       <ToolbarBarMenu
         menu={barMenu}

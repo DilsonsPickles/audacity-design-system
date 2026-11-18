@@ -37,6 +37,8 @@ export interface AppToolbarDockProps {
   style?: React.CSSProperties;
   /** Extra data attributes on the dock (the status bar's backgrounded mark) */
   dataAttrs?: Record<string, string | undefined>;
+  /** False for a preview of one toolbar: it keeps its own size */
+  lastFillsRow?: boolean;
 }
 
 /**
@@ -47,7 +49,7 @@ export interface AppToolbarDockProps {
  */
 export function AppToolbarDock({
   region, rows, renderExtraTool, extraToolMeta, drag, onBarResize, onBarMenu, onEmptyBarAdd,
-  trailing, className, tabGroupId, ariaLabel, style, dataAttrs,
+  trailing, className, tabGroupId, ariaLabel, style, dataAttrs, lastFillsRow,
 }: AppToolbarDockProps) {
   const { renderTool, toolMeta, hidden } = useTransportTools();
   if (hidden) return null;
@@ -81,6 +83,7 @@ export function AppToolbarDock({
       ariaLabel={ariaLabel}
       dataAttrs={dataAttrs}
       style={style}
+      lastFillsRow={lastFillsRow}
     />
   );
   return dock;

@@ -448,6 +448,25 @@ export function TransportTools({
   // The cog's Customise toolbar popover (2026-10-07) — hooks ABOVE the
   // Home-tab early return, with the rest
   const cogRef = React.useRef<HTMLSpanElement>(null);
+  // A PREVIEW DRAWS THE TOOLS A SECOND TIME (2026-11-18, the toolbar
+  // editor's REAPER-style preview): the anchors above must keep pointing at
+  // the LIVE toolbar's element, so a copy inside `[data-toolbar-preview]`
+  // never takes one, and an unmount clears a ref only while it still points
+  // at its own element
+  const liveRef = <T extends HTMLElement>(ref: React.RefObject<T | null>) => {
+    const target = ref as React.MutableRefObject<T | null>;
+    let mine: T | null = null;
+    return (el: T | null) => {
+      if (el) {
+        if (el.closest('[data-toolbar-preview]')) return;
+        mine = el;
+        target.current = el;
+      } else if (mine && target.current === mine) {
+        target.current = null;
+        mine = null;
+      }
+    };
+  };
   const [customiseOpen, setCustomiseOpen] = React.useState(false);
   const [customiseAnchor, setCustomiseAnchor] = React.useState<{ left: number; right: number; bottom: number; top: number } | null>(null);
   const hiddenSet = React.useMemo(() => new Set(hiddenTools), [hiddenTools]);
@@ -521,7 +540,7 @@ export function TransportTools({
     </ToolbarButtonGroup>
   ) : (
     <ToolbarButtonGroup gap={2}>
-      <span ref={cogRef} style={{ display: 'inline-flex' }} data-customise-toolbar-cog>
+      <span ref={liveRef(cogRef)} style={{ display: 'inline-flex' }} data-customise-toolbar-cog>
         <ToolButton
           icon="cog"
           ariaLabel="Customise toolbar"
@@ -568,7 +587,7 @@ export function TransportTools({
               disabled={isPlaying}
               onRecord={onRecord}
               onCaretClick={handleRecordCaretClick}
-              caretRef={caretRef}
+              caretRef={liveRef(caretRef)}
             />
             <ContextMenu
               isOpen={recordMenuOpen}
@@ -652,7 +671,7 @@ export function TransportTools({
               />
             </label>
             <button
-              ref={snapButtonRef}
+              ref={liveRef(snapButtonRef)}
               type="button"
               aria-label="Snap subdivision"
               aria-haspopup="true"
@@ -695,7 +714,7 @@ export function TransportTools({
         // (a click opens the flyout from there, a right-click the menu)
         if (orientation === 'vertical' && recordingMeterOrientation !== 'flyout') {
           return (
-            <span ref={micButtonRef} style={VERTICAL_METER_SLOT_STYLE} data-docked-meter="recording">
+            <span ref={liveRef(micButtonRef)} style={VERTICAL_METER_SLOT_STYLE} data-docked-meter="recording">
               <MasterMeterVertical
                 icon="microphone"
                 settingsAriaLabel="Microphone level"
@@ -720,7 +739,7 @@ export function TransportTools({
         return (
           <ToolbarButtonGroup gap={8}>
             <span
-              ref={micButtonRef}
+              ref={liveRef(micButtonRef)}
               style={{ display: 'inline-flex' }}
               onContextMenu={(e) => { e.preventDefault(); setMicFlyout(null); setMicMenu({ x: e.clientX, y: e.clientY }); }}
             >
@@ -762,7 +781,7 @@ export function TransportTools({
         // its volume button at its head
         if (orientation === 'vertical' && meterOrientation !== 'flyout') {
           return (
-            <div ref={volumeButtonRef} style={VERTICAL_METER_SLOT_STYLE} data-docked-meter="playback">
+            <div ref={liveRef(volumeButtonRef)} style={VERTICAL_METER_SLOT_STYLE} data-docked-meter="playback">
               <MasterMeterVertical
                 levelLeft={masterLevelLeft}
                 levelRight={masterLevelRight}
@@ -780,7 +799,7 @@ export function TransportTools({
         }
         return (
           <ToolbarButtonGroup gap={8}>
-            <div ref={volumeButtonRef} style={{ display: 'inline-flex' }}>
+            <div ref={liveRef(volumeButtonRef)} style={{ display: 'inline-flex' }}>
               <ToolButton
                 icon="volume"
                 ariaLabel="Playback volume settings"

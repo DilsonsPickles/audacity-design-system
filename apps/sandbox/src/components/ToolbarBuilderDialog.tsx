@@ -4,7 +4,7 @@ import { ALL_TOOLS, ToolGlyph, toolName } from './toolCatalogue';
 import {
   Button, Checkbox, Dialog, DialogFooter, Icon, SearchField, useTheme, usePreferences,
   PROJECT_TAB_TOOL_ID,
-  TOOLBAR_REGIONS, TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, addEmptyBar, findBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertSpacer, insertTool, isToolSeparator, isToolSpacer, isLayoutItem,
+  TOOLBAR_REGIONS, isVerticalRegion, TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, addEmptyBar, findBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertSpacer, insertTool, isToolSeparator, isToolSpacer, isLayoutItem,
   moveBar, moveTool, nextBarId, removeBar, removeTool, renameBar, rowsOf,
   type BarPlacement, type ToolbarBar, type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
@@ -73,9 +73,12 @@ export interface ToolbarBuilderDialogProps {
   /** A toolbar to select when it opens — a grip menu's "Edit toolbars…"
    *  (2026-11-16) */
   initialBarId?: string | null;
+  /** THE PREVIEW (2026-11-18, "a REAPER style preview"): the host draws
+   *  ONE toolbar with its real tools, in its dock's orientation */
+  renderPreview?: (bar: ToolbarBar, region: ToolbarRegion) => React.ReactNode;
 }
 
-export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onResetLayout, os = 'macos', initialBarId = null }: ToolbarBuilderDialogProps) {
+export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onResetLayout, os = 'macos', initialBarId = null, renderPreview }: ToolbarBuilderDialogProps) {
   const { theme } = useTheme();
   const { preferences, updatePreference } = usePreferences();
   // The WORKSPACE's hidden tools (2026-11-17)
@@ -419,6 +422,71 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
   });
   const muted = { color: theme.foreground.text.secondary } as const;
 
+  // ── THE PREVIEW (2026-11-18, "I wish we could get a REAPER style preview
+  // in the customise toolbar modal"): REAPER's window draws the toolbar
+  // being edited along its foot as you edit it. Ours draws the toolbar the
+  // selection is in — the host's real tools through the dock itself, so
+  // separators, flexible spaces, hidden tools and a stored size all show as
+  // they will — redrawn on every edit; a side dock's toolbar is a column
+  // beside the tree. The tools are inert: a click on one SELECTS it in the
+  // tree, and the selected tool is outlined in the preview ──
+  const previewBar = selBarId ? findBar(layout, selBarId) : null;
+  const previewVertical = !!previewBar && isVerticalRegion(previewBar.region);
+  const previewAllHidden = !!previewBar && previewBar.bar.tools.some((t) => !isLayoutItem(t))
+    && previewBar.bar.tools.every((t) => isLayoutItem(t) || hidden.has(t));
+  const previewTool = sel?.kind === 'tool' ? sel.toolId : null;
+  const pickFromPreview = (e: React.SyntheticEvent) => {
+    // nothing inside the preview acts: a press selects, and that is all
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type !== 'click') return;
+    const tool = (e.target as HTMLElement).closest<HTMLElement>('[data-toolbar-tool]')?.dataset.toolbarTool;
+    if (tool) setSel({ kind: 'tool', toolId: tool });
+    else if (previewBar) setSel({ kind: 'bar', barId: previewBar.bar.id });
+  };
+  const preview = renderPreview && (
+    <div
+      data-builder-preview
+      style={{
+        display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, minHeight: 0,
+        ...(previewVertical ? { gridColumn: 5, gridRow: 1 } : { gridColumn: '1 / -1', gridRow: 2 }),
+      }}
+    >
+      <span>Preview</span>
+      <div
+        style={{
+          border: `1px solid ${theme.border.default}`, borderRadius: 4, background: theme.background.toolbar,
+          overflow: 'auto', minHeight: 60, display: 'flex',
+          alignItems: previewVertical ? 'flex-start' : 'center', justifyContent: previewVertical ? 'center' : 'flex-start',
+          ...(previewVertical ? { flex: '1 1 0', minWidth: 64 } : {}),
+        }}
+        onMouseDownCapture={pickFromPreview}
+        onClickCapture={pickFromPreview}
+        onDoubleClickCapture={pickFromPreview}
+        onContextMenuCapture={pickFromPreview}
+        onKeyDownCapture={(e) => { if (e.key !== 'Tab') { e.preventDefault(); e.stopPropagation(); } }}
+      >
+        {!previewBar ? (
+          <span data-builder-preview-empty style={{ ...muted, padding: '0 12px' }}>Select a toolbar or a tool to preview it</span>
+        ) : previewBar.bar.tools.length === 0 ? (
+          <span data-builder-preview-empty style={{ ...muted, padding: '0 12px' }}>{barDisplayName(previewBar.bar)} is empty</span>
+        ) : previewAllHidden ? (
+          <span data-builder-preview-empty style={{ ...muted, padding: '0 12px' }}>Every tool on {barDisplayName(previewBar.bar)} is hidden</span>
+        ) : (
+          <div style={previewVertical ? { display: 'flex' } : { flex: '1 1 auto', minWidth: 0 }}>
+            <style>{`
+              [data-builder-preview] .toolbar-dock--editing .toolbar-dock__tool { outline: none; cursor: pointer; }
+              [data-builder-preview] .toolbar-dock__grip { cursor: default; }
+              [data-builder-preview] .toolbar-dock__spacer { outline: 1px dashed currentColor; outline-offset: -1px; opacity: 0.4; }
+              ${previewTool ? `[data-builder-preview] .toolbar-dock--editing .toolbar-dock__tool[data-toolbar-tool="${previewTool.replace(/["\\]/g, '')}"] { outline: 2px solid ${theme.accent.primary}; outline-offset: 2px; border-radius: 3px; }` : ''}
+            `}</style>
+            {renderPreview(previewBar.bar, previewBar.region)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <Dialog
       isOpen={isOpen}
@@ -443,7 +511,16 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
         />
       }
     >
-      <div data-toolbar-builder style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) auto minmax(260px, 1.4fr) auto', gap: 12, alignItems: 'stretch', gridTemplateRows: 'minmax(0, 1fr)', height: '100%', boxSizing: 'border-box', color: theme.foreground.text.primary, fontSize: 12 }}>
+      <div
+        data-toolbar-builder
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `minmax(200px, 1fr) auto minmax(260px, 1.4fr) auto${preview && previewVertical ? ' auto' : ''}`,
+          gap: 12, alignItems: 'stretch',
+          gridTemplateRows: preview && !previewVertical ? 'minmax(0, 1fr) auto' : 'minmax(0, 1fr)',
+          height: '100%', boxSizing: 'border-box', color: theme.foreground.text.primary, fontSize: 12,
+        }}
+      >
         {/* Tools */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, minHeight: 0 }}>
           <span>Tools</span>
@@ -633,6 +710,8 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
           <Button variant="secondary" size="default" disabled={!canRename} onClick={startRename}>Rename…</Button>
           <Button variant="secondary" size="default" disabled={!canDeleteBar} onClick={deleteBar}>Delete toolbar</Button>
         </div>
+
+        {preview}
       </div>
     </Dialog>
   );

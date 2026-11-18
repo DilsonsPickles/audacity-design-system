@@ -463,11 +463,47 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     ).toEqual(['status', 'bar-2']));
   });
 
+  it('THE EDITOR\'S PREVIEW (2026-11-18, "a REAPER style preview"): the selected toolbar drawn with its real tools, redrawn on every edit; a click on a tool in it selects that tool in the tree', async () => {
+    const { container, getByText } = renderApp();
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
+    await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
+    const view = Array.from(container.querySelectorAll<HTMLElement>('.application-header__menu-item')).find((e) => e.textContent?.trim() === 'View')!;
+    fireEvent.click(view);
+    fireEvent.click(await waitFor(() => getByText('Edit toolbars...')));
+    const b = await waitFor(() => {
+      const el = document.body.querySelector<HTMLElement>('[data-toolbar-builder]');
+      if (!el) throw new Error('not yet');
+      return el;
+    });
+    // nothing selected: the strip says what to do
+    expect(b.querySelector('[data-builder-preview-empty]')?.textContent).toContain('Select a toolbar');
+    // a tool selected: its toolbar is drawn, its real tools inside
+    fireEvent.click(b.querySelector('[data-builder-node="t:loop"]')!);
+    const preview = () => b.querySelector<HTMLElement>('[data-toolbar-preview]');
+    await waitFor(() => expect(preview()?.querySelector('[data-toolbar-tool="loop"]')).toBeTruthy());
+    expect(preview()!.querySelector('[data-toolbar-tool="play"] button')).toBeTruthy();
+    expect(preview()!.classList.contains('toolbar-dock--editing')).toBe(true);
+    // a click on a tool in the preview selects it in the tree, and presses nothing
+    fireEvent.click(preview()!.querySelector('[data-toolbar-tool="play"]')!);
+    await waitFor(() => expect(b.querySelector('[data-builder-node="t:play"]')!.getAttribute('aria-selected')).toBe('true'));
+    // an edit redraws it: untick Play, and the preview loses it too
+    const box = b.querySelector('[data-builder-node="t:play"] [role="checkbox"], [data-builder-node="t:play"] input[type="checkbox"]') as HTMLElement;
+    fireEvent.click(box);
+    await waitFor(() => expect(preview()!.querySelector('[data-toolbar-tool="play"]')).toBeNull());
+    fireEvent.click(getByText('Cancel'));
+    await waitFor(() => expect(document.body.querySelector('[data-toolbar-builder]')).toBeNull());
+    // the live toolbar keeps its tools once the preview is gone
+    expect(container.querySelector('[data-toolbar-preview]')).toBeNull();
+    expect(container.querySelector('[data-toolbar-tool="play"]')).toBeTruthy();
+  });
+
   it('THE TOOLBAR BUILDER: View › Edit toolbars… opens it; Remove, Add, hide, New toolbar (empty) and Add separator apply live; Cancel puts it all back; Reset layout restores (2026-11-11)', async () => {
     const { container, getByText } = renderApp();
     fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
-    const tool = (id: string) => container.querySelector(`[data-toolbar-tool="${id}"]`) as HTMLElement | null;
+    // the LIVE toolbars only, never the editor's preview of one (2026-11-18)
+    const live = (sel: string) => Array.from(container.querySelectorAll<HTMLElement>(sel)).filter((e) => !e.closest('[data-toolbar-preview]'));
+    const tool = (id: string) => live(`[data-toolbar-tool="${id}"]`)[0] ?? null;
     const barOf = (id: string) => tool(id)?.closest('[data-toolbar-bar]')?.getAttribute('data-toolbar-bar');
     const stored = () => JSON.parse(window.localStorage.getItem('audacity-preferences')!).toolbarLayouts?.classic;
     // View › Edit toolbars… (the cog left the default layout, 2026-11-18)
@@ -512,7 +548,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     expect(container.querySelector('[data-toolbar-empty]')).toBeNull();
 
     // Add separator: a group line inside the transport toolbar
-    const seps = () => container.querySelectorAll('[data-toolbar-bar="main"] .toolbar-dock__separator').length;
+    const seps = () => live('[data-toolbar-bar="main"] .toolbar-dock__separator').length;
     const before = seps();
     fireEvent.click(b.querySelector('[data-builder-node="t:play"]')!);
     fireEvent.click(button(b, 'Add separator'));
