@@ -264,7 +264,14 @@ export function ToolbarDock({
     // grabbed again): such a toolbar takes the row's spare room like the
     // last one does, its space pushing the tools after it along; several
     // share the room, and the last toolbar then keeps its natural size
-    const spaced = row.map((bar) => bar.tools.some(isToolSpacer));
+    // …and SO DOES ONE HOLDING A HORIZONTAL METER (2026-11-19, "if the meters
+    // are horizontal, they should be flex to take up all remaining space"):
+    // the meter is the stretch tool, so its group takes the row's spare room
+    // the same way, sharing it with any other meter group or space, and the
+    // row's last group keeps its natural size. A meter it hides draws
+    // nothing and takes nothing; a sized group keeps its size
+    const takesRoom = (id: string) => isToolSpacer(id) || (!vertical && !!toolMeta?.(id, orientation)?.stretch);
+    const spaced = row.map((bar, i) => bar.tools.some(isToolSpacer) || toolNodes[i].some((t) => takesRoom(t.id)));
     const spaceInRow = spaced.some(Boolean);
     return row.map((bar, barIndex) => {
     const nodes = toolNodes[barIndex];
@@ -323,8 +330,12 @@ export function ToolbarDock({
     const isLast = lastFillsRow && barIndex === lastDrawn;
     const resizable = true;
     const size = sizeOf(bar);
-    const fill = size === undefined && (spaced[barIndex]
-      || (isLast && !spaceInRow && (growsAt < 0 || growsAt === barIndex)));
+    // (a SIZED meter group fills too, its size the least it takes — "they
+    // should be flex to take up all remaining space": the size sets where it
+    // starts, the spare room is still the meter's; 2026-11-19)
+    const sizedMeter = size !== undefined && !vertical && nodes.some((t) => takesRoom(t.id) && !isToolSpacer(t.id));
+    const fill = sizedMeter || (size === undefined && (spaced[barIndex]
+      || (isLast && !spaceInRow && (growsAt < 0 || growsAt === barIndex))));
     const overflow = overflowOf(nodes.map((t) => t.id), size);
     const allIds = nodes.map((t) => t.id);
     const whole = { bar, nodes, grow, fill, row: rowIndex, size, overflow, key: bar.id, continued: false, split: false, last: true, allIds, resizable };
@@ -350,7 +361,7 @@ export function ToolbarDock({
       ...whole, nodes: seg, key: i === 0 ? bar.id : `${bar.id}~${i + 1}`, continued: i > 0, split: true, last: i === kept.length - 1,
       // only the segment that ends the row fills it — or, in a toolbar
       // with a flexible space, the segments holding one
-      fill: fill && (spaced[barIndex] ? seg.some((t) => isToolSpacer(t.id)) : i === kept.length - 1),
+      fill: fill && (spaced[barIndex] ? seg.some((t) => takesRoom(t.id)) : i === kept.length - 1),
     }));
     }).flat();
   });
@@ -440,9 +451,10 @@ export function ToolbarDock({
     let used = 0;
     for (const d of visible) {
       const el = barRefs.current.get(d.key);
-      // a FILLING bar packs at its natural width, never the room it fills
+      // a FILLING bar packs at its natural width, never the room it fills —
+      // a sized meter group at its size, the least it takes (2026-11-19)
       const w = d.grow && d.size === undefined ? GROW_BAR_PACK_WIDTH
-        : d.fill ? naturalOf(d.nodes.map((t) => t.id))
+        : d.fill ? (d.size ?? naturalOf(d.nodes.map((t) => t.id)))
         : (el?.offsetWidth ?? 0);
       // (each bar's width carries its gutter: the grip is the gap)
       if (!line || line.row !== d.row || (available > 0 && line.ids.length > 0 && used + w > available)) {
@@ -513,7 +525,7 @@ export function ToolbarDock({
       key={d.key}
       ref={(el) => { if (el) barRefs.current.set(d.key, el); else barRefs.current.delete(d.key); }}
       className={`toolbar-dock__bar${d.grow ? ' toolbar-dock__bar--grow' : ''}${d.size !== undefined ? ' toolbar-dock__bar--sized' : ''}${d.fill ? ' toolbar-dock__bar--fill' : ''}${draggingBarId === d.bar.id ? ' toolbar-dock__bar--dragging' : ''}`}
-      style={d.size !== undefined ? { [axis]: d.size } : undefined}
+      style={d.size !== undefined ? (d.fill && !vertical ? { [axis]: d.size, minWidth: d.size } : { [axis]: d.size }) : undefined}
       data-toolbar-bar={d.continued ? undefined : d.bar.id}
       data-toolbar-bar-continued={d.continued ? d.bar.id : undefined}
     >

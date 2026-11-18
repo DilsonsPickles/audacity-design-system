@@ -326,7 +326,8 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     const { container } = renderDock({
       rows: [
         [{ id: 'p', tools: ['one'], width: 200 }, { id: 'q', tools: ['two'] }],
-        [{ id: 'r', tools: ['three'] }, { id: 's', tools: ['four', 'meter'], width: 300 }],
+        // (no meter here: a sized METER group fills from its size since 2026-11-19)
+        [{ id: 'r', tools: ['three'] }, { id: 's', tools: ['four'], width: 300 }],
       ],
       onBarResize: vi.fn(),
       toolMeta: meta,
@@ -341,6 +342,28 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(bar('s').classList.contains('toolbar-dock__bar--fill')).toBe(false);
     expect(bar('s').classList.contains('toolbar-dock__bar--sized')).toBe(true);
     expect(bar('s').style.width).toBe('300px');
+  });
+
+  it('A HORIZONTAL METER\'S GROUP TAKES THE ROW\'S SPARE ROOM (2026-11-19, "they should be flex to take up all remaining space"): every meter group fills, the last group keeps its natural size; a sized one fills from its size, never below it; in a column it does not', () => {
+    const meta = (id: string) => (id === 'meter' ? { stretch: true } : undefined);
+    const { container } = renderDock({
+      rows: [[{ id: 'rec', tools: ['meter'] }, { id: 'mid', tools: ['one'] }, { id: 'play', tools: ['meter'] }, { id: 'end', tools: ['two'] }]],
+      toolMeta: meta,
+    });
+    const fills = (id: string) => (container.querySelector(`[data-toolbar-bar="${id}"]`) as HTMLElement).classList.contains('toolbar-dock__bar--fill');
+    expect(fills('rec')).toBe(true);
+    expect(fills('play')).toBe(true);
+    expect(fills('mid')).toBe(false);
+    expect(fills('end')).toBe(false);
+    cleanup();
+    const sized = renderDock({ rows: [[{ id: 'rec', tools: ['meter'], width: 240 }, { id: 'end', tools: ['two'] }]], toolMeta: meta });
+    const rec = sized.container.querySelector('[data-toolbar-bar="rec"]') as HTMLElement;
+    expect(rec.classList.contains('toolbar-dock__bar--fill')).toBe(true);
+    expect(rec.style.minWidth).toBe('240px');
+    expect((sized.container.querySelector('[data-toolbar-bar="end"]') as HTMLElement).classList.contains('toolbar-dock__bar--fill')).toBe(false);
+    cleanup();
+    const column = renderDock({ region: 'right', rows: [[{ id: 'rec', tools: ['meter'] }, { id: 'end', tools: ['two'] }]], toolMeta: meta });
+    expect((column.container.querySelector('[data-toolbar-bar="rec"]') as HTMLElement).classList.contains('toolbar-dock__bar--fill')).toBe(false);
   });
 
   it('a row with a GROWING group (the info line) leaves the room to it: the last group keeps its natural size, with an edge', () => {

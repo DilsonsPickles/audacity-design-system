@@ -223,6 +223,9 @@ body[data-toolbar-tool-drag] .toolbar-dock__spacer { outline: 1px dashed current
 .toolbar-dock__bar--sized,
 .toolbar-dock__bar--sized.toolbar-dock__bar--grow { flex: 0 0 auto; }
 .toolbar-dock--horizontal .toolbar-dock__bar--sized { max-width: 100%; }
+/* A SIZED METER GROUP STILL FILLS (2026-11-19): its size is where it starts
+   and the least it takes; the row's spare room is its too */
+.toolbar-dock--horizontal .toolbar-dock__bar--sized.toolbar-dock__bar--fill { flex: 1 1 auto; }
 .toolbar-dock__bar--sized .toolbar-dock__tools { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: hidden; }
 /* …and its clip box takes in the row's 8px padding above and below
    (2026-11-16, "when I double click the resize handle to reset the toolbar
@@ -497,6 +500,12 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
   background-color: var(--toolbar-bg);
 }
 .toolbar-dock--islands .toolbar-dock__row { padding: 4px var(--toolbar-dock-end-pad, 4px) 4px 4px; gap: 4px; }
+/* STACKED LINES DO NOT DOUBLE THE GAP (2026-11-19, "If the horizontal
+   toolbar wraps, I don't want to double up on the spacing between the two
+   rows"): every line kept 4px above and below, so two lines' groups sat 8px
+   apart against 4px everywhere else; a line after the first — a wrap or a
+   row of its own — drops its top 4px and is 40px, so it is 4 card to card */
+.toolbar-dock--islands.toolbar-dock--horizontal .toolbar-dock__row ~ .toolbar-dock__row { padding-top: 0; height: 40px; }
 .toolbar-dock--islands .toolbar-dock__bar {
   height: 36px;
   box-sizing: border-box;
