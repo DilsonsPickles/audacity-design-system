@@ -34,10 +34,23 @@ export function openFloatingWindow(ownerEl: HTMLElement, name: string, viewportX
   // above the content (outer − inner height; 0 for a frameless popout),
   // plus the spot's place in the content
   const chromeY = (win.outerHeight || 0) - (win.innerHeight || 0);
-  const left = Math.round((win.screenX || 0) + viewportX);
-  const top = Math.round((win.screenY || 0) + chromeY + viewportY);
   const w = Math.ceil(width);
   const h = Math.ceil(height);
+  // KEPT ON THE SCREEN (2026-11-18, "I can't right click in the empty group
+  // space to add tools": a group in the right toolbar of a full-screen-width
+  // window opened its menu at the pointer's true place, 1487 on a 1512 screen,
+  // so the 189px menu window sat almost wholly past the display's edge and
+  // nothing showed): shifted back inside the screen's available area, as a
+  // native menu shifts to fit
+  const scr = win.screen as Screen & { availLeft?: number; availTop?: number };
+  const availLeft = scr?.availLeft ?? 0;
+  const availTop = scr?.availTop ?? 0;
+  const availRight = availLeft + (scr?.availWidth || Infinity);
+  const availBottom = availTop + (scr?.availHeight || Infinity);
+  const rawLeft = Math.round((win.screenX || 0) + viewportX);
+  const rawTop = Math.round((win.screenY || 0) + chromeY + viewportY);
+  const left = Math.max(availLeft, Math.min(rawLeft, availRight - w));
+  const top = Math.max(availTop, Math.min(rawTop, availBottom - h));
   let popup: Window | null = null;
   try {
     popup = win.open('', name, `popup=yes,width=${w},height=${h},left=${left},top=${top}`);
