@@ -17,6 +17,9 @@ export interface MenuDefinitionDeps {
   /** View › Edit toolbars… — the toolbar editor, from the menu bar and the
    *  palette (2026-11-18: the cog left the default layout) */
   onEditToolbars?: () => void;
+  /** View › Edit toolbars as list… — the tree editor, the keyboard's way
+   *  (2026-11-18: Edit toolbars… opens the tool bank) */
+  onEditToolbarsAsList?: () => void;
   onNewWorkspace?: () => void;
   /** File › New project ⌘N / Close project — the project tabs (2026-11-12) */
   onNewProject?: () => void;
@@ -235,6 +238,7 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       onClick: deps.onOpenKeyboardMap,
     },
     ...(deps.onEditToolbars ? [{ label: 'Edit toolbars...', onClick: deps.onEditToolbars }] : []),
+    ...(deps.onEditToolbarsAsList ? [{ label: 'Edit toolbars as list...', onClick: deps.onEditToolbarsAsList }] : []),
     ...(deps.onNewWorkspace ? [{ label: 'New workspace...', onClick: deps.onNewWorkspace }] : []),
     ...(deps.onResetWorkspace ? [{ label: 'Reset workspace to default', onClick: deps.onResetWorkspace }] : []),
   ];

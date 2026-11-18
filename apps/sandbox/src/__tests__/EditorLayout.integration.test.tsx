@@ -1829,7 +1829,7 @@ describe('Selection playback', () => {
     // cue still carries the speed
     const view = Array.from(container.querySelectorAll<HTMLElement>('.application-header__menu-item')).find((e) => e.textContent?.trim() === 'View')!;
     fireEvent.click(view);
-    fireEvent.click(await waitFor(() => getByText('Edit toolbars...')));
+    fireEvent.click(await waitFor(() => getByText('Edit toolbars as list...')));
     const builder = await waitFor(() => {
       const b = document.body.querySelector<HTMLElement>('[data-toolbar-builder]');
       if (!b) throw new Error('not yet');

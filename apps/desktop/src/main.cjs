@@ -336,6 +336,7 @@ function setApplicationMenu() {
         // the toolbar editor's menu-bar door (2026-11-18: the cog left the
         // default layout)
         { label: 'Edit Toolbars…', click: send('view:edit-toolbars') },
+        { label: 'Edit Toolbars as List…', click: send('view:edit-toolbars-list') },
         { type: 'separator' },
         { role: 'reload' },
         { role: 'forceReload' },

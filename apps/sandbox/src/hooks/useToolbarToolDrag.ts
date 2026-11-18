@@ -12,6 +12,9 @@ export interface UseToolbarToolDragDeps {
   onRemove?: (toolId: string) => void;
   /** Tools that never come off the toolbars (the project tabs) */
   unremovable?: ReadonlySet<string>;
+  /** Items that only go INTO a toolbar, never make one of their own (a
+   *  separator or a flexible space from the tool bank) */
+  intoOnly?: (toolId: string) => boolean;
 }
 
 export interface UseToolbarToolDragReturn {
@@ -23,6 +26,8 @@ export interface UseToolbarToolDragReturn {
   fitsVertical: boolean;
   /** In hand and over no toolbar: a release takes the tool off them */
   removing: boolean;
+  /** `barId` is the toolbar the tool is on — '' for a drag out of the TOOL
+   *  BANK (2026-11-18), whose release over no toolbar moves nothing */
   onToolMouseDown: (toolId: string, barId: string, e: React.MouseEvent, toolRect: DOMRect) => void;
 }
 
@@ -38,7 +43,7 @@ const DRAG_THRESHOLD_PX = 4;
  * release over NO toolbar takes the tool off them (`onRemove`). Self-cleaning document
  * listeners, as the bar's grip drag.
  */
-export function useToolbarToolDrag({ layout, toolFitsVertical, onMoveInto, onMoveToNewBar, onRemove, unremovable }: UseToolbarToolDragDeps): UseToolbarToolDragReturn {
+export function useToolbarToolDrag({ layout, toolFitsVertical, onMoveInto, onMoveToNewBar, onRemove, unremovable, intoOnly }: UseToolbarToolDragDeps): UseToolbarToolDragReturn {
   const [draggingToolId, setDraggingToolId] = useState<string | null>(null);
   const [target, setTarget] = useState<ToolDropTarget | null>(null);
   const [ghost, setGhost] = useState<UseToolbarToolDragReturn['ghost']>(null);
@@ -57,8 +62,10 @@ export function useToolbarToolDrag({ layout, toolFitsVertical, onMoveInto, onMov
   intoRef.current = onMoveInto;
   const newRef = useRef(onMoveToNewBar);
   newRef.current = onMoveToNewBar;
+  const intoOnlyRef = useRef(intoOnly);
+  intoOnlyRef.current = intoOnly;
 
-  const onToolMouseDown = useCallback((toolId: string, _barId: string, e: React.MouseEvent, toolRect: DOMRect) => {
+  const onToolMouseDown = useCallback((toolId: string, fromBarId: string, e: React.MouseEvent, toolRect: DOMRect) => {
     if (e.button !== 0) return;
     const startX = e.clientX;
     const startY = e.clientY;
@@ -69,7 +76,9 @@ export function useToolbarToolDrag({ layout, toolFitsVertical, onMoveInto, onMov
     let moved = false;
     let last: ToolDropTarget | null = null;
 
-    const canRemove = !!removeRef.current && !unremovableRef.current?.has(toolId);
+    // out of the bank (no toolbar), a release on nothing just puts it back
+    const canRemove = fromBarId !== '' && !!removeRef.current && !unremovableRef.current?.has(toolId);
+    const onlyInto = !!intoOnlyRef.current?.(toolId);
     // THE TITLE BAR TAKES APP-LEVEL ITEMS ONLY (2026-11-16): a tool joining it
     // that is not one is refused, as a side dock refuses a tool with no
     // vertical form
@@ -84,6 +93,8 @@ export function useToolbarToolDrag({ layout, toolFitsVertical, onMoveInto, onMov
       if (t && t.kind === 'into' && t.barId === TITLE_BAR_ID && !TITLE_BAR_ALLOWED.includes(toolId)) return { ...t, refused: true };
       // …and a title-bar-only item (Get effects, Mixer) goes nowhere else
       if (t && TITLE_BAR_ONLY.includes(toolId) && !(t.kind === 'into' && t.barId === TITLE_BAR_ID)) return { ...t, refused: true };
+      // …and a separator or a space from the bank goes INTO a toolbar only
+      if (t && onlyInto && t.kind === 'new') return { ...t, refused: true };
       return t;
     };
     const begin = () => {

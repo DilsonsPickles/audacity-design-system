@@ -430,7 +430,13 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
       return item as HTMLElement;
     });
     fireEvent.click(edit);
+    // …which opens the TOOL BANK over the live toolbars (2026-11-18), whose
+    // "Edit as list…" is the tree editor
+    await waitFor(() => expect(document.body.querySelector('[data-tool-bank]')).toBeTruthy());
+    expect(container.querySelector('.toolbar-dock--editing')).toBeTruthy();
+    fireEvent.click(Array.from(document.body.querySelectorAll<HTMLElement>('[data-tool-bank] button')).find((b) => b.textContent?.includes('Edit as list'))!);
     await waitFor(() => expect(document.body.querySelector('[data-toolbar-builder]')).toBeTruthy());
+    expect(document.body.querySelector('[data-tool-bank]')).toBeNull();
   });
 
   it('NEW TOOLBAR FROM THE RIGHT-CLICK MENU (2026-11-17): a toolbar\'s menu makes an empty one beside it; the dock\'s empty-space menu makes one at the dock\'s end', async () => {
@@ -463,13 +469,46 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     ).toEqual(['status', 'bar-2']));
   });
 
-  it('THE EDITOR\'S PREVIEW (2026-11-18, "a REAPER style preview"): the selected toolbar drawn with its real tools, redrawn on every edit; a click on a tool in it selects that tool in the tree', async () => {
+  it('THE TOOL BANK (2026-11-18, "build the bank"): View › Edit toolbars… opens it over the live toolbars in their edit mode; a tile dragged onto the toolbars is added; Done leaves', async () => {
     const { container, getByText } = renderApp();
     fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
     const view = Array.from(container.querySelectorAll<HTMLElement>('.application-header__menu-item')).find((e) => e.textContent?.trim() === 'View')!;
     fireEvent.click(view);
     fireEvent.click(await waitFor(() => getByText('Edit toolbars...')));
+    const bank = await waitFor(() => {
+      const el = document.body.querySelector<HTMLElement>('[data-tool-bank]');
+      if (!el) throw new Error('not yet');
+      return el;
+    });
+    expect(container.querySelector('.toolbar-dock--editing')).toBeTruthy();
+    // a tool on no toolbar waits under its heading; the separator and space lead
+    expect(bank.querySelector('[data-bank-tool="bank-separator"]')).toBeTruthy();
+    expect(bank.querySelector('[data-bank-tool="bank-spacer"]')).toBeTruthy();
+    const tile = bank.querySelector<HTMLElement>('[data-bank-tool="waveform-view"]')!;
+    expect(tile).toBeTruthy();
+    expect(container.querySelector('[data-toolbar-tool="waveform-view"]')).toBeNull();
+    // dragged to the top of the window (the top dock's edge snap in jsdom): a toolbar of its own
+    fireEvent.mouseDown(tile, { button: 0, clientX: 300, clientY: 500 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: 200 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: 10 });
+    fireEvent.mouseUp(document, { clientX: 300, clientY: 10 });
+    await waitFor(() => expect(container.querySelector('[data-toolbar-tool="waveform-view"]')).toBeTruthy());
+    // it now sits under "On a toolbar"
+    await waitFor(() => expect(bank.textContent).toContain('On a toolbar'));
+    // Done leaves the mode
+    fireEvent.click(Array.from(bank.querySelectorAll<HTMLElement>('button')).find((b) => b.textContent?.trim() === 'Done')!);
+    await waitFor(() => expect(document.body.querySelector('[data-tool-bank]')).toBeNull());
+    expect(container.querySelector('.toolbar-dock--editing')).toBeNull();
+  });
+
+  it('THE EDITOR\'S PREVIEW (2026-11-18, "a REAPER style preview"): the selected toolbar drawn with its real tools, redrawn on every edit; a click on a tool in it selects that tool in the tree', async () => {
+    const { container, getByText } = renderApp();
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
+    await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
+    const view = Array.from(container.querySelectorAll<HTMLElement>('.application-header__menu-item')).find((e) => e.textContent?.trim() === 'View')!;
+    fireEvent.click(view);
+    fireEvent.click(await waitFor(() => getByText('Edit toolbars as list...')));
     const b = await waitFor(() => {
       const el = document.body.querySelector<HTMLElement>('[data-toolbar-builder]');
       if (!el) throw new Error('not yet');
@@ -510,7 +549,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     const openBuilder = async () => {
       const view = Array.from(container.querySelectorAll<HTMLElement>('.application-header__menu-item')).find((e) => e.textContent?.trim() === 'View')!;
       fireEvent.click(view);
-      fireEvent.click(await waitFor(() => getByText('Edit toolbars...')));
+      fireEvent.click(await waitFor(() => getByText('Edit toolbars as list...')));
       return waitFor(() => {
         const b = document.body.querySelector<HTMLElement>('[data-toolbar-builder]');
         if (!b) throw new Error('not yet');

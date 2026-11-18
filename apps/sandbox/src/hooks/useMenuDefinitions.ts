@@ -61,6 +61,7 @@ export interface UseMenuDefinitionsOptions {
   onResetWorkspace?: () => void;
   onNewWorkspace?: () => void;
   onEditToolbars?: () => void;
+  onEditToolbarsAsList?: () => void;
   onCloseProject?: () => void;
 }
 
@@ -114,6 +115,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onResetWorkspace,
     onNewWorkspace,
     onEditToolbars,
+    onEditToolbarsAsList,
   } = options;
 
   const dispatch = useTracksDispatch();
@@ -193,6 +195,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onResetWorkspace,
     onNewWorkspace,
     onEditToolbars,
+    onEditToolbarsAsList,
     onOpenLabelEditor: () => setIsLabelEditorOpen(true),
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
     onOpenGoTo: () => setIsGoToOpen(true),

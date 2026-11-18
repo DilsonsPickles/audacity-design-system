@@ -27,7 +27,9 @@ import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
 import { PlotSpectrumWindow, type PlotSpectrumSource } from './components/PlotSpectrumWindow';
 import { resolveTimeSelectionScope } from './utils/timeSelectionScope';
-import { KeyboardMap, SHORTCUT_ROWS, isLayoutItem, isToolSpacer, TITLE_BAR_ID, TITLE_BAR_ONLY, titleBarItems, removeTool, PROJECT_TAB_TOOL_ID } from '@audacity-ui/components';
+import { KeyboardMap, SHORTCUT_ROWS, isLayoutItem, isToolSpacer, TITLE_BAR_ID, TITLE_BAR_ONLY, titleBarItems, removeTool, PROJECT_TAB_TOOL_ID, insertTool, insertSeparator, insertSpacer, addToolToNewBar } from '@audacity-ui/components';
+import { ToolBank, BANK_SEPARATOR_ID, BANK_SPACER_ID, isBankLayoutItem } from './components/ToolBank';
+import { useHiddenTools } from './hooks/useHiddenTools';
 import { transportStatusText } from './utils/transportStatus';
 import { useStatusInfo } from './hooks/useStatusInfo';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
@@ -486,21 +488,42 @@ function CanvasDemoContent() {
   const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string, beforeToolId?: string | null) => setBarMenu({ barId, ...anchor, region, toolId, beforeToolId }), []);
   // a separator or a flexible space fits a column as it does a row
   const toolFitsVertical = (id: string) =>
-    isLayoutItem(id) || (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
+    isLayoutItem(id) || isBankLayoutItem(id) || (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
   // ⌘-DRAG A TOOL (2026-11-16): released off the toolbars it comes off them,
   // with a toast whose Undo puts the layout back
+  // THE TOOL BANK's drops share the drag (2026-11-18): a tool on no toolbar
+  // is ADDED (`insertTool` / `addToolToNewBar` move one that is on one), a
+  // hidden one is SHOWN, and the bank's separator and space are made fresh
+  const { hidden: workspaceHidden, setHidden: setWorkspaceHidden } = useHiddenTools();
+  const showTool = (toolId: string) => {
+    if (workspaceHidden.includes(toolId)) setWorkspaceHidden(workspaceHidden.filter((t) => t !== toolId));
+  };
   const toolDrag = useToolbarToolDrag({
     layout: toolbarLayout.layout,
     toolFitsVertical,
-    onMoveInto: toolbarLayout.moveToolInto,
-    onMoveToNewBar: toolbarLayout.moveToolToNewBar,
+    onMoveInto: (toolId, barId, beforeToolId) => {
+      toolbarLayout.editLayout((base) => (
+        toolId === BANK_SEPARATOR_ID ? insertSeparator(base, barId, beforeToolId)
+          : toolId === BANK_SPACER_ID ? insertSpacer(base, barId, beforeToolId)
+            : insertTool(base, toolId, barId, beforeToolId)
+      ));
+      showTool(toolId);
+    },
+    onMoveToNewBar: (toolId, placement) => {
+      toolbarLayout.editLayout((base) => addToolToNewBar(base, toolId, placement));
+      showTool(toolId);
+    },
+    intoOnly: isBankLayoutItem,
     onRemove: (toolId) => {
       const before = toolbarLayout.layout;
       toolbarLayout.editLayout((base) => removeTool(base, toolId));
       // a flexible space is not a tool: it is gone, not set aside
+      // (the tool bank, 2026-11-18: View › Edit toolbars… is where it comes back from)
       const [title, line] = isToolSpacer(toolId)
-        ? ['Flexible space removed', 'Add one again from a toolbar\'s right-click menu']
-        : ['Tool removed', 'It is under Not on a toolbar in Edit toolbars'];
+        ? ['Flexible space removed', 'Drag a new one from View › Edit toolbars']
+        : isLayoutItem(toolId)
+          ? ['Separator removed', 'Drag a new one from View › Edit toolbars']
+          : ['Tool removed', 'Drag it back from View › Edit toolbars'];
       toast.info(title, line, [
         { label: 'Undo', onClick: () => toolbarLayout.editLayout(() => before) },
       ]);
@@ -1482,7 +1505,8 @@ function CanvasDemoContent() {
     onOpenPlotSpectrum: () => setIsPlotSpectrumOpen(true),
     onResetWorkspace: activeMenuItem === 'home' ? undefined : resetWorkspace,
     onNewWorkspace: activeMenuItem === 'home' ? undefined : () => setWorkspaceDialog({ mode: 'new' }),
-    onEditToolbars: activeMenuItem === 'home' ? undefined : () => { setBuilderBarId(null); setToolbarBuilderOpen(true); },
+    onEditToolbars: activeMenuItem === 'home' ? undefined : () => { setBuilderBarId(null); setToolbarEditing(true); },
+    onEditToolbarsAsList: activeMenuItem === 'home' ? undefined : () => { setBuilderBarId(null); setToolbarBuilderOpen(true); },
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu
@@ -1514,6 +1538,7 @@ function CanvasDemoContent() {
     infoText: toolbarEditing || toolDrag.draggingToolId
       ? (toolDrag.target?.refused
           ? (TITLE_BAR_ONLY.includes(toolDrag.draggingToolId ?? '') ? 'This one lives in the title bar only'
+            : isBankLayoutItem(toolDrag.draggingToolId ?? '') && toolDrag.target.kind === 'new' ? 'Drop it inside a toolbar'
             : toolDrag.target.kind === 'into' && toolDrag.target.barId === TITLE_BAR_ID ? 'The title bar takes app controls only' : 'This tool has no vertical form')
         : toolDrag.target?.kind === 'new' ? ('newRowAt' in toolDrag.target.placement ? 'Release to give it a row of its own' : 'Release to give it a toolbar of its own')
         : toolDrag.target?.kind === 'into' ? 'Release to add it to this toolbar'
@@ -1626,7 +1651,8 @@ function CanvasDemoContent() {
       activeMenuItem,
       workspace: baseWorkspace,
       layoutEditing: toolbarEditing,
-      onLayoutEditingChange: (on: boolean) => { if (on) { setBuilderBarId(null); setToolbarBuilderOpen(true); } else setToolbarEditing(false); },
+      // the cog's "Rearrange tools…" opens the TOOL BANK (2026-11-18)
+      onLayoutEditingChange: (on: boolean) => { if (on) setBuilderBarId(null); setToolbarEditing(on); },
       onResetLayout: toolbarLayout.resetLayout,
       layoutCustomised: toolbarLayout.customised,
       varispeed: playback.varispeed,
@@ -2179,6 +2205,16 @@ function CanvasDemoContent() {
           />
         )}
       />
+      {toolbarEditing && activeMenuItem === 'project' && (
+        <ToolBank
+          layout={toolbarLayout.layout}
+          onTileMouseDown={(toolId, e, rect) => toolDrag.onToolMouseDown(toolId, '', e, rect)}
+          removing={toolDrag.removing}
+          draggingToolId={toolDrag.draggingToolId}
+          onDone={() => setToolbarEditing(false)}
+          onEditAsList={() => { setToolbarEditing(false); setToolbarBuilderOpen(true); }}
+        />
+      )}
       <ToolbarBarMenu
         menu={barMenu}
         onClose={() => setBarMenu(null)}
@@ -2186,7 +2222,7 @@ function CanvasDemoContent() {
         editLayout={toolbarLayout.editLayout}
         fitsVertical={barFitsVertical}
         toolFitsVertical={toolFitsVertical}
-        onEditToolbars={(barId) => { setBuilderBarId(barId); setToolbarBuilderOpen(true); }}
+        onEditToolbars={(barId) => { setBuilderBarId(barId); setToolbarEditing(true); }}
         os={preferences.operatingSystem}
       />
       <WorkspaceNameDialog

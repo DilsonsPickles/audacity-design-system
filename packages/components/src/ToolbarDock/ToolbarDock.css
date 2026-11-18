@@ -456,6 +456,11 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
    keeps the row's full height. It ran full height from 2026-11-11 to here. */
 .toolbar-dock__tools { align-self: stretch; }
 .toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) { align-self: center; }
+/* …and IN EDIT MODE a separator is a grab target (2026-11-18, the tool
+   bank: a 1px line could not be picked up to take it off): 4px of padding
+   either side, given back by the margin, so nothing moves */
+.toolbar-dock--editing .toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) { padding: 4px; margin: 0 -4px; }
+.toolbar-dock--editing.toolbar-dock--vertical .toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) { margin: -4px 0; }
 
 /* A WRAPPED TOOLBAR'S LATER SEGMENTS (2026-11-11): the same toolbar, so the
    gripper is quieter there; it still moves the whole toolbar */

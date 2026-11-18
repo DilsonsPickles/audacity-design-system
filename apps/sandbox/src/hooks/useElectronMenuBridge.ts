@@ -42,6 +42,7 @@ export function useElectronMenuBridge(options: UseElectronMenuBridgeOptions): vo
     'view:zoom-in': () => menuByLabel.get('Zoom in')?.(),
     'view:zoom-out': () => menuByLabel.get('Zoom out')?.(),
     'view:edit-toolbars': () => menuByLabel.get('Edit toolbars...')?.(),
+    'view:edit-toolbars-list': () => menuByLabel.get('Edit toolbars as list...')?.(),
     'record:toggle-lead-in': () => menuByLabel.get('Enable lead in time')?.(),
     'effect:manage-plugins': () => menuByLabel.get('Manage Plugins...')?.(),
     'generate:tone': () => menuByLabel.get('Tone...')?.(),
