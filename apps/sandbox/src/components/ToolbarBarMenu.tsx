@@ -395,7 +395,9 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
               onClose={onClose}
             />
             {/* A FLEXIBLE SPACE (2026-11-18): placed by the right-click —
-                before the tool it landed on, else at the toolbar's end;
+                before the tool it landed on, else at the toolbar's START,
+                which pushes all its tools to the far end (at the end it
+                could push nothing: "doesn't work on vertical toolbars");
                 on a space, the way to take it out */}
             {clickedTool && isToolSpacer(clickedTool) ? (
               <ContextMenuItem
@@ -405,8 +407,9 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
               />
             ) : (
               <ContextMenuItem
-                label={clickedTool && !isLayoutItem(clickedTool) ? `Add flexible space before ${toolName(clickedTool)}` : 'Add flexible space'}
-                onClick={() => editLayout((base) => insertSpacer(base, bar.id, clickedTool ?? null))}
+                label={clickedTool && !isLayoutItem(clickedTool) ? `Add flexible space before ${toolName(clickedTool)}` : 'Add flexible space at the start'}
+                disabled={!hasTools}
+                onClick={() => editLayout((base) => insertSpacer(base, bar.id, clickedTool ?? bar.tools[0] ?? null))}
                 onClose={onClose}
               />
             )}

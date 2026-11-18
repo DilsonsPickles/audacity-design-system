@@ -41,19 +41,19 @@ describe('ToolbarBarMenu', () => {
   afterEach(() => localStorage.clear());
 
   // A FLEXIBLE SPACE (2026-11-18): placed by the right-click
-  it('Add flexible space goes before the tool right-clicked, or at the toolbar\'s end; on a space the item removes it', () => {
+  it('Add flexible space goes before the tool right-clicked, or at the toolbar\'s START (pushing its tools to the far end — at the end it pushed nothing); on a space the item removes it', () => {
     const onTool = renderMenu('main', { toolId: 'timecode' });
     expect(onTool.labels()).toContain('Add flexible space before Timecode');
     fireEvent.click(onTool.item('Add flexible space before Timecode'));
     expect(onTool.layout().top[1][0].tools).toEqual(['play', 'spacer-1', 'timecode']);
     cleanup();
     const onBar = renderMenu('main');
-    fireEvent.click(onBar.item('Add flexible space'));
-    expect(onBar.layout().top[1][0].tools).toEqual(['play', 'timecode', 'spacer-1']);
+    fireEvent.click(onBar.item('Add flexible space at the start'));
+    expect(onBar.layout().top[1][0].tools).toEqual(['spacer-1', 'play', 'timecode']);
     cleanup();
     const spaced: ToolbarLayout = { ...LAYOUT, top: [LAYOUT.top[0], [{ id: 'main', tools: ['play', 'spacer-1', 'timecode'] }]] };
     const onSpace = renderMenu('main', { layout: spaced, toolId: 'spacer-1' });
-    expect(onSpace.labels()).not.toContain('Add flexible space');
+    expect(onSpace.labels()).not.toContain('Add flexible space at the start');
     fireEvent.click(onSpace.item('Remove flexible space'));
     expect(onSpace.layout().top[1][0].tools).toEqual(['play', 'timecode']);
   });
@@ -108,7 +108,7 @@ describe('ToolbarBarMenu', () => {
   it('heads the menu with the toolbar\'s name, read-only, then its items', () => {
     const { labels } = renderMenu('main');
     expect(document.querySelector('[data-toolbar-menu-name]')?.textContent).toBe('Main toolbar');
-    expect(labels()).toEqual(['Rename…', 'Move to', 'Add tool', 'Add separator', 'Add flexible space', 'Reset width', 'New toolbar', 'Edit toolbars…', 'Remove toolbar']);
+    expect(labels()).toEqual(['Rename…', 'Move to', 'Add tool', 'Add separator', 'Add flexible space at the start', 'Reset width', 'New toolbar', 'Edit toolbars…', 'Remove toolbar']);
   });
 
   it('the Title bar is the app\'s corner: a checklist of its app-level items, then Edit toolbars… (2026-11-16)', () => {

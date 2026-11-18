@@ -354,11 +354,12 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     const before = selTool ? selTool.bar.tools[selTool.index + 1] ?? null : null;
     editLayout((l) => insertSeparator(l, selBarId, before));
   };
-  /** ADD FLEXIBLE SPACE (2026-11-18): the same place — after the selected
-   *  tool, or at the end of the selected toolbar */
+  /** ADD FLEXIBLE SPACE (2026-11-18): after the selected tool, or — a
+   *  toolbar selected — at its START, pushing its tools to the far end (at
+   *  its end it could push nothing) */
   const addSpacer = () => {
     if (!selBarId) return;
-    const before = selTool ? selTool.bar.tools[selTool.index + 1] ?? null : null;
+    const before = selTool ? selTool.bar.tools[selTool.index + 1] ?? null : findBar(layout, selBarId)?.bar.tools[0] ?? null;
     editLayout((l) => insertSpacer(l, selBarId, before));
   };
   /** DELETE TOOLBAR, ANY TOOLBAR (2026-11-11, "you should let me delete
