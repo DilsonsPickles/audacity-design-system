@@ -106,7 +106,7 @@ export function TransportButton({
 
   return (
     <button
-      className={`transport-button transport-button--${currentState} ${active ? 'transport-button--active' : ''} ${className}`}
+      className={`transport-button transport-button--${currentState} ${active ? 'transport-button--active' : ''} ${recording ? 'transport-button--recording' : ''} ${className}`}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

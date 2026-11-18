@@ -528,3 +528,20 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--toolbar-dock-accent) 55%, transparent);
   background-image: linear-gradient(color-mix(in srgb, var(--toolbar-dock-accent) 6%, transparent), color-mix(in srgb, var(--toolbar-dock-accent) 6%, transparent));
 }
+
+/* FLAT BUTTONS IN THE ISLANDS (2026-11-18, "can we remove tool button BGs
+   so that they look more like the reference image?"): inside a card a tool
+   button has NO FILL at rest — the icon alone, as the reference's — and
+   takes its hover and pressed fills as before; an ON toggle (loop, snap,
+   the split tool) and a recording Record button keep theirs, the state
+   they show. Islands only: the flat-lines style keeps the filled buttons */
+.toolbar-dock--islands :is(
+  .tool-button--idle,
+  .tool-button--disabled,
+  .transport-button--idle:not(.transport-button--active):not(.transport-button--recording),
+  .transport-button--disabled:not(.transport-button--recording),
+  .toggle-tool-button--off,
+  .toggle-tool-button--disabled
+) {
+  background-color: transparent;
+}
