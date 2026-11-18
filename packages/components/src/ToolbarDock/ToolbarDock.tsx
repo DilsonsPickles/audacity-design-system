@@ -217,16 +217,24 @@ export function ToolbarDock({
   // toolbar's ends, none doubled where the tools between are hidden. An
   // EMPTY toolbar draws a small slot, so it can be seen and moved; one
   // whose tools are all hidden draws nothing (2026-11-11)
-  const drawn = rows.flatMap((row, rowIndex) => row.map((bar) => {
-    const raw = bar.tools.map((id) => ({
-      id,
-      node: isToolSeparator(id)
-        ? <span className="toolbar-dock__separator" data-toolbar-separator={id} aria-hidden="true" />
-        : renderTool(id, orientation),
-    })).filter((t) => t.node !== null && t.node !== undefined && t.node !== false);
-    const nodes = raw.filter((t, i) => !isToolSeparator(t.id) || (
-      i > 0 && !isToolSeparator(raw[i - 1].id) && raw.slice(i + 1).some((n) => !isToolSeparator(n.id))
-    ));
+  const drawn = rows.flatMap((row, rowIndex) => {
+    const toolNodes = row.map((bar) => {
+      const raw = bar.tools.map((id) => ({
+        id,
+        node: isToolSeparator(id)
+          ? <span className="toolbar-dock__separator" data-toolbar-separator={id} aria-hidden="true" />
+          : renderTool(id, orientation),
+      })).filter((t) => t.node !== null && t.node !== undefined && t.node !== false);
+      return raw.filter((t, i) => !isToolSeparator(t.id) || (
+        i > 0 && !isToolSeparator(raw[i - 1].id) && raw.slice(i + 1).some((n) => !isToolSeparator(n.id))
+      ));
+    });
+    // the row's LAST DRAWN toolbar (one whose tools are all hidden draws
+    // nothing, so the toolbar before it is the row's end)
+    let lastDrawn = -1;
+    toolNodes.forEach((n, i) => { if (row[i].tools.length === 0 || n.length > 0) lastDrawn = i; });
+    return row.map((bar, barIndex) => {
+    const nodes = toolNodes[barIndex];
     if (bar.tools.length === 0) {
       // No words in the slot (2026-11-16, "when I have an empty toolbar,
       // can we please not show 'empty toolbar'?", then "lose the dashed
@@ -264,7 +272,15 @@ export function ToolbarDock({
     // the only toolbar in that column. So... it shouldn't be resizable
     // right?"): the column is the window's height, so a lone toolbar could
     // only be made shorter, leaving empty space; its growing tools fill it
-    const resizable = vertical ? row.length > 1 : bar.tools.length > 0 || row.length > 1;
+    // …and THE LAST TOOLBAR IN A ROW HAS NO SIZE unless a tool in it grows
+    // (2026-11-18, "I think the last item in a toolbar shouldn't be
+    // resizable"): there is nothing after it to space apart, so its edge
+    // only added empty space at the row's end — but the meters and the
+    // status bar's info line take a sized toolbar's room, and that edge is
+    // the only way to size them, so a toolbar holding one keeps it. One
+    // rule in a column; a toolbar alone in its row is that row's last
+    const stretches = nodes.some((t) => stretchy(t.id));
+    const resizable = (barIndex !== lastDrawn || stretches) && (vertical ? row.length > 1 : bar.tools.length > 0 || row.length > 1);
     const size = resizable ? sizeOf(bar) : undefined;
     const overflow = overflowOf(nodes.map((t) => t.id), size);
     const allIds = nodes.map((t) => t.id);
@@ -290,7 +306,8 @@ export function ToolbarDock({
     return kept.map((seg, i) => ({
       ...whole, nodes: seg, key: i === 0 ? bar.id : `${bar.id}~${i + 1}`, continued: i > 0, split: true, last: i === kept.length - 1,
     }));
-  }).flat());
+    }).flat();
+  });
   const visible = drawn.filter((d) => d.nodes.length > 0);
 
   // Measure the tools drawn at their natural size; a change re-renders

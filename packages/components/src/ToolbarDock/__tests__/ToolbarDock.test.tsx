@@ -200,7 +200,9 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
       });
       return () => { w.mockRestore(); h.mockRestore(); };
     };
-    const FIVE = [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'] }]];
+    // a toolbar AFTER the sized one: the row's last has no size (2026-11-18)
+    const AFTER = { id: 'z', tools: ['z1'] };
+    const FIVE = [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'] }, AFTER]];
     const wrap = (props: Partial<ToolbarDockProps>) => (
       <ThemeProvider>
         <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
@@ -208,7 +210,7 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
         </AccessibilityProfileProvider>
       </ThemeProvider>
     );
-    const inline = (c: HTMLElement) => Array.from(c.querySelectorAll('[data-toolbar-bar] [data-toolbar-tool]')).map((t) => t.getAttribute('data-toolbar-tool'));
+    const inline = (c: HTMLElement) => Array.from(c.querySelectorAll('[data-toolbar-bar="e"] [data-toolbar-tool]')).map((t) => t.getAttribute('data-toolbar-tool'));
 
     it('a bar narrower than its tools keeps what fits and puts the rest behind the overflow button, which opens them in a flyout', () => {
       const restore = measured();
@@ -218,7 +220,7 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
         expect(inline(container)).toEqual(['t1', 't2', 't3', 't4', 't5']);
         expect(container.querySelector('.toolbar-dock__overflow')).toBeNull();
         // 117 wide: 100 of room; less the button and its gap, 64 → two tools
-        rerender(wrap({ rows: [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'], width: 117 }]] }));
+        rerender(wrap({ rows: [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'], width: 117 }, AFTER]] }));
         expect((container.querySelector('[data-toolbar-bar="e"]') as HTMLElement).style.width).toBe('117px');
         expect(inline(container)).toEqual(['t1', 't2']);
         const button = container.querySelector('[data-toolbar-overflow-button="e"]') as HTMLElement;
@@ -226,7 +228,7 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
         fireEvent.click(button);
         expect(Array.from(document.body.querySelectorAll('[data-toolbar-overflow-tool]')).map((t) => t.getAttribute('data-toolbar-overflow-tool'))).toEqual(['t3', 't4', 't5']);
         // wide enough again: the button goes, and its flyout with it
-        rerender(wrap({ rows: [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'], width: 400 }]] }));
+        rerender(wrap({ rows: [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'], width: 400 }, AFTER]] }));
         expect(inline(container)).toHaveLength(5);
         expect(container.querySelector('.toolbar-dock__overflow')).toBeNull();
       } finally { restore(); }
@@ -240,7 +242,7 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
         const bar = container.querySelector('[data-toolbar-bar="e"]') as HTMLElement;
         expect(bar.style.height).toBe('117px');
         expect(bar.style.width).toBe('');
-        expect(inline(container).filter((t) => t !== 't9')).toEqual(['t1', 't2']);
+        expect(inline(container)).toEqual(['t1', 't2']);
       } finally { restore(); }
     });
 
@@ -320,7 +322,8 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(meters.querySelector('[data-toolbar-resize]')).toBeNull();
     expect(meters.classList.contains('toolbar-dock__bar--sized')).toBe(false);
     expect(container.querySelector('[data-toolbar-resize="p"]')).not.toBeNull();
-    expect(container.querySelector('[data-toolbar-resize="q"]')).not.toBeNull();
+    // the column's LAST has none either (2026-11-18)
+    expect(container.querySelector('[data-toolbar-resize="q"]')).toBeNull();
   });
 
   it('AN EMPTY TOOLBAR ALONE IN ITS ROW has no resize edge and ignores a stored width (2026-11-16)', () => {
@@ -331,7 +334,40 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     const lonely = container.querySelector('[data-toolbar-bar="lonely"]') as HTMLElement;
     expect(lonely.querySelector('[data-toolbar-resize]')).toBeNull();
     expect(lonely.classList.contains('toolbar-dock__bar--sized')).toBe(false);
-    expect(container.querySelector('[data-toolbar-resize="full"]')).not.toBeNull();
+    // alone in its row, so the row's last: no edge either (2026-11-18)
+    expect(container.querySelector('[data-toolbar-resize="full"]')).toBeNull();
+  });
+
+  it('THE LAST TOOLBAR IN A ROW has no resize edge and ignores a stored width, unless a tool in it grows (2026-11-18)', () => {
+    const meta = (id: string) => (id === 'meter' ? { stretch: true } : id === 'info' ? { grow: true } : undefined);
+    const { container, rerender } = renderDock({
+      rows: [[{ id: 'p', tools: ['one'], width: 200 }, { id: 'q', tools: ['two'], width: 300 }]],
+      onBarResize: vi.fn(),
+      toolMeta: meta,
+    });
+    expect(container.querySelector('[data-toolbar-resize="p"]')).not.toBeNull();
+    expect((container.querySelector('[data-toolbar-bar="p"]') as HTMLElement).style.width).toBe('200px');
+    const q = container.querySelector('[data-toolbar-bar="q"]') as HTMLElement;
+    expect(q.querySelector('[data-toolbar-resize]')).toBeNull();
+    expect(q.classList.contains('toolbar-dock__bar--sized')).toBe(false);
+    // a toolbar whose tools take the room keeps it — the meters, the info line
+    for (const tool of ['meter', 'info']) {
+      rerender(
+        <ThemeProvider>
+          <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
+            <ToolbarDock
+              region="top"
+              rows={[[{ id: 'p', tools: ['one'] }, { id: 'q', tools: ['two', tool], width: 300 }]]}
+              renderTool={(id) => <button aria-label={id}>{id}</button>}
+              onBarResize={vi.fn()}
+              toolMeta={meta}
+            />
+          </AccessibilityProfileProvider>
+        </ThemeProvider>,
+      );
+      expect(container.querySelector('[data-toolbar-resize="q"]')).not.toBeNull();
+      expect((container.querySelector('[data-toolbar-bar="q"]') as HTMLElement).style.width).toBe('300px');
+    }
   });
 
   it('TOOL GROUPS (2026-11-11): a separator draws a line between groups, never at a toolbar\'s ends nor doubled; an EMPTY toolbar draws its slot; one whose tools are all hidden draws nothing', () => {
@@ -348,8 +384,8 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(tools).toEqual(['one', 'separator-2', 'two']);
     expect(a.querySelectorAll('.toolbar-dock__separator')).toHaveLength(1);
     const slot = container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-empty="empty"]');
-    // beside another toolbar it keeps its resize edge — its width spaces them (2026-11-16)
-    expect(container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-resize="empty"]')).not.toBeNull();
+    // the row's last DRAWN toolbar ('hidden' draws nothing): no edge (2026-11-18)
+    expect(container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-resize="empty"]')).toBeNull();
     expect(a.querySelector('[data-toolbar-resize="a"]')).not.toBeNull();
     // no words drawn (2026-11-16) — the name is for screen readers
     expect(slot?.textContent).toBe('');
