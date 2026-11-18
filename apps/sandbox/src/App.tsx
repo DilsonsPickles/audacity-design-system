@@ -27,7 +27,7 @@ import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
 import { PlotSpectrumWindow, type PlotSpectrumSource } from './components/PlotSpectrumWindow';
 import { resolveTimeSelectionScope } from './utils/timeSelectionScope';
-import { KeyboardMap, SHORTCUT_ROWS, isToolSeparator, TITLE_BAR_ID, TITLE_BAR_ONLY, titleBarItems, removeTool, PROJECT_TAB_TOOL_ID } from '@audacity-ui/components';
+import { KeyboardMap, SHORTCUT_ROWS, isLayoutItem, isToolSpacer, TITLE_BAR_ID, TITLE_BAR_ONLY, titleBarItems, removeTool, PROJECT_TAB_TOOL_ID } from '@audacity-ui/components';
 import { transportStatusText } from './utils/transportStatus';
 import { useStatusInfo } from './hooks/useStatusInfo';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
@@ -377,7 +377,7 @@ function CanvasDemoContent() {
   // Whether a side dock takes a toolbar: every tool on it has a vertical form
   const barFitsVertical = (barId: string) => {
     const bar = findBar(toolbarLayout.layout, barId)?.bar;
-    return !!bar && bar.tools.every((id) => isToolSeparator(id) || (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true);
+    return !!bar && bar.tools.every((id) => isLayoutItem(id) || (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true);
   };
   const barDrag = useToolbarBarDrag({
     layout: toolbarLayout.layout,
@@ -478,7 +478,7 @@ function CanvasDemoContent() {
   const [tabsMenu, setTabsMenu] = React.useState<{ x: number; y: number; from: 'tabs' | 'rail' } | null>(null);
   const [builderBarId, setBuilderBarId] = React.useState<string | null>(null);
   const openAddToolMenu = React.useCallback((barId: string, anchor: { x: number; y: number }) => setBarMenu({ barId, ...anchor, addOnly: true }), []);
-  const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion) => setBarMenu({ barId, ...anchor, region }), []);
+  const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string) => setBarMenu({ barId, ...anchor, region, toolId }), []);
   const toolFitsVertical = (id: string) =>
     (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
   // ⌘-DRAG A TOOL (2026-11-16): released off the toolbars it comes off them,
@@ -491,7 +491,11 @@ function CanvasDemoContent() {
     onRemove: (toolId) => {
       const before = toolbarLayout.layout;
       toolbarLayout.editLayout((base) => removeTool(base, toolId));
-      toast.info('Tool removed', 'It is under Not on a toolbar in Edit toolbars', [
+      // a flexible space is not a tool: it is gone, not set aside
+      const [title, line] = isToolSpacer(toolId)
+        ? ['Flexible space removed', 'Add one again from a toolbar\'s right-click menu']
+        : ['Tool removed', 'It is under Not on a toolbar in Edit toolbars'];
+      toast.info(title, line, [
         { label: 'Undo', onClick: () => toolbarLayout.editLayout(() => before) },
       ]);
     },

@@ -20,7 +20,7 @@ import { useHiddenTools } from '../hooks/useHiddenTools';
 import { ALL_TOOLS, ToolGlyph, toolName } from './toolCatalogue';
 import {
   ContextMenu, ContextMenuItem, Dialog, DialogFooter, SearchField, TextInput, toast, useTheme,
-  TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, PROJECT_TAB_TOOL_ID, TOOLBAR_REGIONS, addEmptyBar, barDisplayName, dockBars, findBar, findTool, insertSeparator, insertTool, isVerticalRegion, moveBar, removeBar, removeTool, renameBar, rowsOf, setBarSize,
+  TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, PROJECT_TAB_TOOL_ID, TOOLBAR_REGIONS, addEmptyBar, barDisplayName, dockBars, findBar, findTool, insertSeparator, insertSpacer, isLayoutItem, isToolSpacer, insertTool, isVerticalRegion, moveBar, removeBar, removeTool, renameBar, rowsOf, setBarSize,
   type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
 
@@ -33,6 +33,8 @@ export interface ToolbarBarMenuState {
   region?: ToolbarRegion;
   /** The ADD TOOL list alone — an empty toolbar's + (2026-11-17) */
   addOnly?: boolean;
+  /** The tool (or flexible space) the right-click landed on (2026-11-18) */
+  toolId?: string;
 }
 
 /** The builder's fresh name: "Toolbar 1", "Toolbar 2", … not already in use */
@@ -112,6 +114,8 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
   // "I hate having to rely on the cog"): the way into the builder
   const docksMenu = !!menu && menu.barId === null;
   const hasTools = (bar?.tools.length ?? 0) > 0;
+  // (only a tool on THIS toolbar places a flexible space)
+  const clickedTool = menu?.toolId && bar?.tools.includes(menu.toolId) ? menu.toolId : undefined;
   const portal = typeof document === 'undefined' ? null : document.body;
 
   // ADD TOOL (2026-11-17, the flyout to add tools straight onto a toolbar):
@@ -390,6 +394,22 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
               onClick={() => editLayout((base) => insertSeparator(base, bar.id, null))}
               onClose={onClose}
             />
+            {/* A FLEXIBLE SPACE (2026-11-18): placed by the right-click —
+                before the tool it landed on, else at the toolbar's end;
+                on a space, the way to take it out */}
+            {clickedTool && isToolSpacer(clickedTool) ? (
+              <ContextMenuItem
+                label="Remove flexible space"
+                onClick={() => editLayout((base) => removeTool(base, clickedTool))}
+                onClose={onClose}
+              />
+            ) : (
+              <ContextMenuItem
+                label={clickedTool && !isLayoutItem(clickedTool) ? `Add flexible space before ${toolName(clickedTool)}` : 'Add flexible space'}
+                onClick={() => editLayout((base) => insertSpacer(base, bar.id, clickedTool ?? null))}
+                onClose={onClose}
+              />
+            )}
             {bar[axis] !== undefined && (
               <ContextMenuItem
                 label={axis === 'height' ? 'Reset height' : 'Reset width'}

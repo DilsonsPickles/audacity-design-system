@@ -4,7 +4,7 @@ import { ALL_TOOLS, ToolGlyph, toolName } from './toolCatalogue';
 import {
   Button, Checkbox, Dialog, DialogFooter, Icon, SearchField, useTheme, usePreferences,
   PROJECT_TAB_TOOL_ID,
-  TOOLBAR_REGIONS, TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, addEmptyBar, findBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertTool, isToolSeparator,
+  TOOLBAR_REGIONS, TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, addEmptyBar, findBar, addToolToNewBar, barDisplayName, findTool, insertSeparator, insertSpacer, insertTool, isToolSeparator, isToolSpacer, isLayoutItem,
   moveBar, moveTool, nextBarId, removeBar, removeTool, renameBar, rowsOf,
   type BarPlacement, type ToolbarBar, type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
@@ -160,7 +160,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
         if (bar.id === TITLE_BAR_ID) return;
         const bKey = `b:${bar.id}`;
         treeRows.push({ key: bKey, level: 3, label: barDisplayName(bar), sel: { kind: 'bar', barId: bar.id }, barId: bar.id, empty: bar.tools.length === 0, parents: [dKey, rKey], hasChildren: bar.tools.length > 0 });
-        bar.tools.forEach((t) => treeRows.push({ key: `t:${t}`, level: 4, label: isToolSeparator(t) ? 'Separator' : toolName(t), sel: { kind: 'tool', toolId: t }, toolId: t, parents: [dKey, rKey, bKey], hasChildren: false }));
+        bar.tools.forEach((t) => treeRows.push({ key: `t:${t}`, level: 4, label: isToolSeparator(t) ? 'Separator' : isToolSpacer(t) ? 'Flexible space' : toolName(t), sel: { kind: 'tool', toolId: t }, toolId: t, parents: [dKey, rKey, bKey], hasChildren: false }));
       });
     });
   }
@@ -245,13 +245,13 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     if (!canRemove) return;
     const ids = removableTools;
     editLayout((l) => ids.reduce((acc, id) => removeTool(acc, id), l));
-    const last = [...ids].reverse().find((id) => !isToolSeparator(id));
+    const last = [...ids].reverse().find((id) => !isLayoutItem(id));
     if (last) setLeftSel(last);
     setSel(null);
   };
   /** The picked tools' shown / hidden state together: all shown unless every one already is */
   const toggleHiddenMany = (ids: string[]) => {
-    const hideable = ids.filter((t) => !isToolSeparator(t) && !UNHIDEABLE.has(t));
+    const hideable = ids.filter((t) => !isLayoutItem(t) && !UNHIDEABLE.has(t));
     if (hideable.length === 0) return;
     const next = new Set(hidden);
     const hide = hideable.some((t) => !next.has(t));
@@ -353,6 +353,13 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
     if (!selBarId) return;
     const before = selTool ? selTool.bar.tools[selTool.index + 1] ?? null : null;
     editLayout((l) => insertSeparator(l, selBarId, before));
+  };
+  /** ADD FLEXIBLE SPACE (2026-11-18): the same place — after the selected
+   *  tool, or at the end of the selected toolbar */
+  const addSpacer = () => {
+    if (!selBarId) return;
+    const before = selTool ? selTool.bar.tools[selTool.index + 1] ?? null : null;
+    editLayout((l) => insertSpacer(l, selBarId, before));
   };
   /** DELETE TOOLBAR, ANY TOOLBAR (2026-11-11, "you should let me delete
    *  whatever toolbar I want to"): every picked toolbar goes, its tools onto
@@ -552,7 +559,13 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
                     </span>
                   </span>
                 )}
-                {r.toolId && isToolSeparator(r.toolId) ? (
+                {r.toolId && isToolSpacer(r.toolId) ? (
+                  <span data-builder-spacer style={{ ...muted, display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                    <span style={{ flex: '0 0 24px', borderTop: `1px dashed ${theme.border.divider}` }} />
+                    Flexible space
+                    <span style={{ flex: 1, borderTop: `1px dashed ${theme.border.divider}` }} />
+                  </span>
+                ) : r.toolId && isToolSeparator(r.toolId) ? (
                   <span data-builder-separator style={{ ...muted, display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
                     <span style={{ flex: '0 0 24px', height: 1, background: theme.border.divider }} />
                     Separator
@@ -596,7 +609,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
                     {r.empty && <span style={muted}> (empty)</span>}
                     {r.fixed && r.level === 1 && <span style={{ ...muted, fontWeight: 400 }}> · the app's corner: app controls only</span>}
                     {r.barId && collapsed.has(r.key) && (() => {
-                      const n = allBars.find((b) => b.bar.id === r.barId)?.bar.tools.filter((t) => !isToolSeparator(t)).length ?? 0;
+                      const n = allBars.find((b) => b.bar.id === r.barId)?.bar.tools.filter((t) => !isLayoutItem(t)).length ?? 0;
                       return n > 0 ? <span style={muted}>{` · ${n} ${n === 1 ? 'tool' : 'tools'}`}</span> : null;
                     })()}
                   </span>
@@ -614,6 +627,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
           <Button variant="secondary" size="default" onClick={newBar}>New toolbar</Button>
           <Button variant="secondary" size="default" onClick={newRow}>New row</Button>
           <Button variant="secondary" size="default" disabled={!canSeparator} onClick={addSeparator}>Add separator</Button>
+          <Button variant="secondary" size="default" disabled={!canSeparator} onClick={addSpacer}>Add flexible space</Button>
           <span style={{ height: 8 }} />
           <Button variant="secondary" size="default" disabled={!canRename} onClick={startRename}>Rename…</Button>
           <Button variant="secondary" size="default" disabled={!canDeleteBar} onClick={deleteBar}>Delete toolbar</Button>

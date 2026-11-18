@@ -70,6 +70,13 @@ export interface ToolbarBar {
  */
 export const TOOL_SEPARATOR_PREFIX = 'separator-';
 export const isToolSeparator = (id: string): boolean => id.startsWith(TOOL_SEPARATOR_PREFIX);
+/** A FLEXIBLE SPACE (2026-11-18): an item, like a separator, that takes the
+ *  toolbar's spare room, pushing the tools after it to the end — so a group
+ *  can sit at the toolbar's far end. Many per toolbar, each its own id */
+export const TOOL_SPACER_PREFIX = 'spacer-';
+export const isToolSpacer = (id: string): boolean => id.startsWith(TOOL_SPACER_PREFIX);
+/** An item the layout draws itself (a separator, a flexible space), not a tool */
+export const isLayoutItem = (id: string): boolean => isToolSeparator(id) || isToolSpacer(id);
 
 /** The default toolbars' names, by seed id */
 const SEED_BAR_NAMES: Record<string, string> = {
@@ -483,6 +490,20 @@ export function nextSeparatorId(layout: ToolbarLayout): string {
   let n = 1;
   while (taken.has(`${TOOL_SEPARATOR_PREFIX}${n}`)) n++;
   return `${TOOL_SEPARATOR_PREFIX}${n}`;
+}
+
+/** A fresh flexible-space id for this layout */
+export function nextSpacerId(layout: ToolbarLayout): string {
+  const taken = new Set(TOOLBAR_REGIONS.flatMap((r) => dockBars(layout, r).flatMap((b) => b.tools)));
+  let n = 1;
+  while (taken.has(`${TOOL_SPACER_PREFIX}${n}`)) n++;
+  return `${TOOL_SPACER_PREFIX}${n}`;
+}
+
+/** A FLEXIBLE SPACE into a toolbar, before `beforeToolId` (null = its end) */
+export function insertSpacer(layout: ToolbarLayout, barId: string, beforeToolId: string | null): ToolbarLayout {
+  if (!findBar(layout, barId)) return layout;
+  return insertTool(layout, nextSpacerId(layout), barId, beforeToolId);
 }
 
 /** A SEPARATOR into a toolbar, before `beforeToolId` (null = its end) */

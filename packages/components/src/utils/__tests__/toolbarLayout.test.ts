@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   coerceToolbarLayout, defaultToolbarLayout, dockBars, findBar, findTool, moveBar, moveTool, moveToolToNewBar, nextBarId, insertSeparator, isToolSeparator, addEmptyBar, removeBar, renameBar, barDisplayName,
-  normaliseLayout, isToolbarLayout, setBarSize, titleBarItems, withTitleBar, withTitleBarItem, withTitleBarOnlyItems, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID, type ToolbarLayout, type ToolbarRegion,
+  normaliseLayout, isToolbarLayout, insertSpacer, isToolSpacer, isLayoutItem, setBarSize, titleBarItems, withTitleBar, withTitleBarItem, withTitleBarOnlyItems, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID, type ToolbarLayout, type ToolbarRegion,
 } from '../toolbarLayout';
 
 /** A seed WITHOUT the project row (2026-11-10, the project toolbar's
@@ -254,6 +254,17 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
       right: [[{ id: 'meters', tools: ['playback-meter'] }, { id: 'bar-8', tools: ['audio-setup', 'share-audio'] }]],
     };
     expect(withProjectRowMoves(mine)).toBe(mine);
+  });
+
+  it('A FLEXIBLE SPACE (2026-11-18): many per toolbar, each a fresh id; not a tool', () => {
+    const layout: ToolbarLayout = { top: [[{ id: 'a', tools: ['play', 'stop'] }]], bottom: [], left: [], right: [] };
+    const one = insertSpacer(layout, 'a', 'stop');
+    expect(one.top[0][0].tools).toEqual(['play', 'spacer-1', 'stop']);
+    const two = insertSpacer(one, 'a', null);
+    expect(two.top[0][0].tools).toEqual(['play', 'spacer-1', 'stop', 'spacer-2']);
+    expect(insertSpacer(layout, 'nope', null)).toBe(layout);
+    expect(isToolSpacer('spacer-2')).toBe(true);
+    expect(isLayoutItem('spacer-2') && isLayoutItem('separator-1') && !isLayoutItem('play')).toBe(true);
   });
 
   it('THE TOOLBAR BUILDER\'S EDITS (2026-11-11): insertTool adds or moves, removeTool takes a tool off every toolbar, a new bar takes a tool on none', () => {

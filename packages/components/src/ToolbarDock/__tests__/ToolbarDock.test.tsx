@@ -387,6 +387,20 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect((container.querySelector('[data-toolbar-bar="mic"]') as HTMLElement).style.height).toBe('');
   });
 
+  it('A FLEXIBLE SPACE draws an empty spacer the dock owns, and a right-click on it names it to the menu (2026-11-18)', () => {
+    const onBarMenu = vi.fn();
+    const renderTool = vi.fn((id: string) => <button aria-label={id}>{id}</button>);
+    const { container } = renderDock({ rows: [[{ id: 'a', tools: ['one', 'spacer-1', 'two'] }]], onBarMenu, renderTool });
+    const space = container.querySelector('[data-toolbar-tool="spacer-1"]') as HTMLElement;
+    expect(space.classList.contains('toolbar-dock__tool--spacer')).toBe(true);
+    expect(space.querySelector('[data-toolbar-spacer="spacer-1"]')).not.toBeNull();
+    expect(renderTool.mock.calls.map((c) => c[0])).not.toContain('spacer-1');
+    fireEvent.contextMenu(space.querySelector('[data-toolbar-spacer]')!, { clientX: 5, clientY: 6 });
+    expect(onBarMenu).toHaveBeenLastCalledWith('a', { x: 5, y: 6 }, 'top', 'spacer-1');
+    fireEvent.contextMenu(container.querySelector('button[aria-label="two"]')!, { clientX: 7, clientY: 8 });
+    expect(onBarMenu).toHaveBeenLastCalledWith('a', { x: 7, y: 8 }, 'top', 'two');
+  });
+
   it('TOOL GROUPS (2026-11-11): a separator draws a line between groups, never at a toolbar\'s ends nor doubled; an EMPTY toolbar draws its slot; one whose tools are all hidden draws nothing', () => {
     const { container } = renderDock({
       rows: [[
@@ -446,12 +460,12 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
           : <button aria-label={id}>{id}</button>),
       });
       fireEvent.contextMenu(container.querySelector('button[aria-label="three"]')!, { clientX: 5, clientY: 6 });
-      expect(onBarMenu).toHaveBeenLastCalledWith('b', { x: 5, y: 6 }, 'top');
+      expect(onBarMenu).toHaveBeenLastCalledWith('b', { x: 5, y: 6 }, 'top', 'three');
       onBarMenu.mockClear();
       fireEvent.contextMenu(container.querySelector('button[aria-label="two"]')!);
       expect(onBarMenu).not.toHaveBeenCalled();
       fireEvent.contextMenu(container.querySelector('.toolbar-dock__row')!, { clientX: 1, clientY: 2 });
-      expect(onBarMenu).toHaveBeenLastCalledWith(null, { x: 1, y: 2 }, 'top');
+      expect(onBarMenu).toHaveBeenLastCalledWith(null, { x: 1, y: 2 }, 'top', undefined);
     });
 
     it('Tab enters on the first TOOL, never a grip; without a menu the grips are not buttons', () => {

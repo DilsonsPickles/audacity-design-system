@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTheme } from '../ThemeProvider';
 import { useContainerTabGroup } from '../hooks/useContainerTabGroup';
-import { barDisplayName, isVerticalRegion, regionSide, type BarPlacement, type ToolbarBar, type ToolbarBarAxis, type ToolbarOrientation, type ToolbarRegion, isToolSeparator } from '../utils/toolbarLayout';
+import { barDisplayName, isVerticalRegion, regionSide, type BarPlacement, type ToolbarBar, type ToolbarBarAxis, type ToolbarOrientation, type ToolbarRegion, isToolSeparator, isToolSpacer } from '../utils/toolbarLayout';
 import { Flyout } from '../Flyout';
 import { Icon } from '../Icon';
 import '../assets/fonts/musescore-icon.css';
@@ -45,8 +45,9 @@ export interface ToolbarDockProps {
    *  right-click ANYWHERE ELSE on a toolbar opens the same menu, and on the
    *  dock's empty space asks with a null bar (2026-11-16, "I hate having to
    *  rely on the cog") — a tool with its own right-click menu prevents the
-   *  default first and keeps it. */
-  onBarMenu?: (barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion) => void;
+   *  default first and keeps it. `toolId` is the tool (or flexible space)
+   *  the right-click landed on, for menu items placed by it (2026-11-18) */
+  onBarMenu?: (barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string) => void;
   /** AN EMPTY TOOLBAR'S "+" (2026-11-17, the flyout to add tools the empty
    *  toolbar was waiting for): given, an empty toolbar draws a + button that
    *  asks the host for its Add tool list under it */
@@ -191,7 +192,8 @@ export function ToolbarDock({
   const sizeKey = (id: string) => `${orientation}:${id}`;
   const stretchy = (id: string) => { const m = toolMeta?.(id, orientation); return !!(m?.grow || m?.stretch); };
   const minOf = (id: string) => toolMeta?.(id, orientation)?.minSize ?? DEFAULT_MIN_STRETCH;
-  const naturalOfTool = (id: string) => toolSizes.current.get(sizeKey(id)) ?? (stretchy(id) ? minOf(id) : 0);
+  // a FLEXIBLE SPACE is nothing at its natural size: it never wraps a row
+  const naturalOfTool = (id: string) => (isToolSpacer(id) ? 0 : toolSizes.current.get(sizeKey(id)) ?? (stretchy(id) ? minOf(id) : 0));
   const naturalOf = (ids: string[]) => GUTTER + ids.reduce((sum, id, i) => sum + (i ? TOOL_GAP : 0) + naturalOfTool(id), 0);
 
   /** The tools of a sized bar that do not fit, in order */
@@ -223,7 +225,9 @@ export function ToolbarDock({
         id,
         node: isToolSeparator(id)
           ? <span className="toolbar-dock__separator" data-toolbar-separator={id} aria-hidden="true" />
-          : renderTool(id, orientation),
+          : isToolSpacer(id)
+            ? <span className="toolbar-dock__spacer" data-toolbar-spacer={id} aria-hidden="true" />
+            : renderTool(id, orientation),
       })).filter((t) => t.node !== null && t.node !== undefined && t.node !== false);
       return raw.filter((t, i) => !isToolSeparator(t.id) || (
         i > 0 && !isToolSeparator(raw[i - 1].id) && raw.slice(i + 1).some((n) => !isToolSeparator(n.id))
@@ -325,7 +329,7 @@ export function ToolbarDock({
     let changed = false;
     root.querySelectorAll<HTMLElement>('[data-toolbar-tool]').forEach((el) => {
       const id = el.getAttribute('data-toolbar-tool');
-      if (!id) return;
+      if (!id || isToolSpacer(id)) return;
       if (stretchy(id) && el.closest('.toolbar-dock__bar--sized, .toolbar-dock__bar--fill')) return; // stretched, not natural
       const value = vertical ? el.offsetHeight : el.offsetWidth;
       if (toolSizes.current.get(sizeKey(id)) !== value) { toolSizes.current.set(sizeKey(id), value); changed = true; }
@@ -526,7 +530,7 @@ export function ToolbarDock({
           <React.Fragment key={t.id}>
             {toolInsert?.barId === d.bar.id && toolInsert.beforeToolId === t.id && caret}
             <div
-              className={`toolbar-dock__tool${toolMeta?.(t.id, orientation)?.grow ? ' toolbar-dock__tool--grow' : ''}${toolMeta?.(t.id, orientation)?.stretch ? ' toolbar-dock__tool--stretch' : ''}${draggingToolId === t.id ? ' toolbar-dock__tool--dragging' : ''}`}
+              className={`toolbar-dock__tool${toolMeta?.(t.id, orientation)?.grow ? ' toolbar-dock__tool--grow' : ''}${toolMeta?.(t.id, orientation)?.stretch ? ' toolbar-dock__tool--stretch' : ''}${isToolSpacer(t.id) ? ' toolbar-dock__tool--spacer' : ''}${draggingToolId === t.id ? ' toolbar-dock__tool--dragging' : ''}`}
               style={d.size !== undefined && stretchy(t.id) ? { [vertical ? 'minHeight' : 'minWidth']: minOf(t.id) } : undefined}
               data-toolbar-tool={t.id}
               onMouseDown={editing && !toolMeta?.(t.id, orientation)?.live ? (e) => {
@@ -690,8 +694,9 @@ export function ToolbarDock({
         if (target.closest('input, textarea, [contenteditable="true"]')) return;
         const barEl = target.closest('[data-toolbar-bar], [data-toolbar-bar-continued]');
         const barId = barEl?.getAttribute('data-toolbar-bar') ?? barEl?.getAttribute('data-toolbar-bar-continued') ?? null;
+        const toolId = target.closest('[data-toolbar-tool]')?.getAttribute('data-toolbar-tool') ?? undefined;
         e.preventDefault();
-        onBarMenu(barId, { x: e.clientX, y: e.clientY }, region);
+        onBarMenu(barId, { x: e.clientX, y: e.clientY }, region, toolId);
       } : undefined}
     >
       {!empty && drawnLines.map((line, lineIndex) => (
