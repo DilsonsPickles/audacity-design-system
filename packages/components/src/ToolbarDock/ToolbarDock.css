@@ -489,8 +489,12 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
    tools + 3px inside its border. The line between groups and the line
    between rows go — the gaps say it. The grip sits inside the card at its
    start, its hover fill rounded with it. `ToolbarDock.groupStyle` */
+/* …THE STRIP IN THE TOOLBAR'S OWN TONE TOO (the same day, "can we try
+   making the group islands the same colour as the toolbar bg? I prefer the
+   lighter bg"): strip and card one colour, the card's border alone draws the
+   island; the strip was the toolbar tone 6% darker */
 .toolbar-dock--islands {
-  background-color: color-mix(in srgb, var(--toolbar-bg) 94%, black);
+  background-color: var(--toolbar-bg);
 }
 .toolbar-dock--islands .toolbar-dock__row { padding: 4px var(--toolbar-dock-end-pad, 4px) 4px 4px; gap: 4px; }
 .toolbar-dock--islands .toolbar-dock__bar {
