@@ -276,7 +276,7 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
       const restore = measured();
       try {
         const meta = (id: string) => (id === 'm' ? { stretch: true, minSize: 60 } : undefined);
-        const rows = (width?: number) => [[{ id: 'e', tools: ['t1', 'm', 't2'], ...(width ? { width } : {}) }]];
+        const rows = (width?: number) => [[{ id: 'e', tools: ['t1', 'm', 't2'], ...(width ? { width } : {}) }, AFTER]];
         const { container, rerender } = render(wrap({ rows: rows(), toolMeta: meta }));
         expect((container.querySelector('[data-toolbar-tool="m"]') as HTMLElement).style.minWidth).toBe('');
         // 17 + 28 + 8 + 60 + 8 + 28 = 149: at that width all three fit, the meter at its least
@@ -338,37 +338,41 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(container.querySelector('[data-toolbar-resize="full"]')).toBeNull();
   });
 
-  it('THE LAST TOOLBAR IN A ROW has no resize edge and ignores a stored width, unless a tool in it STRETCHES; a GROW tool fills the room by itself (2026-11-18)', () => {
-    const meta = (id: string) => (id === 'meter' ? { stretch: true } : id === 'info' ? { grow: true } : undefined);
-    const { container, rerender } = renderDock({
-      rows: [[{ id: 'p', tools: ['one'], width: 200 }, { id: 'q', tools: ['two'], width: 300 }]],
+  it('THE LAST TOOLBAR IN A ROW FILLS IT: no resize edge, a stored width ignored, and a stretch tool in it (a meter) takes the room (2026-11-18)', () => {
+    const meta = (id: string) => (id === 'meter' ? { stretch: true } : undefined);
+    const { container } = renderDock({
+      rows: [
+        [{ id: 'p', tools: ['one'], width: 200 }, { id: 'q', tools: ['two'], width: 300 }],
+        [{ id: 'r', tools: ['three'] }, { id: 's', tools: ['four', 'meter'], width: 300 }],
+      ],
       onBarResize: vi.fn(),
       toolMeta: meta,
     });
+    const bar = (id: string) => container.querySelector(`[data-toolbar-bar="${id}"]`) as HTMLElement;
+    // not last: sized, an edge, no fill
     expect(container.querySelector('[data-toolbar-resize="p"]')).not.toBeNull();
-    expect((container.querySelector('[data-toolbar-bar="p"]') as HTMLElement).style.width).toBe('200px');
-    const q = container.querySelector('[data-toolbar-bar="q"]') as HTMLElement;
-    expect(q.querySelector('[data-toolbar-resize]')).toBeNull();
-    expect(q.classList.contains('toolbar-dock__bar--sized')).toBe(false);
-    // a toolbar holding a STRETCH tool (a horizontal meter) keeps it; one
-    // holding a GROW tool (a meter in a column, the info line) does not
-    for (const [tool, keeps] of [['meter', true], ['info', false]] as const) {
-      rerender(
-        <ThemeProvider>
-          <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
-            <ToolbarDock
-              region="top"
-              rows={[[{ id: 'p', tools: ['one'] }, { id: 'q', tools: ['two', tool], width: 300 }]]}
-              renderTool={(id) => <button aria-label={id}>{id}</button>}
-              onBarResize={vi.fn()}
-              toolMeta={meta}
-            />
-          </AccessibilityProfileProvider>
-        </ThemeProvider>,
-      );
-      expect(!!container.querySelector('[data-toolbar-resize="q"]')).toBe(keeps);
-      expect((container.querySelector('[data-toolbar-bar="q"]') as HTMLElement).style.width).toBe(keeps ? '300px' : '');
+    expect(bar('p').style.width).toBe('200px');
+    expect(bar('p').classList.contains('toolbar-dock__bar--fill')).toBe(false);
+    // last: fills, no edge, its stored width ignored — a meter in it included
+    for (const id of ['q', 's']) {
+      expect(bar(id).classList.contains('toolbar-dock__bar--fill')).toBe(true);
+      expect(bar(id).querySelector('[data-toolbar-resize]')).toBeNull();
+      expect(bar(id).classList.contains('toolbar-dock__bar--sized')).toBe(false);
+      expect(bar(id).style.width).toBe('');
     }
+  });
+
+  it('a row with a GROWING toolbar (the info line) leaves the room to it: the last toolbar keeps its natural size, and still has no edge (2026-11-18)', () => {
+    const { container } = renderDock({
+      region: 'bottom',
+      rows: [[{ id: 'status', tools: ['cue', 'info'] }, { id: 'selection', tools: ['times'] }]],
+      onBarResize: vi.fn(),
+      toolMeta: (id) => (id === 'info' ? { grow: true } : undefined),
+    });
+    const selection = container.querySelector('[data-toolbar-bar="selection"]') as HTMLElement;
+    expect(selection.classList.contains('toolbar-dock__bar--fill')).toBe(false);
+    expect(selection.querySelector('[data-toolbar-resize]')).toBeNull();
+    expect(container.querySelector('[data-toolbar-bar="status"]')!.classList.contains('toolbar-dock__bar--grow')).toBe(true);
   });
 
   it('IN A SIDE DOCK the column\'s last meter toolbar has no edge — its meter grows to fill the column; the one above keeps its edge (2026-11-18)', () => {

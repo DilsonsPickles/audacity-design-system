@@ -233,6 +233,9 @@ export function ToolbarDock({
     // nothing, so the toolbar before it is the row's end)
     let lastDrawn = -1;
     toolNodes.forEach((n, i) => { if (row[i].tools.length === 0 || n.length > 0) lastDrawn = i; });
+    // a row with a GROWING toolbar (the status bar's info line) is already
+    // full: that toolbar keeps the room, and the last does not compete
+    const growsAt = toolNodes.findIndex((n) => n.some((t) => toolMeta?.(t.id, orientation)?.grow));
     return row.map((bar, barIndex) => {
     const nodes = toolNodes[barIndex];
     if (bar.tools.length === 0) {
@@ -272,23 +275,21 @@ export function ToolbarDock({
     // the only toolbar in that column. So... it shouldn't be resizable
     // right?"): the column is the window's height, so a lone toolbar could
     // only be made shorter, leaving empty space; its growing tools fill it
-    // …and THE LAST TOOLBAR IN A ROW HAS NO SIZE unless a tool in it
-    // STRETCHES (2026-11-18, "I think the last item in a toolbar shouldn't
-    // be resizable"): there is nothing after it to space apart, so its edge
-    // only added empty space at the row's end — but a horizontal meter
-    // (`stretch`) is a fixed slot at rest and widens only with a sized
-    // toolbar, so that edge is the only way to size it. A `grow` tool (a
-    // meter in a column, the status bar's info line) fills the row's room
-    // by itself, so it earns no edge (the same day, "I can still enlarge
-    // the input meter even though it's second in the toolbar on the
-    // right"). One rule in a column; a toolbar alone in its row is that
-    // row's last
-    const stretches = nodes.some((t) => !!toolMeta?.(t.id, orientation)?.stretch);
-    const resizable = (barIndex !== lastDrawn || stretches) && (vertical ? row.length > 1 : bar.tools.length > 0 || row.length > 1);
+    // …and THE LAST TOOLBAR IN A ROW FILLS IT and has no size (2026-11-18,
+    // "I think the last item in a toolbar shouldn't be resizable", then
+    // "the last toolbar in the slot needs to take up all available space"):
+    // it runs to the row's end (a column's foot), its stretch tools — a
+    // horizontal meter — taking the room, so there is nothing for an edge
+    // to set and a stored size is ignored. A toolbar alone in its row is
+    // that row's last. Where another toolbar in the row GROWS, that one
+    // takes the room and the last keeps its natural size (still no edge)
+    const isLast = barIndex === lastDrawn;
+    const fill = isLast && (growsAt < 0 || growsAt === barIndex);
+    const resizable = !isLast && (vertical ? row.length > 1 : bar.tools.length > 0 || row.length > 1);
     const size = resizable ? sizeOf(bar) : undefined;
     const overflow = overflowOf(nodes.map((t) => t.id), size);
     const allIds = nodes.map((t) => t.id);
-    const whole = { bar, nodes, grow, row: rowIndex, size, overflow, key: bar.id, continued: false, split: false, last: true, allIds, resizable };
+    const whole = { bar, nodes, grow, fill, row: rowIndex, size, overflow, key: bar.id, continued: false, split: false, last: true, allIds, resizable };
     // A TOOLBAR WRAPS AT ITS SEPARATORS (2026-11-11 — with one toolbar a
     // dock, a narrow window would otherwise cut its end off): wider than a
     // line, its GROUPS are drawn as SEGMENTS, each starting at a group
@@ -309,6 +310,8 @@ export function ToolbarDock({
     const kept = segments.filter((seg) => seg.length > 0);
     return kept.map((seg, i) => ({
       ...whole, nodes: seg, key: i === 0 ? bar.id : `${bar.id}~${i + 1}`, continued: i > 0, split: true, last: i === kept.length - 1,
+      // only the segment that ends the row fills it
+      fill: fill && i === kept.length - 1,
     }));
     }).flat();
   });
@@ -323,7 +326,7 @@ export function ToolbarDock({
     root.querySelectorAll<HTMLElement>('[data-toolbar-tool]').forEach((el) => {
       const id = el.getAttribute('data-toolbar-tool');
       if (!id) return;
-      if (stretchy(id) && el.closest('.toolbar-dock__bar--sized')) return; // stretched, not natural
+      if (stretchy(id) && el.closest('.toolbar-dock__bar--sized, .toolbar-dock__bar--fill')) return; // stretched, not natural
       const value = vertical ? el.offsetHeight : el.offsetWidth;
       if (toolSizes.current.get(sizeKey(id)) !== value) { toolSizes.current.set(sizeKey(id), value); changed = true; }
     });
@@ -398,7 +401,10 @@ export function ToolbarDock({
     let used = 0;
     for (const d of visible) {
       const el = barRefs.current.get(d.key);
-      const w = d.grow && d.size === undefined ? GROW_BAR_PACK_WIDTH : (el?.offsetWidth ?? 0);
+      // a FILLING bar packs at its natural width, never the room it fills
+      const w = d.grow && d.size === undefined ? GROW_BAR_PACK_WIDTH
+        : d.fill ? naturalOf(d.nodes.map((t) => t.id))
+        : (el?.offsetWidth ?? 0);
       // (each bar's width carries its gutter: the grip is the gap)
       if (!line || line.row !== d.row || (available > 0 && line.ids.length > 0 && used + w > available)) {
         line = { row: d.row, ids: [] };
@@ -466,7 +472,7 @@ export function ToolbarDock({
     <div
       key={d.key}
       ref={(el) => { if (el) barRefs.current.set(d.key, el); else barRefs.current.delete(d.key); }}
-      className={`toolbar-dock__bar${d.grow ? ' toolbar-dock__bar--grow' : ''}${d.size !== undefined ? ' toolbar-dock__bar--sized' : ''}${draggingBarId === d.bar.id ? ' toolbar-dock__bar--dragging' : ''}`}
+      className={`toolbar-dock__bar${d.grow ? ' toolbar-dock__bar--grow' : ''}${d.size !== undefined ? ' toolbar-dock__bar--sized' : ''}${d.fill ? ' toolbar-dock__bar--fill' : ''}${draggingBarId === d.bar.id ? ' toolbar-dock__bar--dragging' : ''}`}
       style={d.size !== undefined ? { [axis]: d.size } : undefined}
       data-toolbar-bar={d.continued ? undefined : d.bar.id}
       data-toolbar-bar-continued={d.continued ? d.bar.id : undefined}

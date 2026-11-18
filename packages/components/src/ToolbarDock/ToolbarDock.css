@@ -78,6 +78,14 @@
 .toolbar-dock__bar--grow { flex: 1 1 auto; }
 .toolbar-dock__bar--grow .toolbar-dock__tools { flex: 1 1 auto; min-width: 0; }
 .toolbar-dock__bar--dragging { opacity: 0.35; }
+/* THE ROW'S LAST TOOLBAR FILLS IT (2026-11-18, "the last toolbar in the
+   slot needs to take up all available space"): to the row's end (a
+   column's foot); its tools stay at its start and a STRETCH tool — a
+   horizontal meter — takes the room, as in a sized bar */
+.toolbar-dock__bar--fill { flex: 1 1 auto; }
+.toolbar-dock__bar--fill .toolbar-dock__tools { flex: 1 1 auto; min-width: 0; min-height: 0; }
+.toolbar-dock__bar--fill .toolbar-dock__tool--stretch,
+.toolbar-dock__bar--fill .toolbar-dock__tool--stretch > .toolbar-dock__tool-body { flex: 1 1 auto; }
 
 .toolbar-dock__tools {
   display: flex;
