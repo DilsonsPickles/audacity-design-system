@@ -105,6 +105,14 @@ body[data-toolbar-tool-drag] .toolbar-dock__spacer { outline: 1px dashed current
    minimum, so the meter takes the room, not the space */
 .toolbar-dock__bar:has(.toolbar-dock__tool--stretch, .toolbar-dock__tool--grow) .toolbar-dock__tool--spacer,
 .toolbar-dock__bar:has(.toolbar-dock__tool--stretch, .toolbar-dock__tool--grow) .toolbar-dock__tool--spacer > .toolbar-dock__tool-body { flex: 0 0 auto; }
+/* …and TAKES NO ROOM AT ALL there (the same day, "there's so much space
+   between the group grip and the mic icon": a space carried with a meter
+   into a column kept its 28px minimum, a gap above the meter): no size, and
+   its margin takes back the gap after it, so the meter sits where it would
+   without it. Edit as list… still lists it */
+.toolbar-dock__bar:has(.toolbar-dock__tool--stretch, .toolbar-dock__tool--grow) .toolbar-dock__tool--spacer { min-width: 0; min-height: 0; width: 0; height: 0; overflow: hidden; }
+.toolbar-dock--horizontal .toolbar-dock__bar:has(.toolbar-dock__tool--stretch, .toolbar-dock__tool--grow) .toolbar-dock__tool--spacer { margin-right: -8px; margin-left: 0; }
+.toolbar-dock--vertical .toolbar-dock__bar:has(.toolbar-dock__tool--stretch, .toolbar-dock__tool--grow) .toolbar-dock__tool--spacer { margin-bottom: -8px; margin-top: 0; }
 
 .toolbar-dock__tools {
   display: flex;
