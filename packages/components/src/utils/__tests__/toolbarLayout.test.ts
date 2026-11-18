@@ -45,23 +45,23 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
       expect(layout.right).toEqual([]);
       expect(isToolbarLayout(layout)).toBe(true);
       const groups = groupsOf(layout.top[1][0].tools);
-      // The transport first (Mixer and Get effects are title-bar-only since 2026-11-16), the cog last
+      // The transport first (Mixer and Get effects are title-bar-only since
+      // 2026-11-16), the meters last — no cog since 2026-11-18
       expect(groups[0]).toEqual(['play', 'stop', 'record', 'step-back', 'step-forward', 'loop']);
       expect(layout.top[1][0].tools).not.toContain('mixer-button');
       expect(layout.top[1][0].tools).not.toContain('get-effects');
-      expect(groups[groups.length - 1]).toEqual(['customise']);
-      expect(groups[groups.length - 2]).toEqual(['microphone-levels', 'playback-meter']);
+      expect(groups[groups.length - 1]).toEqual(['microphone-levels', 'playback-meter']);
+      expect(layout.top[1][0].tools).not.toContain('customise');
       expect(groupsOf(layout.bottom[0][0].tools)).toEqual([['status-cue', 'status-info'], ['selection-timecodes', 'selection-duration']]);
       // separator ids are unique across the layout
       const seps = [...layout.top[1][0].tools, ...layout.bottom[0][0].tools].filter(isToolSeparator);
       expect(new Set(seps).size).toBe(seps.length);
       // the guards leave the seed as it is
       expect(withProjectTools(layout)).toBe(layout);
-      expect(withCustomiseTool(layout)).toBe(layout);
       expect(withProjectRowMoves(layout)).toBe(layout);
     }
     const classic = seedWithoutProjectRow('classic');
-    expect(dockBars(classic, 'top').map((b) => b.id)).toEqual(['transport', 'tools', 'edit', 'view', 'time', 'meters', 'customise']);
+    expect(dockBars(classic, 'top').map((b) => b.id)).toEqual(['transport', 'tools', 'edit', 'view', 'time', 'meters']);
     expect(findBar(classic, 'edit')?.bar.tools).toEqual(['undo', 'redo', 'cut', 'copy', 'paste', 'trim', 'silence']);
     expect(findBar(classic, 'time')?.bar.tools).toEqual(['varispeed', 'timecode', 'bpm', 'time-signature', 'snapping']);
     // music has no spectral view
@@ -269,11 +269,12 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(insertTool(off, 'zoom-in', 'nope', null)).toBe(off);
   });
 
-  it('THE COG IS A TOOL: every seed ends the top row with it as a toolbar of its own; a layout without it gets it back at the top dock\'s end (2026-11-10)', () => {
+  it('THE COG IS A TOOL: no seed carries it (2026-11-18); withCustomiseTool puts it back at the top dock\'s end, and leaves one already placed (2026-11-10)', () => {
     for (const ws of ['classic', 'spectral-editing', 'modern', 'music'] as const) {
-      expect(seedWithoutProjectRow(ws).top[0].slice(-1)).toEqual([{ id: 'customise', tools: ['customise'] }]);
+      expect(JSON.stringify(seedWithoutProjectRow(ws))).not.toContain('customise');
     }
-    const layout = seedWithoutProjectRow('classic');
+    const layout = withCustomiseTool(seedWithoutProjectRow('classic'));
+    expect(layout.top[layout.top.length - 1].slice(-1)).toEqual([{ id: 'customise', tools: ['customise'] }]);
     expect(withCustomiseTool(layout)).toBe(layout);
     // moved elsewhere, it stays where it is
     const moved = moveBar(layout, 'customise', { region: 'left', row: 0, beforeBarId: null });

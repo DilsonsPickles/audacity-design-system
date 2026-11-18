@@ -308,7 +308,11 @@ export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout
   const title: ToolbarBar = { id: TITLE_BAR_ID, tools: [...TITLE_BAR_TOOLS] };
   // (Mixer and Get effects are title-bar-only since 2026-11-16 — not seeded
   // on the main toolbar; the title bar's checklist adds them)
-  const main = groupedBar('main', [...groups, [CUSTOMISE_TOOL_ID]], counter);
+  // NO COG IN THE SEED (2026-11-18, "the customise toolbar button is now a
+  // bit redundant"): every toolbar's right-click menu and View › Edit
+  // toolbars… open the editor; the cog stays in the tool list to add back,
+  // and a stored layout that has it keeps it
+  const main = groupedBar('main', groups, counter);
   const bottom = groupedBar('status', statusBars().map((b) => b.tools), counter);
   return { top: [[title], [main]], bottom: [[bottom]], left: [], right: [] };
 }

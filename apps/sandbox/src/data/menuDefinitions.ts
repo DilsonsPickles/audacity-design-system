@@ -14,6 +14,9 @@ export interface MenuDefinitionDeps {
   /** Analyze › Plot spectrum… (2026-11-16, the Figma flow in 44 - Analyzers) */
   onOpenPlotSpectrum?: () => void;
   onResetWorkspace?: () => void;
+  /** View › Edit toolbars… — the toolbar editor, from the menu bar and the
+   *  palette (2026-11-18: the cog left the default layout) */
+  onEditToolbars?: () => void;
   onNewWorkspace?: () => void;
   /** File › New project ⌘N / Close project — the project tabs (2026-11-12) */
   onNewProject?: () => void;
@@ -231,6 +234,7 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Keyboard map',
       onClick: deps.onOpenKeyboardMap,
     },
+    ...(deps.onEditToolbars ? [{ label: 'Edit toolbars...', onClick: deps.onEditToolbars }] : []),
     ...(deps.onNewWorkspace ? [{ label: 'New workspace...', onClick: deps.onNewWorkspace }] : []),
     ...(deps.onResetWorkspace ? [{ label: 'Reset workspace to default', onClick: deps.onResetWorkspace }] : []),
   ];

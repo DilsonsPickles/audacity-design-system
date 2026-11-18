@@ -1825,15 +1825,27 @@ describe('Selection playback', () => {
     expect(info()).toBe('Playback speed (− / =)');
     fireEvent.mouseOver(document.body);
     expect(info()).toBe('Click and drag to select audio');
-    // Hidden in Customise toolbar, the cue still carries the speed
-    fireEvent.click(container.querySelector('[data-customise-toolbar-cog] button') as HTMLElement);
-    const row = await waitFor(() => {
-      const r = document.body.querySelector<HTMLElement>('[data-customise-tool="varispeed"]');
-      if (!r) throw new Error('not yet');
-      return r;
+    // Hidden from the toolbars (View › Edit toolbars…, its checkbox), the
+    // cue still carries the speed
+    const view = Array.from(container.querySelectorAll<HTMLElement>('.application-header__menu-item')).find((e) => e.textContent?.trim() === 'View')!;
+    fireEvent.click(view);
+    fireEvent.click(await waitFor(() => getByText('Edit toolbars...')));
+    const builder = await waitFor(() => {
+      const b = document.body.querySelector<HTMLElement>('[data-toolbar-builder]');
+      if (!b) throw new Error('not yet');
+      return b;
     });
-    fireEvent.click(row);
+    fireEvent.click(builder.querySelector('[data-builder-node="b:main"]')!);
+    fireEvent.keyDown(builder.querySelector('[role="tree"]')!, { key: 'ArrowRight' });
+    const box = await waitFor(() => {
+      const el = builder.querySelector<HTMLElement>('[data-builder-node="t:varispeed"] [role="checkbox"], [data-builder-node="t:varispeed"] input[type="checkbox"]');
+      if (!el) throw new Error('not yet');
+      return el;
+    });
+    fireEvent.click(box);
     await waitFor(() => expect(container.querySelector('[data-varispeed-display]')).toBeNull());
+    fireEvent.click(within(builder.closest('.dialog') as HTMLElement).getByText('OK'));
+    await waitFor(() => expect(document.body.querySelector('[data-toolbar-builder]')).toBeNull());
     expect(cue()).toBe('Stopped · 200%');
     // 100% is off: the cue is bare again
     fireEvent.keyDown(document.body, { key: '0', code: 'Digit0' });

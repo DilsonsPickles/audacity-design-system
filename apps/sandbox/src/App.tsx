@@ -1472,6 +1472,7 @@ function CanvasDemoContent() {
     onOpenPlotSpectrum: () => setIsPlotSpectrumOpen(true),
     onResetWorkspace: activeMenuItem === 'home' ? undefined : resetWorkspace,
     onNewWorkspace: activeMenuItem === 'home' ? undefined : () => setWorkspaceDialog({ mode: 'new' }),
+    onEditToolbars: activeMenuItem === 'home' ? undefined : () => { setBuilderBarId(null); setToolbarBuilderOpen(true); },
   });
 
   // Route Electron native-menu clicks to the same handlers the in-app menu

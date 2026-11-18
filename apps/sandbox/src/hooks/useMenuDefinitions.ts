@@ -60,6 +60,7 @@ export interface UseMenuDefinitionsOptions {
   onOpenPlotSpectrum?: () => void;
   onResetWorkspace?: () => void;
   onNewWorkspace?: () => void;
+  onEditToolbars?: () => void;
   onCloseProject?: () => void;
 }
 
@@ -112,6 +113,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onOpenPlotSpectrum,
     onResetWorkspace,
     onNewWorkspace,
+    onEditToolbars,
   } = options;
 
   const dispatch = useTracksDispatch();
@@ -190,6 +192,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onOpenPlotSpectrum,
     onResetWorkspace,
     onNewWorkspace,
+    onEditToolbars,
     onOpenLabelEditor: () => setIsLabelEditorOpen(true),
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
     onOpenGoTo: () => setIsGoToOpen(true),

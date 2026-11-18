@@ -463,21 +463,18 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     ).toEqual(['status', 'bar-2']));
   });
 
-  it('THE TOOLBAR BUILDER: the cog\'s "Rearrange tools…" opens it; Remove, Add, hide, New toolbar (empty) and Add separator apply live; Cancel puts it all back; Reset layout restores (2026-11-11)', async () => {
+  it('THE TOOLBAR BUILDER: View › Edit toolbars… opens it; Remove, Add, hide, New toolbar (empty) and Add separator apply live; Cancel puts it all back; Reset layout restores (2026-11-11)', async () => {
     const { container, getByText } = renderApp();
     fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
     const tool = (id: string) => container.querySelector(`[data-toolbar-tool="${id}"]`) as HTMLElement | null;
     const barOf = (id: string) => tool(id)?.closest('[data-toolbar-bar]')?.getAttribute('data-toolbar-bar');
     const stored = () => JSON.parse(window.localStorage.getItem('audacity-preferences')!).toolbarLayouts?.classic;
+    // View › Edit toolbars… (the cog left the default layout, 2026-11-18)
     const openBuilder = async () => {
-      fireEvent.click(container.querySelector('[data-customise-toolbar-cog] button') as HTMLElement);
-      const menu = await waitFor(() => {
-        const m = document.body.querySelector<HTMLElement>('[data-customise-toolbar]');
-        if (!m) throw new Error('not yet');
-        return m;
-      });
-      fireEvent.click(menu.querySelector('[data-customise-rearrange]') as HTMLElement);
+      const view = Array.from(container.querySelectorAll<HTMLElement>('.application-header__menu-item')).find((e) => e.textContent?.trim() === 'View')!;
+      fireEvent.click(view);
+      fireEvent.click(await waitFor(() => getByText('Edit toolbars...')));
       return waitFor(() => {
         const b = document.body.querySelector<HTMLElement>('[data-toolbar-builder]');
         if (!b) throw new Error('not yet');

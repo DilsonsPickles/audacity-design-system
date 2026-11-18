@@ -333,6 +333,10 @@ function setApplicationMenu() {
         { label: 'Show Quick Fade Handles', click: send('view:toggle-quick-fade-handles') },
         { label: 'Show Piano Roll', click: send('view:toggle-piano-roll') },
         { type: 'separator' },
+        // the toolbar editor's menu-bar door (2026-11-18: the cog left the
+        // default layout)
+        { label: 'Edit Toolbars…', click: send('view:edit-toolbars') },
+        { type: 'separator' },
         { role: 'reload' },
         { role: 'forceReload' },
         { role: 'toggleDevTools' },

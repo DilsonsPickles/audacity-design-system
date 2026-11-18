@@ -41,6 +41,7 @@ export function useElectronMenuBridge(options: UseElectronMenuBridgeOptions): vo
     'view:toggle-piano-roll': () => menuByLabel.get('Show piano roll')?.(),
     'view:zoom-in': () => menuByLabel.get('Zoom in')?.(),
     'view:zoom-out': () => menuByLabel.get('Zoom out')?.(),
+    'view:edit-toolbars': () => menuByLabel.get('Edit toolbars...')?.(),
     'record:toggle-lead-in': () => menuByLabel.get('Enable lead in time')?.(),
     'effect:manage-plugins': () => menuByLabel.get('Manage Plugins...')?.(),
     'generate:tone': () => menuByLabel.get('Tone...')?.(),
