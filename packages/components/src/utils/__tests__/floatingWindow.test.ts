@@ -31,3 +31,16 @@ describe('openFloatingWindow — KEPT ON THE SCREEN (2026-11-18, "I can\'t right
     expect(f).toContain('top=133');
   });
 });
+
+describe('openFloatingWindow — THE WINDOW GOES WITH ITS PAGE (2026-11-18, "that add tools menu can\'t be dismissed")', () => {
+  it('the opener\'s pagehide (a reload) closes the window', () => {
+    const popupDoc = document.implementation.createHTMLDocument('');
+    const close = vi.fn();
+    const popup = { document: popupDoc, closed: false, close } as unknown as Window;
+    vi.spyOn(window, 'open').mockReturnValue(popup);
+    openFloatingWindow(document.body, 'menu', 10, 10, 100, 100);
+    expect(close).not.toHaveBeenCalled();
+    window.dispatchEvent(new Event('pagehide'));
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+});

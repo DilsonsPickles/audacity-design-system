@@ -58,6 +58,13 @@ export function openFloatingWindow(ownerEl: HTMLElement, name: string, viewportX
     return null;
   }
   if (!popup) return null;
+  // THE WINDOW GOES WITH ITS PAGE (2026-11-18, "that add tools menu can't be
+  // dismissed. And Esc isn't closing it"): a reload of the opener — a dev
+  // rebuild, ⌘R — wiped the code that owned the window and left it on
+  // screen with nothing to close it, deaf to Escape and to clicks; now the
+  // opener's pagehide closes it
+  const closeWithOpener = () => { if (!popup!.closed) popup!.close(); };
+  win.addEventListener('pagehide', closeWithOpener, { once: true });
   adoptStyles(popup.document, doc);
   popup.document.documentElement.style.background = 'transparent';
   popup.document.body.style.cssText = 'margin:0;background:transparent;overflow:hidden;';

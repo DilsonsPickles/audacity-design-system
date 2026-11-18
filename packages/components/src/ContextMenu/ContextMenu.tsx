@@ -340,7 +340,17 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     };
 
     doc.addEventListener('keydown', handleKeyDown, true);
-    return () => doc.removeEventListener('keydown', handleKeyDown, true);
+    // A MENU IN ITS OWN WINDOW HEARS ESCAPE FROM THE OPENER TOO (2026-11-18,
+    // "Esc isn't closing it"): the keyboard focus may still be in the main
+    // window, where the menu's own document listener never hears it
+    const openerDoc = typeof document === 'undefined' ? null : document;
+    const onOpenerEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') handleKeyDown(e); };
+    const listenOpener = !!openerDoc && openerDoc !== doc;
+    if (listenOpener) openerDoc!.addEventListener('keydown', onOpenerEscape, true);
+    return () => {
+      doc.removeEventListener('keydown', handleKeyDown, true);
+      if (listenOpener) openerDoc!.removeEventListener('keydown', onOpenerEscape, true);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, onClose, host]);
 
