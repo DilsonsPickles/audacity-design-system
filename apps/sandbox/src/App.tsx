@@ -505,9 +505,11 @@ function CanvasDemoContent() {
   // The tab strip's / the rail's own small menu (2026-11-16, vertical tabs)
   const [tabsMenu, setTabsMenu] = React.useState<{ x: number; y: number; from: 'tabs' | 'rail' } | null>(null);
   const [builderBarId, setBuilderBarId] = React.useState<string | null>(null);
-  // NO PLUS IN AN EMPTY GROUP (2026-11-18, "I don't like the plus icon"):
-  // the dock draws a blank slot; tools come from the Customise toolbars
-  // panel or the group's right-click Add tool
+  // AN EMPTY GROUP'S PLUS SHOWS ON HOVER (2026-11-18, "on hovering over an
+  // empty group, offer up a plus button" — after "I don't like the plus
+  // icon" took the always-on one away the same day): it opens the group's
+  // Add tool list alone, under it
+  const openAddToolMenu = React.useCallback((barId: string, anchor: { x: number; y: number }) => setBarMenu({ barId, ...anchor, addOnly: true }), []);
   const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string, beforeToolId?: string | null) => setBarMenu({ barId, ...anchor, region, toolId, beforeToolId }), []);
   // a separator or a flexible space fits a column as it does a row
   const toolFitsVertical = (id: string) => isLayoutItem(id) || isBankLayoutItem(id) || toolStandsInColumn(id);
@@ -1856,6 +1858,7 @@ function CanvasDemoContent() {
           extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarMenu={openBarMenu}
+          onEmptyBarAdd={openAddToolMenu}
           onBarResize={toolbarLayout.resizeBar}
           className="transport-toolbar"
           tabGroupId="tool-toolbar"
@@ -2004,6 +2007,7 @@ function CanvasDemoContent() {
           extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarMenu={openBarMenu}
+          onEmptyBarAdd={openAddToolMenu}
           onBarResize={toolbarLayout.resizeBar}
           tabGroupId="tool-dock-left"
           ariaLabel="Left toolbar dock"
@@ -2036,6 +2040,7 @@ function CanvasDemoContent() {
               extraToolMeta={appToolMeta}
               drag={dockDrag}
           onBarMenu={openBarMenu}
+          onEmptyBarAdd={openAddToolMenu}
               onBarResize={toolbarLayout.resizeBar}
               tabGroupId="tool-dock-left"
               ariaLabel="Toolbar dock beside the left panels"
@@ -2051,6 +2056,7 @@ function CanvasDemoContent() {
               extraToolMeta={appToolMeta}
               drag={dockDrag}
           onBarMenu={openBarMenu}
+          onEmptyBarAdd={openAddToolMenu}
               onBarResize={toolbarLayout.resizeBar}
               tabGroupId="tool-dock-right"
               ariaLabel="Toolbar dock beside the right panels"
@@ -2125,6 +2131,7 @@ function CanvasDemoContent() {
           extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarMenu={openBarMenu}
+          onEmptyBarAdd={openAddToolMenu}
           onBarResize={toolbarLayout.resizeBar}
           tabGroupId="tool-dock-right"
           ariaLabel="Right toolbar dock"
@@ -2145,6 +2152,7 @@ function CanvasDemoContent() {
           extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarMenu={openBarMenu}
+          onEmptyBarAdd={openAddToolMenu}
           onBarResize={toolbarLayout.resizeBar}
           className="selection-toolbar"
           tabGroupId="selection-toolbar"

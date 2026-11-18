@@ -590,3 +590,12 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
    moves — 9 × 28px to grab (the tools' height), in a row or a column, edit mode or not */
 .toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) { padding: 6px 4px; margin: -6px -4px; }
 .toolbar-dock--vertical .toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) { padding: 4px 6px; margin: -4px -6px; }
+
+/* THE EMPTY GROUP'S PLUS SHOWS ON HOVER (2026-11-18, "on hovering over an
+   empty group, offer up a plus button" — an always-on plus was taken away
+   earlier the same day): hidden at rest, it fades in while the pointer is
+   on the group or the keyboard has it, at the handles' 60ms */
+.toolbar-dock__empty-add { opacity: 0; transition: opacity 0.06s ease, background-color 0.06s ease; }
+.toolbar-dock__bar:hover .toolbar-dock__empty-add,
+.toolbar-dock__empty-add:focus-visible { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .toolbar-dock__empty-add { transition: none; } }

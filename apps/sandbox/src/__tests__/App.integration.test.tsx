@@ -439,6 +439,18 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     expect(document.body.querySelector('[data-tool-bank]')).toBeNull();
   });
 
+  it('AN EMPTY GROUP OFFERS A PLUS (2026-11-18, "on hovering over an empty group, offer up a plus button"): it opens the group\'s Add tool list alone', async () => {
+    const { container } = renderApp({
+      toolbarLayouts: { classic: { top: [[{ id: 'transport', tools: ['play', 'stop'] }, { id: 'empty', tools: [] }]], bottom: [[{ id: 'status', tools: ['status-cue', 'status-info'] }]], left: [], right: [] } },
+    });
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
+    await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
+    const plus = container.querySelector<HTMLElement>('button[data-toolbar-empty="empty"]');
+    expect(plus?.classList.contains('toolbar-dock__empty-add')).toBe(true);
+    fireEvent.click(plus!);
+    await waitFor(() => expect(document.body.querySelector('input[placeholder="Search tools"]')).toBeTruthy());
+  });
+
   it('UNDO AND REDO STAND IN A COLUMN (2026-11-18, "why on earth wouldn\'t a side toolbar be able to take undo/redo?"): a group of them moves to the left toolbar', async () => {
     const { container } = renderApp({
       toolbarLayouts: { classic: { top: [[{ id: 'transport', tools: ['play', 'stop'] }, { id: 'hist', tools: ['undo', 'redo'] }]], bottom: [[{ id: 'status', tools: ['status-cue', 'status-info'] }]], left: [], right: [] } },
