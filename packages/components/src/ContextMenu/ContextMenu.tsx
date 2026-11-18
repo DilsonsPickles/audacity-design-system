@@ -257,7 +257,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       // Only select direct children menu items, not nested submenu items
       // This ensures submenu navigation is isolated
       const items = Array.from(
-        menuRef.current.querySelectorAll(':scope > [role="menuitem"]:not([aria-disabled="true"])')
+        // …and those in a SCROLLING STRETCH of the menu (`data-menu-scroll`,
+        // 2026-11-18: the Add tool list scrolls under its search field)
+        menuRef.current.querySelectorAll(':scope > [role="menuitem"]:not([aria-disabled="true"]), :scope > [data-menu-scroll] > [role="menuitem"]:not([aria-disabled="true"])')
       ) as HTMLElement[];
 
       if (items.length === 0) return;

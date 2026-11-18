@@ -233,14 +233,19 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
         onClose={onClose}
       />
     );
+    // THE LIST SCROLLS UNDER ITS SEARCH (2026-11-18, "the add tool context
+    // menu needs to be shorter and scroll"): ~10 rows tall, the search field
+    // fixed above it
     return (
       <>
         {search}
-        {offToolbars.length > 0 && <MenuHeading color={theme.foreground.text.secondary}>Not in a group</MenuHeading>}
-        {offToolbars.map(item)}
-        {offToolbars.length > 0 && hiddenTools.length > 0 && <ContextMenuItem isDivider />}
-        {hiddenTools.length > 0 && <MenuHeading color={theme.foreground.text.secondary}>Hidden</MenuHeading>}
-        {hiddenTools.map(item)}
+        <div data-menu-scroll data-add-tool-list style={{ maxHeight: 320, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+          {offToolbars.length > 0 && <MenuHeading color={theme.foreground.text.secondary}>Not in a group</MenuHeading>}
+          {offToolbars.map(item)}
+          {offToolbars.length > 0 && hiddenTools.length > 0 && <ContextMenuItem isDivider />}
+          {hiddenTools.length > 0 && <MenuHeading color={theme.foreground.text.secondary}>Hidden</MenuHeading>}
+          {hiddenTools.map(item)}
+        </div>
       </>
     );
   };
