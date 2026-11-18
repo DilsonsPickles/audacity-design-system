@@ -312,57 +312,38 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     } finally { w.mockRestore(); warn.mockRestore(); }
   });
 
-  it('IN A SIDE DOCK a toolbar alone in its column has no resize edge and ignores a stored height; two in a column keep theirs (2026-11-16)', () => {
-    const { container } = renderDock({
-      region: 'right',
-      rows: [[{ id: 'meters', tools: ['one'], height: 300 }], [{ id: 'p', tools: ['two'] }, { id: 'q', tools: ['three'] }]],
-      onBarResize: vi.fn(),
-    });
-    const meters = container.querySelector('[data-toolbar-bar="meters"]') as HTMLElement;
-    expect(meters.querySelector('[data-toolbar-resize]')).toBeNull();
-    expect(meters.classList.contains('toolbar-dock__bar--sized')).toBe(false);
-    expect(container.querySelector('[data-toolbar-resize="p"]')).not.toBeNull();
-    // the column's LAST has none either (2026-11-18)
-    expect(container.querySelector('[data-toolbar-resize="q"]')).toBeNull();
+  it('EVERY GROUP\'S END RESIZES (2026-11-18, "the end of each group should be able to be resized… it feels natural"): the last, a lone, an empty and a side column\'s group alike', () => {
+    const lone = renderDock({ region: 'right', rows: [[{ id: 'meters', tools: ['one'] }]], onBarResize: vi.fn() });
+    expect(lone.container.querySelector('[data-toolbar-resize="meters"]')).not.toBeNull();
+    cleanup();
+    const empty = renderDock({ rows: [[{ id: 'lonely', tools: [] }], [{ id: 'full', tools: ['one'] }]], onBarResize: vi.fn() });
+    expect(empty.container.querySelector('[data-toolbar-resize="lonely"]')).not.toBeNull();
+    expect(empty.container.querySelector('[data-toolbar-resize="full"]')).not.toBeNull();
   });
 
-  it('AN EMPTY TOOLBAR ALONE IN ITS ROW has no resize edge and ignores a stored width (2026-11-16)', () => {
-    const { container } = renderDock({
-      rows: [[{ id: 'lonely', tools: [], width: 300 }], [{ id: 'full', tools: ['one'] }]],
-      onBarResize: vi.fn(),
-    });
-    const lonely = container.querySelector('[data-toolbar-bar="lonely"]') as HTMLElement;
-    expect(lonely.querySelector('[data-toolbar-resize]')).toBeNull();
-    expect(lonely.classList.contains('toolbar-dock__bar--sized')).toBe(false);
-    // alone in its row, so the row's last: no edge either (2026-11-18)
-    expect(container.querySelector('[data-toolbar-resize="full"]')).toBeNull();
-  });
-
-  it('THE LAST TOOLBAR IN A ROW FILLS IT: no resize edge, a stored width ignored, and a stretch tool in it (a meter) takes the room (2026-11-18)', () => {
+  it('THE LAST GROUP FILLS UNTIL IT IS SIZED: unsized it fills (its meter taking the room); given a size it keeps it and stops filling', () => {
     const meta = (id: string) => (id === 'meter' ? { stretch: true } : undefined);
     const { container } = renderDock({
       rows: [
-        [{ id: 'p', tools: ['one'], width: 200 }, { id: 'q', tools: ['two'], width: 300 }],
+        [{ id: 'p', tools: ['one'], width: 200 }, { id: 'q', tools: ['two'] }],
         [{ id: 'r', tools: ['three'] }, { id: 's', tools: ['four', 'meter'], width: 300 }],
       ],
       onBarResize: vi.fn(),
       toolMeta: meta,
     });
     const bar = (id: string) => container.querySelector(`[data-toolbar-bar="${id}"]`) as HTMLElement;
-    // not last: sized, an edge, no fill
-    expect(container.querySelector('[data-toolbar-resize="p"]')).not.toBeNull();
     expect(bar('p').style.width).toBe('200px');
     expect(bar('p').classList.contains('toolbar-dock__bar--fill')).toBe(false);
-    // last: fills, no edge, its stored width ignored — a meter in it included
-    for (const id of ['q', 's']) {
-      expect(bar(id).classList.contains('toolbar-dock__bar--fill')).toBe(true);
-      expect(bar(id).querySelector('[data-toolbar-resize]')).toBeNull();
-      expect(bar(id).classList.contains('toolbar-dock__bar--sized')).toBe(false);
-      expect(bar(id).style.width).toBe('');
-    }
+    // unsized last: fills, with an edge
+    expect(bar('q').classList.contains('toolbar-dock__bar--fill')).toBe(true);
+    expect(container.querySelector('[data-toolbar-resize="q"]')).not.toBeNull();
+    // sized last: its size, no fill
+    expect(bar('s').classList.contains('toolbar-dock__bar--fill')).toBe(false);
+    expect(bar('s').classList.contains('toolbar-dock__bar--sized')).toBe(true);
+    expect(bar('s').style.width).toBe('300px');
   });
 
-  it('a row with a GROWING toolbar (the info line) leaves the room to it: the last toolbar keeps its natural size, and still has no edge (2026-11-18)', () => {
+  it('a row with a GROWING group (the info line) leaves the room to it: the last group keeps its natural size, with an edge', () => {
     const { container } = renderDock({
       region: 'bottom',
       rows: [[{ id: 'status', tools: ['cue', 'info'] }, { id: 'selection', tools: ['times'] }]],
@@ -371,20 +352,8 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     });
     const selection = container.querySelector('[data-toolbar-bar="selection"]') as HTMLElement;
     expect(selection.classList.contains('toolbar-dock__bar--fill')).toBe(false);
-    expect(selection.querySelector('[data-toolbar-resize]')).toBeNull();
+    expect(selection.querySelector('[data-toolbar-resize]')).not.toBeNull();
     expect(container.querySelector('[data-toolbar-bar="status"]')!.classList.contains('toolbar-dock__bar--grow')).toBe(true);
-  });
-
-  it('IN A SIDE DOCK the column\'s last meter toolbar has no edge — its meter grows to fill the column; the one above keeps its edge (2026-11-18)', () => {
-    const { container } = renderDock({
-      region: 'right',
-      rows: [[{ id: 'meters', tools: ['playback'] }, { id: 'mic', tools: ['input'], height: 300 }]],
-      onBarResize: vi.fn(),
-      toolMeta: (id) => (id === 'playback' || id === 'input' ? { grow: true } : undefined),
-    });
-    expect(container.querySelector('[data-toolbar-resize="meters"]')).not.toBeNull();
-    expect(container.querySelector('[data-toolbar-resize="mic"]')).toBeNull();
-    expect((container.querySelector('[data-toolbar-bar="mic"]') as HTMLElement).style.height).toBe('');
   });
 
   it('A FLEXIBLE SPACE draws an empty spacer the dock owns, and a right-click on it names it to the menu (2026-11-18)', () => {
@@ -456,8 +425,8 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(tools).toEqual(['one', 'separator-2', 'two']);
     expect(a.querySelectorAll('.toolbar-dock__separator')).toHaveLength(1);
     const slot = container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-empty="empty"]');
-    // the row's last DRAWN toolbar ('hidden' draws nothing): no edge (2026-11-18)
-    expect(container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-resize="empty"]')).toBeNull();
+    // every group's end resizes, the last drawn too (2026-11-18)
+    expect(container.querySelector('[data-toolbar-bar="empty"] [data-toolbar-resize="empty"]')).not.toBeNull();
     expect(a.querySelector('[data-toolbar-resize="a"]')).not.toBeNull();
     // no words drawn (2026-11-16) — the name is for screen readers
     expect(slot?.textContent).toBe('');

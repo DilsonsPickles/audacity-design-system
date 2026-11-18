@@ -306,12 +306,18 @@ export function ToolbarDock({
     // to set and a stored size is ignored. A toolbar alone in its row is
     // that row's last. Where another toolbar in the row GROWS, that one
     // takes the room and the last keeps its natural size (still no edge)
+    // …and EVERY GROUP'S END RESIZES AGAIN (2026-11-18, "I think the end of
+    // each group should be able to be resized... I'm not sure why you'd do
+    // it, but it feels natural/intuitive" — reversing the three rules above):
+    // the last group, a lone group, an empty group alike. The last group
+    // still FILLS until it is given a size; sized, it keeps that size and
+    // the row's end is left empty; a double-click on the edge clears the
+    // size and it fills again
     const isLast = lastFillsRow && barIndex === lastDrawn;
-    const resizable = !isLast && (vertical ? row.length > 1 : bar.tools.length > 0 || row.length > 1);
-    const size = resizable ? sizeOf(bar) : undefined;
-    const fill = spaced[barIndex]
-      ? size === undefined
-      : isLast && !spaceInRow && (growsAt < 0 || growsAt === barIndex);
+    const resizable = true;
+    const size = sizeOf(bar);
+    const fill = size === undefined && (spaced[barIndex]
+      || (isLast && !spaceInRow && (growsAt < 0 || growsAt === barIndex)));
     const overflow = overflowOf(nodes.map((t) => t.id), size);
     const allIds = nodes.map((t) => t.id);
     const whole = { bar, nodes, grow, fill, row: rowIndex, size, overflow, key: bar.id, continued: false, split: false, last: true, allIds, resizable };
