@@ -87,12 +87,14 @@
 .toolbar-dock__bar--fill .toolbar-dock__tool--stretch,
 .toolbar-dock__bar--fill .toolbar-dock__tool--stretch > .toolbar-dock__tool-body { flex: 1 1 auto; }
 /* A FLEXIBLE SPACE (2026-11-18) takes the toolbar's spare room, pushing
-   the tools after it to the end; it only has room to take in a toolbar
-   that fills its row or is sized. Nothing is drawn at rest; it adds no gap
-   of its own (the margin takes back the one before it); while a tool is
-   being dragged it shows as a dashed outline, so it can be found */
-.toolbar-dock__tool--spacer { flex: 1 1 0; min-width: 0; min-height: 0; align-self: stretch; margin-left: -8px; }
-.toolbar-dock--vertical .toolbar-dock__tool--spacer { margin-left: 0; margin-top: -8px; }
+   the tools after it to the end; a toolbar holding one fills its row's
+   spare room for it (ToolbarDock), a sized one gives it what it is sized
+   to. Nothing is drawn at rest; it adds no gap of its own (the margin
+   takes back the one before it); with no room at all it keeps that gap's
+   8px, so it can still be grabbed; while a tool is being dragged it shows
+   as a dashed outline, so it can be found */
+.toolbar-dock__tool--spacer { flex: 1 1 0; min-width: 8px; min-height: 0; align-self: stretch; margin-left: -8px; }
+.toolbar-dock--vertical .toolbar-dock__tool--spacer { margin-left: 0; margin-top: -8px; min-width: 0; min-height: 8px; }
 .toolbar-dock__tool--spacer > .toolbar-dock__tool-body { flex: 1 1 0; align-self: stretch; min-width: 0; }
 .toolbar-dock__spacer { flex: 1 1 0; display: block; align-self: stretch; min-width: 0; min-height: 28px; border-radius: 3px; }
 body[data-toolbar-tool-drag] .toolbar-dock__spacer { outline: 1px dashed currentColor; outline-offset: -1px; opacity: 0.4; }

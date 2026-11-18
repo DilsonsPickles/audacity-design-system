@@ -401,6 +401,27 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(onBarMenu).toHaveBeenLastCalledWith('a', { x: 7, y: 8 }, 'top', 'two', null);
   });
 
+  it('a toolbar holding a flexible space FILLS the row, wherever it is in it, and the last toolbar keeps its natural size (2026-11-18, "I still can\'t drop it between tools")', () => {
+    const renderTool = (id: string) => <button aria-label={id}>{id}</button>;
+    const bar = (c: HTMLElement, id: string) => c.querySelector(`[data-toolbar-bar="${id}"]`) as HTMLElement;
+    const { container } = renderDock({
+      rows: [[{ id: 'a', tools: ['one'] }, { id: 'b', tools: ['two', 'spacer-1', 'three'] }, { id: 'c', tools: ['four'] }]],
+      renderTool, onBarResize: vi.fn(),
+    });
+    expect(bar(container, 'b').classList.contains('toolbar-dock__bar--fill')).toBe(true);
+    expect(bar(container, 'c').classList.contains('toolbar-dock__bar--fill')).toBe(false);
+    expect(bar(container, 'a').classList.contains('toolbar-dock__bar--fill')).toBe(false);
+    // the toolbar with the space keeps its resize edge; a stored size wins over the fill
+    expect(container.querySelector('[data-toolbar-resize="b"]')).not.toBeNull();
+    cleanup();
+    const sized = renderDock({
+      rows: [[{ id: 'b', tools: ['two', 'spacer-1', 'three'], width: 300 }, { id: 'c', tools: ['four'] }]],
+      renderTool, onBarResize: vi.fn(),
+    });
+    expect(bar(sized.container, 'b').classList.contains('toolbar-dock__bar--fill')).toBe(false);
+    expect(bar(sized.container, 'c').classList.contains('toolbar-dock__bar--fill')).toBe(false);
+  });
+
   it('a right-click names the GAP nearest the pointer along the toolbar — before the first tool whose middle is past it, else the end (2026-11-18, "add the flexible space anywhere")', () => {
     const onBarMenu = vi.fn();
     const { container } = renderDock({ rows: [[{ id: 'a', tools: ['one', 'two', 'three'] }]], onBarMenu });

@@ -242,6 +242,14 @@ export function ToolbarDock({
     // a row with a GROWING toolbar (the status bar's info line) is already
     // full: that toolbar keeps the room, and the last does not compete
     const growsAt = toolNodes.findIndex((n) => n.some((t) => toolMeta?.(t.id, orientation)?.grow));
+    // A TOOLBAR HOLDING A FLEXIBLE SPACE FILLS TOO (2026-11-18, "I still
+    // can't drop it between tools" — a space dropped into a toolbar of its
+    // natural width had no room to take, so it drew nothing and could not be
+    // grabbed again): such a toolbar takes the row's spare room like the
+    // last one does, its space pushing the tools after it along; several
+    // share the room, and the last toolbar then keeps its natural size
+    const spaced = row.map((bar) => bar.tools.some(isToolSpacer));
+    const spaceInRow = spaced.some(Boolean);
     return row.map((bar, barIndex) => {
     const nodes = toolNodes[barIndex];
     if (bar.tools.length === 0) {
@@ -290,9 +298,11 @@ export function ToolbarDock({
     // that row's last. Where another toolbar in the row GROWS, that one
     // takes the room and the last keeps its natural size (still no edge)
     const isLast = barIndex === lastDrawn;
-    const fill = isLast && (growsAt < 0 || growsAt === barIndex);
     const resizable = !isLast && (vertical ? row.length > 1 : bar.tools.length > 0 || row.length > 1);
     const size = resizable ? sizeOf(bar) : undefined;
+    const fill = spaced[barIndex]
+      ? size === undefined
+      : isLast && !spaceInRow && (growsAt < 0 || growsAt === barIndex);
     const overflow = overflowOf(nodes.map((t) => t.id), size);
     const allIds = nodes.map((t) => t.id);
     const whole = { bar, nodes, grow, fill, row: rowIndex, size, overflow, key: bar.id, continued: false, split: false, last: true, allIds, resizable };
@@ -316,8 +326,9 @@ export function ToolbarDock({
     const kept = segments.filter((seg) => seg.length > 0);
     return kept.map((seg, i) => ({
       ...whole, nodes: seg, key: i === 0 ? bar.id : `${bar.id}~${i + 1}`, continued: i > 0, split: true, last: i === kept.length - 1,
-      // only the segment that ends the row fills it
-      fill: fill && i === kept.length - 1,
+      // only the segment that ends the row fills it — or, in a toolbar
+      // with a flexible space, the segments holding one
+      fill: fill && (spaced[barIndex] ? seg.some((t) => isToolSpacer(t.id)) : i === kept.length - 1),
     }));
     }).flat();
   });

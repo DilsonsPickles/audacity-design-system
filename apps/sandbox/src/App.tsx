@@ -479,8 +479,9 @@ function CanvasDemoContent() {
   const [builderBarId, setBuilderBarId] = React.useState<string | null>(null);
   const openAddToolMenu = React.useCallback((barId: string, anchor: { x: number; y: number }) => setBarMenu({ barId, ...anchor, addOnly: true }), []);
   const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string, beforeToolId?: string | null) => setBarMenu({ barId, ...anchor, region, toolId, beforeToolId }), []);
+  // a separator or a flexible space fits a column as it does a row
   const toolFitsVertical = (id: string) =>
-    (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
+    isLayoutItem(id) || (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
   // ⌘-DRAG A TOOL (2026-11-16): released off the toolbars it comes off them,
   // with a toast whose Undo puts the layout back
   const toolDrag = useToolbarToolDrag({
