@@ -35,6 +35,8 @@ export interface ToolbarBarMenuState {
   addOnly?: boolean;
   /** The tool (or flexible space) the right-click landed on (2026-11-18) */
   toolId?: string;
+  /** The gap nearest the pointer: the tool it comes before, null = the end */
+  beforeToolId?: string | null;
 }
 
 /** The builder's fresh name: "Toolbar 1", "Toolbar 2", … not already in use */
@@ -116,6 +118,17 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
   const hasTools = (bar?.tools.length ?? 0) > 0;
   // (only a tool on THIS toolbar places a flexible space)
   const clickedTool = menu?.toolId && bar?.tools.includes(menu.toolId) ? menu.toolId : undefined;
+  // WHERE A FLEXIBLE SPACE GOES: the gap nearest the pointer (the dock says
+  // which), else before the tool clicked; a gap at the toolbar's END goes to
+  // its START instead — at the end it could push nothing
+  const gap = menu?.beforeToolId !== undefined
+    ? (menu.beforeToolId === null || bar?.tools.includes(menu.beforeToolId) ? menu.beforeToolId : undefined)
+    : clickedTool;
+  const spaceBefore = gap ?? bar?.tools[0] ?? null;
+  const spaceAtStart = !gap || gap === bar?.tools[0];
+  const spaceLabel = spaceAtStart ? 'Add flexible space at the start'
+    : !isLayoutItem(spaceBefore ?? '') ? `Add flexible space before ${toolName(spaceBefore ?? '')}`
+    : 'Add flexible space here';
   const portal = typeof document === 'undefined' ? null : document.body;
 
   // ADD TOOL (2026-11-17, the flyout to add tools straight onto a toolbar):
@@ -395,10 +408,11 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
               onClose={onClose}
             />
             {/* A FLEXIBLE SPACE (2026-11-18): placed by the right-click —
-                before the tool it landed on, else at the toolbar's START,
-                which pushes all its tools to the far end (at the end it
-                could push nothing: "doesn't work on vertical toolbars");
-                on a space, the way to take it out */}
+                at the gap nearest the pointer ("I thought I'd be able to
+                add the flexible space anywhere"), a gap at the end going
+                to the START, which pushes all its tools to the far end (at
+                the end it could push nothing: "doesn't work on vertical
+                toolbars"); on a space, the way to take it out */}
             {clickedTool && isToolSpacer(clickedTool) ? (
               <ContextMenuItem
                 label="Remove flexible space"
@@ -407,9 +421,9 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
               />
             ) : (
               <ContextMenuItem
-                label={clickedTool && !isLayoutItem(clickedTool) ? `Add flexible space before ${toolName(clickedTool)}` : 'Add flexible space at the start'}
+                label={spaceLabel}
                 disabled={!hasTools}
-                onClick={() => editLayout((base) => insertSpacer(base, bar.id, clickedTool ?? bar.tools[0] ?? null))}
+                onClick={() => editLayout((base) => insertSpacer(base, bar.id, spaceBefore))}
                 onClose={onClose}
               />
             )}

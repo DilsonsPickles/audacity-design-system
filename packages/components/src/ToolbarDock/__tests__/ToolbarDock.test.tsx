@@ -396,9 +396,29 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(space.querySelector('[data-toolbar-spacer="spacer-1"]')).not.toBeNull();
     expect(renderTool.mock.calls.map((c) => c[0])).not.toContain('spacer-1');
     fireEvent.contextMenu(space.querySelector('[data-toolbar-spacer]')!, { clientX: 5, clientY: 6 });
-    expect(onBarMenu).toHaveBeenLastCalledWith('a', { x: 5, y: 6 }, 'top', 'spacer-1');
+    expect(onBarMenu).toHaveBeenLastCalledWith('a', { x: 5, y: 6 }, 'top', 'spacer-1', null);
     fireEvent.contextMenu(container.querySelector('button[aria-label="two"]')!, { clientX: 7, clientY: 8 });
-    expect(onBarMenu).toHaveBeenLastCalledWith('a', { x: 7, y: 8 }, 'top', 'two');
+    expect(onBarMenu).toHaveBeenLastCalledWith('a', { x: 7, y: 8 }, 'top', 'two', null);
+  });
+
+  it('a right-click names the GAP nearest the pointer along the toolbar — before the first tool whose middle is past it, else the end (2026-11-18, "add the flexible space anywhere")', () => {
+    const onBarMenu = vi.fn();
+    const { container } = renderDock({ rows: [[{ id: 'a', tools: ['one', 'two', 'three'] }]], onBarMenu });
+    // lay the three tools out at 0–28, 36–64, 72–100
+    const lefts: Record<string, number> = { one: 0, two: 36, three: 72 };
+    const restore = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const id = this.getAttribute('data-toolbar-tool');
+      const left = id && id in lefts ? lefts[id] : 0;
+      return { left, right: left + 28, width: id && id in lefts ? 28 : 0, top: 0, bottom: 28, height: 28, x: left, y: 0, toJSON: () => ({}) } as DOMRect;
+    });
+    try {
+      const bar = container.querySelector('[data-toolbar-bar="a"]') as HTMLElement;
+      const at = (x: number) => { fireEvent.contextMenu(bar, { clientX: x, clientY: 10 }); return onBarMenu.mock.calls[onBarMenu.mock.calls.length - 1][4]; };
+      expect(at(5)).toBe('one');     // left half of the first: before it
+      expect(at(20)).toBe('two');    // right half of the first: after it
+      expect(at(66)).toBe('three');  // the gap between two and three
+      expect(at(95)).toBeNull();     // past the last: the end
+    } finally { restore.mockRestore(); }
   });
 
   it('TOOL GROUPS (2026-11-11): a separator draws a line between groups, never at a toolbar\'s ends nor doubled; an EMPTY toolbar draws its slot; one whose tools are all hidden draws nothing', () => {
@@ -460,12 +480,12 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
           : <button aria-label={id}>{id}</button>),
       });
       fireEvent.contextMenu(container.querySelector('button[aria-label="three"]')!, { clientX: 5, clientY: 6 });
-      expect(onBarMenu).toHaveBeenLastCalledWith('b', { x: 5, y: 6 }, 'top', 'three');
+      expect(onBarMenu).toHaveBeenLastCalledWith('b', { x: 5, y: 6 }, 'top', 'three', null);
       onBarMenu.mockClear();
       fireEvent.contextMenu(container.querySelector('button[aria-label="two"]')!);
       expect(onBarMenu).not.toHaveBeenCalled();
       fireEvent.contextMenu(container.querySelector('.toolbar-dock__row')!, { clientX: 1, clientY: 2 });
-      expect(onBarMenu).toHaveBeenLastCalledWith(null, { x: 1, y: 2 }, 'top', undefined);
+      expect(onBarMenu).toHaveBeenLastCalledWith(null, { x: 1, y: 2 }, 'top', undefined, undefined);
     });
 
     it('Tab enters on the first TOOL, never a grip; without a menu the grips are not buttons', () => {

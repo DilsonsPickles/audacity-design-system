@@ -13,7 +13,7 @@ const LAYOUT: ToolbarLayout = {
   right: [],
 };
 
-function renderMenu(barId: string, opts: { fits?: boolean; addOnly?: boolean; layout?: ToolbarLayout; toolId?: string } = {}) {
+function renderMenu(barId: string, opts: { fits?: boolean; addOnly?: boolean; layout?: ToolbarLayout; toolId?: string; beforeToolId?: string | null } = {}) {
   const start = opts.layout ?? LAYOUT;
   let layout = start;
   const editLayout = vi.fn((change: (base: ToolbarLayout) => ToolbarLayout) => { layout = change(layout); });
@@ -22,7 +22,7 @@ function renderMenu(barId: string, opts: { fits?: boolean; addOnly?: boolean; la
     <PreferencesProvider>
     <ThemeProvider>
       <ToolbarBarMenu
-        menu={{ barId, x: 10, y: 10, addOnly: opts.addOnly, toolId: opts.toolId }}
+        menu={{ barId, x: 10, y: 10, addOnly: opts.addOnly, toolId: opts.toolId, beforeToolId: opts.beforeToolId }}
         onClose={() => {}}
         layout={start}
         editLayout={editLayout}
@@ -50,6 +50,16 @@ describe('ToolbarBarMenu', () => {
     const onBar = renderMenu('main');
     fireEvent.click(onBar.item('Add flexible space at the start'));
     expect(onBar.layout().top[1][0].tools).toEqual(['spacer-1', 'play', 'timecode']);
+    cleanup();
+    // THE GAP THE DOCK NAMES (2026-11-18, "anywhere"): a space goes there;
+    // a gap at the end goes to the start
+    const atGap = renderMenu('main', { toolId: 'play', beforeToolId: 'timecode' });
+    fireEvent.click(atGap.item('Add flexible space before Timecode'));
+    expect(atGap.layout().top[1][0].tools).toEqual(['play', 'spacer-1', 'timecode']);
+    cleanup();
+    const atEnd = renderMenu('main', { toolId: 'timecode', beforeToolId: null });
+    fireEvent.click(atEnd.item('Add flexible space at the start'));
+    expect(atEnd.layout().top[1][0].tools).toEqual(['spacer-1', 'play', 'timecode']);
     cleanup();
     const spaced: ToolbarLayout = { ...LAYOUT, top: [LAYOUT.top[0], [{ id: 'main', tools: ['play', 'spacer-1', 'timecode'] }]] };
     const onSpace = renderMenu('main', { layout: spaced, toolId: 'spacer-1' });

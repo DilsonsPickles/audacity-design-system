@@ -46,8 +46,10 @@ export interface ToolbarDockProps {
    *  dock's empty space asks with a null bar (2026-11-16, "I hate having to
    *  rely on the cog") — a tool with its own right-click menu prevents the
    *  default first and keeps it. `toolId` is the tool (or flexible space)
-   *  the right-click landed on, for menu items placed by it (2026-11-18) */
-  onBarMenu?: (barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string) => void;
+   *  the right-click landed on, and `beforeToolId` the GAP nearest the
+   *  pointer along the toolbar — the tool it comes before, null = the
+   *  toolbar's end — for items placed by the click (2026-11-18) */
+  onBarMenu?: (barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string, beforeToolId?: string | null) => void;
   /** AN EMPTY TOOLBAR'S "+" (2026-11-17, the flyout to add tools the empty
    *  toolbar was waiting for): given, an empty toolbar draws a + button that
    *  asks the host for its Add tool list under it */
@@ -695,8 +697,27 @@ export function ToolbarDock({
         const barEl = target.closest('[data-toolbar-bar], [data-toolbar-bar-continued]');
         const barId = barEl?.getAttribute('data-toolbar-bar') ?? barEl?.getAttribute('data-toolbar-bar-continued') ?? null;
         const toolId = target.closest('[data-toolbar-tool]')?.getAttribute('data-toolbar-tool') ?? undefined;
+        // THE GAP NEAREST THE POINTER (2026-11-18, "I thought I'd be able to
+        // add the flexible space anywhere"): before the first tool on this
+        // line whose middle is past the pointer; past them all, the tool
+        // that follows the line in the toolbar (another segment's), else
+        // the end
+        let beforeToolId: string | null | undefined;
+        if (barId && barEl) {
+          const along = (r: DOMRect) => (vertical ? r.top + r.height / 2 : r.left + r.width / 2);
+          const pointer = vertical ? e.clientY : e.clientX;
+          const onLine = Array.from(barEl.querySelectorAll<HTMLElement>('[data-toolbar-tool]'));
+          const past = onLine.find((el) => along(el.getBoundingClientRect()) > pointer);
+          if (past) beforeToolId = past.getAttribute('data-toolbar-tool');
+          else {
+            const tools = rows.flat().find((b) => b.id === barId)?.tools ?? [];
+            const lastOnLine = onLine[onLine.length - 1]?.getAttribute('data-toolbar-tool');
+            const i = lastOnLine ? tools.indexOf(lastOnLine) : -1;
+            beforeToolId = i >= 0 ? tools[i + 1] ?? null : null;
+          }
+        }
         e.preventDefault();
-        onBarMenu(barId, { x: e.clientX, y: e.clientY }, region, toolId);
+        onBarMenu(barId, { x: e.clientX, y: e.clientY }, region, toolId, beforeToolId);
       } : undefined}
     >
       {!empty && drawnLines.map((line, lineIndex) => (
