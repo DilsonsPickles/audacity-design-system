@@ -27,7 +27,7 @@ import { downloadBlob, safeFileName } from './utils/downloadBlob';
 import { CommandPaletteHost } from './components/CommandPaletteHost';
 import { PlotSpectrumWindow, type PlotSpectrumSource } from './components/PlotSpectrumWindow';
 import { resolveTimeSelectionScope } from './utils/timeSelectionScope';
-import { KeyboardMap, SHORTCUT_ROWS, isLayoutItem, isToolSpacer, TITLE_BAR_ID, TITLE_BAR_ONLY, titleBarItems, removeTool, PROJECT_TAB_TOOL_ID, insertTool, insertSeparator, insertSpacer, addToolToNewBar } from '@audacity-ui/components';
+import { KeyboardMap, SHORTCUT_ROWS, isLayoutItem, TITLE_BAR_ID, TITLE_BAR_ONLY, titleBarItems, removeTool, PROJECT_TAB_TOOL_ID, insertTool, insertSeparator, insertSpacer, addToolToNewBar } from '@audacity-ui/components';
 import { ToolBank, BANK_SEPARATOR_ID, BANK_SPACER_ID, isBankLayoutItem } from './components/ToolBank';
 import { useHiddenTools } from './hooks/useHiddenTools';
 import { transportStatusText } from './utils/transportStatus';
@@ -490,7 +490,7 @@ function CanvasDemoContent() {
   const toolFitsVertical = (id: string) =>
     isLayoutItem(id) || isBankLayoutItem(id) || (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
   // ⌘-DRAG A TOOL (2026-11-16): released off the toolbars it comes off them,
-  // with a toast whose Undo puts the layout back
+  // silently since 2026-11-18 (no toast)
   // THE TOOL BANK's drops share the drag (2026-11-18): a tool on no toolbar
   // is ADDED (`insertTool` / `addToolToNewBar` move one that is on one), a
   // hidden one is SHOWN, and the bank's separator and space are made fresh
@@ -514,25 +514,10 @@ function CanvasDemoContent() {
       showTool(toolId);
     },
     intoOnly: isBankLayoutItem,
-    onRemove: (toolId) => {
-      const before = toolbarLayout.layout;
-      toolbarLayout.editLayout((base) => removeTool(base, toolId));
-      // NO TOAST WHILE THE BANK IS OPEN (2026-11-18, "this tool removed toast
-      // is so annoying"): the tool is seen landing back in the bank, and
-      // dragging it out again is the undo; the toast stays for an Option /
-      // ⌘-drag off the toolbars, where the tool vanishes with nowhere to see it go
-      if (toolbarEditing) return;
-      // a flexible space is not a tool: it is gone, not set aside
-      // (the tool bank, 2026-11-18: View › Edit toolbars… is where it comes back from)
-      const [title, line] = isToolSpacer(toolId)
-        ? ['Flexible space removed', 'Drag a new one from View › Edit toolbars']
-        : isLayoutItem(toolId)
-          ? ['Separator removed', 'Drag a new one from View › Edit toolbars']
-          : ['Tool removed', 'Drag it back from View › Edit toolbars'];
-      toast.info(title, line, [
-        { label: 'Undo', onClick: () => toolbarLayout.editLayout(() => before) },
-      ]);
-    },
+    // A REMOVAL IS SILENT (2026-11-18, "this tool removed toast is so
+    // annoying", then "drop it too"): no toast in the bank or out of it —
+    // the tool is back in the bank (View › Edit toolbars…) to drag out again
+    onRemove: (toolId) => toolbarLayout.editLayout((base) => removeTool(base, toolId)),
     unremovable: UNREMOVABLE_TOOLS,
   });
   React.useEffect(() => {
