@@ -247,6 +247,15 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(findTool(withProjectRowMoves(custom), 'undo')!.bar.id).toBe('transport');
   });
 
+  it('a toolbar the USER makes of Undo + Redo (or Audio setup + Share) is theirs: the migration takes only the old row\'s own toolbars (2026-11-18, "Undo and redo… whenever I put them together… they disappear")', () => {
+    const mine: ToolbarLayout = {
+      top: [[{ id: 'transport', tools: ['play'] }, { id: 'edit', tools: ['cut', 'copy'] }, { id: 'bar-7', tools: ['undo', 'redo'] }]],
+      bottom: [], left: [],
+      right: [[{ id: 'meters', tools: ['playback-meter'] }, { id: 'bar-8', tools: ['audio-setup', 'share-audio'] }]],
+    };
+    expect(withProjectRowMoves(mine)).toBe(mine);
+  });
+
   it('THE TOOLBAR BUILDER\'S EDITS (2026-11-11): insertTool adds or moves, removeTool takes a tool off every toolbar, a new bar takes a tool on none', () => {
     const layout = seedWithoutProjectRow('classic');
     // remove: off its bar; the bar goes when it was the last tool

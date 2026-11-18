@@ -622,9 +622,13 @@ export function withProjectTools(input: ToolbarLayout): ToolbarLayout {
  */
 export function withProjectRowMoves(input: ToolbarLayout): ToolbarLayout {
   let layout = input;
+  // ONLY THE OLD ROW'S OWN TOOLBARS, BY ID (2026-11-18, "Undo and redo…
+  // whenever I put them together… they disappear"): matched by contents,
+  // this ran on every read and swallowed any toolbar the USER made of Undo +
+  // Redo into the edit toolbar (Audio setup + Share likewise); a toolbar the
+  // user makes is `bar-N`, never these
   const audio = findTool(layout, 'audio-setup');
-  // (the old first row's bar — never a toolbar that also holds the transport, as the 2026-11-11 seed does)
-  if (audio && audio.bar.id !== TITLE_BAR_ID && audio.bar.tools.includes('share-audio') && !audio.bar.tools.includes('play')) {
+  if (audio && audio.bar.id === 'project-actions' && audio.bar.tools.includes('share-audio')) {
     const meterBar = TOOLBAR_REGIONS.flatMap((r) => dockBars(layout, r))
       .find((b) => b.tools.includes('playback-meter') || b.tools.includes('microphone-levels'));
     if (meterBar) layout = moveTool(layout, 'audio-setup', meterBar.id, meterBar.tools[0] ?? null);
@@ -639,7 +643,7 @@ export function withProjectRowMoves(input: ToolbarLayout): ToolbarLayout {
     }
   }
   const undo = findTool(layout, 'undo');
-  if (undo && undo.bar.tools.length === 2 && undo.bar.tools.includes('redo')) {
+  if (undo && undo.bar.id === 'history' && undo.bar.tools.length === 2 && undo.bar.tools.includes('redo')) {
     const editBar = TOOLBAR_REGIONS.flatMap((r) => dockBars(layout, r))
       .find((b) => b !== undo.bar && (b.tools.includes('cut') || b.tools.includes('trim') || b.tools.includes('silence')));
     if (editBar) {
