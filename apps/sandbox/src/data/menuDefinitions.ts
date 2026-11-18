@@ -14,6 +14,10 @@ export interface MenuDefinitionDeps {
   /** Analyze › Plot spectrum… (2026-11-16, the Figma flow in 44 - Analyzers) */
   onOpenPlotSpectrum?: () => void;
   onResetWorkspace?: () => void;
+  /** View › Save changes to workspace / the reset's label (2026-11-19) */
+  onSaveWorkspace?: () => void;
+  workspaceModified?: boolean;
+  resetWorkspaceLabel?: string;
   /** View › Edit toolbars… — the toolbar editor, from the menu bar and the
    *  palette (2026-11-18: the cog left the default layout) */
   onEditToolbars?: () => void;
@@ -240,7 +244,8 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
     ...(deps.onEditToolbars ? [{ label: 'Edit toolbars...', onClick: deps.onEditToolbars }] : []),
     ...(deps.onEditToolbarsAsList ? [{ label: 'Edit toolbars as list...', onClick: deps.onEditToolbarsAsList }] : []),
     ...(deps.onNewWorkspace ? [{ label: 'New workspace...', onClick: deps.onNewWorkspace }] : []),
-    ...(deps.onResetWorkspace ? [{ label: 'Reset workspace to default', onClick: deps.onResetWorkspace }] : []),
+    ...(deps.onSaveWorkspace ? [{ label: 'Save changes to workspace', onClick: deps.onSaveWorkspace, disabled: !deps.workspaceModified }] : []),
+    ...(deps.onResetWorkspace ? [{ label: deps.resetWorkspaceLabel ?? 'Reset workspace to default', onClick: deps.onResetWorkspace }] : []),
   ];
 
   const effectMenuItems: MenuItem[] = [

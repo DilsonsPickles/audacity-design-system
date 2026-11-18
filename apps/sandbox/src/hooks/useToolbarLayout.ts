@@ -35,6 +35,15 @@ export interface UseToolbarLayoutReturn {
  * dock a flat list of bars, 2026-11-09) is read as one row a dock;
  * anything else that is not a layout is ignored.
  */
+/** A stored layout (null = none) as the toolbars draw it: the seed when
+ *  there is none, then every guard. Shared by the hook and by the saved-
+ *  workspace comparison (2026-11-19), so both read a layout the same way */
+export function resolveToolbarLayout(stored: ToolbarLayout | null, seedWorkspace: ToolbarWorkspace): ToolbarLayout {
+  // (the cog is NOT put back since 2026-11-16 — it removes like any tool,
+  // and a right-click on any toolbar opens the builder)
+  return normaliseLayout(withTitleBarOnlyItems(withTitleBar(withProjectRowMoves(withProjectTools(stored ?? defaultToolbarLayout(seedWorkspace))))));
+}
+
 export function useToolbarLayout(workspace: string, seedWorkspace: ToolbarWorkspace, activeMenuItem: string): UseToolbarLayoutReturn {
   const { preferences, updatePreference } = usePreferences();
   const stored = preferences.toolbarLayouts?.[workspace];
@@ -70,9 +79,7 @@ export function useToolbarLayout(workspace: string, seedWorkspace: ToolbarWorksp
   const custom = useMemo(() => coerceToolbarLayout(stored), [stored]);
   const layout = useMemo(() => {
     if (activeMenuItem === 'export') return EXPORT_TOOLBAR_LAYOUT;
-    // (the cog is NOT put back since 2026-11-16 — it removes like any tool,
-    // and a right-click on any toolbar opens the builder)
-    return normaliseLayout(withTitleBarOnlyItems(withTitleBar(withProjectRowMoves(withProjectTools(custom ?? defaultToolbarLayout(seedWorkspace))))));
+    return resolveToolbarLayout(custom, seedWorkspace);
   }, [activeMenuItem, custom, seedWorkspace]);
 
   // One edit of the layout in force, stored for this workspace

@@ -59,6 +59,10 @@ export interface UseMenuDefinitionsOptions {
   /** Analyze › Plot spectrum… (2026-11-16) */
   onOpenPlotSpectrum?: () => void;
   onResetWorkspace?: () => void;
+  /** View › Save changes to workspace and the reset's label (2026-11-19) */
+  onSaveWorkspace?: () => void;
+  workspaceModified?: boolean;
+  resetWorkspaceLabel?: string;
   onNewWorkspace?: () => void;
   onEditToolbars?: () => void;
   onEditToolbarsAsList?: () => void;
@@ -113,6 +117,9 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onSaveProjectAs,
     onOpenPlotSpectrum,
     onResetWorkspace,
+    onSaveWorkspace,
+    workspaceModified,
+    resetWorkspaceLabel,
     onNewWorkspace,
     onEditToolbars,
     onEditToolbarsAsList,
@@ -193,6 +200,9 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onSaveProjectAs,
     onOpenPlotSpectrum,
     onResetWorkspace,
+    onSaveWorkspace,
+    workspaceModified,
+    resetWorkspaceLabel,
     onNewWorkspace,
     onEditToolbars,
     onEditToolbarsAsList,

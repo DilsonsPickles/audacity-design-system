@@ -89,7 +89,7 @@ import { ClipPropertiesProvider } from './contexts/ClipPropertiesContext';
 import { ContextMenuProvider, useContextMenus } from './contexts/ContextMenuContext';
 import { useLoopRegion } from './hooks/useLoopRegion';
 import { useMasterMeter } from './hooks/useMasterMeter';
-import { useToolbarLayout } from './hooks/useToolbarLayout';
+import { useToolbarLayout, resolveToolbarLayout } from './hooks/useToolbarLayout';
 import { useToolbarBarDrag } from './hooks/useToolbarBarDrag';
 import { AppToolbarDock, type ToolbarDockDrag } from './components/AppToolbarDock';
 import { useToolbarToolDrag } from './hooks/useToolbarToolDrag';
@@ -117,7 +117,7 @@ import { useProjectTabs } from './hooks/useProjectTabs';
 import { useMenuDefinitions } from './hooks/useMenuDefinitions';
 import { useElectronMenuBridge } from './hooks/useElectronMenuBridge';
 import { WorkspaceNameDialog } from './components/WorkspaceNameDialog';
-import { WORKSPACE_NAMES, isBuiltinWorkspace, activeWorkspaceId, hiddenToolsOf, workspaceResetState } from './utils/workspaces';
+import { WORKSPACE_NAMES, isBuiltinWorkspace, activeWorkspaceId, hiddenToolsOf, workspaceResetState, sameWorkspaceState } from './utils/workspaces';
 
 /** Never taken off the toolbars by a ⌘-drag: the tabs, the way back to Home */
 const UNREMOVABLE_TOOLS: ReadonlySet<string> = new Set([PROJECT_TAB_TOOL_ID]);
@@ -456,7 +456,7 @@ function CanvasDemoContent() {
     updatePreference('workspaceTabsVertical', vertical);
     updatePreference('workspaceHiddenTools', { ...(preferences.workspaceHiddenTools ?? {}), [workspace]: target.hidden });
     const name = workspaceName(workspace);
-    toast.info('Workspace reset', target.layout ? `${name} is back to how you made it` : `${name} is back to its default toolbars`, [
+    toast.info('Workspace reset', target.layout ? `${name} is back to its saved layout` : `${name} is back to its default toolbars`, [
       { label: 'Undo', onClick: () => {
         updatePreference('toolbarLayouts', before.layouts);
         updatePreference('workspaceTabsVertical', before.vertical);
@@ -464,6 +464,38 @@ function CanvasDemoContent() {
       } },
     ]);
   };
+  // SAVE CHANGES TO WORKSPACE (2026-11-19, Adobe's model — "Save Changes to
+  // this Workspace" / "Reset to Saved Layout"): edits keep applying and
+  // persisting as they are made; Save makes the current state the one Reset
+  // goes back to. Only a workspace the user made has a saved state — a
+  // built-in keeps its factory seed, and New workspace… is how to keep a
+  // changed one. The title bar marks a made workspace that has drifted from
+  // its saved state (one made before saved states existed counts as drifted
+  // until its first save)
+  const madeWorkspace = customWorkspaces.find((w) => w.id === workspace);
+  const currentWorkspaceState = {
+    layout: toolbarLayout.layout,
+    hidden: hiddenToolsOf(preferences, workspace),
+    tabsVertical,
+  };
+  const workspaceModified = !!madeWorkspace && (activeMenuItem === 'home' || activeMenuItem === 'export'
+    ? false
+    : !madeWorkspace.start || !sameWorkspaceState(currentWorkspaceState, {
+      layout: resolveToolbarLayout(madeWorkspace.start.layout, baseWorkspace),
+      hidden: madeWorkspace.start.hidden,
+      tabsVertical: !!madeWorkspace.start.tabsVertical,
+    }));
+  const saveWorkspace = () => {
+    if (!madeWorkspace || !workspaceModified) return;
+    const start = {
+      layout: currentWorkspaceState.layout,
+      hidden: [...currentWorkspaceState.hidden],
+      ...(tabsVertical ? { tabsVertical: true } : {}),
+    };
+    updatePreference('customWorkspaces', customWorkspaces.map((w) => (w.id === workspace ? { ...w, start } : w)));
+    toast.success('Workspace saved', `Reset now returns ${madeWorkspace.name} to this layout`);
+  };
+  const resetWorkspaceLabel = madeWorkspace?.start ? 'Reset to saved layout' : 'Reset workspace to default';
   // NEW WORKSPACE… (2026-11-17, "allow me to create new workspaces"): a
   // named COPY of the workspace in use — its toolbar layout and tab
   // orientation — based on the same built-in, and switched to. The user's
@@ -1533,6 +1565,9 @@ function CanvasDemoContent() {
     onSaveProjectAs: currentProjectId ? () => { void handleSaveProjectAs(); } : undefined,
     onOpenPlotSpectrum: () => setIsPlotSpectrumOpen(true),
     onResetWorkspace: activeMenuItem === 'home' ? undefined : resetWorkspace,
+    resetWorkspaceLabel,
+    onSaveWorkspace: activeMenuItem === 'home' || !madeWorkspace ? undefined : saveWorkspace,
+    workspaceModified,
     onNewWorkspace: activeMenuItem === 'home' ? undefined : () => setWorkspaceDialog({ mode: 'new' }),
     onEditToolbars: activeMenuItem === 'home' ? undefined : () => { setBuilderBarId(null); openToolBank(); },
     onEditToolbarsAsList: activeMenuItem === 'home' ? undefined : () => { setBuilderBarId(null); setToolbarBuilderOpen(true); },
@@ -1665,6 +1700,9 @@ function CanvasDemoContent() {
     workspaceOptions,
     onWorkspacePick: handleWorkspacePick,
     onResetWorkspace: resetWorkspace,
+    resetWorkspaceLabel,
+    onSaveWorkspace: madeWorkspace ? saveWorkspace : undefined,
+    workspaceModified,
     onNewWorkspace: () => setWorkspaceDialog({ mode: 'new' }),
     onRenameWorkspace: isBuiltinWorkspace(workspace) ? undefined : () => setWorkspaceDialog({ mode: 'rename', id: workspace }),
     onDeleteWorkspace: isBuiltinWorkspace(workspace) ? undefined : () => deleteWorkspace(workspace),

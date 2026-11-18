@@ -111,8 +111,10 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
                     <GhostButton
                       icon="workspace"
                       size="compact"
-                      label={`Workspace: ${workspaceName}`}
-                      ariaLabel={`Workspace: ${workspaceName}`}
+                      // THE UNSAVED DOT (2026-11-19): a made workspace that
+                      // has drifted from its saved state
+                      label={`Workspace: ${workspaceName}${deps.workspaceModified ? ' •' : ''}`}
+                      ariaLabel={`Workspace: ${workspaceName}${deps.workspaceModified ? ', unsaved changes' : ''}`}
                       active={workspaceMenu !== null}
                       onClick={(e) => {
                         const r = e.currentTarget.getBoundingClientRect();
@@ -139,9 +141,17 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
                       {deps.onDeleteWorkspace && (
                         <ContextMenuItem label="Delete workspace" onClick={() => deps.onDeleteWorkspace?.()} onClose={() => setWorkspaceMenu(null)} />
                       )}
+                      {deps.onSaveWorkspace && (
+                        <ContextMenuItem
+                          label="Save changes to workspace"
+                          disabled={!deps.workspaceModified}
+                          onClick={() => deps.onSaveWorkspace?.()}
+                          onClose={() => setWorkspaceMenu(null)}
+                        />
+                      )}
                       {deps.onResetWorkspace && (
                         <ContextMenuItem
-                          label="Reset workspace to default"
+                          label={deps.resetWorkspaceLabel ?? 'Reset workspace to default'}
                           onClick={() => deps.onResetWorkspace?.()}
                           onClose={() => setWorkspaceMenu(null)}
                         />

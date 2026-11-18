@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { defaultToolbarLayout, type CustomWorkspace } from '@audacity-ui/components';
-import { workspaceResetState } from '../workspaces';
+import { workspaceResetState, sameWorkspaceState } from '../workspaces';
 
 const DEFAULT_HIDDEN = ['bpm', 'time-signature'];
 
@@ -30,5 +30,23 @@ describe('workspaceResetState — RESETTING A WORKSPACE YOU MADE GOES BACK TO HO
     const hidden = ['mixer-button'];
     const ws: CustomWorkspace = { id: 'w', name: 'W', base: 'classic', start: { layout: defaultToolbarLayout('classic'), hidden } };
     expect(workspaceResetState({ customWorkspaces: [ws] }, 'w', DEFAULT_HIDDEN).hidden).not.toBe(hidden);
+  });
+});
+
+describe('sameWorkspaceState — SAVE CHANGES TO WORKSPACE (2026-11-19)', () => {
+  const layout = defaultToolbarLayout('classic');
+  const base = { layout, hidden: ['a', 'b'], tabsVertical: false };
+
+  it('equal states match, the hidden tools as a set and the layout whatever its key order', () => {
+    const reordered = JSON.parse(JSON.stringify(layout, (_k, v) =>
+      v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).reverse()) : v));
+    expect(sameWorkspaceState(base, { layout: reordered, hidden: ['b', 'a', 'a'], tabsVertical: false })).toBe(true);
+  });
+
+  it('a moved tool, a hidden tool or the tab orientation is a change', () => {
+    const moved = { ...layout, top: layout.top.slice().reverse() };
+    expect(sameWorkspaceState(base, { ...base, layout: moved })).toBe(layout.top.length < 2);
+    expect(sameWorkspaceState(base, { ...base, hidden: ['a'] })).toBe(false);
+    expect(sameWorkspaceState(base, { ...base, tabsVertical: true })).toBe(false);
   });
 });

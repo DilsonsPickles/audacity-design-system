@@ -52,3 +52,37 @@ export function workspaceResetState(
   if (start) return { layout: start.layout, hidden: [...start.hidden], tabsVertical: !!start.tabsVertical };
   return { layout: null, hidden: [...defaultHidden], tabsVertical: false };
 }
+
+/** A workspace's state as Save changes keeps it and the dot compares it */
+export interface WorkspaceSnapshot {
+  layout: ToolbarLayout;
+  hidden: readonly string[];
+  tabsVertical: boolean;
+}
+
+/** JSON with every object's keys sorted, so two equal layouts built in a
+ *  different key order read the same */
+function stableJson(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) => {
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      return Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)));
+    }
+    return v;
+  });
+}
+
+/**
+ * SAVE CHANGES TO WORKSPACE (2026-11-19, "So if I make a change to a
+ * workspace... how should I 'Overwrite' it?" → Adobe's model, "Yes, build
+ * it"): edits apply and persist as they are made; Save changes makes the
+ * current state what Reset goes back to. Two states are the same when the
+ * layouts match, the hidden tools match as a set and the tab orientation
+ * matches — what decides the title bar's unsaved dot and whether Save is live.
+ */
+export function sameWorkspaceState(a: WorkspaceSnapshot, b: WorkspaceSnapshot): boolean {
+  if (a.tabsVertical !== b.tabsVertical) return false;
+  const ha = [...new Set(a.hidden)].sort();
+  const hb = [...new Set(b.hidden)].sort();
+  if (ha.length !== hb.length || ha.some((id, i) => id !== hb[i])) return false;
+  return stableJson(a.layout) === stableJson(b.layout);
+}
