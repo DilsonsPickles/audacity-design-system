@@ -519,23 +519,23 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     // a tool on no toolbar waits under its heading; the separator and space lead
     expect(bank.querySelector('[data-bank-tool="bank-separator"]')).toBeTruthy();
     expect(bank.querySelector('[data-bank-tool="bank-spacer"]')).toBeTruthy();
-    const tile = bank.querySelector<HTMLElement>('[data-bank-tool="waveform-view"]')!;
+    const tile = bank.querySelector<HTMLElement>('[data-bank-tool="customise"]')!;
     expect(tile).toBeTruthy();
-    expect(container.querySelector('[data-toolbar-tool="waveform-view"]')).toBeNull();
+    expect(container.querySelector('[data-toolbar-tool="customise"]')).toBeNull();
     // dragged to the top of the window (the top dock's edge snap in jsdom): a toolbar of its own
     fireEvent.mouseDown(tile, { button: 0, clientX: 300, clientY: 500 });
     fireEvent.mouseMove(document, { clientX: 300, clientY: 200 });
     fireEvent.mouseMove(document, { clientX: 300, clientY: 10 });
     fireEvent.mouseUp(document, { clientX: 300, clientY: 10 });
-    await waitFor(() => expect(container.querySelector('[data-toolbar-tool="waveform-view"]')).toBeTruthy());
+    await waitFor(() => expect(container.querySelector('[data-toolbar-tool="customise"]')).toBeTruthy());
     await waitFor(() => expect(document.body.querySelector('[data-tool-bank]')!.textContent).toContain('In a group'));
     // an OPTION-drag back off onto the panel takes it off — silently
-    const placed = container.querySelector<HTMLElement>('[data-toolbar-tool="waveform-view"]')!;
+    const placed = container.querySelector<HTMLElement>('[data-toolbar-tool="customise"]')!;
     fireEvent.mouseDown(placed, { button: 0, altKey: true, clientX: 300, clientY: 20 });
     fireEvent.mouseMove(document, { clientX: 300, clientY: 300 });
     fireEvent.mouseMove(document, { clientX: 300, clientY: 500 });
     fireEvent.mouseUp(document, { clientX: 300, clientY: 500 });
-    await waitFor(() => expect(container.querySelector('[data-toolbar-tool="waveform-view"]')).toBeNull());
+    await waitFor(() => expect(container.querySelector('[data-toolbar-tool="customise"]')).toBeNull());
     expect(document.body.textContent).not.toContain('Tool removed');
     // NO REARRANGE MODE ("I kinda hate that concept"): the Option-drag above is the way
     expect(document.body.querySelector('[data-tool-bank] .tool-bank__rearrange')).toBeNull();

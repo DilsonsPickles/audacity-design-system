@@ -433,3 +433,31 @@ describe('normaliseLayout — A GROUP OF DIVIDERS ALONE IS AN EMPTY GROUP (2026-
     expect(l.top[0].map((b) => b.tools)).toEqual([[], ['play', 'separator-3'], ['spacer-1', 'separator-4']]);
   });
 });
+
+import { withoutRetiredTools as retire } from '../toolbarLayout';
+
+describe('withoutRetiredTools — THE WAVEFORM BUTTON IS RETIRED (2026-11-19)', () => {
+  const bar = (id: string, tools: string[]) => ({ id, tools });
+  const empty = { top: [], bottom: [], left: [], right: [] };
+
+  it('becomes Spectral view where the layout has none', () => {
+    const out = retire({ ...empty, top: [[bar('a', ['zoom-in', 'waveform-view'])]] });
+    expect(out.top[0][0].tools).toEqual(['zoom-in', 'spectral-editing']);
+  });
+
+  it('goes where Spectral view is already on a toolbar, and a group it leaves empty goes too', () => {
+    const out = retire({ ...empty, top: [[bar('a', ['spectral-editing']), bar('b', ['waveform-view'])]] });
+    expect(out.top[0].map((b) => b.id)).toEqual(['a']);
+  });
+
+  it('a layout without it is returned as it is', () => {
+    const layout = { ...empty, top: [[bar('a', ['play'])]] };
+    expect(retire(layout)).toBe(layout);
+  });
+
+  it('no seed carries it', () => {
+    for (const ws of ['classic', 'modern', 'music', 'spectral-editing'] as const) {
+      expect(JSON.stringify(defaultToolbarLayout(ws))).not.toContain('waveform-view');
+    }
+  });
+});

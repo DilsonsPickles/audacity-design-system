@@ -286,7 +286,7 @@ export function defaultToolbarLayout(workspace: ToolbarWorkspace): ToolbarLayout
       groups = [
         transport,
         ['undo', 'redo'],
-        ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight, 'waveform-view'],
+        ['zoom-in', 'zoom-out', 'zoom-toggle', ...trackHeight, 'spectral-editing'],
         time,
         meters,
       ];
@@ -630,6 +630,39 @@ export function withCustomiseTool(layout: ToolbarLayout): ToolbarLayout {
   if (next.top.length === 0) next.top.push([item]);
   else next.top[next.top.length - 1].push(item);
   return next;
+}
+
+/**
+ * THE WAVEFORM BUTTON IS RETIRED (2026-11-19, "Seems we have a button that
+ * does the same thing...? The waveform and spectral view?" → "it should just
+ * be the spectral view toggle button"): `waveform-view` was the Spectral
+ * editing workspace's copy of the Spectral view toggle — the same
+ * `onToggleSpectrogram`, lit while the spectrogram showed, under a waveform
+ * icon. A stored layout's `waveform-view` becomes `spectral-editing` where the
+ * layout has none, and goes where it has one; a group left with no tools by
+ * that goes too. The same layout back when there is nothing to do.
+ */
+export function withoutRetiredTools(layout: ToolbarLayout): ToolbarLayout {
+  const RETIRED = 'waveform-view';
+  const REPLACEMENT = 'spectral-editing';
+  const regions = Object.entries(layout) as Array<[ToolbarRegion, ToolbarRow[] | undefined]>;
+  const has = (id: string) => regions.some(([, rows]) => rows?.some((row) => row.some((bar) => bar.tools.includes(id))));
+  if (!has(RETIRED)) return layout;
+  let replace = !has(REPLACEMENT);
+  const out: Partial<Record<ToolbarRegion, ToolbarRow[]>> = {};
+  for (const [region, rows] of regions) {
+    if (!rows) continue;
+    out[region] = rows.map((row) => row.flatMap((bar) => {
+      if (!bar.tools.includes(RETIRED)) return [bar];
+      const tools: string[] = [];
+      for (const id of bar.tools) {
+        if (id !== RETIRED) tools.push(id);
+        else if (replace) { tools.push(REPLACEMENT); replace = false; }
+      }
+      return tools.length > 0 ? [{ ...bar, tools }] : [];
+    }));
+  }
+  return out as ToolbarLayout;
 }
 
 /**

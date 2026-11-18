@@ -12,7 +12,6 @@ const EXTRA_NAMES: Record<string, string> = {
   [CUSTOMISE_TOOL_ID]: 'Customise toolbar',
   debug: 'Debug',
   split: 'Split mode',
-  'waveform-view': 'Waveform view',
   'status-cue': 'Playback status',
   'status-info': 'Info line',
   'selection-timecodes': 'Selection',
@@ -28,7 +27,7 @@ export const toolName = (id: string) => ENTRY_BY_ID.get(id)?.label ?? EXTRA_NAME
  *  which has nothing behind it), then the ones it does not carry */
 export const ALL_TOOLS: ReadonlyArray<string> = [
   ...CUSTOMISE_TOOLBAR_ENTRIES.flatMap((e) => (e.kind === 'tool' && e.id !== 'metronome' ? [e.id] : [])),
-  'split', 'waveform-view', 'status-cue', 'status-info', 'selection-timecodes', 'selection-duration',
+  'split', 'status-cue', 'status-info', 'selection-timecodes', 'selection-duration',
   // The cog removes like any tool since 2026-11-16 (a right-click on any
   // toolbar opens this builder), and is added back from here
   CUSTOMISE_TOOL_ID,

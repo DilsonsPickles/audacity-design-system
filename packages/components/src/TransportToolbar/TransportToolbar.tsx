@@ -270,7 +270,7 @@ export function transportToolMeta(
 ): ToolMeta | undefined {
   switch (id) {
     case 'play': case 'stop': case 'record': case 'step-back': case 'step-forward': case 'loop':
-    case 'automation': case 'split': case 'spectral-editing': case 'waveform-view':
+    case 'automation': case 'split': case 'spectral-editing':
     case 'zoom-in': case 'zoom-out': case 'fit-selection': case 'fit-project': case 'zoom-toggle':
     case 'collapse-tracks': case 'expand-tracks': case 'fit-tracks-height':
     case 'cut': case 'copy': case 'paste': case 'trim': case 'silence':
@@ -626,7 +626,6 @@ export function TransportTools({
       case 'automation': return show('automation') ? <ToggleToolButton icon="automation" ariaLabel="Clip envelope" isActive={envelopeMode} onClick={onToggleEnvelope} /> : null;
       case 'split': return show('cut') ? <ToggleToolButton icon="split" ariaLabel="Cut / Split" isActive={splitMode} onClick={onToggleSplit} /> : null;
       case 'spectral-editing': return show('spectral-editing') ? <ToggleToolButton icon="spectrogram" ariaLabel="Spectral view" isActive={spectrogramMode} onClick={onToggleSpectrogram} /> : null;
-      case 'waveform-view': return <ToggleToolButton icon="waveform" ariaLabel="Waveform" isActive={spectrogramMode} onClick={onToggleSpectrogram} />;
 
       case 'zoom-in': return show('zoom-in') ? <ToolButton icon="zoom-in" ariaLabel="Zoom in" onClick={onZoomIn} /> : null;
       case 'zoom-out': return show('zoom-out') ? <ToolButton icon="zoom-out" ariaLabel="Zoom out" onClick={onZoomOut} /> : null;
