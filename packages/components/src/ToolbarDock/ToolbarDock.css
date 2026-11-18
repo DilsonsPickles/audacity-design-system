@@ -560,3 +560,39 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 ) {
   background-color: transparent;
 }
+
+/* IN THE ISLANDS THE RESIZE EDGE IS THE CARD'S EDGE (2026-11-18, "I want
+   the group resize to feel like you're hovering over the edge of the group
+   container"): the zone straddles the card's own border — 8px, half in the
+   card, half in the gap after it — no pill and no fill of its own; on hover
+   and while dragging, THE CARD'S EDGE lights in the accent, 2px, so it reads
+   as taking hold of the container's side (its foot in a column) */
+.toolbar-dock--islands .toolbar-dock__resize {
+  top: -1px;
+  bottom: -1px;
+  right: -5px;
+  width: 8px;
+  background-color: transparent !important;
+}
+.toolbar-dock--islands .toolbar-dock__resize::after { display: none; }
+.toolbar-dock--islands .toolbar-dock__bar { transition: border-color 0.06s ease, box-shadow 0.06s ease; }
+.toolbar-dock--islands .toolbar-dock__bar:has(> .toolbar-dock__resize:hover),
+.toolbar-dock--islands .toolbar-dock__bar:has(> .toolbar-dock__resize--active) {
+  border-right-color: var(--toolbar-dock-accent);
+  box-shadow: 1px 0 0 0 var(--toolbar-dock-accent);
+}
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__resize {
+  top: auto;
+  left: -1px;
+  right: -1px;
+  bottom: -5px;
+  width: auto;
+  height: 8px;
+}
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__bar:has(> .toolbar-dock__resize:hover),
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__bar:has(> .toolbar-dock__resize--active) {
+  border-right-color: var(--toolbar-island-border);
+  border-bottom-color: var(--toolbar-dock-accent);
+  box-shadow: 0 1px 0 0 var(--toolbar-dock-accent);
+}
+@media (prefers-reduced-motion: reduce) { .toolbar-dock--islands .toolbar-dock__bar { transition: none; } }
