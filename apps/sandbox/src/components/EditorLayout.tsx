@@ -46,7 +46,7 @@ import { ClipPropertiesDockPanel } from './editor/ClipPropertiesDockPanel';
 import { useClipPropertiesHotkey } from '../hooks/useClipPropertiesHotkey';
 import { useFadeDialogHotkey } from '../hooks/useFadeDialogHotkey';
 import { usePlayheadClipHotkeys } from '../hooks/usePlayheadClipHotkeys';
-import { type DockPanelId, type PanelSide, DOCK_PANEL_LABELS } from './editor/dockPanels';
+import { type DockPanelId, type PanelSide, DOCK_PANEL_LABELS, WINDOWLESS_PANELS } from './editor/dockPanels';
 import { useTrackPanelHandlers } from '../hooks/useTrackPanelHandlers';
 import {
   findTrackControlPanelByIndex,
@@ -160,6 +160,15 @@ export interface EditorLayoutProps {
   // Mixer panel
   showMixer?: boolean;
 
+  /** THE CUSTOMISE TOOLBARS PANEL — the tool bank, docked (2026-11-18):
+   *  App owns whether it is open and draws its content (the tiles drag into
+   *  App's toolbars); the panel docks left, right or in the drawer here */
+  toolBank?: {
+    isOpen: boolean;
+    render: (placement: 'side' | 'bottom') => React.ReactNode;
+    onClose: () => void;
+  };
+
   // MuseHub marketplace modal — lifted to App.tsx so the project toolbar
   // can trigger it from outside the track UI.
   marketplaceModal: {
@@ -220,6 +229,7 @@ export function EditorLayout(props: EditorLayoutProps) {
     theme, canvasHeight, setCanvasHeight,
     clickRulerToStartPlayback, punchPointPosition, snapEnabled,
     showMixer,
+    toolBank,
   } = props;
 
   const {
@@ -311,7 +321,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   // ⌥F / ⌥T / ⌥S / ⌥Enter from a TRACK: the clip under the playhead (2026-10-13)
   usePlayheadClipHotkeys();
   const [leftDockActiveTab, setLeftDockActiveTab] = React.useState<DockPanelId>('effects');
-  const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'mixer', 'macros', 'clip-properties']);
+  const [leftDockTabOrder, setLeftDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'mixer', 'macros', 'clip-properties', 'toolbars']);
   // Effects panel placement — docked left (the classic position), docked
   // right, in the BOTTOM DRAWER (2026-11-10, its sections side by side), or
   // floating in its own OS window, moved via its tab's kebab menu or by
@@ -319,11 +329,14 @@ export function EditorLayout(props: EditorLayoutProps) {
   const [effectsPanelSide, setEffectsPanelSide] = React.useState<PanelSide>('left');
   // The right dock hosts Effects and/or Macros as tabs, mirroring the left
   const [rightDockActiveTab, setRightDockActiveTab] = React.useState<DockPanelId>('macros');
-  const [rightDockTabOrder, setRightDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'mixer', 'macros', 'clip-properties']);
+  const [rightDockTabOrder, setRightDockTabOrder] = React.useState<Array<DockPanelId>>(['effects', 'mixer', 'macros', 'clip-properties', 'toolbars']);
   // The MIXER's placement (2026-11-10, "let me put the mixer on left or
   // right"): the bottom drawer (where it always was), a side dock, or its
   // own OS window — its open state is still App's (showMixer)
   const [mixerPanelSide, setMixerPanelSide] = React.useState<PanelSide>('bottom');
+  // The CUSTOMISE TOOLBARS panel's placement (2026-11-18): the drawer
+  // first (its tiles want the width), a side dock — never a window
+  const [toolBankSide, setToolBankSide] = React.useState<Exclude<PanelSide, 'window'>>('bottom');
   // Which tab's kebab menu is open. Closing a panel lives in this menu —
   // panel headers deliberately have no close button (2026-09-10).
   const [dockMenu, setDockMenu] = React.useState<{ x: number; y: number; tab: DockPanelId } | null>(null);
@@ -347,6 +360,10 @@ export function EditorLayout(props: EditorLayoutProps) {
   const mixerDockedRight = mixerOpen && mixerPanelSide === 'right';
   const mixerDockedBottom = mixerOpen && mixerPanelSide === 'bottom';
   const mixerInWindow = mixerOpen && mixerPanelSide === 'window';
+  const bankOpen = activeMenuItem !== 'export' && !!toolBank?.isOpen;
+  const bankDockedLeft = bankOpen && toolBankSide === 'left';
+  const bankDockedRight = bankOpen && toolBankSide === 'right';
+  const bankDockedBottom = bankOpen && toolBankSide === 'bottom';
   // The mixer is closed through App's listener, as the drawer always did
   const closeMixer = React.useCallback(() => { window.dispatchEvent(new CustomEvent('close-mixer-panel')); }, []);
   // The drawer's open tabs — what its panels show
@@ -357,8 +374,9 @@ export function EditorLayout(props: EditorLayoutProps) {
     if (effectsDockedBottom && effectsPanel) ids.add('effects');
     if (macrosDockedBottom) ids.add('macros');
     if (propsDockedBottom) ids.add('clip-properties');
+    if (bankDockedBottom) ids.add('toolbars');
     return ids;
-  }, [mixerDockedBottom, state.pianoRollOpen, state.pianoRollTrackIndex, effectsDockedBottom, effectsPanel, macrosDockedBottom, propsDockedBottom]);
+  }, [mixerDockedBottom, state.pianoRollOpen, state.pianoRollTrackIndex, effectsDockedBottom, effectsPanel, macrosDockedBottom, propsDockedBottom, bankDockedBottom]);
   const moveDrawerTabTo = React.useCallback((tab: DrawerTabId, target: DrawerTarget) => {
     setDrawerGroups((groups) => moveDrawerTab(groups, tab, target));
     setDrawerActiveTab(tab);
@@ -387,6 +405,11 @@ export function EditorLayout(props: EditorLayoutProps) {
     if (isClipPropertiesOpen && clipPropertiesSide === 'right') setRightDockActiveTab('clip-properties');
     if (isClipPropertiesOpen && clipPropertiesSide === 'bottom') setDrawerActiveTab('clip-properties');
   }, [isClipPropertiesOpen, clipPropertiesSide]);
+  React.useEffect(() => {
+    if (toolBank?.isOpen && toolBankSide === 'left') setLeftDockActiveTab('toolbars');
+    if (toolBank?.isOpen && toolBankSide === 'right') setRightDockActiveTab('toolbars');
+    if (toolBank?.isOpen && toolBankSide === 'bottom') setDrawerActiveTab('toolbars');
+  }, [toolBank?.isOpen, toolBankSide]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const macrosTabDef: PanelHeaderTab = { id: 'macros', label: 'Macro manager' };
   const leftDockTabDefs: Record<DockPanelId, PanelHeaderTab> = {
@@ -394,12 +417,14 @@ export function EditorLayout(props: EditorLayoutProps) {
     macros: macrosTabDef,
     'clip-properties': { id: 'clip-properties', label: DOCK_PANEL_LABELS['clip-properties'] },
     mixer: { id: 'mixer', label: DOCK_PANEL_LABELS.mixer },
+    toolbars: { id: 'toolbars', label: DOCK_PANEL_LABELS.toolbars },
   };
   const openLeftDockIds = new Set<string>();
   if (mixerDockedLeft) openLeftDockIds.add('mixer');
   if (effectsDockedLeft) openLeftDockIds.add('effects');
   if (macrosDockedLeft) openLeftDockIds.add('macros');
   if (propsDockedLeft) openLeftDockIds.add('clip-properties');
+  if (bankDockedLeft) openLeftDockIds.add('toolbars');
   const leftDockTabs: PanelHeaderTab[] = leftDockTabOrder
     .filter((id) => openLeftDockIds.has(id))
     .map((id) => leftDockTabDefs[id]);
@@ -412,6 +437,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   if (effectsDockedRight) openRightDockIds.add('effects');
   if (macrosDockedRight) openRightDockIds.add('macros');
   if (propsDockedRight) openRightDockIds.add('clip-properties');
+  if (bankDockedRight) openRightDockIds.add('toolbars');
   const rightDockTabs: PanelHeaderTab[] = rightDockTabOrder
     .filter((id) => openRightDockIds.has(id))
     .map((id) => leftDockTabDefs[id]);
@@ -483,6 +509,8 @@ export function EditorLayout(props: EditorLayoutProps) {
     }
     if (panel === 'mixer') {
       setMixerPanelSide(zone);
+    } else if (panel === 'toolbars') {
+      setToolBankSide(zone);
     } else if (panel === 'effects') {
       setEffectsPanelSide(zone);
     } else if (panel === 'macros') {
@@ -512,6 +540,27 @@ export function EditorLayout(props: EditorLayoutProps) {
     tabId: string,
     e: { clientX: number; clientY: number; screenX: number; screenY: number; pointerId: number },
   ) => {
+    // THE CUSTOMISE TOOLBARS PANEL DRAGS IN THE WINDOW (2026-11-18, "why
+    // can't I drag to move customise toolbar panel to top/left/bottom?"): it
+    // has no OS window to tear into, so its tab pulled out of the header
+    // starts an in-window drag instead — the drag-to-dock zones light, a chip
+    // of its name follows the pointer, and the release docks it there
+    if (tabId === 'toolbars') {
+      const move = (ev: PointerEvent) => { setBankDragAt({ x: ev.clientX, y: ev.clientY }); dockDragMove('toolbars', ev.clientX, ev.clientY); };
+      const up = (ev: PointerEvent) => {
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        document.body.removeAttribute('data-panel-drag');
+        setBankDragAt(null);
+        dockDragEnd('toolbars', ev.clientX, ev.clientY);
+      };
+      document.addEventListener('pointermove', move);
+      document.addEventListener('pointerup', up);
+      document.body.setAttribute('data-panel-drag', '');
+      setBankDragAt({ x: e.clientX, y: e.clientY });
+      dockDragMove('toolbars', e.clientX, e.clientY);
+      return;
+    }
     if (tabId !== 'effects' && tabId !== 'macros' && tabId !== 'clip-properties' && tabId !== 'mixer') return;
     // Keep pointer events flowing to this document even when the cursor
     // leaves the app window mid-drag (the torn panel is an OS window)
@@ -522,6 +571,9 @@ export function EditorLayout(props: EditorLayoutProps) {
     else setClipPropertiesSide('window');
     setPanelTearDrag({ panel: tabId, clientX: e.clientX, clientY: e.clientY, screenX: e.screenX, screenY: e.screenY });
   };
+
+  /** Where the Customise toolbars chip is while its tab is dragged */
+  const [bankDragAt, setBankDragAt] = React.useState<{ x: number; y: number } | null>(null);
 
   const handlePopoutDragEnd = (panel: DockPanelId) => (x: number, y: number) => {
     setPanelTearDrag(null);
@@ -865,6 +917,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           )}
           {activeLeftDockTab === 'macros' && macrosDockedLeft && <MacrosDockPanel placement="start" />}
           {activeLeftDockTab === 'clip-properties' && propsDockedLeft && <ClipPropertiesDockPanel placement="start" />}
+          {activeLeftDockTab === 'toolbars' && bankDockedLeft && toolBank?.render('side')}
         </DockPanel>
       )}
       {/* The toolbar dock on the left panels' inner edge (2026-11-10) */}
@@ -1684,6 +1737,7 @@ export function EditorLayout(props: EditorLayoutProps) {
           )}
           {activeRightDockTab === 'macros' && macrosDockedRight && <MacrosDockPanel placement="end" />}
           {activeRightDockTab === 'clip-properties' && propsDockedRight && <ClipPropertiesDockPanel placement="end" />}
+          {activeRightDockTab === 'toolbars' && bankDockedRight && toolBank?.render('side')}
         </DockPanel>
       )}
     </div>
@@ -1693,6 +1747,20 @@ export function EditorLayout(props: EditorLayoutProps) {
         HOVERED zone previews the panel's actual docked footprint (full
         row height at the dock's width — per Alexander's build mockup),
         so "drop to dock here" also says exactly WHERE it will land. */}
+    {bankDragAt && (
+      <div
+        aria-hidden="true"
+        data-panel-drag-chip
+        style={{
+          position: 'fixed', left: bankDragAt.x + 12, top: bankDragAt.y + 12, zIndex: 9000, pointerEvents: 'none',
+          padding: '4px 8px', borderRadius: 4, fontSize: 12, whiteSpace: 'nowrap',
+          background: theme.background.menu.background, color: theme.foreground.text.primary,
+          border: `1px solid ${theme.border.default}`, boxShadow: '0 6px 18px rgba(0, 0, 0, 0.25)',
+        }}
+      >
+        {DOCK_PANEL_LABELS.toolbars}
+      </div>
+    )}
     {panelDrag && (() => {
       const r = panelDrag.rowRect;
       const inset = 4;
@@ -1829,9 +1897,10 @@ export function EditorLayout(props: EditorLayoutProps) {
           is not already in, then Close (dockPanels.ts). */}
       {dockMenu && (() => {
         const tab = dockMenu.tab;
-        const side = tab === 'mixer' ? mixerPanelSide : tab === 'effects' ? effectsPanelSide : tab === 'macros' ? macrosPanelSide : clipPropertiesSide;
+        const side: PanelSide = tab === 'mixer' ? mixerPanelSide : tab === 'toolbars' ? toolBankSide : tab === 'effects' ? effectsPanelSide : tab === 'macros' ? macrosPanelSide : clipPropertiesSide;
         const place = (next: PanelSide) => {
           if (tab === 'mixer') setMixerPanelSide(next);
+          else if (tab === 'toolbars') { if (next !== 'window') setToolBankSide(next); }
           else if (tab === 'effects') setEffectsPanelSide(next);
           else if (tab === 'macros') setMacrosPanelSide(next);
           else setClipPropertiesSide(next);
@@ -1839,6 +1908,7 @@ export function EditorLayout(props: EditorLayoutProps) {
         };
         const close = () => {
           if (tab === 'mixer') closeMixer();
+          else if (tab === 'toolbars') toolBank?.onClose();
           else if (tab === 'effects') setEffectsPanel(null);
           else if (tab === 'macros') setIsMacrosPanelOpen(false);
           else setIsClipPropertiesOpen(false);
@@ -1849,7 +1919,7 @@ export function EditorLayout(props: EditorLayoutProps) {
             {side !== 'left' && <ContextMenuItem label="Dock left" onClick={() => place('left')} />}
             {side !== 'right' && <ContextMenuItem label="Dock right" onClick={() => place('right')} />}
             {side !== 'bottom' && <ContextMenuItem label="Dock bottom" onClick={() => place('bottom')} />}
-            {side !== 'window' && <ContextMenuItem label="Open in window" onClick={() => place('window')} />}
+            {side !== 'window' && !WINDOWLESS_PANELS.has(tab) && <ContextMenuItem label="Open in window" onClick={() => place('window')} />}
             {/* In the drawer: its moves between the drawer's panels */}
             {side === 'bottom' && drawerMoveTargets(drawerGroups, drawerOpenIds, tab).length > 0 && <ContextMenuItem isDivider label="" />}
             {side === 'bottom' && drawerMoveTargets(drawerGroups, drawerOpenIds, tab).map((m) => (
@@ -1889,6 +1959,9 @@ export function EditorLayout(props: EditorLayoutProps) {
       clipPropertiesOpen={propsDockedBottom}
       onCloseClipProperties={() => setIsClipPropertiesOpen(false)}
       onClipPropertiesMenuClick={openClipPropertiesDockMenu}
+      toolBank={bankDockedBottom ? toolBank?.render('bottom') : null}
+      onCloseToolBank={toolBank?.onClose}
+      onToolBankMenuClick={(e) => { const rect = e.currentTarget.getBoundingClientRect(); setDockMenu({ x: rect.right, y: rect.bottom, tab: 'toolbars' }); }}
       onTabTearOff={handleDockTabTearOff}
       state={state}
       theme={theme}

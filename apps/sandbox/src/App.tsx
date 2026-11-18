@@ -396,6 +396,12 @@ function CanvasDemoContent() {
   // BESIDE one for a toolbar of its own. Done or Escape leaves it; it
   // ends with the Project tab
   const [toolbarEditing, setToolbarEditing] = React.useState(false);
+  // THE CUSTOMISE TOOLBARS PANEL (2026-11-18, the tool bank, dockable): open
+  // or not is App's; the toolbars stay usable while it is open, and its
+  // Rearrange is the edit mode above. Closing it ends the edit mode too
+  const [toolBankOpen, setToolBankOpen] = React.useState(false);
+  const openToolBank = (rearrange = false) => { setToolBankOpen(true); if (rearrange) setToolbarEditing(true); };
+  const closeToolBank = () => { setToolBankOpen(false); setToolbarEditing(false); };
   // THE TOOLBAR BUILDER (2026-11-11): the cog menu's "Rearrange tools…" opens
   // it, in place of the in-place edit mode (the grips still drag)
   const [toolbarBuilderOpen, setToolbarBuilderOpen] = React.useState(false);
@@ -1495,7 +1501,7 @@ function CanvasDemoContent() {
     onOpenPlotSpectrum: () => setIsPlotSpectrumOpen(true),
     onResetWorkspace: activeMenuItem === 'home' ? undefined : resetWorkspace,
     onNewWorkspace: activeMenuItem === 'home' ? undefined : () => setWorkspaceDialog({ mode: 'new' }),
-    onEditToolbars: activeMenuItem === 'home' ? undefined : () => { setBuilderBarId(null); setToolbarEditing(true); },
+    onEditToolbars: activeMenuItem === 'home' ? undefined : () => { setBuilderBarId(null); openToolBank(); },
     onEditToolbarsAsList: activeMenuItem === 'home' ? undefined : () => { setBuilderBarId(null); setToolbarBuilderOpen(true); },
   });
 
@@ -1642,7 +1648,7 @@ function CanvasDemoContent() {
       workspace: baseWorkspace,
       layoutEditing: toolbarEditing,
       // the cog's "Rearrange tools…" opens the TOOL BANK (2026-11-18)
-      onLayoutEditingChange: (on: boolean) => { if (on) setBuilderBarId(null); setToolbarEditing(on); },
+      onLayoutEditingChange: (on: boolean) => { if (on) { setBuilderBarId(null); openToolBank(true); } else setToolbarEditing(false); },
       onResetLayout: toolbarLayout.resetLayout,
       layoutCustomised: toolbarLayout.customised,
       varispeed: playback.varispeed,
@@ -1984,6 +1990,24 @@ function CanvasDemoContent() {
         />
         <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <EditorLayout
+          // THE CUSTOMISE TOOLBARS PANEL (2026-11-18): the tool bank, docked
+          toolBank={{
+            isOpen: toolBankOpen,
+            onClose: closeToolBank,
+            render: (placement) => (
+              <ToolBank
+                layout={toolbarLayout.layout}
+                onTileMouseDown={(toolId, e, rect) => toolDrag.onToolMouseDown(toolId, '', e, rect)}
+                removing={toolDrag.removing}
+                draggingToolId={toolDrag.draggingToolId}
+                rearranging={toolbarEditing}
+                onRearrangeChange={setToolbarEditing}
+                onEditAsList={() => { closeToolBank(); setToolbarBuilderOpen(true); }}
+                placement={placement}
+                os={preferences.operatingSystem}
+              />
+            ),
+          }}
           innerLeftToolbarDock={(
             <AppToolbarDock
               region="left-inner"
@@ -2195,16 +2219,6 @@ function CanvasDemoContent() {
           />
         )}
       />
-      {toolbarEditing && activeMenuItem === 'project' && (
-        <ToolBank
-          layout={toolbarLayout.layout}
-          onTileMouseDown={(toolId, e, rect) => toolDrag.onToolMouseDown(toolId, '', e, rect)}
-          removing={toolDrag.removing}
-          draggingToolId={toolDrag.draggingToolId}
-          onDone={() => setToolbarEditing(false)}
-          onEditAsList={() => { setToolbarEditing(false); setToolbarBuilderOpen(true); }}
-        />
-      )}
       <ToolbarBarMenu
         menu={barMenu}
         onClose={() => setBarMenu(null)}
@@ -2212,7 +2226,7 @@ function CanvasDemoContent() {
         editLayout={toolbarLayout.editLayout}
         fitsVertical={barFitsVertical}
         toolFitsVertical={toolFitsVertical}
-        onEditToolbars={(barId) => { setBuilderBarId(barId); setToolbarEditing(true); }}
+        onEditToolbars={(barId) => { setBuilderBarId(barId); openToolBank(); }}
         os={preferences.operatingSystem}
       />
       <WorkspaceNameDialog

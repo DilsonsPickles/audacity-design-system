@@ -430,10 +430,10 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
       return item as HTMLElement;
     });
     fireEvent.click(edit);
-    // …which opens the TOOL BANK over the live toolbars (2026-11-18), whose
+    // …which opens the TOOL BANK panel (2026-11-18), the toolbars live, whose
     // "Edit as list…" is the tree editor
     await waitFor(() => expect(document.body.querySelector('[data-tool-bank]')).toBeTruthy());
-    expect(container.querySelector('.toolbar-dock--editing')).toBeTruthy();
+    expect(container.querySelector('.toolbar-dock--editing')).toBeNull();
     fireEvent.click(Array.from(document.body.querySelectorAll<HTMLElement>('[data-tool-bank] button')).find((b) => b.textContent?.includes('Edit as list'))!);
     await waitFor(() => expect(document.body.querySelector('[data-toolbar-builder]')).toBeTruthy());
     expect(document.body.querySelector('[data-tool-bank]')).toBeNull();
@@ -469,7 +469,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     ).toEqual(['status', 'bar-2']));
   });
 
-  it('THE TOOL BANK (2026-11-18, "build the bank"): View › Edit toolbars… opens it over the live toolbars in their edit mode; a tile dragged onto the toolbars is added; Done leaves', async () => {
+  it('THE TOOL BANK, A DOCKABLE PANEL (2026-11-18, "build the bank", then "could this customise toolbar be a panel that\'s dockable?" → "stay usable"): View › Edit toolbars… opens it in the drawer with the toolbars LIVE; a tile dragged onto them is added; an Option-drag back onto the panel takes it off, silently; Rearrange is the edit mode; Close from its tab menu', async () => {
     const { container, getByText } = renderApp();
     fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
@@ -481,7 +481,9 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
       if (!el) throw new Error('not yet');
       return el;
     });
-    expect(container.querySelector('.toolbar-dock--editing')).toBeTruthy();
+    // docked in the drawer, its own tab; the toolbars stay usable
+    expect(bank.closest('[data-bottom-drawer]')).toBeTruthy();
+    expect(container.querySelector('.toolbar-dock--editing')).toBeNull();
     // a tool on no toolbar waits under its heading; the separator and space lead
     expect(bank.querySelector('[data-bank-tool="bank-separator"]')).toBeTruthy();
     expect(bank.querySelector('[data-bank-tool="bank-spacer"]')).toBeTruthy();
@@ -494,21 +496,38 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     fireEvent.mouseMove(document, { clientX: 300, clientY: 10 });
     fireEvent.mouseUp(document, { clientX: 300, clientY: 10 });
     await waitFor(() => expect(container.querySelector('[data-toolbar-tool="waveform-view"]')).toBeTruthy());
-    // it now sits under "On a toolbar"
-    await waitFor(() => expect(bank.textContent).toContain('On a toolbar'));
-    // dragged back off onto the bank it comes off — with NO toast while the
-    // bank is open ("this tool removed toast is so annoying")
+    await waitFor(() => expect(document.body.querySelector('[data-tool-bank]')!.textContent).toContain('On a toolbar'));
+    // an OPTION-drag back off onto the panel takes it off — silently
     const placed = container.querySelector<HTMLElement>('[data-toolbar-tool="waveform-view"]')!;
-    fireEvent.mouseDown(placed, { button: 0, clientX: 300, clientY: 20 });
+    fireEvent.mouseDown(placed, { button: 0, altKey: true, clientX: 300, clientY: 20 });
     fireEvent.mouseMove(document, { clientX: 300, clientY: 300 });
     fireEvent.mouseMove(document, { clientX: 300, clientY: 500 });
     fireEvent.mouseUp(document, { clientX: 300, clientY: 500 });
     await waitFor(() => expect(container.querySelector('[data-toolbar-tool="waveform-view"]')).toBeNull());
     expect(document.body.textContent).not.toContain('Tool removed');
-    // Done leaves the mode
-    fireEvent.click(Array.from(bank.querySelectorAll<HTMLElement>('button')).find((b) => b.textContent?.trim() === 'Done')!);
+    // REARRANGE is the edit mode, on and off
+    const rearrange = () => document.body.querySelector<HTMLElement>('[data-tool-bank] .tool-bank__rearrange')!;
+    fireEvent.click(rearrange());
+    await waitFor(() => expect(container.querySelector('.toolbar-dock--editing')).toBeTruthy());
+    fireEvent.click(rearrange());
+    await waitFor(() => expect(container.querySelector('.toolbar-dock--editing')).toBeNull());
+    // its TAB DRAGS IN THE WINDOW ("why can't I drag to move customise
+    // toolbar panel"): pulled out of the header, a chip follows the pointer
+    // and the drag-to-dock zones light; no OS window opens
+    const tab = Array.from(document.body.querySelectorAll<HTMLElement>('[data-bottom-drawer] [role="tab"]')).find((t) => t.textContent?.includes('Customise toolbars'))!;
+    fireEvent.pointerDown(tab, { button: 0, clientX: 100, clientY: 600, pointerId: 1 });
+    fireEvent.pointerMove(document, { clientX: 100, clientY: 540, pointerId: 1 });
+    await waitFor(() => expect(document.body.querySelector('[data-panel-drag-chip]')).toBeTruthy());
+    fireEvent.pointerUp(document, { clientX: 100, clientY: 540, pointerId: 1 });
+    await waitFor(() => expect(document.body.querySelector('[data-panel-drag-chip]')).toBeNull());
+    expect(document.body.querySelector('[data-tool-bank]')).toBeTruthy();
+    // Close, from its tab's menu (no Open in window: its tiles drag into this window)
+    fireEvent.click(document.body.querySelector<HTMLElement>('[data-bottom-drawer] button[aria-label="Customise toolbars menu"]')!);
+    const labels = () => Array.from(document.body.querySelectorAll('.context-menu-item-label')).map((e) => e.textContent);
+    await waitFor(() => expect(labels()).toContain('Close'));
+    expect(labels()).not.toContain('Open in window');
+    fireEvent.click(Array.from(document.body.querySelectorAll<HTMLElement>('.context-menu-item')).find((e) => e.textContent?.includes('Close'))!);
     await waitFor(() => expect(document.body.querySelector('[data-tool-bank]')).toBeNull());
-    expect(container.querySelector('.toolbar-dock--editing')).toBeNull();
   });
 
   it('THE EDITOR\'S PREVIEW (2026-11-18, "a REAPER style preview"): the selected toolbar drawn with its real tools, redrawn on every edit; a click on a tool in it selects that tool in the tree', async () => {

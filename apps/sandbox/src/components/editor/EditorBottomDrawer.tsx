@@ -10,7 +10,7 @@ import { ClipPropertiesDockPanel } from './ClipPropertiesDockPanel';
 import { MixerDockPanel } from './MixerDockPanel';
 import { activeDrawerTab, visibleDrawerGroups, type DrawerGroup, type DrawerTarget } from '../../utils/drawerGroups';
 
-export type DrawerTabId = 'mixer' | 'piano-roll' | 'effects' | 'macros' | 'clip-properties';
+export type DrawerTabId = 'mixer' | 'piano-roll' | 'effects' | 'macros' | 'clip-properties' | 'toolbars';
 
 export interface EditorBottomDrawerProps {
   /** Same TracksState object EditorLayout reads today — passed through
@@ -69,6 +69,10 @@ export interface EditorBottomDrawerProps {
   clipPropertiesOpen?: boolean;
   onCloseClipProperties?: () => void;
   onClipPropertiesMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  /** The Customise toolbars panel (the tool bank), when docked here (2026-11-18) */
+  toolBank?: React.ReactNode;
+  onCloseToolBank?: () => void;
+  onToolBankMenuClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   /** A dockable panel's tab dragged UP out of the drawer's header: the
    *  host pops it into its OS window mid-gesture, as the side docks do
    *  (2026-10-02 — the drawer had no way out but the kebab menu). Only
@@ -120,6 +124,9 @@ export function EditorBottomDrawer({
   clipPropertiesOpen,
   onCloseClipProperties,
   onClipPropertiesMenuClick,
+  toolBank,
+  onCloseToolBank,
+  onToolBankMenuClick,
   onTabTearOff,
 }: EditorBottomDrawerProps) {
   const dispatch = useTracksDispatch();
@@ -140,6 +147,7 @@ export function EditorBottomDrawer({
     effects: { id: 'effects', label: 'Effects' },
     macros: { id: 'macros', label: 'Macro manager' },
     'clip-properties': { id: 'clip-properties', label: 'Clip properties' },
+    toolbars: { id: 'toolbars', label: 'Customise toolbars' },
   };
 
   // Close a drawer tab. The mixer is controlled by App.tsx's
@@ -157,6 +165,8 @@ export function EditorBottomDrawer({
       onCloseMacros?.();
     } else if (tabId === 'clip-properties') {
       onCloseClipProperties?.();
+    } else if (tabId === 'toolbars') {
+      onCloseToolBank?.();
     }
   };
 
@@ -213,6 +223,7 @@ export function EditorBottomDrawer({
       {/* Macros content — same sandbox wiring as the side docks */}
       {tab === 'macros' && macrosOpen && <MacrosDockPanel placement="end" />}
       {tab === 'clip-properties' && clipPropertiesOpen && <ClipPropertiesDockPanel placement="end" layout="columns" />}
+      {tab === 'toolbars' && toolBank}
 
       {/* Mixer content */}
       {tab === 'mixer' && mixerOpen && (
@@ -431,7 +442,7 @@ export function EditorBottomDrawer({
                 onTabChange={(tabId) => onActivateTab(tabId as DrawerTabId)}
                 onTabReorder={(newTabs) => onReorderGroup(group.id, newTabs.map((t) => t.id as DrawerTabId))}
                 onTabTearOff={onTabTearOff
-                  ? (tabId, e) => { if (tabId === 'mixer' || tabId === 'effects' || tabId === 'macros' || tabId === 'clip-properties') onTabTearOff(tabId, e); }
+                  ? (tabId, e) => { if (tabId === 'mixer' || tabId === 'effects' || tabId === 'macros' || tabId === 'clip-properties' || tabId === 'toolbars') onTabTearOff(tabId, e); }
                   : undefined}
                 onMenuClick={activeTab === 'mixer' && onMixerMenuClick
                   ? onMixerMenuClick
@@ -441,6 +452,8 @@ export function EditorBottomDrawer({
                   ? onMacrosMenuClick
                   : activeTab === 'clip-properties'
                   ? onClipPropertiesMenuClick
+                  : activeTab === 'toolbars' && onToolBankMenuClick
+                  ? onToolBankMenuClick
                   : (e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
                     setTabMenu({ x: rect.right, y: rect.bottom, tab: activeTab });

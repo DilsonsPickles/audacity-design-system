@@ -21,7 +21,7 @@ export interface DrawerGroup {
 export type DrawerTarget = { groupId: string } | { newGroupBefore: string | null };
 
 export const DEFAULT_DRAWER_GROUPS: DrawerGroup[] = [
-  { id: 'g1', tabs: ['mixer', 'piano-roll', 'effects', 'macros', 'clip-properties'], flex: 1 },
+  { id: 'g1', tabs: ['mixer', 'piano-roll', 'effects', 'macros', 'clip-properties', 'toolbars'], flex: 1 },
 ];
 
 const nextGroupId = (groups: DrawerGroup[]): string => {

@@ -6,7 +6,7 @@
  * fourth panel is a new id and a content branch, not a fourth copy of
  * the plumbing.
  */
-export type DockPanelId = 'effects' | 'macros' | 'clip-properties' | 'mixer';
+export type DockPanelId = 'effects' | 'macros' | 'clip-properties' | 'mixer' | 'toolbars';
 
 /** Where a panel can sit — every panel takes all four. (Effects never
  *  docked bottom until 2026-11-10, "the effects panel and macro manager
@@ -22,4 +22,12 @@ export const DOCK_PANEL_LABELS: Record<DockPanelId, string> = {
   // The mixer docks like the others since 2026-11-10 ("let me put the
   // mixer on left or right"); the drawer is where it starts
   mixer: 'Mixer',
+  // THE TOOL BANK as a panel (2026-11-18, "could this customise toolbar be
+  // a panel that's dockable?"): left, right or the drawer — NEVER an OS
+  // window, since its tiles are dragged onto the main window's toolbars and
+  // a mouse drag cannot cross from one window into another
+  toolbars: 'Customise toolbars',
 };
+
+/** A panel that cannot leave the main window (its content drags into it) */
+export const WINDOWLESS_PANELS: ReadonlySet<DockPanelId> = new Set(['toolbars']);

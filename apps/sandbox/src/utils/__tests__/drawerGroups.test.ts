@@ -20,14 +20,14 @@ describe('drawerGroups — the bottom drawer as a row of panels (2026-11-10)', (
   it('moveDrawerTab: into a new group beside, into another group, and the emptied group goes', () => {
     // Effects to a panel of its own at the right
     const a = moveDrawerTab(DEFAULT_DRAWER_GROUPS, 'effects', { newGroupBefore: null });
-    expect(ids(a)).toEqual([['mixer', 'piano-roll', 'macros', 'clip-properties'], ['effects']]);
+    expect(ids(a)).toEqual([['mixer', 'piano-roll', 'macros', 'clip-properties', 'toolbars'], ['effects']]);
     expect(a[1].id).toBe('g2');
     // …and the mixer to the left of it, its own panel
     const b = moveDrawerTab(a, 'mixer', { newGroupBefore: 'g2' });
-    expect(ids(b)).toEqual([['piano-roll', 'macros', 'clip-properties'], ['mixer'], ['effects']]);
+    expect(ids(b)).toEqual([['piano-roll', 'macros', 'clip-properties', 'toolbars'], ['mixer'], ['effects']]);
     // the mixer joins the effects panel: its own panel empties and goes
     const c = moveDrawerTab(b, 'mixer', { groupId: 'g2' });
-    expect(ids(c)).toEqual([['piano-roll', 'macros', 'clip-properties'], ['effects', 'mixer']]);
+    expect(ids(c)).toEqual([['piano-roll', 'macros', 'clip-properties', 'toolbars'], ['effects', 'mixer']]);
     // nothing to do: into its own group, beside itself when alone, an unknown target
     expect(moveDrawerTab(a, 'mixer', { groupId: 'g1' })).toBe(a);
     expect(moveDrawerTab(a, 'effects', { newGroupBefore: null })).toBe(a);
@@ -36,7 +36,7 @@ describe('drawerGroups — the bottom drawer as a row of panels (2026-11-10)', (
   });
 
   it('reorderDrawerGroup keeps the closed tabs after the shown order', () => {
-    expect(ids(reorderDrawerGroup(DEFAULT_DRAWER_GROUPS, 'g1', ['effects', 'mixer']))).toEqual([['effects', 'mixer', 'piano-roll', 'macros', 'clip-properties']]);
+    expect(ids(reorderDrawerGroup(DEFAULT_DRAWER_GROUPS, 'g1', ['effects', 'mixer']))).toEqual([['effects', 'mixer', 'piano-roll', 'macros', 'clip-properties', 'toolbars']]);
   });
 
   it('drawerMoveTargets: its own panel when it shares one, the panels either side when there are', () => {

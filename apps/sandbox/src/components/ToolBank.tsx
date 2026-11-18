@@ -6,16 +6,20 @@ import { useHiddenTools } from '../hooks/useHiddenTools';
 /**
  * THE TOOL BANK (2026-11-18, "what if we did a layout where the tools are in
  * a bank … and the toolbars are all visible and in their actual space?" →
- * the macOS Customize Toolbar model, "build the bank"): a panel over the
- * canvas's foot holding EVERY TOOL, while the REAL toolbars sit in their
- * edit mode — inert, outlined, every tool grabbable without a modifier.
- * Drag a tile ONTO a toolbar to add it (a hidden one is shown; one already
- * on a toolbar moves), BESIDE one for a toolbar of its own, or between rows
- * for a row of its own — the drag and its drop lines are the toolbars' own
- * (`useToolbarToolDrag`); drag a tool OFF a toolbar and let go over the bank
- * (or anywhere off the toolbars) to take it off. A SEPARATOR and a FLEXIBLE
- * SPACE come first and go INTO a toolbar only. Done or Escape leaves; "Edit
- * as list…" opens the tree editor, the keyboard's way to do all of this.
+ * the macOS Customize Toolbar model, "build the bank"), A DOCKABLE PANEL
+ * since the same day ("could this customise toolbar be a panel that's
+ * dockable?" → "stay usable"): the CUSTOMISE TOOLBARS panel, docked left,
+ * right or in the bottom drawer — never an OS window, since its tiles drag
+ * into the main window — holding EVERY TOOL. The toolbars STAY USABLE while
+ * it is open, so it can sit docked as a parts bin: drag a tile ONTO a
+ * toolbar to add it (a hidden one is shown; one already on a toolbar
+ * moves), BESIDE one for a toolbar of its own, or between rows for a row
+ * of its own — the toolbars' own tool drag (`useToolbarToolDrag`); Option-
+ * or ⌘-drag a tool on a toolbar to move it, or onto the bank to take it
+ * off. REARRANGE turns on the toolbars' edit mode — tools inert and
+ * outlined, any of them grabbed with a plain press — until it is turned off
+ * or Escape. A SEPARATOR and a FLEXIBLE SPACE lead and go INTO a toolbar
+ * only. "Edit as list…" opens the tree editor, the keyboard's way.
  */
 
 /** The bank's two layout items; a fresh separator / space id is made at the drop */
@@ -35,30 +39,24 @@ export interface ToolBankProps {
   removing: boolean;
   /** The tool in hand, from the bank or a toolbar */
   draggingToolId: string | null;
-  onDone: () => void;
+  /** The toolbars' edit mode: plain-press dragging, tools inert */
+  rearranging: boolean;
+  onRearrangeChange: (on: boolean) => void;
   onEditAsList: () => void;
+  /** A side dock (narrow: the controls stack) or the bottom drawer */
+  placement: 'side' | 'bottom';
+  os?: 'macos' | 'windows';
 }
 
 const TILE_GHOST = 28;
 
-export function ToolBank({ layout, onTileMouseDown, removing, draggingToolId, onDone, onEditAsList }: ToolBankProps) {
+export function ToolBank({ layout, onTileMouseDown, removing, draggingToolId, rearranging, onRearrangeChange, onEditAsList, placement, os = 'macos' }: ToolBankProps) {
   const { theme } = useTheme();
   const { hidden: hiddenList } = useHiddenTools();
   const hidden = React.useMemo(() => new Set(hiddenList), [hiddenList]);
   const [query, setQuery] = React.useState('');
-
-  // Over the canvas's foot, 12px above the bottom dock (the status bar)
-  const [bottom, setBottom] = React.useState(56);
-  React.useLayoutEffect(() => {
-    const measure = () => {
-      const docks = Array.from(document.querySelectorAll<HTMLElement>('.selection-toolbar'));
-      const top = docks.reduce((m, d) => { const r = d.getBoundingClientRect(); return r.height > 0 ? Math.min(m, r.top) : m; }, window.innerHeight);
-      setBottom(window.innerHeight - top + 12);
-    };
-    measure();
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, []);
+  const side = placement === 'side';
+  const modifier = os === 'windows' ? 'Alt' : 'Option';
 
   const q = query.trim().toLowerCase();
   const matches = (label: string) => !q || label.toLowerCase().includes(q);
@@ -101,50 +99,54 @@ export function ToolBank({ layout, onTileMouseDown, removing, draggingToolId, on
     <div style={{ gridColumn: '1 / -1', fontSize: 11, fontWeight: 600, color: theme.foreground.text.secondary, padding: '4px 0 0' }}>{text}</div>
   );
 
+  const hint = removing
+    ? 'Release to take it off the toolbars'
+    : rearranging
+      ? 'Drag any tool on the toolbars to move it, or onto this panel to remove it'
+      : `Drag a tool onto a toolbar. ${modifier}-drag one on a toolbar to move it, or onto this panel to remove it`;
+
   return (
     <div
       data-tool-bank
       data-removing={removing ? '' : undefined}
       role="region"
-      aria-label="Tool bank"
+      aria-label="Customise toolbars"
       style={{
-        position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom, zIndex: 1040,
-        width: 'min(960px, calc(100vw - 32px))', boxSizing: 'border-box',
-        display: 'flex', flexDirection: 'column', gap: 8, padding: 12,
-        background: theme.background.menu.background,
+        display: 'flex', flexDirection: 'column', gap: 8, padding: 12, boxSizing: 'border-box',
+        height: '100%', minHeight: 0, flex: '1 1 auto',
         color: theme.foreground.text.primary, fontSize: 12,
-        border: `1px solid ${removing ? theme.accent.primary : theme.border.default}`,
-        borderRadius: 8,
-        boxShadow: removing
-          ? `0 0 0 2px color-mix(in srgb, ${theme.accent.primary} 40%, transparent), 0 12px 32px rgba(0, 0, 0, 0.28)`
-          : '0 12px 32px rgba(0, 0, 0, 0.28)',
+        // a tool from a toolbar over the panel: it lights as the place to let go
+        outline: removing ? `2px solid ${theme.accent.primary}` : 'none', outlineOffset: -2,
+        background: removing ? `color-mix(in srgb, ${theme.accent.primary} 8%, transparent)` : undefined,
       }}
     >
       <style>{`
         .tool-bank__tile:hover { background: ${theme.background.surface.hover} !important; }
         body[data-toolbar-tool-drag] .tool-bank__tile { cursor: grabbing; }
       `}</style>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 auto', minWidth: 0 }}>
-          <span style={{ fontWeight: 600 }}>Customise toolbars</span>
-          <span data-tool-bank-hint style={{ color: removing ? theme.accent.primary : theme.foreground.text.secondary }}>
-            {removing
-              ? 'Release to take it off the toolbars'
-              : 'Drag a tool onto a toolbar, beside one, or between rows. Drag one off a toolbar to remove it.'}
-          </span>
-        </div>
-        <div style={{ width: 180, flex: '0 0 auto' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+        <span data-tool-bank-hint style={{ flex: side ? '1 1 100%' : '1 1 240px', minWidth: 0, color: removing ? theme.accent.primary : theme.foreground.text.secondary }}>
+          {hint}
+        </span>
+        <div style={{ flex: side ? '1 1 100%' : '0 0 180px' }}>
           <SearchField value={query} onChange={setQuery} onClear={() => setQuery('')} placeholder="Search tools" />
         </div>
+        <Button
+          variant={rearranging ? 'primary' : 'secondary'}
+          size="default"
+          className="tool-bank__rearrange"
+          onClick={() => onRearrangeChange(!rearranging)}
+        >
+          {rearranging ? 'Done rearranging' : 'Rearrange'}
+        </Button>
         <Button variant="secondary" size="default" onClick={onEditAsList}>Edit as list…</Button>
-        <Button variant="primary" size="default" onClick={onDone}>Done</Button>
       </div>
       <div
         role="list"
         aria-label="Tools"
         style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(96px, 1fr))', gap: 6,
-          maxHeight: 232, overflowY: 'auto', paddingRight: 2,
+          display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${side ? 84 : 96}px, 1fr))`, gap: 6,
+          flex: '1 1 0', minHeight: 0, overflowY: 'auto', alignContent: 'start', paddingRight: 2,
         }}
       >
         {items.length > 0 && heading('Separator and space')}
