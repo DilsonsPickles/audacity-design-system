@@ -74,6 +74,12 @@ export function useToolbarToolDrag({ layout, toolFitsVertical, onMoveInto, onMov
     // that is not one is refused, as a side dock refuses a tool with no
     // vertical form
     const resolve = (x: number, y: number): ToolDropTarget | null => {
+      // OUT OF THE WINDOW IS OFF THE TOOLBARS (2026-11-18, "if I alt drag an
+      // icon out of the app window. Remove it, treat it as a delete"): no
+      // target, so the release removes it — before the window-edge snap,
+      // which would otherwise drop a tool pulled past the top or bottom edge
+      // into that dock
+      if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) return null;
       const t = resolveToolDrop(x, y, layoutRef.current, row, fits);
       if (t && t.kind === 'into' && t.barId === TITLE_BAR_ID && !TITLE_BAR_ALLOWED.includes(toolId)) return { ...t, refused: true };
       // …and a title-bar-only item (Get effects, Mixer) goes nowhere else

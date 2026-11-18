@@ -752,10 +752,12 @@ export function ToolbarDock({
 const EMPTY_SLOT_ID = '__empty-toolbar';
 
 /** The modifier that turns a press on a tool into a move: ⌘ on a Mac, Ctrl
- *  elsewhere (a Mac's Ctrl-click is the secondary click) */
-function isMoveModifier(e: { metaKey: boolean; ctrlKey: boolean }): boolean {
+ *  elsewhere (a Mac's Ctrl-click is the secondary click) — and OPTION / ALT
+ *  on either (2026-11-18, "if I alt drag an icon…"; no tool takes an
+ *  Option-press of its own) */
+function isMoveModifier(e: { metaKey: boolean; ctrlKey: boolean; altKey: boolean }): boolean {
   const mac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-  return mac ? e.metaKey : e.ctrlKey || e.metaKey;
+  return e.altKey || (mac ? e.metaKey : e.ctrlKey || e.metaKey);
 }
 
 /** One drawn line of bars: the row it belongs to, and its bars */

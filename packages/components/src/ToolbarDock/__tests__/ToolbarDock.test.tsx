@@ -488,6 +488,20 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
       expect(clicked).not.toHaveBeenCalled();
     });
 
+    it('an OPTION press starts the move too (2026-11-18, "if I alt drag an icon…")', () => {
+      const onToolMouseDown = vi.fn();
+      const pressed = vi.fn();
+      const { container } = renderDock({
+        rows,
+        onToolMouseDown,
+        renderTool: (id) => <button aria-label={id} onMouseDown={pressed}>{id}</button>,
+      });
+      fireEvent.mouseDown(container.querySelector('button[aria-label="one"]') as HTMLElement, { button: 0, altKey: true });
+      expect(onToolMouseDown).toHaveBeenCalledTimes(1);
+      expect(onToolMouseDown.mock.calls[0][0]).toBe('one');
+      expect(pressed).not.toHaveBeenCalled();
+    });
+
     it('a plain press is the tool\'s own', () => {
       const onToolMouseDown = vi.fn();
       const clicked = vi.fn();
