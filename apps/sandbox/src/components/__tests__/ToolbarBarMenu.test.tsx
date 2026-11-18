@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
-import { PreferencesProvider, ThemeProvider, type ToolbarLayout } from '@audacity-ui/components';
+import { PreferencesProvider, ThemeProvider, type ToolbarLayout, type ToolbarRegion } from '@audacity-ui/components';
 import { ToolbarBarMenu } from '../ToolbarBarMenu';
 
 afterEach(cleanup);
@@ -13,7 +13,7 @@ const LAYOUT: ToolbarLayout = {
   right: [],
 };
 
-function renderMenu(barId: string, opts: { fits?: boolean; addOnly?: boolean; layout?: ToolbarLayout; toolId?: string; beforeToolId?: string | null } = {}) {
+function renderMenu(barId: string | null, opts: { fits?: boolean; addOnly?: boolean; layout?: ToolbarLayout; toolId?: string; beforeToolId?: string | null; region?: ToolbarRegion; toolFits?: (id: string) => boolean } = {}) {
   const start = opts.layout ?? LAYOUT;
   let layout = start;
   const editLayout = vi.fn((change: (base: ToolbarLayout) => ToolbarLayout) => { layout = change(layout); });
@@ -22,11 +22,12 @@ function renderMenu(barId: string, opts: { fits?: boolean; addOnly?: boolean; la
     <PreferencesProvider>
     <ThemeProvider>
       <ToolbarBarMenu
-        menu={{ barId, x: 10, y: 10, addOnly: opts.addOnly, toolId: opts.toolId, beforeToolId: opts.beforeToolId }}
+        menu={{ barId, x: 10, y: 10, addOnly: opts.addOnly, toolId: opts.toolId, beforeToolId: opts.beforeToolId, region: opts.region }}
         onClose={() => {}}
         layout={start}
         editLayout={editLayout}
         fitsVertical={() => opts.fits ?? true}
+        toolFitsVertical={opts.toolFits}
         onEditToolbars={onEditToolbars}
       />
     </ThemeProvider>
@@ -39,6 +40,23 @@ function renderMenu(barId: string, opts: { fits?: boolean; addOnly?: boolean; la
 
 describe('ToolbarBarMenu', () => {
   afterEach(() => localStorage.clear());
+
+  // MOVE TOOLBAR TO (2026-11-18, "what if we wanted to move an entire toolbar?")
+  it('Move toolbar to moves every group on the toolbar — from a group\'s menu or the toolbar\'s empty space — and dims the sides while a tool cannot stand in a column, naming it', () => {
+    const fromGroup = renderMenu('main', { toolFits: (id) => id !== 'timecode' });
+    fireEvent.mouseEnter(fromGroup.item('Move toolbar to'));
+    expect(fromGroup.item('Left toolbar').className).toMatch(/disabled/);
+    expect(Array.from(document.querySelectorAll('[data-menu-heading]')).map((e) => e.textContent)).toContain("Side toolbars can't take Timecode");
+    fireEvent.click(fromGroup.item('Status bar'));
+    expect(fromGroup.layout().bottom.map((row) => row.map((b) => b.id))).toEqual([['main']]);
+    expect(fromGroup.layout().top.map((row) => row.map((b) => b.id))).toEqual([['title']]);
+    cleanup();
+    const fromSpace = renderMenu(null, { region: 'top', toolFits: () => true });
+    fireEvent.mouseEnter(fromSpace.item('Move toolbar to'));
+    expect(fromSpace.item('Left toolbar').className).not.toMatch(/disabled/);
+    fireEvent.click(fromSpace.item('Left toolbar'));
+    expect(fromSpace.layout().left.map((row) => row.map((b) => b.id))).toEqual([['main']]);
+  });
 
   // A FLEXIBLE SPACE (2026-11-18): placed by the right-click
   it('Add flexible space goes before the tool right-clicked, or at the toolbar\'s START (pushing its tools to the far end — at the end it pushed nothing); on a space the item removes it', () => {
@@ -106,7 +124,7 @@ describe('ToolbarBarMenu', () => {
   it('Move to lists the other toolbars by name; a pick puts this one right after it (2026-11-17)', () => {
     const two: ToolbarLayout = { ...LAYOUT, bottom: [[{ id: 'mine', tools: ['stop'], name: 'Podcast tools' }]] };
     const { item, layout } = renderMenu('mine', { layout: two });
-    fireEvent.mouseEnter(item('Move to'));
+    fireEvent.mouseEnter(item('Move group to'));
     expect(Array.from(document.querySelectorAll('[data-menu-heading]')).map((e) => e.textContent)).toContain('After group');
     // the Title bar is never a target
     expect(item('Main toolbar')).toBeTruthy();
@@ -118,7 +136,7 @@ describe('ToolbarBarMenu', () => {
   it('heads the menu with the toolbar\'s name, read-only, then its items', () => {
     const { labels } = renderMenu('main');
     expect(document.querySelector('[data-toolbar-menu-name]')?.textContent).toBe('Main toolbar');
-    expect(labels()).toEqual(['Rename…', 'Move to', 'Add tool', 'Add divider', 'Add flexible space at the start', 'Reset width', 'New group', 'Edit toolbars…', 'Remove group']);
+    expect(labels()).toEqual(['Rename…', 'Move group to', 'Move toolbar to', 'Add tool', 'Add divider', 'Add flexible space at the start', 'Reset width', 'New group', 'Edit toolbars…', 'Remove group']);
   });
 
   it('the Title bar is the app\'s corner: a checklist of its app-level items, then Edit toolbars… (2026-11-16)', () => {

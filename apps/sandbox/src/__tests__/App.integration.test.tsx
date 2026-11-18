@@ -451,7 +451,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
       return item;
     });
     fireEvent.contextMenu(container.querySelector('[data-toolbar-bar="hist"] [data-toolbar-grip]')!, { clientX: 20, clientY: 20 });
-    fireEvent.mouseEnter(await menuItem('Move to'));
+    fireEvent.mouseEnter(await menuItem('Move group to'));
     const left = await menuItem('Left toolbar');
     expect(left.getAttribute('aria-disabled')).not.toBe('true');
     expect(left.classList.contains('context-menu-item--disabled')).toBe(false);

@@ -423,6 +423,28 @@ function place(next: ToolbarLayout, item: ToolbarBar, placement: BarPlacement): 
 }
 
 /**
+ * MOVE A WHOLE TOOLBAR (2026-11-18, "what if we wanted to move an entire
+ * toolbar?" — a toolbar is a window edge, so moving it moves everything on
+ * it): every row of `from` goes to `to`, after the rows already there,
+ * groups and their sizes kept — a horizontal toolbar's rows become a side
+ * toolbar's columns and back. The Title bar's row never moves. Returns the
+ * same layout when there is nothing to move or `from` is `to`.
+ */
+export function moveDock(layout: ToolbarLayout, from: ToolbarRegion, to: ToolbarRegion): ToolbarLayout {
+  if (from === to) return layout;
+  const moving = rowsOf(layout, from).filter((row) => !row.some((b) => b.id === TITLE_BAR_ID));
+  if (moving.length === 0) return layout;
+  const next = cloneLayout(layout);
+  next[from] = rowsOf(next, from).filter((row) => row.some((b) => b.id === TITLE_BAR_ID));
+  next[to] = [...rowsOf(next, to), ...moving.map((row) => row.map((b) => ({ ...b, tools: [...b.tools] })))];
+  return normaliseLayout(next);
+}
+
+/** The groups a toolbar would move (the Title bar's row stays) */
+export const dockMovableBars = (layout: ToolbarLayout, region: ToolbarRegion): ToolbarBar[] =>
+  rowsOf(layout, region).filter((row) => !row.some((b) => b.id === TITLE_BAR_ID)).flat();
+
+/**
  * Move a whole bar to a placement. A bar dropped before itself stays put;
  * the row it leaves is dropped when that was its last bar. Returns the
  * same layout when the bar is not found or nothing would change.

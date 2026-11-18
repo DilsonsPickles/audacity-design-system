@@ -21,7 +21,7 @@ import { useHiddenTools } from '../hooks/useHiddenTools';
 import { ALL_TOOLS, ToolGlyph, toolName } from './toolCatalogue';
 import {
   ContextMenu, ContextMenuItem, Dialog, DialogFooter, SearchField, TextInput, useTheme,
-  TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, PROJECT_TAB_TOOL_ID, TOOLBAR_REGIONS, addEmptyBar, barDisplayName, dockBars, findBar, findTool, insertSeparator, insertSpacer, isLayoutItem, isToolSpacer, insertTool, isVerticalRegion, moveBar, removeBar, removeTool, renameBar, rowsOf, setBarSize,
+  TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, PROJECT_TAB_TOOL_ID, TOOLBAR_REGIONS, addEmptyBar, barDisplayName, dockBars, findBar, findTool, insertSeparator, insertSpacer, isLayoutItem, isToolSpacer, insertTool, isVerticalRegion, moveBar, moveDock, dockMovableBars, regionSide, removeBar, removeTool, renameBar, rowsOf, setBarSize,
   type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
 
@@ -244,6 +244,40 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
 
   const removeToolbar = (barId: string) => editLayout((base) => removeBar(base, barId));
 
+  /** MOVE TOOLBAR TO ▸ (2026-11-18, "what if we wanted to move an entire
+   *  toolbar?"): every group on this toolbar — a window edge — to another,
+   *  after what is there (`moveDock`). The toolbar it is checked and dimmed;
+   *  the side toolbars are dimmed while any group holds a tool with no column
+   *  form, and a line under them names those tools. Nothing to move, no item */
+  const moveToolbarItem = (from: ToolbarRegion) => {
+    const groups = dockMovableBars(layout, from);
+    if (groups.length === 0) return null;
+    const blockers = [...new Set(groups.flatMap((g) => g.tools).filter((t) => !isLayoutItem(t) && toolFitsVertical !== undefined && !toolFitsVertical(t)))].map(toolName);
+    const here = regionSide(from) === from ? from : null;
+    return (
+      <ContextMenuItem label="Move toolbar to" hasSubmenu onClick={() => {}}>
+        {MOVE_TARGETS.map((t) => {
+          const side = isVerticalRegion(t.region);
+          return (
+            <ContextMenuItem
+              key={t.region}
+              label={t.label}
+              checked={t.region === here}
+              disabled={t.region === from || (side && blockers.length > 0)}
+              onClick={() => { onClose(); editLayout((base) => moveDock(base, from, t.region)); }}
+              onClose={onClose}
+            />
+          );
+        })}
+        {blockers.length > 0 && (
+          <MenuHeading color={theme.foreground.text.secondary}>
+            {`Side toolbars can't take ${blockers.length > 3 ? `${blockers.slice(0, 3).join(', ')} and ${blockers.length - 3} more` : blockers.join(', ')}`}
+          </MenuHeading>
+        )}
+      </ContextMenuItem>
+    );
+  };
+
   const commitRename = () => {
     if (!renaming) return;
     const { barId, draft } = renaming;
@@ -273,6 +307,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
                 onClose={onClose}
               />
             )}
+            {menu.region && moveToolbarItem(menu.region)}
             <ContextMenuItem label="Edit toolbars…" onClick={() => onEditToolbars(null)} onClose={onClose} />
           </>
         )}
@@ -342,7 +377,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
               onClick={() => setRenaming({ barId: bar.id, draft: bar.name ?? barDisplayName(bar) })}
               onClose={onClose}
             />
-            <ContextMenuItem label="Move to" hasSubmenu onClick={() => {}}>
+            <ContextMenuItem label="Move group to" hasSubmenu onClick={() => {}}>
               {MOVE_TARGETS.map((t) => {
                 const here = t.region === region;
                 const refused = (t.region === 'left' || t.region === 'right') && !fitsVertical(bar.id);
@@ -390,6 +425,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
                 </>
               )}
             </ContextMenuItem>
+            {moveToolbarItem(region)}
             <ContextMenuItem label="Add tool" hasSubmenu onClick={() => {}}>
               {addToolItems(true)}
             </ContextMenuItem>

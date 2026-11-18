@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  coerceToolbarLayout, defaultToolbarLayout, dockBars, findBar, findTool, moveBar, moveTool, moveToolToNewBar, nextBarId, insertSeparator, isToolSeparator, addEmptyBar, removeBar, renameBar, barDisplayName,
+  coerceToolbarLayout, defaultToolbarLayout, dockBars, dockMovableBars, moveDock, findBar, findTool, moveBar, moveTool, moveToolToNewBar, nextBarId, insertSeparator, isToolSeparator, addEmptyBar, removeBar, renameBar, barDisplayName,
   normaliseLayout, isToolbarLayout, insertSpacer, isToolSpacer, isLayoutItem, setBarSize, titleBarItems, withTitleBar, withTitleBarItem, withTitleBarOnlyItems, withCustomiseTool, withProjectTools, withProjectRowMoves, insertTool, removeTool, addToolToNewBar, PROJECT_TOOL_IDS, PROJECT_TAB_TOOL_ID, type ToolbarLayout, type ToolbarRegion,
 } from '../toolbarLayout';
 
@@ -401,5 +401,25 @@ describe('withTitleBar — an old layout gains the Title bar toolbar (2026-11-17
     expect(fixed.top.flat().map((b) => b.id)).toEqual(['title', 'transport', 'view']);
     // idempotent: a layout with the title bar is left alone
     expect(withTitleBar(fixed)).toBe(fixed);
+  });
+});
+
+describe('moveDock — MOVE A WHOLE TOOLBAR (2026-11-18, "what if we wanted to move an entire toolbar?")', () => {
+  const base: ToolbarLayout = {
+    top: [[{ id: 'title', tools: ['project-tabs'] }], [{ id: 'a', tools: ['play'], width: 200 }, { id: 'b', tools: ['stop'] }], [{ id: 'c', tools: ['undo'] }]],
+    bottom: [], left: [[{ id: 'l', tools: ['redo'] }]], right: [],
+  };
+  it('moves every row but the Title bar\'s, after the rows already there, sizes kept', () => {
+    const moved = moveDock(base, 'top', 'left');
+    expect(moved.top).toEqual([[{ id: 'title', tools: ['project-tabs'] }]]);
+    expect(moved.left.map((row) => row.map((b) => b.id))).toEqual([['l'], ['a', 'b'], ['c']]);
+    expect(moved.left[1][0].width).toBe(200);
+  });
+  it('and back: columns become rows; nothing to move or the same toolbar is no change', () => {
+    const back = moveDock(moveDock(base, 'top', 'right'), 'right', 'top');
+    expect(back.top.map((row) => row.map((b) => b.id))).toEqual([['title'], ['a', 'b'], ['c']]);
+    expect(moveDock(base, 'bottom', 'top')).toBe(base);
+    expect(moveDock(base, 'top', 'top')).toBe(base);
+    expect(dockMovableBars(base, 'top').map((b) => b.id)).toEqual(['a', 'b', 'c']);
   });
 });
