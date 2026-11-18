@@ -29,6 +29,7 @@ import { PlotSpectrumWindow, type PlotSpectrumSource } from './components/PlotSp
 import { resolveTimeSelectionScope } from './utils/timeSelectionScope';
 import { KeyboardMap, SHORTCUT_ROWS, isLayoutItem, TITLE_BAR_ID, TITLE_BAR_ONLY, titleBarItems, removeTool, PROJECT_TAB_TOOL_ID, insertTool, insertSeparator, insertSpacer, addToolToNewBar } from '@audacity-ui/components';
 import { ToolBank, BANK_SEPARATOR_ID, BANK_SPACER_ID, isBankLayoutItem } from './components/ToolBank';
+import { toolName } from './components/toolCatalogue';
 import { useHiddenTools } from './hooks/useHiddenTools';
 import { dockShowsNothing } from './utils/toolbarDockDrop';
 import { transportStatusText } from './utils/transportStatus';
@@ -2189,17 +2190,52 @@ function CanvasDemoContent() {
       })()}
 
       {/* The bar or tool in hand: a ghost of its size follows the pointer */}
-      {sideDrag?.ghost && (
-        <div
-          aria-hidden="true"
-          data-toolbar-drag-ghost
-          style={{
-            position: 'fixed', left: sideDrag.ghost.x, top: sideDrag.ghost.y, width: sideDrag.ghost.width, height: sideDrag.ghost.height,
-            zIndex: 9000, pointerEvents: 'none', borderRadius: 4,
-            background: 'rgba(103, 124, 228, 0.12)', boxShadow: '0 0 0 1px rgba(103, 124, 228, 0.6), 0 10px 30px rgba(0, 0, 0, 0.25)',
-          }}
-        />
-      )}
+      {sideDrag?.ghost && (() => {
+        // A REFUSED DROP SAYS WHY, ON THE THING IN HAND (2026-11-18, "I can't
+        // drag a group to the left... I don't know why"): a group holding a
+        // tool with no column form is refused by the side toolbars, and the
+        // reason was only in the status bar's info line — which a layout
+        // without a status bar never shows. The ghost turns red and names the
+        // tools that cannot stand in a column
+        const refused = !!(barDrag.dropTarget?.refused || toolDrag.target?.refused);
+        const bar = barDrag.draggingBarId ? findBar(toolbarLayout.layout, barDrag.draggingBarId)?.bar : null;
+        const blockers = bar ? bar.tools.filter((t) => !isLayoutItem(t) && !toolFitsVertical(t)).map(toolName) : [];
+        const reason = !refused ? null
+          : blockers.length > 0 ? `Side toolbars can't take ${blockers.length > 3 ? `${blockers.slice(0, 3).join(', ')} and ${blockers.length - 3} more` : blockers.join(', ')}`
+          : (TITLE_BAR_ONLY.includes(toolDrag.draggingToolId ?? '') ? 'This one lives in the title bar only'
+            : isBankLayoutItem(toolDrag.draggingToolId ?? '') && toolDrag.target?.kind === 'new' ? 'Drop it inside a group'
+            : toolDrag.target?.kind === 'into' && toolDrag.target.barId === TITLE_BAR_ID ? 'The title bar takes app controls only'
+            : 'Side toolbars can\'t take this tool');
+        return (
+          <div
+            aria-hidden="true"
+            data-toolbar-drag-ghost
+            data-refused={refused ? '' : undefined}
+            style={{
+              position: 'fixed', left: sideDrag.ghost.x, top: sideDrag.ghost.y, width: sideDrag.ghost.width, height: sideDrag.ghost.height,
+              zIndex: 9000, pointerEvents: 'none', borderRadius: 4,
+              background: refused ? 'rgba(214, 72, 72, 0.10)' : 'rgba(103, 124, 228, 0.12)',
+              boxShadow: refused
+                ? '0 0 0 1px rgba(214, 72, 72, 0.7), 0 10px 30px rgba(0, 0, 0, 0.25)'
+                : '0 0 0 1px rgba(103, 124, 228, 0.6), 0 10px 30px rgba(0, 0, 0, 0.25)',
+            }}
+          >
+            {reason && (
+              <span
+                data-toolbar-drag-refusal
+                style={{
+                  position: 'absolute', left: 0, top: '100%', marginTop: 6, whiteSpace: 'nowrap',
+                  padding: '3px 8px', borderRadius: 4, fontSize: 12,
+                  background: baseTheme.background.menu.background, color: baseTheme.foreground.text.primary,
+                  border: `1px solid ${baseTheme.border.default}`, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                }}
+              >
+                {reason}
+              </span>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Toast Container */}
       {/* The keyboard map (View › Keyboard map, so a palette command;
