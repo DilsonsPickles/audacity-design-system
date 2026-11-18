@@ -13,6 +13,15 @@ export interface CustomWorkspace {
   name: string;
   /** The built-in it was made from, at the bottom of the chain */
   base: ToolbarWorkspace;
+  /** How it was when it was made (2026-11-19, "Should resetting a workspace
+   *  you made go back to how it was when you made it?" → "Yes"): what Reset
+   *  workspace to default puts back. Absent on one made before then, which
+   *  resets to its base's seed as it always did */
+  start?: {
+    layout: ToolbarLayout;
+    hidden: string[];
+    tabsVertical?: boolean;
+  };
 }
 
 export interface PreferencesState {

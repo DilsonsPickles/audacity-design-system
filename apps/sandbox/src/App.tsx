@@ -117,7 +117,7 @@ import { useProjectTabs } from './hooks/useProjectTabs';
 import { useMenuDefinitions } from './hooks/useMenuDefinitions';
 import { useElectronMenuBridge } from './hooks/useElectronMenuBridge';
 import { WorkspaceNameDialog } from './components/WorkspaceNameDialog';
-import { WORKSPACE_NAMES, isBuiltinWorkspace, activeWorkspaceId, hiddenToolsOf } from './utils/workspaces';
+import { WORKSPACE_NAMES, isBuiltinWorkspace, activeWorkspaceId, hiddenToolsOf, workspaceResetState } from './utils/workspaces';
 
 /** Never taken off the toolbars by a ⌘-drag: the tabs, the way back to Home */
 const UNREMOVABLE_TOOLS: ReadonlySet<string> = new Set([PROJECT_TAB_TOOL_ID]);
@@ -446,13 +446,17 @@ function CanvasDemoContent() {
       vertical: preferences.workspaceTabsVertical,
       hidden: preferences.workspaceHiddenTools,
     };
-    toolbarLayout.resetLayout();
+    // (a workspace the user made goes back to how it was made, 2026-11-19)
+    const target = workspaceResetState(preferences, workspace, DEFAULT_TOOLBAR_HIDDEN_TOOLS);
+    if (target.layout) updatePreference('toolbarLayouts', { ...(preferences.toolbarLayouts ?? {}), [workspace]: target.layout });
+    else toolbarLayout.resetLayout();
     const vertical = { ...(preferences.workspaceTabsVertical ?? {}) };
-    delete vertical[workspace];
+    if (target.tabsVertical) vertical[workspace] = true;
+    else delete vertical[workspace];
     updatePreference('workspaceTabsVertical', vertical);
-    updatePreference('workspaceHiddenTools', { ...(preferences.workspaceHiddenTools ?? {}), [workspace]: [...DEFAULT_TOOLBAR_HIDDEN_TOOLS] });
+    updatePreference('workspaceHiddenTools', { ...(preferences.workspaceHiddenTools ?? {}), [workspace]: target.hidden });
     const name = workspaceName(workspace);
-    toast.info('Workspace reset', `${name} is back to its default toolbars`, [
+    toast.info('Workspace reset', target.layout ? `${name} is back to how you made it` : `${name} is back to its default toolbars`, [
       { label: 'Undo', onClick: () => {
         updatePreference('toolbarLayouts', before.layouts);
         updatePreference('workspaceTabsVertical', before.vertical);
@@ -468,10 +472,13 @@ function CanvasDemoContent() {
   const [workspaceDialog, setWorkspaceDialog] = React.useState<{ mode: 'new' | 'rename'; id?: string } | null>(null);
   const createWorkspace = (name: string) => {
     const id = `custom-${Date.now().toString(36)}`;
-    updatePreference('customWorkspaces', [...customWorkspaces, { id, name, base: baseWorkspace }]);
+    const hidden = [...hiddenToolsOf(preferences, workspace)];
+    // (its starting state is kept, for its Reset to go back to, 2026-11-19)
+    const start = { layout: toolbarLayout.layout, hidden, ...(tabsVertical ? { tabsVertical: true } : {}) };
+    updatePreference('customWorkspaces', [...customWorkspaces, { id, name, base: baseWorkspace, start }]);
     updatePreference('toolbarLayouts', { ...(preferences.toolbarLayouts ?? {}), [id]: toolbarLayout.layout });
     if (tabsVertical) updatePreference('workspaceTabsVertical', { ...(preferences.workspaceTabsVertical ?? {}), [id]: true });
-    updatePreference('workspaceHiddenTools', { ...(preferences.workspaceHiddenTools ?? {}), [id]: [...hiddenToolsOf(preferences, workspace)] });
+    updatePreference('workspaceHiddenTools', { ...(preferences.workspaceHiddenTools ?? {}), [id]: [...hidden] });
     updatePreference('activeWorkspace', id);
   };
   const renameWorkspace = (id: string, name: string) =>
