@@ -137,9 +137,10 @@ describe('ToolbarBarMenu', () => {
     expect(onEditToolbars).toHaveBeenCalledWith('main');
   });
 
-  it('Remove toolbar takes it off the layout', () => {
+  it('Remove toolbar takes it off the layout, silently (2026-11-18, "I hate the \'Toolbar removed\' toast")', () => {
     const { item, layout } = renderMenu('main');
     fireEvent.click(item('Remove toolbar'));
     expect(layout().top.flat().map((b) => b.id)).toEqual(['title']);
+    expect(document.body.textContent).not.toContain('Toolbar removed');
   });
 });

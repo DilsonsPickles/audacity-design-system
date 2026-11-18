@@ -11,15 +11,16 @@
  * Move to puts the toolbar on a NEW ROW (a column, at a side) at the end of
  * that dock; a side it cannot take (a tool with no vertical form) is dimmed;
  * the dock it is in is checked and dimmed. Remove toolbar takes it off the
- * layout — its tools go to "Not on a toolbar" in Edit toolbars — and says so
- * in a toast with UNDO, which puts the layout back as it was. The fixed
+ * layout — its tools go to "Not on a toolbar" in Edit toolbars — SILENTLY
+ * (2026-11-18, "I hate the 'Toolbar removed' toast"; it had one with Undo).
+ * The fixed
  * Title bar toolbar's menu holds Edit toolbars… alone.
  */
 import React from 'react';
 import { useHiddenTools } from '../hooks/useHiddenTools';
 import { ALL_TOOLS, ToolGlyph, toolName } from './toolCatalogue';
 import {
-  ContextMenu, ContextMenuItem, Dialog, DialogFooter, SearchField, TextInput, toast, useTheme,
+  ContextMenu, ContextMenuItem, Dialog, DialogFooter, SearchField, TextInput, useTheme,
   TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, PROJECT_TAB_TOOL_ID, TOOLBAR_REGIONS, addEmptyBar, barDisplayName, dockBars, findBar, findTool, insertSeparator, insertSpacer, isLayoutItem, isToolSpacer, insertTool, isVerticalRegion, moveBar, removeBar, removeTool, renameBar, rowsOf, setBarSize,
   type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
@@ -241,16 +242,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
     );
   };
 
-  const removeToolbar = (barId: string) => {
-    const before = layout;
-    const name = barDisplayName(findBar(layout, barId)?.bar ?? { id: barId, tools: [] });
-    editLayout((base) => removeBar(base, barId));
-    // The name only when it is one (an unnamed toolbar is just "Toolbar")
-    const where = 'Its tools are under Not on a toolbar in Edit toolbars';
-    toast.info('Toolbar removed', name === 'Toolbar' ? where : `"${name}". ${where}`, [
-      { label: 'Undo', onClick: () => editLayout(() => before) },
-    ]);
-  };
+  const removeToolbar = (barId: string) => editLayout((base) => removeBar(base, barId));
 
   const commitRename = () => {
     if (!renaming) return;
