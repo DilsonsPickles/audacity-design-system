@@ -272,14 +272,18 @@ export function ToolbarDock({
     // the only toolbar in that column. So... it shouldn't be resizable
     // right?"): the column is the window's height, so a lone toolbar could
     // only be made shorter, leaving empty space; its growing tools fill it
-    // …and THE LAST TOOLBAR IN A ROW HAS NO SIZE unless a tool in it grows
-    // (2026-11-18, "I think the last item in a toolbar shouldn't be
-    // resizable"): there is nothing after it to space apart, so its edge
-    // only added empty space at the row's end — but the meters and the
-    // status bar's info line take a sized toolbar's room, and that edge is
-    // the only way to size them, so a toolbar holding one keeps it. One
-    // rule in a column; a toolbar alone in its row is that row's last
-    const stretches = nodes.some((t) => stretchy(t.id));
+    // …and THE LAST TOOLBAR IN A ROW HAS NO SIZE unless a tool in it
+    // STRETCHES (2026-11-18, "I think the last item in a toolbar shouldn't
+    // be resizable"): there is nothing after it to space apart, so its edge
+    // only added empty space at the row's end — but a horizontal meter
+    // (`stretch`) is a fixed slot at rest and widens only with a sized
+    // toolbar, so that edge is the only way to size it. A `grow` tool (a
+    // meter in a column, the status bar's info line) fills the row's room
+    // by itself, so it earns no edge (the same day, "I can still enlarge
+    // the input meter even though it's second in the toolbar on the
+    // right"). One rule in a column; a toolbar alone in its row is that
+    // row's last
+    const stretches = nodes.some((t) => !!toolMeta?.(t.id, orientation)?.stretch);
     const resizable = (barIndex !== lastDrawn || stretches) && (vertical ? row.length > 1 : bar.tools.length > 0 || row.length > 1);
     const size = resizable ? sizeOf(bar) : undefined;
     const overflow = overflowOf(nodes.map((t) => t.id), size);

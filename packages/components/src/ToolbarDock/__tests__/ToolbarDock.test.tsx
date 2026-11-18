@@ -338,7 +338,7 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(container.querySelector('[data-toolbar-resize="full"]')).toBeNull();
   });
 
-  it('THE LAST TOOLBAR IN A ROW has no resize edge and ignores a stored width, unless a tool in it grows (2026-11-18)', () => {
+  it('THE LAST TOOLBAR IN A ROW has no resize edge and ignores a stored width, unless a tool in it STRETCHES; a GROW tool fills the room by itself (2026-11-18)', () => {
     const meta = (id: string) => (id === 'meter' ? { stretch: true } : id === 'info' ? { grow: true } : undefined);
     const { container, rerender } = renderDock({
       rows: [[{ id: 'p', tools: ['one'], width: 200 }, { id: 'q', tools: ['two'], width: 300 }]],
@@ -350,8 +350,9 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     const q = container.querySelector('[data-toolbar-bar="q"]') as HTMLElement;
     expect(q.querySelector('[data-toolbar-resize]')).toBeNull();
     expect(q.classList.contains('toolbar-dock__bar--sized')).toBe(false);
-    // a toolbar whose tools take the room keeps it — the meters, the info line
-    for (const tool of ['meter', 'info']) {
+    // a toolbar holding a STRETCH tool (a horizontal meter) keeps it; one
+    // holding a GROW tool (a meter in a column, the info line) does not
+    for (const [tool, keeps] of [['meter', true], ['info', false]] as const) {
       rerender(
         <ThemeProvider>
           <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
@@ -365,9 +366,21 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
           </AccessibilityProfileProvider>
         </ThemeProvider>,
       );
-      expect(container.querySelector('[data-toolbar-resize="q"]')).not.toBeNull();
-      expect((container.querySelector('[data-toolbar-bar="q"]') as HTMLElement).style.width).toBe('300px');
+      expect(!!container.querySelector('[data-toolbar-resize="q"]')).toBe(keeps);
+      expect((container.querySelector('[data-toolbar-bar="q"]') as HTMLElement).style.width).toBe(keeps ? '300px' : '');
     }
+  });
+
+  it('IN A SIDE DOCK the column\'s last meter toolbar has no edge — its meter grows to fill the column; the one above keeps its edge (2026-11-18)', () => {
+    const { container } = renderDock({
+      region: 'right',
+      rows: [[{ id: 'meters', tools: ['playback'] }, { id: 'mic', tools: ['input'], height: 300 }]],
+      onBarResize: vi.fn(),
+      toolMeta: (id) => (id === 'playback' || id === 'input' ? { grow: true } : undefined),
+    });
+    expect(container.querySelector('[data-toolbar-resize="meters"]')).not.toBeNull();
+    expect(container.querySelector('[data-toolbar-resize="mic"]')).toBeNull();
+    expect((container.querySelector('[data-toolbar-bar="mic"]') as HTMLElement).style.height).toBe('');
   });
 
   it('TOOL GROUPS (2026-11-11): a separator draws a line between groups, never at a toolbar\'s ends nor doubled; an EMPTY toolbar draws its slot; one whose tools are all hidden draws nothing', () => {
