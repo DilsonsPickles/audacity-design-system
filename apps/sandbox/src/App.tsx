@@ -397,10 +397,11 @@ function CanvasDemoContent() {
   // ends with the Project tab
   const [toolbarEditing, setToolbarEditing] = React.useState(false);
   // THE CUSTOMISE TOOLBARS PANEL (2026-11-18, the tool bank, dockable): open
-  // or not is App's; the toolbars stay usable while it is open, and its
-  // Rearrange is the edit mode above. Closing it ends the edit mode too
+  // or not is App's; the toolbars stay usable while it is open and a tool
+  // moves by its Option / ⌘-drag — no mode (its Rearrange toggle went the
+  // same day). Closing it ends the old edit mode, should anything turn it on
   const [toolBankOpen, setToolBankOpen] = React.useState(false);
-  const openToolBank = (rearrange = false) => { setToolBankOpen(true); if (rearrange) setToolbarEditing(true); };
+  const openToolBank = () => setToolBankOpen(true);
   const closeToolBank = () => { setToolBankOpen(false); setToolbarEditing(false); };
   // THE TOOLBAR BUILDER (2026-11-11): the cog menu's "Rearrange tools…" opens
   // it, in place of the in-place edit mode (the grips still drag)
@@ -1648,7 +1649,7 @@ function CanvasDemoContent() {
       workspace: baseWorkspace,
       layoutEditing: toolbarEditing,
       // the cog's "Rearrange tools…" opens the TOOL BANK (2026-11-18)
-      onLayoutEditingChange: (on: boolean) => { if (on) { setBuilderBarId(null); openToolBank(true); } else setToolbarEditing(false); },
+      onLayoutEditingChange: (on: boolean) => { if (on) { setBuilderBarId(null); openToolBank(); } else setToolbarEditing(false); },
       onResetLayout: toolbarLayout.resetLayout,
       layoutCustomised: toolbarLayout.customised,
       varispeed: playback.varispeed,
@@ -2000,8 +2001,6 @@ function CanvasDemoContent() {
                 onTileMouseDown={(toolId, e, rect) => toolDrag.onToolMouseDown(toolId, '', e, rect)}
                 removing={toolDrag.removing}
                 draggingToolId={toolDrag.draggingToolId}
-                rearranging={toolbarEditing}
-                onRearrangeChange={setToolbarEditing}
                 onEditAsList={() => { closeToolBank(); setToolbarBuilderOpen(true); }}
                 placement={placement}
                 os={preferences.operatingSystem}

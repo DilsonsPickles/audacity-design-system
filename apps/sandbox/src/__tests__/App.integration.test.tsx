@@ -469,7 +469,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     ).toEqual(['status', 'bar-2']));
   });
 
-  it('THE TOOL BANK, A DOCKABLE PANEL (2026-11-18, "build the bank", then "could this customise toolbar be a panel that\'s dockable?" → "stay usable"): View › Edit toolbars… opens it in the drawer with the toolbars LIVE; a tile dragged onto them is added; an Option-drag back onto the panel takes it off, silently; Rearrange is the edit mode; Close from its tab menu', async () => {
+  it('THE TOOL BANK, A DOCKABLE PANEL (2026-11-18, "build the bank", then "could this customise toolbar be a panel that\'s dockable?" → "stay usable"): View › Edit toolbars… opens it in the drawer with the toolbars LIVE; a tile dragged onto them is added; an Option-drag back onto the panel takes it off, silently; there is no Rearrange mode; its tab drags it; Close from its tab menu', async () => {
     const { container, getByText } = renderApp();
     fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
     await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
@@ -505,12 +505,9 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     fireEvent.mouseUp(document, { clientX: 300, clientY: 500 });
     await waitFor(() => expect(container.querySelector('[data-toolbar-tool="waveform-view"]')).toBeNull());
     expect(document.body.textContent).not.toContain('Tool removed');
-    // REARRANGE is the edit mode, on and off
-    const rearrange = () => document.body.querySelector<HTMLElement>('[data-tool-bank] .tool-bank__rearrange')!;
-    fireEvent.click(rearrange());
-    await waitFor(() => expect(container.querySelector('.toolbar-dock--editing')).toBeTruthy());
-    fireEvent.click(rearrange());
-    await waitFor(() => expect(container.querySelector('.toolbar-dock--editing')).toBeNull());
+    // NO REARRANGE MODE ("I kinda hate that concept"): the Option-drag above is the way
+    expect(document.body.querySelector('[data-tool-bank] .tool-bank__rearrange')).toBeNull();
+    expect(container.querySelector('.toolbar-dock--editing')).toBeNull();
     // its TAB DRAGS IN THE WINDOW ("why can't I drag to move customise
     // toolbar panel"): pulled out of the header, a chip follows the pointer
     // and the drag-to-dock zones light; no OS window opens

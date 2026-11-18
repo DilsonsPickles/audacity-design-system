@@ -16,9 +16,9 @@ import { useHiddenTools } from '../hooks/useHiddenTools';
  * moves), BESIDE one for a toolbar of its own, or between rows for a row
  * of its own — the toolbars' own tool drag (`useToolbarToolDrag`); Option-
  * or ⌘-drag a tool on a toolbar to move it, or onto the bank to take it
- * off. REARRANGE turns on the toolbars' edit mode — tools inert and
- * outlined, any of them grabbed with a plain press — until it is turned off
- * or Escape. A SEPARATOR and a FLEXIBLE SPACE lead and go INTO a toolbar
+ * off — the ONE way to move a tool, with no mode (a Rearrange toggle for the
+ * plain-press edit mode lived here for an hour: "I kinda hate that
+ * concept"). A SEPARATOR and a FLEXIBLE SPACE lead and go INTO a toolbar
  * only. "Edit as list…" opens the tree editor, the keyboard's way.
  */
 
@@ -39,9 +39,6 @@ export interface ToolBankProps {
   removing: boolean;
   /** The tool in hand, from the bank or a toolbar */
   draggingToolId: string | null;
-  /** The toolbars' edit mode: plain-press dragging, tools inert */
-  rearranging: boolean;
-  onRearrangeChange: (on: boolean) => void;
   onEditAsList: () => void;
   /** A side dock (narrow: the controls stack) or the bottom drawer */
   placement: 'side' | 'bottom';
@@ -50,7 +47,7 @@ export interface ToolBankProps {
 
 const TILE_GHOST = 28;
 
-export function ToolBank({ layout, onTileMouseDown, removing, draggingToolId, rearranging, onRearrangeChange, onEditAsList, placement, os = 'macos' }: ToolBankProps) {
+export function ToolBank({ layout, onTileMouseDown, removing, draggingToolId, onEditAsList, placement, os = 'macos' }: ToolBankProps) {
   const { theme } = useTheme();
   const { hidden: hiddenList } = useHiddenTools();
   const hidden = React.useMemo(() => new Set(hiddenList), [hiddenList]);
@@ -101,9 +98,7 @@ export function ToolBank({ layout, onTileMouseDown, removing, draggingToolId, re
 
   const hint = removing
     ? 'Release to take it off the toolbars'
-    : rearranging
-      ? 'Drag any tool on the toolbars to move it, or onto this panel to remove it'
-      : `Drag a tool onto a toolbar. ${modifier}-drag one on a toolbar to move it, or onto this panel to remove it`;
+    : `Drag a tool onto a toolbar. ${modifier}-drag one on a toolbar to move it, or onto this panel to remove it`;
 
   return (
     <div
@@ -131,14 +126,6 @@ export function ToolBank({ layout, onTileMouseDown, removing, draggingToolId, re
         <div style={{ flex: side ? '1 1 100%' : '0 0 180px' }}>
           <SearchField value={query} onChange={setQuery} onClear={() => setQuery('')} placeholder="Search tools" />
         </div>
-        <Button
-          variant={rearranging ? 'primary' : 'secondary'}
-          size="default"
-          className="tool-bank__rearrange"
-          onClick={() => onRearrangeChange(!rearranging)}
-        >
-          {rearranging ? 'Done rearranging' : 'Rearrange'}
-        </Button>
         <Button variant="secondary" size="default" onClick={onEditAsList}>Edit as list…</Button>
       </div>
       <div
