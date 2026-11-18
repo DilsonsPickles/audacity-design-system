@@ -1772,6 +1772,9 @@ function CanvasDemoContent() {
       onMeterOrientationChange: (next) => placeMeter('playback-meter', next, setMeterOnBar),
       meterLook,
       onMeterLookChange: setMeterLook,
+      // slim or wide in a side toolbar, kept with the layouts (2026-11-18)
+      verticalMeterSize: preferences.verticalMeterSize ?? 'slim',
+      onVerticalMeterSizeChange: (size: 'slim' | 'wide') => updatePreference('verticalMeterSize', size),
     },
   };
 

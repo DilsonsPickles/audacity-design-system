@@ -45,6 +45,9 @@ export interface PlaybackMeterFlyoutProps {
   triggerRef?: React.RefObject<HTMLElement>;
   position: PlaybackMeterPosition;
   onPositionChange: (position: PlaybackMeterPosition) => void;
+  /** In a side toolbar: slim or wide (2026-11-18); absent = no choice shown */
+  verticalSize?: 'slim' | 'wide';
+  onVerticalSizeChange?: (size: 'slim' | 'wide') => void;
   look: PlaybackMeterLook;
   onLookChange: (look: PlaybackMeterLook) => void;
   /** The live meter, shown in the flyout only while position === 'flyout'
@@ -76,7 +79,7 @@ const POSITIONS: Array<{ value: PlaybackMeterPosition; label: string }> = [
 ];
 
 export function PlaybackMeterFlyout({
-  isOpen, onClose, x, y, direction = 'down', triggerRef, position, onPositionChange, look, onLookChange,
+  isOpen, onClose, x, y, direction = 'down', triggerRef, position, onPositionChange, verticalSize, onVerticalSizeChange, look, onLookChange,
   levelLeft = -60, levelRight = -60, clippedLeft = false, clippedRight = false,
   recentPeakLeft, recentPeakRight, volume = 1, onVolumeChange,
 }: PlaybackMeterFlyoutProps) {
@@ -115,6 +118,23 @@ export function PlaybackMeterFlyout({
             ))}
           </div>
         </div>
+        {position === 'vertical' && onVerticalSizeChange && (
+          <div className="playback-meter-flyout__group" role="radiogroup" aria-label="Width">
+            <div className="playback-meter-flyout__label">Width</div>
+            <div className="playback-meter-flyout__well">
+              {(['slim', 'wide'] as const).map((w) => (
+                <LabeledRadio
+                  key={w}
+                  name="playback-meter-width"
+                  value={w}
+                  label={w === 'slim' ? 'Slim' : 'Wide'}
+                  checked={(verticalSize ?? 'slim') === w}
+                  onChange={() => onVerticalSizeChange(w)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         {/* The live meter lives here only while the meter is 'In flyout';
             on the toolbar or docked it carries its own slider. */}
         {position === 'flyout' && (

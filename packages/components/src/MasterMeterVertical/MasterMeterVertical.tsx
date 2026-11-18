@@ -38,6 +38,12 @@ export interface MasterMeterVerticalProps {
   onSettingsMenu?: (x: number, y: number, buttonRect?: DOMRect) => void;
   /** The meter's LOOK (2026-11-04): style, type and dB range */
   look?: PlaybackMeterLook;
+  /** 'slim' — the horizontal meter's measures stood up: 6px bars, a 16px
+   *  knob, 9px labels, ~36px across, to sit in a 48px side toolbar — or
+   *  'wide', the original 72px meter (the default for other hosts;
+   *  2026-11-18, "can we make the vertical one this slim? I do want option
+   *  to make it fat though") */
+  size?: 'slim' | 'wide';
 }
 
 /** Two unlabelled minor ticks between each pair of numeric ticks. */
@@ -59,6 +65,7 @@ export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
   sliderAriaLabel = 'Master volume',
   onSettingsMenu,
   look = DEFAULT_PLAYBACK_METER_LOOK,
+  size = 'wide',
 }) => {
   const { theme } = useTheme();
   const lookRef = React.useRef(look);
@@ -130,7 +137,7 @@ export const MasterMeterVertical: React.FC<MasterMeterVerticalProps> = ({
   } as React.CSSProperties;
 
   return (
-    <div className={`master-meter-vertical ${className}`} style={style}>
+    <div className={`master-meter-vertical${size === 'slim' ? ' master-meter-vertical--slim' : ''} ${className}`} style={style} data-meter-size={size}>
       <span
         ref={settingsRef}
         style={{ display: 'inline-flex' }}

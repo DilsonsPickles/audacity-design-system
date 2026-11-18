@@ -139,6 +139,8 @@ export interface PreferencesState {
    *  flyout — kept with the layouts, since where a meter is persists */
   playbackMeterOnToolbar: boolean;
   recordingMeterOnToolbar: boolean;
+  /** The meters in a side toolbar: slim (the default) or wide (2026-11-18) */
+  verticalMeterSize: 'slim' | 'wide';
 
   // Spectral Display
   enableSpectralSelection: boolean;
@@ -234,6 +236,7 @@ const defaultPreferences: PreferencesState = {
   projectTabRailWidth: 220,
   playbackMeterOnToolbar: true,
   recordingMeterOnToolbar: false,
+  verticalMeterSize: 'slim',
 
   // Spectral Display
   enableSpectralSelection: true,

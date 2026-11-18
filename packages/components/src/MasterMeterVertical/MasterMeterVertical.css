@@ -151,3 +151,19 @@
   right: 0;
   background: color-mix(in srgb, var(--mmv-bar-fill) 35%, transparent);
 }
+
+/* SLIM (2026-11-18, "can we make the vertical one this slim? I do want
+   option to make it fat though"): the horizontal meter's measures stood up —
+   6px bars 2px apart, a 16px knob, 9px labels 4px off the bars — so the whole
+   meter is ~36px across and sits in a 48px side toolbar; its button at the
+   head, as before */
+.master-meter-vertical--slim { padding: 6px 0 6px; gap: 8px; }
+.master-meter-vertical--slim .master-meter-vertical__meter-row { gap: 4px; }
+.master-meter-vertical--slim .master-meter-vertical__bars { width: 14px; }
+.master-meter-vertical--slim .master-meter-vertical__bar { border-radius: 1px; }
+.master-meter-vertical--slim .master-meter-vertical__bar-fill { border-radius: 1px; }
+.master-meter-vertical--slim .master-meter-vertical__clip-cap { height: 3px; }
+.master-meter-vertical--slim .master-meter-vertical__thumb { width: 16px; height: 16px; }
+.master-meter-vertical--slim .master-meter-vertical__scale { width: 16px; align-items: flex-start; padding-bottom: 4px; }
+.master-meter-vertical--slim .master-meter-vertical__label { font-size: 9px; text-align: left; }
+.master-meter-vertical--slim .master-meter-vertical__tick { width: 3px; }

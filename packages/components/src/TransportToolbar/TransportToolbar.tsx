@@ -176,6 +176,9 @@ export interface TransportToolbarProps {
    *  style, type, dB range — uncontrolled when absent */
   meterLook?: PlaybackMeterLook;
   onMeterLookChange?: (look: PlaybackMeterLook) => void;
+  /** The meters in a side toolbar: slim (the default) or wide (2026-11-18) */
+  verticalMeterSize?: 'slim' | 'wide';
+  onVerticalMeterSizeChange?: (size: 'slim' | 'wide') => void;
 
   /**
    * Where the RECORDING meter shows (2026-11-04, "dock recording meter to
@@ -396,7 +399,7 @@ export function TransportTools({
   getMicrophoneLevelDb, microphoneGain = 1, onMicrophoneGainChange, onMicrophoneLevelsOpen,
   microphoneInputMonitoring, onMicrophoneInputMonitoringChange, microphoneMetering, onMicrophoneMeteringChange,
   meterOrientation: meterOrientationProp, onMeterOrientationChange,
-  meterLook: meterLookProp, onMeterLookChange,
+  meterLook: meterLookProp, onMeterLookChange, verticalMeterSize = 'slim', onVerticalMeterSizeChange,
   recordingMeterOrientation = 'flyout', onRecordingMeterOrientationChange,
   layoutEditing = false, onLayoutEditingChange, onResetLayout, layoutCustomised = false,
   children,
@@ -716,6 +719,7 @@ export function TransportTools({
           return (
             <span ref={liveRef(micButtonRef)} style={VERTICAL_METER_SLOT_STYLE} data-docked-meter="recording">
               <MasterMeterVertical
+                size={verticalMeterSize}
                 icon="microphone"
                 settingsAriaLabel="Microphone level"
                 sliderAriaLabel="Microphone level"
@@ -783,6 +787,7 @@ export function TransportTools({
           return (
             <div ref={liveRef(volumeButtonRef)} style={VERTICAL_METER_SLOT_STYLE} data-docked-meter="playback">
               <MasterMeterVertical
+                size={verticalMeterSize}
                 levelLeft={masterLevelLeft}
                 levelRight={masterLevelRight}
                 clippedLeft={masterClippedLeft}
@@ -943,6 +948,22 @@ export function TransportTools({
               checked={recordingMeterOrientation === 'vertical'}
               onClick={() => { onRecordingMeterOrientationChange?.('vertical'); setMicMenu(null); }}
             />
+            {/* SLIM OR WIDE in a side toolbar (2026-11-18), for both meters */}
+            {recordingMeterOrientation === 'vertical' && onVerticalMeterSizeChange && (
+              <>
+                <ContextMenuItem isDivider />
+                <ContextMenuItem
+                  label="Slim meter"
+                  checked={verticalMeterSize === 'slim'}
+                  onClick={() => { onVerticalMeterSizeChange('slim'); setMicMenu(null); }}
+                />
+                <ContextMenuItem
+                  label="Wide meter"
+                  checked={verticalMeterSize === 'wide'}
+                  onClick={() => { onVerticalMeterSizeChange('wide'); setMicMenu(null); }}
+                />
+              </>
+            )}
           </ContextMenu>
 
           <PlaybackMeterFlyout
@@ -954,6 +975,8 @@ export function TransportTools({
             triggerRef={volumeButtonRef}
             position={meterOrientation}
             onPositionChange={setMeterOrientation}
+            verticalSize={verticalMeterSize}
+            onVerticalSizeChange={onVerticalMeterSizeChange}
             look={meterLook}
             onLookChange={setMeterLook}
             levelLeft={masterLevelLeft}

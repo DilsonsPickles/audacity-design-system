@@ -46,6 +46,8 @@ export type TransportToolbarContainerMasterMeter = UseMasterMeterReturn & {
   onMeterOrientationChange: NonNullable<TransportToolbarProps['onMeterOrientationChange']>;
   meterLook: NonNullable<TransportToolbarProps['meterLook']>;
   onMeterLookChange: NonNullable<TransportToolbarProps['onMeterLookChange']>;
+  verticalMeterSize?: TransportToolbarProps['verticalMeterSize'];
+  onVerticalMeterSizeChange?: TransportToolbarProps['onVerticalMeterSizeChange'];
 };
 
 export interface TransportToolbarContainerProps {
@@ -123,6 +125,8 @@ export function TransportToolbarContainer({
       onMeterOrientationChange={masterMeter.onMeterOrientationChange}
       meterLook={masterMeter.meterLook}
       onMeterLookChange={masterMeter.onMeterLookChange}
+      verticalMeterSize={masterMeter.verticalMeterSize}
+      onVerticalMeterSizeChange={masterMeter.onVerticalMeterSizeChange}
     >
       {children}
     </TransportTools>

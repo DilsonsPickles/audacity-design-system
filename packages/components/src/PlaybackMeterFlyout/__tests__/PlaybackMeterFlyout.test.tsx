@@ -32,6 +32,17 @@ const radio = (label: string) => {
 };
 
 describe('PlaybackMeterFlyout (2026-11-04, the Figma "Playback meter" flyout)', () => {
+  it('THE SIDE BAR METER\'S WIDTH (2026-11-18): Slim / Wide while docked in a side toolbar, reported; absent elsewhere', () => {
+    const onVerticalSizeChange = vi.fn();
+    renderFlyout({ position: 'vertical', verticalSize: 'slim', onVerticalSizeChange });
+    expect(radio('Slim').checked).toBe(true);
+    fireEvent.click(radio('Wide'));
+    expect(onVerticalSizeChange).toHaveBeenCalledWith('wide');
+    cleanup();
+    renderFlyout({ position: 'horizontal', verticalSize: 'slim', onVerticalSizeChange });
+    expect(document.querySelector('input[name="playback-meter-width"]')).toBeNull();
+  });
+
   it('shows the four groups of the design with the current choices checked', () => {
     renderFlyout();
     const flyout = document.querySelector('.playback-meter-flyout') as HTMLElement;
