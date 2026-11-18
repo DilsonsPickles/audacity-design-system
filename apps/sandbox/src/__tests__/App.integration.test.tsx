@@ -415,7 +415,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     // Removed from its grip's menu, it is not put back
     fireEvent.contextMenu(cogBar()!.querySelector('[data-toolbar-grip]')!, { clientX: 20, clientY: 20 });
     const remove = await waitFor(() => {
-      const item = Array.from(document.body.querySelectorAll('.context-menu-item')).find((e) => e.textContent?.includes('Remove toolbar'));
+      const item = Array.from(document.body.querySelectorAll('.context-menu-item')).find((e) => e.textContent?.includes('Remove group'));
       if (!item) throw new Error('not yet');
       return item as HTMLElement;
     });
@@ -454,16 +454,16 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     // From a toolbar's grip menu: the empty toolbar lands right AFTER it
     // (withProjectTools gave the seeded layout its project-tabs row)
     fireEvent.contextMenu(container.querySelector('[data-toolbar-bar="transport"] [data-toolbar-grip]')!, { clientX: 20, clientY: 20 });
-    fireEvent.click(await menuItem('New toolbar'));
+    fireEvent.click(await menuItem('New group'));
     // (withTitleBar folded the tabs into a title row, 2026-11-17)
     await waitFor(() => expect(topBarIds()).toEqual(['title', 'transport', 'bar-1', 'customise']));
     // The new toolbar is empty and named
     fireEvent.contextMenu(container.querySelector('[data-toolbar-bar="bar-1"] [data-toolbar-grip]')!, { clientX: 20, clientY: 20 });
-    await waitFor(() => expect(document.body.querySelector('[data-toolbar-menu-name]')?.textContent).toBe('Toolbar 1'));
+    await waitFor(() => expect(document.body.querySelector('[data-toolbar-menu-name]')?.textContent).toBe('Group 1'));
     fireEvent.keyDown(document, { key: 'Escape' });
     // From the dock's EMPTY SPACE: one at the end of that dock's last row
     fireEvent.contextMenu(container.querySelector('[data-toolbar-dock="bottom"]')!, { clientX: 400, clientY: 10 });
-    fireEvent.click(await menuItem('New toolbar'));
+    fireEvent.click(await menuItem('New group'));
     await waitFor(() => expect(
       Array.from(container.querySelectorAll('[data-toolbar-dock="bottom"] [data-toolbar-bar]')).map((b) => b.getAttribute('data-toolbar-bar')),
     ).toEqual(['status', 'bar-2']));
@@ -496,7 +496,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     fireEvent.mouseMove(document, { clientX: 300, clientY: 10 });
     fireEvent.mouseUp(document, { clientX: 300, clientY: 10 });
     await waitFor(() => expect(container.querySelector('[data-toolbar-tool="waveform-view"]')).toBeTruthy());
-    await waitFor(() => expect(document.body.querySelector('[data-tool-bank]')!.textContent).toContain('On a toolbar'));
+    await waitFor(() => expect(document.body.querySelector('[data-tool-bank]')!.textContent).toContain('In a group'));
     // an OPTION-drag back off onto the panel takes it off — silently
     const placed = container.querySelector<HTMLElement>('[data-toolbar-tool="waveform-view"]')!;
     fireEvent.mouseDown(placed, { button: 0, altKey: true, clientX: 300, clientY: 20 });
@@ -540,7 +540,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
       return el;
     });
     // nothing selected: the strip says what to do
-    expect(b.querySelector('[data-builder-preview-empty]')?.textContent).toContain('Select a toolbar');
+    expect(b.querySelector('[data-builder-preview-empty]')?.textContent).toContain('Select a group');
     // a tool selected: its toolbar is drawn, its real tools inside
     fireEvent.click(b.querySelector('[data-builder-node="t:loop"]')!);
     const preview = () => b.querySelector<HTMLElement>('[data-toolbar-preview]');
@@ -592,7 +592,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     fireEvent.click(b.querySelector('[data-builder-node="t:record"]')!);
     fireEvent.click(button(b, 'Remove'));
     await waitFor(() => expect(tool('record')).toBeNull());
-    expect(b.querySelector('[data-builder-tool="record"]')!.textContent).toContain('Not on a toolbar');
+    expect(b.querySelector('[data-builder-tool="record"]')!.textContent).toContain('Not in a group');
 
     // Add: into the selected toolbar, after the selected tool
     fireEvent.click(b.querySelector('[data-builder-tool="record"]')!);
@@ -603,7 +603,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     // New toolbar: an EMPTY one after the selection's, selected, which the
     // dock draws as its slot (2026-11-11); Add then fills it
     fireEvent.click(b.querySelector('[data-builder-node="t:record"]')!);
-    fireEvent.click(button(b, 'New toolbar'));
+    fireEvent.click(button(b, 'New group'));
     await waitFor(() => expect(container.querySelector('[data-toolbar-empty]')).toBeTruthy());
     expect(b.querySelector('[aria-selected="true"][data-builder-node^="b:"]')?.textContent).toContain('(empty)');
     fireEvent.click(b.querySelector('[data-builder-tool="record"]')!);
@@ -615,7 +615,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     const seps = () => live('[data-toolbar-bar="main"] .toolbar-dock__separator').length;
     const before = seps();
     fireEvent.click(b.querySelector('[data-builder-node="t:play"]')!);
-    fireEvent.click(button(b, 'Add separator'));
+    fireEvent.click(button(b, 'Add divider'));
     await waitFor(() => expect(seps()).toBe(before + 1));
     expect(tool('play')!.nextElementSibling?.querySelector('.toolbar-dock__separator')).toBeTruthy();
 
@@ -651,13 +651,13 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     expect(tool('copy')).toBeNull();
     fireEvent.click(b.querySelector('[data-builder-node="t:play"]')!);
     fireEvent.click(b.querySelector('[data-builder-node="t:stop"]')!, { shiftKey: true });
-    fireEvent.click(button(b, 'New toolbar'));
+    fireEvent.click(button(b, 'New group'));
     await waitFor(() => expect(barOf('play')).not.toBe('main'));
     expect(barOf('stop')).toBe(barOf('play'));
     // ANY TOOLBAR CAN BE DELETED — the main one too, and the cog goes with
     // it since 2026-11-16 (a right-click on any toolbar opens the builder)
     fireEvent.click(b.querySelector('[data-builder-node="b:main"]')!);
-    fireEvent.click(button(b, 'Delete toolbar'));
+    fireEvent.click(button(b, 'Delete group'));
     await waitFor(() => expect(container.querySelector('[data-toolbar-bar="main"]')).toBeNull());
     expect(tool('record')).toBeNull();
     expect(tool('customise')).toBeNull();
@@ -667,7 +667,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     // OK keeps an edit; Reset layout puts the workspace's own bars back
     b = await openBuilder();
     fireEvent.click(b.querySelector('[data-builder-node="t:record"]')!);
-    fireEvent.click(button(b, 'New toolbar'));
+    fireEvent.click(button(b, 'New group'));
     fireEvent.click(b.querySelector('[data-builder-tool="record"]')!);
     fireEvent.click(button(b, 'Add'));
     await waitFor(() => expect(barOf('record')).not.toBe('main'));
@@ -686,7 +686,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     // the live-applied edits standing — only the Cancel BUTTON reverts
     b = await openBuilder();
     fireEvent.click(b.querySelector('[data-builder-node="t:record"]')!);
-    fireEvent.click(button(b, 'New toolbar'));
+    fireEvent.click(button(b, 'New group'));
     fireEvent.click(b.querySelector('[data-builder-tool="record"]')!);
     fireEvent.click(button(b, 'Add'));
     await waitFor(() => expect(barOf('record')).not.toBe('main'));

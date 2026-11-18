@@ -77,7 +77,7 @@ describe('ToolbarBarMenu', () => {
     expect(labels()).toContain('Stop');
     expect(labels()).toContain('Timecode');
     expect(labels()).not.toContain('Play');
-    expect(Array.from(document.querySelectorAll('[data-menu-heading]')).map((e) => e.textContent)).toEqual(['Not on a toolbar', 'Hidden']);
+    expect(Array.from(document.querySelectorAll('[data-menu-heading]')).map((e) => e.textContent)).toEqual(['Not in a group', 'Hidden']);
     fireEvent.click(item('Stop'));
     expect(layout().top[1][0].tools).toEqual(['play', 'timecode', 'stop']);
   });
@@ -107,7 +107,7 @@ describe('ToolbarBarMenu', () => {
     const two: ToolbarLayout = { ...LAYOUT, bottom: [[{ id: 'mine', tools: ['stop'], name: 'Podcast tools' }]] };
     const { item, layout } = renderMenu('mine', { layout: two });
     fireEvent.mouseEnter(item('Move to'));
-    expect(Array.from(document.querySelectorAll('[data-menu-heading]')).map((e) => e.textContent)).toContain('After toolbar');
+    expect(Array.from(document.querySelectorAll('[data-menu-heading]')).map((e) => e.textContent)).toContain('After group');
     // the Title bar is never a target
     expect(item('Main toolbar')).toBeTruthy();
     fireEvent.click(item('Main toolbar'));
@@ -118,7 +118,7 @@ describe('ToolbarBarMenu', () => {
   it('heads the menu with the toolbar\'s name, read-only, then its items', () => {
     const { labels } = renderMenu('main');
     expect(document.querySelector('[data-toolbar-menu-name]')?.textContent).toBe('Main toolbar');
-    expect(labels()).toEqual(['Rename…', 'Move to', 'Add tool', 'Add separator', 'Add flexible space at the start', 'Reset width', 'New toolbar', 'Edit toolbars…', 'Remove toolbar']);
+    expect(labels()).toEqual(['Rename…', 'Move to', 'Add tool', 'Add divider', 'Add flexible space at the start', 'Reset width', 'New group', 'Edit toolbars…', 'Remove group']);
   });
 
   it('the Title bar is the app\'s corner: a checklist of its app-level items, then Edit toolbars… (2026-11-16)', () => {
@@ -139,7 +139,7 @@ describe('ToolbarBarMenu', () => {
 
   it('Remove toolbar takes it off the layout, silently (2026-11-18, "I hate the \'Toolbar removed\' toast")', () => {
     const { item, layout } = renderMenu('main');
-    fireEvent.click(item('Remove toolbar'));
+    fireEvent.click(item('Remove group'));
     expect(layout().top.flat().map((b) => b.id)).toEqual(['title']);
     expect(document.body.textContent).not.toContain('Toolbar removed');
   });

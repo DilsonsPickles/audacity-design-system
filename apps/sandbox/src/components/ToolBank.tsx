@@ -61,7 +61,7 @@ export function ToolBank({ layout, onTileMouseDown, removing, draggingToolId, on
   const available = BANK_TOOLS.filter((id) => !inUse(id) && matches(toolName(id)));
   const used = BANK_TOOLS.filter((id) => inUse(id) && matches(toolName(id)));
   const items = [
-    { id: BANK_SEPARATOR_ID, label: 'Separator' },
+    { id: BANK_SEPARATOR_ID, label: 'Divider' },
     { id: BANK_SPACER_ID, label: 'Flexible space' },
   ].filter((i) => matches(i.label));
 
@@ -97,8 +97,8 @@ export function ToolBank({ layout, onTileMouseDown, removing, draggingToolId, on
   );
 
   const hint = removing
-    ? 'Release to take it off the toolbars'
-    : `Drag a tool onto a toolbar. ${modifier}-drag one on a toolbar to move it, or onto this panel to remove it`;
+    ? 'Release to remove it from its group'
+    : `Drag a tool into a group. ${modifier}-drag one in a group to move it, or onto this panel to remove it`;
 
   return (
     <div
@@ -136,13 +136,13 @@ export function ToolBank({ layout, onTileMouseDown, removing, draggingToolId, on
           flex: '1 1 0', minHeight: 0, overflowY: 'auto', alignContent: 'start', paddingRight: 2,
         }}
       >
-        {items.length > 0 && heading('Separator and space')}
+        {items.length > 0 && heading('Divider and space')}
         {items.map((i) => tile(i.id, i.label, i.id === BANK_SEPARATOR_ID
           ? <span style={{ width: 1, height: 16, background: 'currentColor', opacity: 0.6 }} />
           : <span style={{ width: 28, height: 12, borderRadius: 2, border: '1px dashed currentColor', opacity: 0.6 }} />))}
-        {available.length > 0 && heading('Not on a toolbar')}
+        {available.length > 0 && heading('Not in a group')}
         {available.map((id) => tile(id, toolName(id), <ToolGlyph id={id} />, hidden.has(id) && findTool(layout, id) ? 'Hidden' : undefined))}
-        {used.length > 0 && heading('On a toolbar — drag one to move it')}
+        {used.length > 0 && heading('In a group — drag one to move it')}
         {used.map((id) => tile(id, toolName(id), <ToolGlyph id={id} />))}
         {items.length + available.length + used.length === 0 && (
           <div style={{ gridColumn: '1 / -1', color: theme.foreground.text.secondary, padding: '8px 0' }}>No tools match</div>

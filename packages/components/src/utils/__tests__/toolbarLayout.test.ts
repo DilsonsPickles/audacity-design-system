@@ -344,7 +344,7 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     // names: the user's, the seed's, else "Toolbar"
     expect(barDisplayName(findBar(withEmpty, id)!.bar)).toBe('Toolbar 1');
     expect(barDisplayName(findBar(withEmpty, 'transport')!.bar)).toBe('Transport');
-    expect(barDisplayName({ id: 'bar-9', tools: [] })).toBe('Toolbar');
+    expect(barDisplayName({ id: 'bar-9', tools: [] })).toBe('Group');
     const renamed = renameBar(withEmpty, 'transport', 'Play');
     expect(barDisplayName(findBar(renamed, 'transport')!.bar)).toBe('Play');
     expect(findBar(renameBar(renamed, 'transport', '  '), 'transport')!.bar.name).toBeUndefined();

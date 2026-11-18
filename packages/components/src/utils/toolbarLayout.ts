@@ -82,10 +82,14 @@ export const isLayoutItem = (id: string): boolean => isToolSeparator(id) || isTo
 const SEED_BAR_NAMES: Record<string, string> = {
   'project-tabs': 'Tabs', 'project-actions': 'Project', workspace: 'Workspace', share: 'Share', history: 'History',
   transport: 'Transport', tools: 'Tools', edit: 'Edit', view: 'View', time: 'Time', meters: 'Meters',
-  customise: 'Customise', status: 'Status bar', title: 'Title bar', selection: 'Selection', main: 'Main toolbar',
+  customise: 'Customise', status: 'Status', title: 'Title bar', selection: 'Selection', main: 'Main',
 };
-/** What a toolbar is called: its own name, else its seed's, else "Toolbar" */
-export const barDisplayName = (bar: ToolbarBar): string => bar.name ?? SEED_BAR_NAMES[bar.id] ?? 'Toolbar';
+/** What a toolbar is called: its own name, else its seed's, else "Group".
+ *  IN THE UI A BAR IS A "GROUP" (2026-11-18, "the toolbar inside a toolbar.
+ *  Like is there a better analogy?" → "use groups"): a TOOLBAR is the strip
+ *  (top, status bar, left, right), a GROUP the gripped, movable unit in it,
+ *  a DIVIDER the short line inside a group; the code keeps bar / separator */
+export const barDisplayName = (bar: ToolbarBar): string => bar.name ?? SEED_BAR_NAMES[bar.id] ?? 'Group';
 
 /** Which of a bar's sizes a dock uses */
 export type ToolbarBarAxis = 'width' | 'height';

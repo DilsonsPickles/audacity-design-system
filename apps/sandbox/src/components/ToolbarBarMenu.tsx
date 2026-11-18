@@ -44,8 +44,8 @@ export interface ToolbarBarMenuState {
 function freshName(base: ToolbarLayout): string {
   const names = new Set(TOOLBAR_REGIONS.flatMap((r) => dockBars(base, r)).map(barDisplayName));
   let n = 1;
-  while (names.has(`Toolbar ${n}`)) n++;
-  return `Toolbar ${n}`;
+  while (names.has(`Group ${n}`)) n++;
+  return `Group ${n}`;
 }
 
 export interface ToolbarBarMenuProps {
@@ -73,10 +73,10 @@ const CORNER_NAMES: Record<string, string> = {
 };
 
 const MOVE_TARGETS: ReadonlyArray<{ region: ToolbarRegion; label: string }> = [
-  { region: 'top', label: 'Top' },
-  { region: 'bottom', label: 'Bottom' },
-  { region: 'left', label: 'Left' },
-  { region: 'right', label: 'Right' },
+  { region: 'top', label: 'Top toolbar' },
+  { region: 'bottom', label: 'Status bar' },
+  { region: 'left', label: 'Left toolbar' },
+  { region: 'right', label: 'Right toolbar' },
 ];
 
 /** A read-only heading inside a menu — not an item, so the arrows skip it */
@@ -102,7 +102,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
     const t = window.setTimeout(() => {
       const input = renameRef.current?.querySelector('input');
       if (!input) return;
-      input.setAttribute('aria-label', 'Toolbar name');
+      input.setAttribute('aria-label', 'Group name');
       input.focus();
       input.select();
     }, 60);
@@ -170,7 +170,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
     }
     const count = new Map<string, number>();
     all.forEach((t) => count.set(t.label, (count.get(t.label) ?? 0) + 1));
-    const dock = (r: ToolbarRegion) => MOVE_TARGETS.find((m) => m.region === r)?.label ?? (r.startsWith('left') ? 'Left' : 'Right');
+    const dock = (r: ToolbarRegion) => MOVE_TARGETS.find((m) => m.region === r)?.label ?? (r.startsWith('left') ? 'Left toolbar' : 'Right toolbar');
     return all.map((t) => ((count.get(t.label) ?? 0) > 1 ? { ...t, label: `${t.label} (${dock(t.region)})` } : t));
   })();
   const addTool = (id: string) => {
@@ -180,7 +180,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
   };
   const addToolItems = (closeAfter: boolean) => {
     if (offToolbarsAll.length + hiddenToolsAll.length === 0) {
-      return <ContextMenuItem label="Every tool is on a toolbar" disabled onClick={() => {}} />;
+      return <ContextMenuItem label="Every tool is in a group" disabled onClick={() => {}} />;
     }
     const fits = (id: string) => !(sideDock && toolFitsVertical && !toolFitsVertical(id));
     const search = (
@@ -233,7 +233,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
     return (
       <>
         {search}
-        {offToolbars.length > 0 && <MenuHeading color={theme.foreground.text.secondary}>Not on a toolbar</MenuHeading>}
+        {offToolbars.length > 0 && <MenuHeading color={theme.foreground.text.secondary}>Not in a group</MenuHeading>}
         {offToolbars.map(item)}
         {offToolbars.length > 0 && hiddenTools.length > 0 && <ContextMenuItem isDivider />}
         {hiddenTools.length > 0 && <MenuHeading color={theme.foreground.text.secondary}>Hidden</MenuHeading>}
@@ -262,7 +262,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
                 dock's last row — the grip's drag and the builder fill it */}
             {menu.region && (
               <ContextMenuItem
-                label="New toolbar"
+                label="New group"
                 onClick={() => {
                   const region = menu.region!;
                   editLayout((base) => {
@@ -368,7 +368,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
               {besideTargets.length > 0 && (
                 <>
                   <ContextMenuItem isDivider />
-                  <MenuHeading color={theme.foreground.text.secondary}>After toolbar</MenuHeading>
+                  <MenuHeading color={theme.foreground.text.secondary}>After group</MenuHeading>
                   {besideTargets.map((t) => (
                     <ContextMenuItem
                       key={t.id}
@@ -394,7 +394,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
               {addToolItems(true)}
             </ContextMenuItem>
             <ContextMenuItem
-              label="Add separator"
+              label="Add divider"
               disabled={!hasTools}
               onClick={() => editLayout((base) => insertSeparator(base, bar.id, null))}
               onClose={onClose}
@@ -430,7 +430,7 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
             {/* NEW TOOLBAR beside this one (2026-11-17): an empty, named
                 toolbar right after the clicked toolbar in its row */}
             <ContextMenuItem
-              label="New toolbar"
+              label="New group"
               onClick={() => {
                 editLayout((base) => {
                   const at = findBar(base, bar.id);
@@ -444,14 +444,14 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
             />
             <ContextMenuItem label="Edit toolbars…" onClick={() => onEditToolbars(bar.id)} onClose={onClose} />
             <ContextMenuItem isDivider />
-            <ContextMenuItem label="Remove toolbar" onClick={() => removeToolbar(bar.id)} onClose={onClose} />
+            <ContextMenuItem label="Remove group" onClick={() => removeToolbar(bar.id)} onClose={onClose} />
           </>
         ))}
       </ContextMenu>
 
       <Dialog
         isOpen={renaming !== null}
-        title="Rename toolbar"
+        title="Rename group"
         onClose={() => setRenaming(null)}
         closeOnClickOutside={false}
         os={os}

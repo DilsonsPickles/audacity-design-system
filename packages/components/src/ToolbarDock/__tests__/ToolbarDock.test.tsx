@@ -461,12 +461,24 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(a.querySelector('[data-toolbar-resize="a"]')).not.toBeNull();
     // no words drawn (2026-11-16) — the name is for screen readers
     expect(slot?.textContent).toBe('');
-    expect(slot?.getAttribute('aria-label')).toBe('Empty toolbar');
+    expect(slot?.getAttribute('aria-label')).toBe('Empty group');
     expect(container.querySelector('[data-toolbar-bar="hidden"]')).toBeNull();
   });
 
   describe('THE TOOLBAR\'S MENU ON ITS GRIP (2026-11-16)', () => {
     const rows = [[{ id: 'a', tools: ['one', 'two'], name: 'Main toolbar' }, { id: 'b', tools: ['three'] }]];
+
+    it('a grip is named "<name> group", never "Group 1 group" (2026-11-18, the groups wording)', () => {
+      const name = (n: string) => {
+        const { container } = renderDock({ rows: [[{ id: 'x', tools: ['one'], name: n }, { id: 'y', tools: ['two'] }]], onBarMenu: vi.fn(), tabGroupId: 'tool-toolbar' });
+        const label = container.querySelector('[data-toolbar-grip="x"]')!.getAttribute('aria-label');
+        cleanup();
+        return label;
+      };
+      expect(name('Group 1')).toBe('Group 1');
+      expect(name('Drums')).toBe('Drums group');
+      expect(name('Title bar')).toBe('Title bar');
+    });
 
     it('a right-click on a grip asks for the bar\'s menu at the pointer', () => {
       const onBarMenu = vi.fn();
@@ -483,7 +495,7 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
       const b = container.querySelector('[data-toolbar-grip="b"]') as HTMLElement;
       expect(a.getAttribute('role')).toBe('button');
       expect(a.getAttribute('aria-label')).toBe('Main toolbar');
-      expect(b.getAttribute('aria-label')).toBe('Toolbar');
+      expect(b.getAttribute('aria-label')).toBe('Group');
       fireEvent.keyDown(b, { key: 'F10', shiftKey: true });
       fireEvent.keyDown(b, { key: 'ContextMenu' });
       fireEvent.keyDown(b, { key: 'Enter' });

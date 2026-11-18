@@ -44,7 +44,7 @@ type Selection =
   | null;
 
 const REGION_NAMES: Record<ToolbarRegion, string> = {
-  top: 'Top', bottom: 'Bottom (status bar)', left: 'Left', right: 'Right',
+  top: 'Top toolbar', bottom: 'Status bar', left: 'Left toolbar', right: 'Right toolbar',
   'left-inner': 'Left, inside the panel', 'right-inner': 'Right, inside the panel',
 };
 
@@ -163,7 +163,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
         if (bar.id === TITLE_BAR_ID) return;
         const bKey = `b:${bar.id}`;
         treeRows.push({ key: bKey, level: 3, label: barDisplayName(bar), sel: { kind: 'bar', barId: bar.id }, barId: bar.id, empty: bar.tools.length === 0, parents: [dKey, rKey], hasChildren: bar.tools.length > 0 });
-        bar.tools.forEach((t) => treeRows.push({ key: `t:${t}`, level: 4, label: isToolSeparator(t) ? 'Separator' : isToolSpacer(t) ? 'Flexible space' : toolName(t), sel: { kind: 'tool', toolId: t }, toolId: t, parents: [dKey, rKey, bKey], hasChildren: false }));
+        bar.tools.forEach((t) => treeRows.push({ key: `t:${t}`, level: 4, label: isToolSeparator(t) ? 'Divider' : isToolSpacer(t) ? 'Flexible space' : toolName(t), sel: { kind: 'tool', toolId: t }, toolId: t, parents: [dKey, rKey, bKey], hasChildren: false }));
       });
     });
   }
@@ -303,8 +303,8 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
   const freshName = () => {
     const names = new Set(allBars.map((b) => barDisplayName(b.bar)));
     let n = 1;
-    while (names.has(`Toolbar ${n}`)) n++;
-    return `Toolbar ${n}`;
+    while (names.has(`Group ${n}`)) n++;
+    return `Group ${n}`;
   };
   const addBarAt = (placement: BarPlacement) => {
     const id = nextBarId(layout);
@@ -467,7 +467,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
         onKeyDownCapture={(e) => { if (e.key !== 'Tab') { e.preventDefault(); e.stopPropagation(); } }}
       >
         {!previewBar ? (
-          <span data-builder-preview-empty style={{ ...muted, padding: '0 12px' }}>Select a toolbar or a tool to preview it</span>
+          <span data-builder-preview-empty style={{ ...muted, padding: '0 12px' }}>Select a group or a tool to preview it</span>
         ) : previewBar.bar.tools.length === 0 ? (
           <span data-builder-preview-empty style={{ ...muted, padding: '0 12px' }}>{barDisplayName(previewBar.bar)} is empty</span>
         ) : previewAllHidden ? (
@@ -549,7 +549,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
                 >
                   <ToolGlyph id={id} />
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{toolName(id)}</span>
-                  {!placed && <span style={muted}>Not on a toolbar</span>}
+                  {!placed && <span style={muted}>Not in a group</span>}
                   {placed && hidden.has(id) && <span style={muted}>Hidden</span>}
                 </div>
               );
@@ -646,7 +646,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
                 ) : r.toolId && isToolSeparator(r.toolId) ? (
                   <span data-builder-separator style={{ ...muted, display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
                     <span style={{ flex: '0 0 24px', height: 1, background: theme.border.divider }} />
-                    Separator
+                    Divider
                     <span style={{ flex: 1, height: 1, background: theme.border.divider }} />
                   </span>
                 ) : r.toolId ? (
@@ -665,7 +665,7 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
                 ) : r.barId && renaming?.barId === r.barId ? (
                   <input
                     autoFocus
-                    aria-label="Toolbar name"
+                    aria-label="Group name"
                     data-builder-rename
                     value={renaming.text}
                     onChange={(e) => setRenaming({ barId: renaming.barId, text: e.target.value })}
@@ -702,13 +702,13 @@ export function ToolbarBuilderDialog({ isOpen, onClose, layout, editLayout, onRe
           <Button variant="secondary" size="default" disabled={!canUp} onClick={() => move(-1)}>▲ Up</Button>
           <Button variant="secondary" size="default" disabled={!canDown} onClick={() => move(1)}>▼ Down</Button>
           <span style={{ height: 8 }} />
-          <Button variant="secondary" size="default" onClick={newBar}>New toolbar</Button>
+          <Button variant="secondary" size="default" onClick={newBar}>New group</Button>
           <Button variant="secondary" size="default" onClick={newRow}>New row</Button>
-          <Button variant="secondary" size="default" disabled={!canSeparator} onClick={addSeparator}>Add separator</Button>
+          <Button variant="secondary" size="default" disabled={!canSeparator} onClick={addSeparator}>Add divider</Button>
           <Button variant="secondary" size="default" disabled={!canSeparator} onClick={addSpacer}>Add flexible space</Button>
           <span style={{ height: 8 }} />
           <Button variant="secondary" size="default" disabled={!canRename} onClick={startRename}>Rename…</Button>
-          <Button variant="secondary" size="default" disabled={!canDeleteBar} onClick={deleteBar}>Delete toolbar</Button>
+          <Button variant="secondary" size="default" disabled={!canDeleteBar} onClick={deleteBar}>Delete group</Button>
         </div>
 
         {preview}

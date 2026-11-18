@@ -118,8 +118,8 @@ export const STATUS_INFO_RULES: ReadonlyArray<StatusInfoRule> = [
 
   // --- Toolbars ---
   // The gap between two toolbars is the later one's grip (2026-11-10)
-  { selector: '.toolbar-dock__grip', line: 'Drag to move this toolbar' },
-  { selector: '.toolbar-dock__resize', line: 'Drag to resize this toolbar, double-click for its natural size' },
+  { selector: '.toolbar-dock__grip', line: 'Drag to move this group' },
+  { selector: '.toolbar-dock__resize', line: 'Drag to resize this group, double-click for its natural size' },
   { selector: '.toolbar-dock__overflow', line: 'More tools' },
   { selector: '.project-toolbar .tab, [data-project-tool="tabs"] .tab', line: (el) => el.textContent?.trim() || null },
   // The speed's VALUE is the cue's ("Playing at 110%"): said once, so

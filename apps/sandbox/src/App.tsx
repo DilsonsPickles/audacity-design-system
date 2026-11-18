@@ -491,7 +491,9 @@ function CanvasDemoContent() {
   // The tab strip's / the rail's own small menu (2026-11-16, vertical tabs)
   const [tabsMenu, setTabsMenu] = React.useState<{ x: number; y: number; from: 'tabs' | 'rail' } | null>(null);
   const [builderBarId, setBuilderBarId] = React.useState<string | null>(null);
-  const openAddToolMenu = React.useCallback((barId: string, anchor: { x: number; y: number }) => setBarMenu({ barId, ...anchor, addOnly: true }), []);
+  // NO PLUS IN AN EMPTY GROUP (2026-11-18, "I don't like the plus icon"):
+  // the dock draws a blank slot; tools come from the Customise toolbars
+  // panel or the group's right-click Add tool
   const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string, beforeToolId?: string | null) => setBarMenu({ barId, ...anchor, region, toolId, beforeToolId }), []);
   // a separator or a flexible space fits a column as it does a row
   const toolFitsVertical = (id: string) =>
@@ -1535,13 +1537,13 @@ function CanvasDemoContent() {
     infoText: toolbarEditing || toolDrag.draggingToolId
       ? (toolDrag.target?.refused
           ? (TITLE_BAR_ONLY.includes(toolDrag.draggingToolId ?? '') ? 'This one lives in the title bar only'
-            : isBankLayoutItem(toolDrag.draggingToolId ?? '') && toolDrag.target.kind === 'new' ? 'Drop it inside a toolbar'
+            : isBankLayoutItem(toolDrag.draggingToolId ?? '') && toolDrag.target.kind === 'new' ? 'Drop it inside a group'
             : toolDrag.target.kind === 'into' && toolDrag.target.barId === TITLE_BAR_ID ? 'The title bar takes app controls only' : 'This tool has no vertical form')
-        : toolDrag.target?.kind === 'new' ? ('newRowAt' in toolDrag.target.placement ? 'Release to give it a row of its own' : 'Release to give it a toolbar of its own')
-        : toolDrag.target?.kind === 'into' ? 'Release to add it to this toolbar'
-        : toolDrag.removing ? 'Release to take it off the toolbars'
-        : toolDrag.draggingToolId ? 'Drag onto a toolbar, beside one, or between rows'
-        : 'Drag a tool onto a toolbar, beside one, or between rows. Escape when done')
+        : toolDrag.target?.kind === 'new' ? ('newRowAt' in toolDrag.target.placement ? 'Release to give it a row of its own' : 'Release to give it a group of its own')
+        : toolDrag.target?.kind === 'into' ? 'Release to add it to this group'
+        : toolDrag.removing ? 'Release to remove it from its group'
+        : toolDrag.draggingToolId ? 'Drag into a group, beside one, or between rows'
+        : 'Drag a tool into a group, beside one, or between rows. Escape when done')
       : handleHint
         ? handleHintText(handleHint, preferences.operatingSystem, { snapEnabled })
         : (statusInfo.text ?? (showFocusDebug ? focusedElement : 'Click and drag to select audio')),
@@ -1835,7 +1837,6 @@ function CanvasDemoContent() {
           extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarMenu={openBarMenu}
-          onEmptyBarAdd={openAddToolMenu}
           onBarResize={toolbarLayout.resizeBar}
           className="transport-toolbar"
           tabGroupId="tool-toolbar"
@@ -1983,7 +1984,6 @@ function CanvasDemoContent() {
           extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarMenu={openBarMenu}
-          onEmptyBarAdd={openAddToolMenu}
           onBarResize={toolbarLayout.resizeBar}
           tabGroupId="tool-dock-left"
           ariaLabel="Left toolbar dock"
@@ -2015,7 +2015,6 @@ function CanvasDemoContent() {
               extraToolMeta={appToolMeta}
               drag={dockDrag}
           onBarMenu={openBarMenu}
-          onEmptyBarAdd={openAddToolMenu}
               onBarResize={toolbarLayout.resizeBar}
               tabGroupId="tool-dock-left"
               ariaLabel="Toolbar dock beside the left panels"
@@ -2030,7 +2029,6 @@ function CanvasDemoContent() {
               extraToolMeta={appToolMeta}
               drag={dockDrag}
           onBarMenu={openBarMenu}
-          onEmptyBarAdd={openAddToolMenu}
               onBarResize={toolbarLayout.resizeBar}
               tabGroupId="tool-dock-right"
               ariaLabel="Toolbar dock beside the right panels"
@@ -2104,7 +2102,6 @@ function CanvasDemoContent() {
           extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarMenu={openBarMenu}
-          onEmptyBarAdd={openAddToolMenu}
           onBarResize={toolbarLayout.resizeBar}
           tabGroupId="tool-dock-right"
           ariaLabel="Right toolbar dock"
@@ -2124,7 +2121,6 @@ function CanvasDemoContent() {
           extraToolMeta={appToolMeta}
           drag={dockDrag}
           onBarMenu={openBarMenu}
-          onEmptyBarAdd={openAddToolMenu}
           onBarResize={toolbarLayout.resizeBar}
           className="selection-toolbar"
           tabGroupId="selection-toolbar"

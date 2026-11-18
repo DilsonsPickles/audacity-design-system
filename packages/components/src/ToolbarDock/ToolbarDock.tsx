@@ -268,7 +268,7 @@ export function ToolbarDock({
             type="button"
             className="toolbar-dock__empty toolbar-dock__empty-add"
             data-toolbar-empty={bar.id}
-            aria-label="Add tool to empty toolbar"
+            aria-label="Add tool to empty group"
             onClick={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
               onEmptyBarAdd(bar.id, isVerticalRegion(region) ? { x: r.right + 4, y: r.top } : { x: r.left, y: r.bottom + 4 });
@@ -277,7 +277,7 @@ export function ToolbarDock({
             <Icon name="plus" size={16} />
           </button>
         ) : (
-          <span className="toolbar-dock__empty" data-toolbar-empty={bar.id} role="img" aria-label="Empty toolbar" />
+          <span className="toolbar-dock__empty" data-toolbar-empty={bar.id} role="img" aria-label="Empty group" />
         ),
       });
     }
@@ -505,8 +505,8 @@ export function ToolbarDock({
           // Shift+F10 / the Menu key / Enter / Space open the menu under it
           role: 'button',
           tabIndex: -1,
-          // "Main toolbar", "Status bar toolbar", "Toolbar" — never "Toolbar toolbar"
-          'aria-label': /toolbar$/i.test(barDisplayName(d.bar)) ? barDisplayName(d.bar) : `${barDisplayName(d.bar)} toolbar`,
+          // "Main group", "Title bar", "Group 1" — never "Group 1 group"
+          'aria-label': /\bgroup\b|bar$/i.test(barDisplayName(d.bar)) ? barDisplayName(d.bar) : `${barDisplayName(d.bar)} group`,
           'aria-haspopup': 'menu' as const,
           'data-toolbar-grip': d.bar.id,
           onKeyDown: (e: React.KeyboardEvent<HTMLSpanElement>) => {
