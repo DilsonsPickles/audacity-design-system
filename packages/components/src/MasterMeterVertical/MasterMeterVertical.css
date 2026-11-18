@@ -157,7 +157,7 @@
    6px bars 2px apart, a 16px knob, 9px labels 4px off the bars — so the whole
    meter is ~36px across and sits in a 48px side toolbar; its button at the
    head, as before */
-.master-meter-vertical--slim { padding: 6px 0 6px; gap: 8px; }
+.master-meter-vertical--slim { padding: 0 0 6px; gap: 8px; }
 .master-meter-vertical--slim .master-meter-vertical__meter-row { gap: 4px; }
 .master-meter-vertical--slim .master-meter-vertical__bars { width: 14px; }
 .master-meter-vertical--slim .master-meter-vertical__bar { border-radius: 1px; }
@@ -167,3 +167,11 @@
 .master-meter-vertical--slim .master-meter-vertical__scale { width: 16px; align-items: flex-start; padding-bottom: 4px; }
 .master-meter-vertical--slim .master-meter-vertical__label { font-size: 9px; text-align: left; }
 .master-meter-vertical--slim .master-meter-vertical__tick { width: 3px; }
+
+/* NO DEAD SPACE ABOVE (2026-11-18, "close up a bit of that awkward spacing
+   gap near the top of the meter when it's in a vertical layout"): in a side
+   toolbar the group's grip already stands above the meter, so the meter's
+   own top padding goes (slim: 0, wide: 14 → 4), and the wide meter's gap to
+   its bars closes to 12 — half its 24px knob, which sits on the bars' top
+   at 0 dB (the slim one's 8 is half its 16px knob already) */
+.toolbar-dock .master-meter-vertical:not(.master-meter-vertical--slim) { padding-top: 4px; gap: 12px; }
