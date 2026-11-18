@@ -98,10 +98,13 @@
 .toolbar-dock__tool--spacer > .toolbar-dock__tool-body { flex: 1 1 0; align-self: stretch; min-width: 0; }
 .toolbar-dock__spacer { flex: 1 1 0; display: block; align-self: stretch; min-width: 0; min-height: 28px; border-radius: 3px; }
 body[data-toolbar-tool-drag] .toolbar-dock__spacer { outline: 1px dashed currentColor; outline-offset: -1px; opacity: 0.4; }
-/* …but NO LONGER THAN 480PX in a row (2026-11-18): filling the row, a
-   meter on a wide display ran to the window's edge; a toolbar sized by
-   hand still gives it whatever it is sized to */
-.toolbar-dock--horizontal .toolbar-dock__bar--fill .toolbar-dock__tool--stretch { max-width: 480px; }
+/* A METER FILLS ITS GROUP (2026-11-18, "but a meter should fill its
+   container for sure" — reversing the same day's 480px cap, which left a
+   filling group's meter short with empty card beside it): no cap; and a
+   FLEXIBLE SPACE IN THE SAME GROUP GIVES WAY to it, keeping only its 8px
+   minimum, so the meter takes the room, not the space */
+.toolbar-dock__bar:has(.toolbar-dock__tool--stretch, .toolbar-dock__tool--grow) .toolbar-dock__tool--spacer,
+.toolbar-dock__bar:has(.toolbar-dock__tool--stretch, .toolbar-dock__tool--grow) .toolbar-dock__tool--spacer > .toolbar-dock__tool-body { flex: 0 0 auto; }
 
 .toolbar-dock__tools {
   display: flex;
