@@ -1,5 +1,5 @@
 import React from 'react';
-import { ToolbarDock, useTransportTools, type ToolbarBarAxis, type ToolbarRegion, type ToolbarRow, type ToolMeta, type ToolbarOrientation } from '@audacity-ui/components';
+import { ToolbarDock, isVerticalRegion, useTransportTools, type ToolbarBarAxis, type ToolbarRegion, type ToolbarRow, type ToolMeta, type ToolbarOrientation } from '@audacity-ui/components';
 import type { ToolbarDropTarget } from '../hooks/useToolbarBarDrag';
 import type { ToolDropTarget } from '../utils/toolbarToolDrop';
 
@@ -13,6 +13,8 @@ export interface ToolbarDockDrag {
   draggingToolId: string | null;
   toolTarget: ToolDropTarget | null;
   onToolMouseDown: (toolId: string, barId: string, e: React.MouseEvent, toolRect: DOMRect) => void;
+  /** What is in hand fits a side toolbar; absent = it does */
+  fitsVertical?: boolean;
 }
 
 export interface AppToolbarDockProps {
@@ -39,6 +41,8 @@ export interface AppToolbarDockProps {
   dataAttrs?: Record<string, string | undefined>;
   /** False for a preview of one toolbar: it keeps its own size */
   lastFillsRow?: boolean;
+  /** Groups drawn flat with lines, or as islands (2026-11-18) */
+  groupStyle?: 'lines' | 'islands';
 }
 
 /**
@@ -49,7 +53,7 @@ export interface AppToolbarDockProps {
  */
 export function AppToolbarDock({
   region, rows, renderExtraTool, extraToolMeta, drag, onBarResize, onBarMenu, onEmptyBarAdd,
-  trailing, className, tabGroupId, ariaLabel, style, dataAttrs, lastFillsRow,
+  trailing, className, tabGroupId, ariaLabel, style, dataAttrs, lastFillsRow, groupStyle,
 }: AppToolbarDockProps) {
   const { renderTool, toolMeta, hidden } = useTransportTools();
   if (hidden) return null;
@@ -59,6 +63,13 @@ export function AppToolbarDock({
   const here = drag.barTarget?.region === region ? drag.barTarget : null;
   const tool = drag.toolTarget?.region === region ? drag.toolTarget : null;
   const arriving = here ?? (tool?.kind === 'new' ? tool : null);
+  // EVERY TOOLBAR THAT CAN TAKE WHAT IS IN HAND SAYS SO (2026-11-18,
+  // "there's no affordance when I drag a group to show that I can drag it
+  // into a side toolbar"): a faint accent outline on the dock while a group
+  // or a tool is dragged — a side toolbar only when it fits a column
+  const inHand = !!(drag.draggingBarId || drag.draggingToolId);
+  const canTake = inHand && (!isVerticalRegion(region) || drag.fitsVertical !== false);
+  const attrs = canTake ? { ...dataAttrs, 'data-drop-available': '' } : dataAttrs;
   const dock = (
     <ToolbarDock
       region={region}
@@ -81,9 +92,10 @@ export function AppToolbarDock({
       className={className}
       tabGroupId={tabGroupId}
       ariaLabel={ariaLabel}
-      dataAttrs={dataAttrs}
+      dataAttrs={attrs}
       style={style}
       lastFillsRow={lastFillsRow}
+      groupStyle={groupStyle}
     />
   );
   return dock;

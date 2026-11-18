@@ -128,6 +128,9 @@ export interface AppDialogsProps {
   setUseSplitRecordButton: React.Dispatch<React.SetStateAction<boolean>>;
   useVarispeedSlider: boolean;
   setUseVarispeedSlider: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Debug › Toolbars: groups as islands (2026-11-18) */
+  toolbarGroupIslands: boolean;
+  onToolbarGroupIslandsChange: (value: boolean) => void;
   /** Debug › Slow media: how long Save project as… blocks (s; 0 = none) */
   slowMediaSeconds: number;
   setSlowMediaSeconds: (seconds: number) => void;
@@ -192,6 +195,7 @@ export function AppDialogs(props: AppDialogsProps) {
     activeProfile, profiles, setProfile,
     useSplitRecordButton, setUseSplitRecordButton,
     useVarispeedSlider, setUseVarispeedSlider,
+    toolbarGroupIslands, onToolbarGroupIslandsChange,
     slowMediaSeconds, setSlowMediaSeconds,
     showMixer, setShowMixer,
     setActiveMenuItem,
@@ -1212,6 +1216,8 @@ export function AppDialogs(props: AppDialogsProps) {
         onUseSplitRecordButtonChange={setUseSplitRecordButton}
         useVarispeedSlider={useVarispeedSlider}
         onUseVarispeedSliderChange={setUseVarispeedSlider}
+        toolbarGroupIslands={toolbarGroupIslands}
+        onToolbarGroupIslandsChange={onToolbarGroupIslandsChange}
         slowMediaSeconds={slowMediaSeconds}
         onSlowMediaSecondsChange={setSlowMediaSeconds}
         showMixer={showMixer}

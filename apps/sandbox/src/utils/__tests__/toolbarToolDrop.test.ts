@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import type { ToolbarLayout } from '@audacity-ui/components';
 import { resolveToolDrop } from '../toolbarToolDrop';
-import { resolveBarDrop } from '../toolbarDockDrop';
+import { dockShowsNothing, resolveBarDrop } from '../toolbarDockDrop';
 
 const rect = (left: number, top: number, width: number, height: number): DOMRect =>
   ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON() { return {}; } }) as DOMRect;
@@ -229,5 +229,22 @@ describe('resolveBarDrop — where a whole bar lands (the grip drag)', () => {
     expect(resolveBarDrop(1360, 300, empty, row, true)).toMatchObject({ region: 'right' });
     // a bar with no vertical form is refused there too
     expect(resolveBarDrop(960, 300, empty, row, false)).toMatchObject({ region: 'right-inner', refused: true });
+  });
+});
+
+describe('dockShowsNothing (2026-11-18, "no affordance when I drag a group … into a side toolbar")', () => {
+  const layout = (right: ToolbarLayout['right']): ToolbarLayout => ({ top: [], bottom: [], left: [], right });
+  it('a dock with no rows, or whose groups draw nothing, is empty to a drop; one drawing a group is not', () => {
+    expect(dockShowsNothing(layout([]), 'right')).toBe(true);
+    const dock = document.createElement('div');
+    dock.setAttribute('data-toolbar-dock', 'right');
+    document.body.appendChild(dock);
+    // a group of dividers alone: in the layout, but nothing drawn
+    expect(dockShowsNothing(layout([[{ id: 'r', tools: ['separator-1'] }]]), 'right')).toBe(true);
+    const bar = document.createElement('div');
+    bar.setAttribute('data-toolbar-bar', 'r');
+    dock.appendChild(bar);
+    expect(dockShowsNothing(layout([[{ id: 'r', tools: ['play'] }]]), 'right')).toBe(false);
+    dock.remove();
   });
 });

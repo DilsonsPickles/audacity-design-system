@@ -70,6 +70,9 @@ export interface DebugPanelProps {
   // Play-at-speed: the slider form instead of the timecode (2026-11-11)
   useVarispeedSlider: boolean;
   onUseVarispeedSliderChange: (value: boolean) => void;
+  /** Toolbar groups drawn as islands (true) or flat with lines (2026-11-18) */
+  toolbarGroupIslands?: boolean;
+  onToolbarGroupIslandsChange?: (value: boolean) => void;
   /** Slow media: how long Save project as… blocks, in seconds (0 = none) */
   slowMediaSeconds: number;
   onSlowMediaSecondsChange: (seconds: number) => void;
@@ -182,6 +185,8 @@ export function DebugPanel({
   useSplitRecordButton,
   useVarispeedSlider,
   onUseVarispeedSliderChange,
+  toolbarGroupIslands = true,
+  onToolbarGroupIslandsChange,
   slowMediaSeconds,
   onSlowMediaSecondsChange,
   onUseSplitRecordButtonChange,
@@ -506,6 +511,20 @@ export function DebugPanel({
             onChange={onUseVarispeedSliderChange}
           />
         </div>
+
+        {/* Toolbars (2026-11-18): groups as islands or flat with lines */}
+        {onToolbarGroupIslandsChange && (
+          <div>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, lineHeight: '20px', color: 'var(--debug-text)', margin: '0 0 12px 0' }}>
+              Toolbars
+            </h3>
+            <LabeledCheckbox
+              label="Draw groups as islands"
+              checked={toolbarGroupIslands}
+              onChange={onToolbarGroupIslandsChange}
+            />
+          </div>
+        )}
 
         {/* Slow media Section (2026-11-16): how long Save project as…'s
             "Copying project" block lasts */}

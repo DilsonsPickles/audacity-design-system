@@ -465,6 +465,16 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     expect(container.querySelector('[data-toolbar-bar="hidden"]')).toBeNull();
   });
 
+  it('GROUPS AS ISLANDS (2026-11-18, "floating islands"): groupStyle="islands" marks the dock; lines by default', () => {
+    const rows = [[{ id: 'a', tools: ['one'] }, { id: 'b', tools: ['two'] }]];
+    const lines = renderDock({ rows });
+    expect(lines.container.querySelector('[data-toolbar-dock]')!.classList.contains('toolbar-dock--islands')).toBe(false);
+    cleanup();
+    const islands = renderDock({ rows, groupStyle: 'islands' });
+    expect(islands.container.querySelector('[data-toolbar-dock]')!.classList.contains('toolbar-dock--islands')).toBe(true);
+    expect(islands.container.querySelectorAll('[data-toolbar-bar]').length).toBe(2);
+  });
+
   describe('THE TOOLBAR\'S MENU ON ITS GRIP (2026-11-16)', () => {
     const rows = [[{ id: 'a', tools: ['one', 'two'], name: 'Main toolbar' }, { id: 'b', tools: ['three'] }]];
 

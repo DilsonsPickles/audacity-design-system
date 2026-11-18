@@ -468,3 +468,63 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
    grab cursor, no hover fill (2026-11-16) */
 .toolbar-dock__grip--continued,
 .toolbar-dock__grip--continued:hover { cursor: default; background-color: transparent; }
+
+/* GROUPS AS ISLANDS (2026-11-18, "I wonder if we made the groups a bit more
+   contained. Like floating islands", with a reference of rounded cards on a
+   strip): the TOOLBAR is the surface — its strip a touch darker than the
+   toolbar tone — and each GROUP a card on it in the toolbar's own tone (so
+   every button's hover and pressed colours read as before), 1px border,
+   6px corners, 4px apart. Still 44px a row: 4 + 36 + 4, the card 3px + 28px
+   tools + 3px inside its border. The line between groups and the line
+   between rows go — the gaps say it. The grip sits inside the card at its
+   start, its hover fill rounded with it. `ToolbarDock.groupStyle` */
+.toolbar-dock--islands {
+  background-color: color-mix(in srgb, var(--toolbar-bg) 94%, black);
+}
+.toolbar-dock--islands .toolbar-dock__row { padding: 4px var(--toolbar-dock-end-pad, 4px) 4px 4px; gap: 4px; }
+.toolbar-dock--islands .toolbar-dock__bar {
+  height: 36px;
+  box-sizing: border-box;
+  padding: 3px 6px 3px 0;
+  border: 1px solid var(--toolbar-island-border);
+  border-radius: 6px;
+  background-color: var(--toolbar-bg);
+}
+.toolbar-dock--islands .toolbar-dock__row-divider { display: none; }
+.toolbar-dock--islands .toolbar-dock__grip,
+.toolbar-dock--islands .toolbar-dock__grip:not(.toolbar-dock__grip--leading) {
+  width: 16px;
+  padding: 0;
+  margin: -3px 0;
+  border-radius: 5px 0 0 5px;
+}
+.toolbar-dock--islands .toolbar-dock__grip-line { display: none; }
+/* the sized clip box reached through the old 8px row padding */
+.toolbar-dock--islands.toolbar-dock--horizontal .toolbar-dock__bar--sized .toolbar-dock__tools { margin: -3px 0; padding: 3px 0; }
+/* the resize edge sits in the 4px gap after the card */
+.toolbar-dock--islands .toolbar-dock__resize { top: -4px; bottom: -4px; right: -5px; width: 6px; }
+/* a column: cards stacked 4px apart, 40 wide in the 48px column */
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__row { padding: 4px; gap: 4px; min-width: 48px; }
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__bar { height: auto; padding: 0 3px 6px; }
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__grip,
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__grip:not(.toolbar-dock__grip--leading) {
+  width: auto;
+  height: 16px;
+  margin: 0 -3px;
+  align-self: stretch;
+  border-radius: 5px 5px 0 0;
+}
+/* …a card HUGS its tools unless something in it takes the room — a meter,
+   the info line, a flexible space: the row's last group no longer stretches
+   into a long empty card */
+.toolbar-dock--islands .toolbar-dock__bar--fill:not(:has(.toolbar-dock__tool--stretch, .toolbar-dock__tool--grow, .toolbar-dock__tool--spacer)) { flex: 0 0 auto; }
+
+/* A TOOLBAR THAT CAN TAKE WHAT IS IN HAND (2026-11-18, "there's no
+   affordance when I drag a group to show that I can drag it into a side
+   toolbar"): the host marks it (`data-drop-available`) while a group or a
+   tool is dragged; a faint accent outline and tint, so every target shows
+   at once, not only the one under the pointer */
+.toolbar-dock[data-drop-available] {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--toolbar-dock-accent) 55%, transparent);
+  background-image: linear-gradient(color-mix(in srgb, var(--toolbar-dock-accent) 6%, transparent), color-mix(in srgb, var(--toolbar-dock-accent) 6%, transparent));
+}

@@ -30,6 +30,7 @@ import { resolveTimeSelectionScope } from './utils/timeSelectionScope';
 import { KeyboardMap, SHORTCUT_ROWS, isLayoutItem, TITLE_BAR_ID, TITLE_BAR_ONLY, titleBarItems, removeTool, PROJECT_TAB_TOOL_ID, insertTool, insertSeparator, insertSpacer, addToolToNewBar } from '@audacity-ui/components';
 import { ToolBank, BANK_SEPARATOR_ID, BANK_SPACER_ID, isBankLayoutItem } from './components/ToolBank';
 import { useHiddenTools } from './hooks/useHiddenTools';
+import { dockShowsNothing } from './utils/toolbarDockDrop';
 import { transportStatusText } from './utils/transportStatus';
 import { useStatusInfo } from './hooks/useStatusInfo';
 import { scrollPlayheadIntoView } from './utils/scrollPlayheadIntoView';
@@ -93,7 +94,7 @@ import { AppToolbarDock, type ToolbarDockDrag } from './components/AppToolbarDoc
 import { useToolbarToolDrag } from './hooks/useToolbarToolDrag';
 import { DockZoneOverlay, edgeBand, innerBand, panelDockRects, sideBand } from './components/editor/DockZoneOverlay';
 import { renderStatusTool, statusToolMeta, type StatusBarToolsDeps } from './components/StatusBarTools';
-import { findBar, findTool, rowsOf, transportToolMeta, type ToolbarOrientation, type ToolbarRegion } from '@audacity-ui/components';
+import { findBar, findTool, transportToolMeta, type ToolbarOrientation, type ToolbarRegion } from '@audacity-ui/components';
 import { useAudioDeviceMenu } from './hooks/useAudioDeviceMenu';
 import { useFocusDebugger } from './hooks/useFocusDebugger';
 import { HandleHintProvider, useHandleHint } from './contexts/HandleHintContext';
@@ -358,6 +359,11 @@ function CanvasDemoContent() {
   const [useSplitRecordButton, setUseSplitRecordButton] = React.useState(false);
   // Play-at-speed's slider form, behind a Debug toggle — the timecode form is the default (2026-11-11)
   const [useVarispeedSlider, setUseVarispeedSlider] = React.useState(false);
+  // GROUPS AS ISLANDS (2026-11-18, "I wonder if we made the groups a bit
+  // more contained. Like floating islands"): Debug › Toolbars switches back
+  // to the flat groups with lines between them; session state, for comparing
+  const [toolbarGroupIslands, setToolbarGroupIslands] = React.useState(true);
+  const toolbarGroupStyle: 'lines' | 'islands' = toolbarGroupIslands ? 'islands' : 'lines';
   const [rollInTimeEnabled, setRollInTimeEnabled] = React.useState(false);
   const [snapEnabled, setSnapEnabled] = React.useState(false);
   const [snapMode, setSnapMode] = React.useState<import('@audacity-ui/components').SnapMode>('musical');
@@ -553,6 +559,8 @@ function CanvasDemoContent() {
     draggingToolId: toolDrag.draggingToolId,
     toolTarget: toolDrag.target,
     onToolMouseDown: toolDrag.onToolMouseDown,
+    // whether what is in hand fits a side toolbar (a column)
+    fitsVertical: barDrag.draggingBarId ? barDrag.fitsVertical : toolDrag.fitsVertical,
   };
   // The side docks' bands, for whichever drag is in flight
   const sideDrag = barDrag.draggingBarId
@@ -1829,6 +1837,7 @@ function CanvasDemoContent() {
       {/* The TOP DOCK: the tools, in the workspace's bars (2026-11-09) */}
       {activeMenuItem !== 'home' && (
         <AppToolbarDock
+          groupStyle={toolbarGroupStyle}
           region="top"
           // In the desktop app the window's title bar draws the Title bar
           // toolbar, so the docks do not (2026-11-16)
@@ -1978,6 +1987,7 @@ function CanvasDemoContent() {
         <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0 }} data-project-id={currentProjectId ?? undefined} data-editor-row>
         {/* The LEFT DOCK (2026-11-09): bars stacked beside the tracks */}
         <AppToolbarDock
+          groupStyle={toolbarGroupStyle}
           region="left"
           rows={toolbarLayout.layout.left}
           renderExtraTool={renderAppTool}
@@ -2009,6 +2019,7 @@ function CanvasDemoContent() {
           }}
           innerLeftToolbarDock={(
             <AppToolbarDock
+              groupStyle={toolbarGroupStyle}
               region="left-inner"
               rows={toolbarLayout.layout['left-inner'] ?? []}
               renderExtraTool={renderAppTool}
@@ -2023,6 +2034,7 @@ function CanvasDemoContent() {
           )}
           innerRightToolbarDock={(
             <AppToolbarDock
+              groupStyle={toolbarGroupStyle}
               region="right-inner"
               rows={toolbarLayout.layout['right-inner'] ?? []}
               renderExtraTool={renderAppTool}
@@ -2096,6 +2108,7 @@ function CanvasDemoContent() {
         </div>
         {/* The RIGHT DOCK, before the meters' columns, which keep the far edge */}
         <AppToolbarDock
+          groupStyle={toolbarGroupStyle}
           region="right"
           rows={toolbarLayout.layout.right}
           renderExtraTool={renderAppTool}
@@ -2115,6 +2128,7 @@ function CanvasDemoContent() {
           bars, and any bar can join them. Hidden in the Home view. */}
       {activeMenuItem !== 'home' && (
         <AppToolbarDock
+          groupStyle={toolbarGroupStyle}
           region="bottom"
           rows={toolbarLayout.layout.bottom}
           renderExtraTool={renderAppTool}
@@ -2147,7 +2161,7 @@ function CanvasDemoContent() {
         const all: ToolbarRegion[] = sideDrag.fits ? ['left', 'right', 'left-inner', 'right-inner', 'top', 'bottom'] : ['top', 'bottom'];
         const zones = all
           .filter((zone) => (zone === 'left-inner' ? panels.left : zone === 'right-inner' ? panels.right : true))
-          .filter((zone) => rowsOf(toolbarLayout.layout, zone).length === 0);
+          .filter((zone) => dockShowsNothing(toolbarLayout.layout, zone));
         const preview = (zone: ToolbarRegion): React.CSSProperties => {
           switch (zone) {
             case 'left': return { left: r.left, top: r.top, width: 48, height: r.height };
@@ -2202,6 +2216,7 @@ function CanvasDemoContent() {
           // THE EDITOR'S PREVIEW (2026-11-18): one toolbar, its real tools,
           // inert (the edit mode's), keeping the size it has in its row
           <AppToolbarDock
+            groupStyle={toolbarGroupStyle}
             region={region}
             rows={[[bar]]}
             renderExtraTool={renderAppTool}
@@ -2387,6 +2402,8 @@ function CanvasDemoContent() {
         setProfile={setProfile}
         useSplitRecordButton={useSplitRecordButton}
         useVarispeedSlider={useVarispeedSlider}
+        toolbarGroupIslands={toolbarGroupIslands}
+        onToolbarGroupIslandsChange={setToolbarGroupIslands}
         setUseVarispeedSlider={setUseVarispeedSlider}
         slowMediaSeconds={slowMediaSeconds}
         setSlowMediaSeconds={setSlowMediaSeconds}

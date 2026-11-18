@@ -5,6 +5,21 @@ import { edgeZoneAt, innerZoneAt, sideZoneAt } from '../components/editor/DockZo
  *  that edge's dock takes the drop (the old toolbar gripper's snap); the
  *  SIDES are the editor row's bands, `sideZoneAt` */
 export const EDGE_SNAP_PX = 72;
+
+/**
+ * A DOCK THAT DRAWS NOTHING IS EMPTY to a drop (2026-11-18, "there's no
+ * affordance when I drag a group to show that I can drag it into a side
+ * toolbar"): no rows, or rows whose groups draw nothing (a group of dividers
+ * alone, or of hidden tools) — such a dock is 0 wide on screen, so it gets
+ * the empty dock's drop band. Read from the DOM, since what draws is the
+ * dock's call; the layout alone when there is no document.
+ */
+export function dockShowsNothing(layout: ToolbarLayout, region: ToolbarRegion): boolean {
+  if (rowsOf(layout, region).length === 0) return true;
+  if (typeof document === 'undefined') return false;
+  const el = document.querySelector(`[data-toolbar-dock="${region}"]`);
+  return !!el && !el.querySelector('[data-toolbar-bar]');
+}
 /** The strip along a row's top and bottom edge (a column's sides) that
  *  means "a NEW ROW here" — the row's 8px padding, so never over a control */
 export const ROW_EDGE_PX = 8;
@@ -60,9 +75,9 @@ export function locateDockSpot(x: number, y: number, layout: ToolbarLayout, edit
     const edge = editorRow ? edgeZoneAt(x, y, editorRow) : null;
     // An EMPTY inner dock's band, on its open panel's inner edge (2026-11-10)
     const inner = innerZoneAt(x, y);
-    if (inner && rowsOf(layout, inner).length === 0) region = inner;
+    if (inner && dockShowsNothing(layout, inner)) region = inner;
     else if (side) region = side;
-    else if (edge && layout[edge].length === 0) region = edge;
+    else if (edge && dockShowsNothing(layout, edge)) region = edge;
     else {
       // Just below the top dock, or just above the bottom one: a new row
       // on that dock's inner edge
