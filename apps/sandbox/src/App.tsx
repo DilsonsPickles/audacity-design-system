@@ -517,6 +517,11 @@ function CanvasDemoContent() {
     onRemove: (toolId) => {
       const before = toolbarLayout.layout;
       toolbarLayout.editLayout((base) => removeTool(base, toolId));
+      // NO TOAST WHILE THE BANK IS OPEN (2026-11-18, "this tool removed toast
+      // is so annoying"): the tool is seen landing back in the bank, and
+      // dragging it out again is the undo; the toast stays for an Option /
+      // ⌘-drag off the toolbars, where the tool vanishes with nowhere to see it go
+      if (toolbarEditing) return;
       // a flexible space is not a tool: it is gone, not set aside
       // (the tool bank, 2026-11-18: View › Edit toolbars… is where it comes back from)
       const [title, line] = isToolSpacer(toolId)

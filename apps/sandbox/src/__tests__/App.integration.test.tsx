@@ -496,6 +496,15 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     await waitFor(() => expect(container.querySelector('[data-toolbar-tool="waveform-view"]')).toBeTruthy());
     // it now sits under "On a toolbar"
     await waitFor(() => expect(bank.textContent).toContain('On a toolbar'));
+    // dragged back off onto the bank it comes off — with NO toast while the
+    // bank is open ("this tool removed toast is so annoying")
+    const placed = container.querySelector<HTMLElement>('[data-toolbar-tool="waveform-view"]')!;
+    fireEvent.mouseDown(placed, { button: 0, clientX: 300, clientY: 20 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: 300 });
+    fireEvent.mouseMove(document, { clientX: 300, clientY: 500 });
+    fireEvent.mouseUp(document, { clientX: 300, clientY: 500 });
+    await waitFor(() => expect(container.querySelector('[data-toolbar-tool="waveform-view"]')).toBeNull());
+    expect(document.body.textContent).not.toContain('Tool removed');
     // Done leaves the mode
     fireEvent.click(Array.from(bank.querySelectorAll<HTMLElement>('button')).find((b) => b.textContent?.trim() === 'Done')!);
     await waitFor(() => expect(document.body.querySelector('[data-tool-bank]')).toBeNull());
