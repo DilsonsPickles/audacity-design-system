@@ -365,6 +365,12 @@ function CanvasDemoContent() {
   // to the flat groups with lines between them; session state, for comparing
   const [toolbarGroupIslands, setToolbarGroupIslands] = React.useState(true);
   const toolbarGroupStyle: 'lines' | 'islands' = toolbarGroupIslands ? 'islands' : 'lines';
+  // THE EDITOR IS AN ISLAND TOO (2026-11-19, "a hard grey right angle edge
+  // where the track header panel meets the toolbars... soften those hard
+  // edges"): the toolbars are the frame, and the track panel and canvas sit
+  // in it as one rounded card — the groups' 4px gap and rounded corners —
+  // with no lines along the docks' edges. Debug › Toolbars switches it off
+  const [editorIsland, setEditorIsland] = React.useState(true);
   const [rollInTimeEnabled, setRollInTimeEnabled] = React.useState(false);
   const [snapEnabled, setSnapEnabled] = React.useState(false);
   const [snapMode, setSnapMode] = React.useState<import('@audacity-ui/components').SnapMode>('musical');
@@ -1784,7 +1790,7 @@ function CanvasDemoContent() {
     <PlaybackProvider value={playback}>
     <LoopRegionProvider value={loopRegion}>
     <TransportToolbarContainer {...transportToolbarProps}>
-    <div style={{
+    <div data-editor-island={editorIsland && activeMenuItem !== 'home' ? '' : undefined} style={{
       display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw',
       // Over the window's vibrancy (macOS): the title bar's 40px stay
       // see-through, everything below is the app's solid surface
@@ -1998,7 +2004,11 @@ function CanvasDemoContent() {
         // renders before any of that — the integration tests seed tracks
         // right after opening the Project tab and were wiped by the late
         // RESET_STATE on a slow CI runner (2026-10-25). They wait for this.
-        <div style={{ display: 'flex', flex: '1 1 0', minHeight: 0 }} data-project-id={currentProjectId ?? undefined} data-editor-row>
+        <div
+          style={{ display: 'flex', flex: '1 1 0', minHeight: 0, ...(editorIsland ? { background: baseTheme.background.toolbar } : {}) }}
+          data-project-id={currentProjectId ?? undefined}
+          data-editor-row
+        >
         {/* The LEFT DOCK (2026-11-09): bars stacked beside the tracks */}
         <AppToolbarDock
           groupStyle={toolbarGroupStyle}
@@ -2014,7 +2024,13 @@ function CanvasDemoContent() {
           ariaLabel="Left toolbar dock"
           style={selectionToolbarStyle}
         />
-        <div style={{ flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <div
+          className={editorIsland ? 'editor-island' : undefined}
+          style={{
+            flex: '1 1 0', minWidth: 0, display: 'flex', flexDirection: 'column',
+            ...(editorIsland ? { '--editor-island-border': baseTheme.border.default } as React.CSSProperties : {}),
+          }}
+        >
         <EditorLayout
           // THE CUSTOMISE TOOLBARS PANEL (2026-11-18): the tool bank, docked
           toolBank={{
@@ -2458,6 +2474,8 @@ function CanvasDemoContent() {
         useVarispeedSlider={useVarispeedSlider}
         toolbarGroupIslands={toolbarGroupIslands}
         onToolbarGroupIslandsChange={setToolbarGroupIslands}
+        editorIsland={editorIsland}
+        onEditorIslandChange={setEditorIsland}
         setUseVarispeedSlider={setUseVarispeedSlider}
         slowMediaSeconds={slowMediaSeconds}
         setSlowMediaSeconds={setSlowMediaSeconds}

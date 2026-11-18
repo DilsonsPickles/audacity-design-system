@@ -131,6 +131,8 @@ export interface AppDialogsProps {
   /** Debug › Toolbars: groups as islands (2026-11-18) */
   toolbarGroupIslands: boolean;
   onToolbarGroupIslandsChange: (value: boolean) => void;
+  editorIsland: boolean;
+  onEditorIslandChange: (value: boolean) => void;
   /** Debug › Slow media: how long Save project as… blocks (s; 0 = none) */
   slowMediaSeconds: number;
   setSlowMediaSeconds: (seconds: number) => void;
@@ -195,7 +197,7 @@ export function AppDialogs(props: AppDialogsProps) {
     activeProfile, profiles, setProfile,
     useSplitRecordButton, setUseSplitRecordButton,
     useVarispeedSlider, setUseVarispeedSlider,
-    toolbarGroupIslands, onToolbarGroupIslandsChange,
+    toolbarGroupIslands, onToolbarGroupIslandsChange, editorIsland, onEditorIslandChange,
     slowMediaSeconds, setSlowMediaSeconds,
     showMixer, setShowMixer,
     setActiveMenuItem,
@@ -1218,6 +1220,8 @@ export function AppDialogs(props: AppDialogsProps) {
         onUseVarispeedSliderChange={setUseVarispeedSlider}
         toolbarGroupIslands={toolbarGroupIslands}
         onToolbarGroupIslandsChange={onToolbarGroupIslandsChange}
+        editorIsland={editorIsland}
+        onEditorIslandChange={onEditorIslandChange}
         slowMediaSeconds={slowMediaSeconds}
         onSlowMediaSecondsChange={setSlowMediaSeconds}
         showMixer={showMixer}

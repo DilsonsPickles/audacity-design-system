@@ -73,6 +73,8 @@ export interface DebugPanelProps {
   /** Toolbar groups drawn as islands (true) or flat with lines (2026-11-18) */
   toolbarGroupIslands?: boolean;
   onToolbarGroupIslandsChange?: (value: boolean) => void;
+  editorIsland?: boolean;
+  onEditorIslandChange?: (value: boolean) => void;
   /** Slow media: how long Save project as… blocks, in seconds (0 = none) */
   slowMediaSeconds: number;
   onSlowMediaSecondsChange: (seconds: number) => void;
@@ -187,6 +189,8 @@ export function DebugPanel({
   onUseVarispeedSliderChange,
   toolbarGroupIslands = true,
   onToolbarGroupIslandsChange,
+  editorIsland = true,
+  onEditorIslandChange,
   slowMediaSeconds,
   onSlowMediaSecondsChange,
   onUseSplitRecordButtonChange,
@@ -523,6 +527,15 @@ export function DebugPanel({
               checked={toolbarGroupIslands}
               onChange={onToolbarGroupIslandsChange}
             />
+            {onEditorIslandChange && (
+              <div style={{ marginTop: 8 }}>
+                <LabeledCheckbox
+                  label="Draw the editor as an island"
+                  checked={editorIsland}
+                  onChange={onEditorIslandChange}
+                />
+              </div>
+            )}
           </div>
         )}
 

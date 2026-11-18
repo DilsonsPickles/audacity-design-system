@@ -254,3 +254,26 @@ body[data-rail-resize], body[data-rail-resize] * { cursor: ew-resize !important;
 
 
 .app-title-bar { position: relative; }
+
+/* THE EDITOR IS AN ISLAND TOO (2026-11-19, "a hard grey right angle edge
+   where the track header panel meets the toolbars... soften those hard
+   edges"): the toolbars are the frame — their colour behind everything
+   (App gives the editor row the toolbar background) — and the track panel
+   and canvas sit in it as ONE rounded card, the groups' 4px gap and rounded
+   corners, so no edge meets another at a square corner. The docks' edge
+   lines go: the gap says it. A dock with groups already pads 4px between
+   its cards and its edge, so the card's own margin is dropped on that side
+   — 4px card to card everywhere; against the window's edge or an empty
+   dock it keeps 4px of its own. Debug › Toolbars › "Draw the editor as an
+   island" turns it off. */
+[data-editor-island] .toolbar-dock:not(.toolbar-dock--inner):not([data-toolbar-preview]) { border-width: 0; }
+.editor-island {
+  margin: 4px;
+  border: 1px solid var(--editor-island-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+[data-editor-row] > .toolbar-dock--left:not(.toolbar-dock--empty) + .editor-island { margin-left: 0; }
+[data-editor-row] > .editor-island:has(+ .toolbar-dock--right:not(.toolbar-dock--empty)) { margin-right: 0; }
+[data-editor-island]:has(.toolbar-dock--top:not(.toolbar-dock--empty):not([data-toolbar-preview])) .editor-island { margin-top: 0; }
+[data-editor-island]:has(.toolbar-dock--bottom:not(.toolbar-dock--empty):not([data-toolbar-preview])) .editor-island { margin-bottom: 0; }
