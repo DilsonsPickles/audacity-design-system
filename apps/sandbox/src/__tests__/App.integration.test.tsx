@@ -439,6 +439,26 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     expect(document.body.querySelector('[data-tool-bank]')).toBeNull();
   });
 
+  it('UNDO AND REDO STAND IN A COLUMN (2026-11-18, "why on earth wouldn\'t a side toolbar be able to take undo/redo?"): a group of them moves to the left toolbar', async () => {
+    const { container } = renderApp({
+      toolbarLayouts: { classic: { top: [[{ id: 'transport', tools: ['play', 'stop'] }, { id: 'hist', tools: ['undo', 'redo'] }]], bottom: [[{ id: 'status', tools: ['status-cue', 'status-info'] }]], left: [], right: [] } },
+    });
+    fireEvent.click(container.querySelector('[data-project-tab-new]') as HTMLElement);
+    await waitFor(() => expect(container.querySelector('.timeline-ruler')).toBeTruthy());
+    const menuItem = async (label: string) => waitFor(() => {
+      const item = Array.from(document.body.querySelectorAll<HTMLElement>('.context-menu-item')).find((e) => e.querySelector('.context-menu-item-label')?.textContent === label);
+      if (!item) throw new Error('not yet');
+      return item;
+    });
+    fireEvent.contextMenu(container.querySelector('[data-toolbar-bar="hist"] [data-toolbar-grip]')!, { clientX: 20, clientY: 20 });
+    fireEvent.mouseEnter(await menuItem('Move to'));
+    const left = await menuItem('Left toolbar');
+    expect(left.getAttribute('aria-disabled')).not.toBe('true');
+    expect(left.classList.contains('context-menu-item--disabled')).toBe(false);
+    fireEvent.click(left);
+    await waitFor(() => expect(container.querySelector('[data-toolbar-dock="left"] [data-toolbar-bar="hist"]')).toBeTruthy());
+  });
+
   it('NEW TOOLBAR FROM THE RIGHT-CLICK MENU (2026-11-17): a toolbar\'s menu makes an empty one beside it; the dock\'s empty-space menu makes one at the dock\'s end', async () => {
     const { container } = renderApp({
       toolbarLayouts: { classic: { top: [[{ id: 'transport', tools: ['play', 'stop'] }, { id: 'customise', tools: ['customise'] }]], bottom: [[{ id: 'status', tools: ['status-cue', 'status-info'] }]], left: [], right: [] } },

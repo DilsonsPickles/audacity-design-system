@@ -389,9 +389,16 @@ function CanvasDemoContent() {
   // row, or onto a new row (2026-11-10)
   const toolbarLayout = useToolbarLayout(workspace, baseWorkspace, activeMenuItem);
   // Whether a side dock takes a toolbar: every tool on it has a vertical form
+  // A TOOL STANDS IN A COLUMN when its meta says so — the PROJECT tools'
+  // meta included (2026-11-18, "why on earth wouldn't a side toolbar be able
+  // to take undo/redo?": the check asked only the transport and status-bar
+  // tools, so Undo, Redo, Debug, Audio setup, Mixer and Share audio, which
+  // all have column forms, read as having none and their groups were refused)
+  const toolStandsInColumn = (id: string) =>
+    (projectToolMeta(id) ?? statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
   const barFitsVertical = (barId: string) => {
     const bar = findBar(toolbarLayout.layout, barId)?.bar;
-    return !!bar && bar.tools.every((id) => isLayoutItem(id) || (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true);
+    return !!bar && bar.tools.every((id) => isLayoutItem(id) || toolStandsInColumn(id));
   };
   const barDrag = useToolbarBarDrag({
     layout: toolbarLayout.layout,
@@ -503,8 +510,7 @@ function CanvasDemoContent() {
   // panel or the group's right-click Add tool
   const openBarMenu = React.useCallback((barId: string | null, anchor: { x: number; y: number }, region?: ToolbarRegion, toolId?: string, beforeToolId?: string | null) => setBarMenu({ barId, ...anchor, region, toolId, beforeToolId }), []);
   // a separator or a flexible space fits a column as it does a row
-  const toolFitsVertical = (id: string) =>
-    isLayoutItem(id) || isBankLayoutItem(id) || (statusToolMeta(id) ?? transportToolMeta(id, { recordingMeterOrientation, meterOrientation }))?.vertical === true;
+  const toolFitsVertical = (id: string) => isLayoutItem(id) || isBankLayoutItem(id) || toolStandsInColumn(id);
   // ⌘-DRAG A TOOL (2026-11-16): released off the toolbars it comes off them,
   // silently since 2026-11-18 (no toast)
   // THE TOOL BANK's drops share the drag (2026-11-18): a tool on no toolbar
