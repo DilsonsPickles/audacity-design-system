@@ -564,9 +564,9 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 /* IN THE ISLANDS THE RESIZE EDGE IS THE CARD'S EDGE (2026-11-18, "I want
    the group resize to feel like you're hovering over the edge of the group
    container"): the zone straddles the card's own border — 8px, half in the
-   card, half in the gap after it — no pill and no fill of its own; on hover
-   and while dragging, THE CARD'S EDGE lights in the accent, 2px, so it reads
-   as taking hold of the container's side (its foot in a column) */
+   card, half in the gap after it — and DRAWS NOTHING, the resize cursor
+   alone says it (the same day, "I hate the edge resize highlight effect":
+   an accent border on hover lasted minutes; the pill in the gap went too) */
 .toolbar-dock--islands .toolbar-dock__resize {
   top: -1px;
   bottom: -1px;
@@ -575,12 +575,6 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
   background-color: transparent !important;
 }
 .toolbar-dock--islands .toolbar-dock__resize::after { display: none; }
-.toolbar-dock--islands .toolbar-dock__bar { transition: border-color 0.06s ease, box-shadow 0.06s ease; }
-.toolbar-dock--islands .toolbar-dock__bar:has(> .toolbar-dock__resize:hover),
-.toolbar-dock--islands .toolbar-dock__bar:has(> .toolbar-dock__resize--active) {
-  border-right-color: var(--toolbar-dock-accent);
-  box-shadow: 1px 0 0 0 var(--toolbar-dock-accent);
-}
 .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__resize {
   top: auto;
   left: -1px;
@@ -589,10 +583,10 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
   width: auto;
   height: 8px;
 }
-.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__bar:has(> .toolbar-dock__resize:hover),
-.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__bar:has(> .toolbar-dock__resize--active) {
-  border-right-color: var(--toolbar-island-border);
-  border-bottom-color: var(--toolbar-dock-accent);
-  box-shadow: 0 1px 0 0 var(--toolbar-dock-accent);
-}
-@media (prefers-reduced-motion: reduce) { .toolbar-dock--islands .toolbar-dock__bar { transition: none; } }
+
+/* A DIVIDER CAN BE TAKEN HOLD OF (2026-11-18, "it's also really hard to
+   move dividers"): a 1px line was the whole target for the Option / ⌘-drag;
+   now 4px of padding either side, given back by the margin, so nothing
+   moves — 9 × 28px to grab (the tools' height), in a row or a column, edit mode or not */
+.toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) { padding: 6px 4px; margin: -6px -4px; }
+.toolbar-dock--vertical .toolbar-dock__tool:has(> .toolbar-dock__tool-body > .toolbar-dock__separator) { padding: 4px 6px; margin: -4px -6px; }

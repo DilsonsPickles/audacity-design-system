@@ -21,7 +21,7 @@ import { useHiddenTools } from '../hooks/useHiddenTools';
 import { ALL_TOOLS, ToolGlyph, toolName } from './toolCatalogue';
 import {
   ContextMenu, ContextMenuItem, Dialog, DialogFooter, SearchField, TextInput, useTheme,
-  TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, PROJECT_TAB_TOOL_ID, TOOLBAR_REGIONS, addEmptyBar, barDisplayName, dockBars, findBar, findTool, insertSeparator, insertSpacer, isLayoutItem, isToolSpacer, insertTool, isVerticalRegion, moveBar, moveDock, dockMovableBars, regionSide, removeBar, removeTool, renameBar, rowsOf, setBarSize,
+  TITLE_BAR_ID, TITLE_BAR_ALLOWED, TITLE_BAR_ONLY, PROJECT_TAB_TOOL_ID, TOOLBAR_REGIONS, addEmptyBar, barDisplayName, dockBars, findBar, findTool, insertSeparator, insertSpacer, isLayoutItem, isToolSeparator, isToolSpacer, insertTool, isVerticalRegion, moveBar, moveDock, dockMovableBars, regionSide, removeBar, removeTool, renameBar, rowsOf, setBarSize,
   type ToolbarLayout, type ToolbarRegion,
 } from '@audacity-ui/components';
 
@@ -429,12 +429,22 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
             <ContextMenuItem label="Add tool" hasSubmenu onClick={() => {}}>
               {addToolItems(true)}
             </ContextMenuItem>
-            <ContextMenuItem
-              label="Add divider"
-              disabled={!hasTools}
-              onClick={() => editLayout((base) => insertSeparator(base, bar.id, null))}
-              onClose={onClose}
-            />
+            {/* ON A DIVIDER, the way to take it out (2026-11-18, "it's also
+                really hard to move dividers") */}
+            {clickedTool && isToolSeparator(clickedTool) ? (
+              <ContextMenuItem
+                label="Remove divider"
+                onClick={() => editLayout((base) => removeTool(base, clickedTool))}
+                onClose={onClose}
+              />
+            ) : (
+              <ContextMenuItem
+                label="Add divider"
+                disabled={!hasTools}
+                onClick={() => editLayout((base) => insertSeparator(base, bar.id, null))}
+                onClose={onClose}
+              />
+            )}
             {/* A FLEXIBLE SPACE (2026-11-18): placed by the right-click —
                 at the gap nearest the pointer ("I thought I'd be able to
                 add the flexible space anywhere"), a gap at the end going

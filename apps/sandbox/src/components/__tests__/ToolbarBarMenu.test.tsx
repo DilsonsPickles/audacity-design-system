@@ -41,6 +41,15 @@ function renderMenu(barId: string | null, opts: { fits?: boolean; addOnly?: bool
 describe('ToolbarBarMenu', () => {
   afterEach(() => localStorage.clear());
 
+  it('a right-click on a divider offers to remove it (2026-11-18, "it\'s also really hard to move dividers")', () => {
+    const layout: ToolbarLayout = { ...LAYOUT, top: [LAYOUT.top[0], [{ id: 'main', tools: ['play', 'separator-1', 'timecode'] }]] };
+    const m = renderMenu('main', { layout, toolId: 'separator-1' });
+    expect(m.labels()).toContain('Remove divider');
+    expect(m.labels()).not.toContain('Add divider');
+    fireEvent.click(m.item('Remove divider'));
+    expect(m.layout().top[1][0].tools).toEqual(['play', 'timecode']);
+  });
+
   // MOVE TOOLBAR TO (2026-11-18, "what if we wanted to move an entire toolbar?")
   it('Move toolbar to moves every group on the toolbar — from a group\'s menu or the toolbar\'s empty space — and dims the sides while a tool cannot stand in a column, naming it', () => {
     const fromGroup = renderMenu('main', { toolFits: (id) => id !== 'timecode' });
