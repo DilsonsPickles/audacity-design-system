@@ -40,20 +40,13 @@ export function useProjectManagement(options: UseProjectManagementOptions): UseP
   } = options;
 
   // Handler for creating a new project
+  // (named by newProjectTitle, below)
   const createNewProject = useCallback(async () => {
     const projectId = `project-${Date.now()}`;
 
     const newProject = {
       id: projectId,
-      title: `New Project ${new Date().toLocaleString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      })}`,
+      title: newProjectTitle(new Date()),
       dateCreated: Date.now(),
       dateModified: Date.now(),
       isCloudProject: false,
@@ -204,4 +197,18 @@ export function useProjectManagement(options: UseProjectManagementOptions): UseP
     handleSaveToComputer,
     openProjectFromFile,
   };
+}
+
+/** A new project's name: its date and time TO THE MINUTE (2026-11-19, "does
+ *  time need seconds in project name?" — no: the seconds only lengthened
+ *  every tab; a project is told apart by its id, not its name) */
+export function newProjectTitle(date: Date): string {
+  return `New Project ${date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })}`;
 }
