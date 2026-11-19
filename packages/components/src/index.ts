@@ -194,6 +194,7 @@ export * from './utils/scrollIntoViewIfNeeded';
 export * from './utils/announce';
 export { getInputMode } from './utils/inputMode';
 export * from './utils/musicalTime';
+export * from './utils/selectionReadout';
 // Note: envelope utilities are available via direct import from '@audacity-ui/components/utils/envelope'
 // Not re-exported here to avoid naming conflicts with EnvelopePoint component
 export { useCollapseTransition, type CollapseTransition } from './hooks/useCollapseTransition';
