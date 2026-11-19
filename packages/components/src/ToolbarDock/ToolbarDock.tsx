@@ -520,13 +520,16 @@ export function ToolbarDock({
     '--toolbar-island-divider': isLightColour(theme.background.toolbar)
       ? theme.border.divider
       : `color-mix(in srgb, ${theme.foreground.text.primary} 30%, transparent)`,
-    // (a LIGHT toolbar is near white, #F8F8F9, so a lift had nowhere to go —
-    // "In light mode the groups are basically invisible", the same day: there
-    // the card is the toolbar with 5% of the text colour, a step DOWN that
-    // still sits above the buttons' darker hover fills)
+    // A STROKE IN LIGHT, A TONE IN DARK (the same day — a near-white light
+    // toolbar, #F8F8F9, left no room for a tone: lifted toward white the
+    // groups were "basically invisible", a 5% darker tint "not enough… this
+    // is why i like stroke"): on a LIGHT toolbar the card is the toolbar's own
+    // colour with a 1px border (the original islands); on a DARK one the
+    // tone and no border, where lines read as busy and a lift reads as depth
     '--toolbar-island-bg': isLightColour(theme.background.toolbar)
-      ? `color-mix(in srgb, ${theme.background.toolbar}, ${theme.foreground.text.primary} 5%)`
+      ? theme.background.toolbar
       : `color-mix(in srgb, ${theme.background.toolbar}, white 9%)`,
+    '--toolbar-island-stroke': isLightColour(theme.background.toolbar) ? theme.border.default : 'transparent',
     // The end of every line keeps the cog's place free
     ...(!vertical && trailingWidth ? { '--toolbar-dock-end-pad': `${ROW_END_PAD + trailingWidth + ROW_END_PAD}px` } : null),
   } as React.CSSProperties;
