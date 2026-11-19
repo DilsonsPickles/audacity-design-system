@@ -151,3 +151,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Drawn as a toolbar, the status bar's top line is the toolbars' own
+   (2026-11-19, "Now bottom toolbar's top stroke is too weak": the bar's
+   onSurface #E9E9E9 beat the docks' #D4D5D9, so the top and bottom
+   toolbars' lines differed) */
+.selection-toolbar.toolbar-dock { border-top-color: var(--toolbar-border); }
