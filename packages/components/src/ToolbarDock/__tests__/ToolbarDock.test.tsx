@@ -234,6 +234,24 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
       } finally { restore(); }
     });
 
+    // ONLY RESIZABLE ELEMENTS RESIZE (2026-11-19, "Drop the ability to resize
+    // groups, save that for resizable elements only (meters)"): the host says
+    // which groups may be sized; the rest draw no edge and ignore a stored size
+    it('isResizable: a group the host refuses has no resize edge and its stored size is ignored', () => {
+      const restore = measured();
+      try {
+        const { container } = render(wrap({
+          onBarResize: vi.fn(),
+          isResizable: (bar) => bar.id === 'z',
+          rows: [[{ id: 'e', tools: ['t1', 't2', 't3', 't4', 't5'], width: 117 }, AFTER]],
+        }));
+        expect(container.querySelector('[data-toolbar-resize="e"]')).toBeNull();
+        expect((container.querySelector('[data-toolbar-bar="e"]') as HTMLElement).style.width).toBe('');
+        expect(inline(container)).toHaveLength(5);
+        expect(container.querySelector('[data-toolbar-resize="z"]')).not.toBeNull();
+      } finally { restore(); }
+    });
+
     it('a vertical dock sizes by HEIGHT and ignores the width', () => {
       const restore = measured();
       try {

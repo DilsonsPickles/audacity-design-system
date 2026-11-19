@@ -93,6 +93,11 @@ export interface ToolbarDockProps {
    *  PREVIEW of one toolbar (the toolbar editor's, 2026-11-18): it keeps
    *  the size it has in its own row, a stored size included */
   lastFillsRow?: boolean;
+  /** Which groups may be sized (2026-11-19, "Drop the ability to resize
+   *  groups, save that for resizable elements only (meters)"): a group it
+   *  refuses draws no resize edge and its stored size is ignored. Absent =
+   *  every group */
+  isResizable?: (bar: ToolbarBar) => boolean;
   /** How a group (a bar) is drawn: 'lines' — flat, a full-height line
    *  between groups (the default) — or 'islands', each group a contained,
    *  rounded card on a slightly darker strip (2026-11-18, "I wonder if we
@@ -174,7 +179,7 @@ export function ToolbarDock({
   region, rows, renderTool, toolMeta, onBarResize,
   onGripMouseDown, onBarMenu, onEmptyBarAdd, draggingBarId = null, insert = null, insertAfterBarId = null, insertRefused = false,
   editing = false, onToolMouseDown, draggingToolId = null, toolInsert = null,
-  trailing, className = '', tabGroupId, ariaLabel, dataAttrs, style: styleProp, lastFillsRow = true, groupStyle = 'lines', joinBrokenGroups = true, hiddenBarIds,
+  trailing, className = '', tabGroupId, ariaLabel, dataAttrs, style: styleProp, lastFillsRow = true, isResizable, groupStyle = 'lines', joinBrokenGroups = true, hiddenBarIds,
 }: ToolbarDockProps) {
   const { theme } = useTheme();
   const vertical = isVerticalRegion(region);
@@ -191,7 +196,8 @@ export function ToolbarDock({
   // an overflow button, last first.
   const axis: ToolbarBarAxis = vertical ? 'height' : 'width';
   const [liveSize, setLiveSize] = useState<{ barId: string; size: number } | null>(null);
-  const sizeOf = (bar: ToolbarBar): number | undefined => (liveSize?.barId === bar.id ? liveSize.size : bar[axis]);
+  const sizeOf = (bar: ToolbarBar): number | undefined => (isResizable && !isResizable(bar) ? undefined
+    : liveSize?.barId === bar.id ? liveSize.size : bar[axis]);
   // Each tool's natural size along the dock, measured whenever it is drawn
   // unstretched (a tool behind the overflow button keeps its last)
   const toolSizes = useRef(new Map<string, number>());
@@ -349,7 +355,9 @@ export function ToolbarDock({
     // the row's end is left empty; a double-click on the edge clears the
     // size and it fills again
     const isLast = lastFillsRow && barIndex === lastDrawn;
-    const resizable = true;
+    // …and ONLY WHERE THE HOST ALLOWS since 2026-11-19 (`isResizable` — the
+    // app's: groups holding a meter)
+    const resizable = isResizable ? isResizable(bar) : true;
     const size = sizeOf(bar);
     // (a SIZED meter group fills too, its size the least it takes — "they
     // should be flex to take up all remaining space": the size sets where it

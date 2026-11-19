@@ -3,6 +3,9 @@ import { ToolbarDock, isVerticalRegion, useTransportTools, type ToolbarBarAxis, 
 import type { ToolbarDropTarget } from '../hooks/useToolbarBarDrag';
 import type { ToolDropTarget } from '../utils/toolbarToolDrop';
 
+/** The tools a group can be sized for: the two meters */
+const METER_TOOL_IDS = new Set(['playback-meter', 'microphone-levels']);
+
 /** The two drags' state, the same for every dock */
 export interface ToolbarDockDrag {
   draggingBarId: string | null;
@@ -77,6 +80,9 @@ export function AppToolbarDock({
   const dock = (
     <ToolbarDock
       region={region}
+      // only a group with a meter resizes (2026-11-19, "save that for
+      // resizable elements only (meters)")
+      isResizable={(bar) => bar.tools.some((id) => METER_TOOL_IDS.has(id))}
       rows={rows}
       renderTool={(id, o) => renderExtraTool?.(id, o) ?? renderTool(id, o)}
       toolMeta={(id, o) => extraToolMeta?.(id) ?? toolMeta(id, o)}
