@@ -152,6 +152,7 @@ export * from './PianoRoll';
 export * from './ResizablePanel';
 export * from './SidePanel';
 export * from './TimelineRuler';
+export * from './SelectionReadout';
 export * from './VerticalRuler';
 export * from './TimeSelectionCanvasOverlay';
 export * from './TimeSelectionRulerOverlay';

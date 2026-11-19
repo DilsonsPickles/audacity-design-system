@@ -6,7 +6,7 @@ import { Canvas } from './Canvas';
 import { MarketplaceModal, type MarketplaceEffect } from './MarketplaceModal';
 import { EffectPickerMenu } from './EffectPickerMenu';
 import { useMuseHub } from '../contexts/MuseHubContext';
-import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs, useAppearancePrefs, useGeneralPrefs, DockPanel, ContextMenu, ContextMenuItem, type PanelHeaderTab } from '@audacity-ui/components';
+import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, SelectionReadout, PlayheadCursor, VerticalRulerPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs, useAppearancePrefs, useGeneralPrefs, DockPanel, ContextMenu, ContextMenuItem, type PanelHeaderTab } from '@audacity-ui/components';
 import type { SpectrogramScale, WaveformRulerFormat, ThemeTokens } from '@audacity-ui/components';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useTracks } from '../contexts/useTracks';
@@ -1296,6 +1296,26 @@ export function EditorLayout(props: EditorLayoutProps) {
                 onLoopRegionEnabledToggle={() => setLoopRegionEnabled(!loopRegionEnabled)}
                 onLoopRegionHoverChange={setLoopRegionHovering}
               />
+              {/* THE SELECTION READOUT (2026-11-19): the selection's length and
+                  range over it in the ruler — the status bar's selection
+                  timecodes are off by default now */}
+              {(() => {
+                const sel = rulerTimeSelection ?? (spectralSelection ? { startTime: spectralSelection.startTime, endTime: spectralSelection.endTime } : null);
+                return sel && sel.endTime !== sel.startTime ? (
+                  <SelectionReadout
+                    startTime={sel.startTime}
+                    endTime={sel.endTime}
+                    pixelsPerSecond={pixelsPerSecond}
+                    scrollX={scrollX}
+                    viewportWidth={rulerViewportWidth || timelineWidth}
+                    height={40}
+                    timeFormat={timelineFormat}
+                    bpm={bpm}
+                    beatsPerMeasure={beatsPerMeasure}
+                    noteValue={noteValue}
+                  />
+                ) : null;
+              })()}
               {/* Loop region stalks in ruler */}
               {loopRegionStart !== null && loopRegionEnd !== null && (loopRegionInteracting || loopRegionHovering) && loopRegionEnabled && (
                 <LoopRegionStalks
