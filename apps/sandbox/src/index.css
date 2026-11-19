@@ -127,7 +127,17 @@ html.pan-active * {
   height: auto;
   margin: 0;
   flex: 0 1 auto;
+  /* squeezed past its tabs' least it is cut sideways, never painted over
+     the drag strip (the vertical axis stays open for the active tab's -1px) */
+  overflow-x: clip;
   -webkit-app-region: no-drag;
+}
+/* THE DRAG STRIP (2026-11-19, "some space in the top bar reserved for moving
+   the application window"): the bar's spare room, never less than
+   TITLE_BAR_DRAG_RESERVE_PX (72), always the window's drag region */
+.app-title-bar__drag {
+  flex: 1 0 72px;
+  -webkit-app-region: drag;
 }
 /* The active tab is the primary surface, and covers the bar's bottom
    border so it runs into the toolbar below */
@@ -144,7 +154,7 @@ html.pan-active * {
   display: flex;
   align-items: center;
   gap: 17px;
-  margin-left: auto;
+  /* the drag strip before it takes the spare room and pushes it right */
   /* the corner never shrinks: the tabs give up their room first, then the
      corner drops its labels (AppTitleBar's compact stages, 2026-11-19) */
   flex-shrink: 0;

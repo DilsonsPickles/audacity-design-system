@@ -31,6 +31,19 @@ const TAB_MIN_PX = 96;
 const COMPACT_HYSTERESIS_PX = 24;
 /** Stage changes allowed before the next task (a guard against a loop) */
 const MAX_COMPACT_CHANGES = 4;
+/**
+ * THE WINDOW CAN ALWAYS BE MOVED (2026-11-19, "When the screen is smaller, we
+ * need to make sure that there's some space in the top bar reserved for
+ * moving the application window"): an empty strip between the tabs and the
+ * corner — the bar's drag region, never covered — that takes the bar's spare
+ * room and never shrinks below this. The labels go before it is eaten.
+ */
+export const TITLE_BAR_DRAG_RESERVE_PX = 72;
+/** The room left once the tabs are at their least, the corner at its full
+ *  width and the drag reserve kept; under 0 the corner must give up labels */
+export function titleBarSlack({ clientWidth, inset, tabsLeast, cornerWidth }: { clientWidth: number; inset: number; tabsLeast: number; cornerWidth: number }): number {
+  return clientWidth - (inset + tabsLeast + TITLE_BAR_DRAG_RESERVE_PX + cornerWidth);
+}
 
 // THE RIGHT END (2026-11-11, the first row's buttons moved out) — THE
 // CORNER since 2026-11-16: the layout's app-level title bar items (Debug,
@@ -92,7 +105,7 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
       ? Array.from(tabs.children).reduce((sum, c) => sum + (c.classList.contains('project-tab') ? TAB_MIN_PX : (c as HTMLElement).offsetWidth), 0)
       : 0;
     const inset = parseFloat(getComputedStyle(bar).paddingLeft) || 0;
-    const slack = bar.clientWidth - (inset + tabsLeast + end.scrollWidth);
+    const slack = titleBarSlack({ clientWidth: bar.clientWidth, inset, tabsLeast, cornerWidth: end.scrollWidth });
     if (slack < 0 && stage < 2) {
       if (!mayChange()) return;
       pendingRef.current = { stage: (stage + 1) as 1 | 2, before: end.scrollWidth };
@@ -159,6 +172,8 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
           one in front, so the title bar shows no tabs and no name ("we can
           get rid of title in the header when in vertical tabs") */}
       {!deps.tabsVertical && <ProjectTabs {...deps} />}
+      {/* THE DRAG STRIP: the window's handle whatever the width */}
+      <div className="app-title-bar__drag" data-title-bar-drag aria-hidden="true" />
       {activeMenuItem !== 'home' && (
         // THE CORNER (2026-11-16, "that area at the top right with debug,
         // setup, get effects etc is a special area"): the layout's title bar
