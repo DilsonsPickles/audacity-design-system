@@ -409,6 +409,10 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 /* The docked vertical meter draws inside its column: the dock's own edge
    is its border */
 .toolbar-dock--vertical .master-meter-vertical { border-left: none; }
+/* …and IN A GROUP it takes the group's tone (2026-11-19, "The meters still
+   have dark bgs?"): its own surface was the toolbar colour, darker than the
+   raised island card around it */
+.toolbar-dock--islands .master-meter-vertical { background: transparent; }
 .toolbar-dock--vertical .toolbar-dock__bar { flex-direction: column; align-items: center; }
 .toolbar-dock--vertical .toolbar-dock__tools { flex-direction: column; gap: 8px; }
 .toolbar-dock--vertical .toolbar-dock__tools .toolbar__button-group { flex-direction: column; }
