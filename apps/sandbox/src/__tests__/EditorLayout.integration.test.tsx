@@ -2174,9 +2174,11 @@ describe('Track management', () => {
     await gotoProject(rendered);
     await generateTracks(container, getByText);
     // The selection bar's end timecode reads the range; all zeros before
-    const selectionEnd = () => (container.querySelector('[aria-label="Selection end"]') as HTMLElement).textContent?.replace(/\s/g, '') ?? '';
-    const before = selectionEnd(); // all zeros (plus the caret's glyph)
-    expect(before).toContain('00m00.000s');
+    // (the selection read from the RULER'S READOUT since 2026-11-19 — the status
+    // bar's selection timecodes are off by default; '' with no selection)
+    const selectionEnd = () => container.querySelector('[data-selection-readout]')?.textContent ?? '';
+    const before = selectionEnd(); // no selection, no readout
+    expect(before).toBe('');
 
     // Double-click track 2's header on its own surface — the name renames
     // on double-click, so aim at the panel, not the name
@@ -2202,7 +2204,9 @@ describe('Track management', () => {
     const { container, getByText } = rendered;
     await gotoProject(rendered);
     await generateTracks(container, getByText);
-    const selectionEnd = () => (container.querySelector('[aria-label="Selection end"]') as HTMLElement).textContent?.replace(/\s/g, '') ?? '';
+    // (the selection read from the RULER'S READOUT since 2026-11-19 — the status
+    // bar's selection timecodes are off by default; '' with no selection)
+    const selectionEnd = () => container.querySelector('[data-selection-readout]')?.textContent ?? '';
     const zero = selectionEnd();
     fireEvent.doubleClick(trackPanels(container)[1]);
     await waitFor(() => expect(selectionEnd()).not.toBe(zero));
@@ -2218,7 +2222,9 @@ describe('Track management', () => {
     const { container, getByText } = rendered;
     await gotoProject(rendered);
     await generateTracks(container, getByText);
-    const selectionEnd = () => (container.querySelector('[aria-label="Selection end"]') as HTMLElement).textContent?.replace(/\s/g, '') ?? '';
+    // (the selection read from the RULER'S READOUT since 2026-11-19 — the status
+    // bar's selection timecodes are off by default; '' with no selection)
+    const selectionEnd = () => container.querySelector('[data-selection-readout]')?.textContent ?? '';
     const zero = selectionEnd();
     fireEvent.doubleClick(trackPanels(container)[1]); // a range on track 2
     await waitFor(() => expect(selectionEnd()).not.toBe(zero));
@@ -2237,7 +2243,9 @@ describe('Track management', () => {
     const { container, getByText } = rendered;
     await gotoProject(rendered);
     await generateTracks(container, getByText);
-    const selectionEnd = () => (container.querySelector('[aria-label="Selection end"]') as HTMLElement).textContent?.replace(/\s/g, '') ?? '';
+    // (the selection read from the RULER'S READOUT since 2026-11-19 — the status
+    // bar's selection timecodes are off by default; '' with no selection)
+    const selectionEnd = () => container.querySelector('[data-selection-readout]')?.textContent ?? '';
     const zero = selectionEnd();
     fireEvent.doubleClick(trackPanels(container)[1]); // a range on track 2
     await waitFor(() => expect(selectionEnd()).not.toBe(zero));
@@ -2258,7 +2266,9 @@ describe('Track management', () => {
     const { container, getByText } = rendered;
     await gotoProject(rendered);
     await generateTracks(container, getByText);
-    const selectionEnd = () => (container.querySelector('[aria-label="Selection end"]') as HTMLElement).textContent?.replace(/\s/g, '') ?? '';
+    // (the selection read from the RULER'S READOUT since 2026-11-19 — the status
+    // bar's selection timecodes are off by default; '' with no selection)
+    const selectionEnd = () => container.querySelector('[data-selection-readout]')?.textContent ?? '';
     const zero = selectionEnd();
     const panel = trackPanels(container)[1];
     // The browser's sequence: click, click, dblclick, click with detail 3

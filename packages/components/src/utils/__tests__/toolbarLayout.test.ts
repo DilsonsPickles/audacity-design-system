@@ -52,7 +52,7 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
       expect(layout.top[1][0].tools).not.toContain('get-effects');
       expect(groups[groups.length - 1]).toEqual(['microphone-levels', 'playback-meter']);
       expect(layout.top[1][0].tools).not.toContain('customise');
-      expect(groupsOf(layout.bottom[0][0].tools)).toEqual([['status-cue', 'status-info'], ['selection-timecodes', 'selection-duration']]);
+      expect(groupsOf(layout.bottom[0][0].tools)).toEqual([['status-cue', 'status-info']]);
       // separator ids are unique across the layout
       const seps = [...layout.top[1][0].tools, ...layout.bottom[0][0].tools].filter(isToolSeparator);
       expect(new Set(seps).size).toBe(seps.length);
@@ -132,7 +132,7 @@ describe('toolbarLayout — the custom toolbars model (2026-11-09; rows 2026-11-
     expect(moveBar(a, 'view', { region: 'top', newRowAt: 1 })).toBe(a);
     expect(moveBar(a, 'view', { region: 'top', newRowAt: 2 })).toBe(a);
     // a new row in the bottom dock, above the status bar
-    expect(rows(moveBar(layout, 'view', { region: 'bottom', newRowAt: 0 }), 'bottom')).toEqual([['view'], ['status', 'selection']]);
+    expect(rows(moveBar(layout, 'view', { region: 'bottom', newRowAt: 0 }), 'bottom')).toEqual([['view'], ['status']]);
   });
 
   it('moveTool moves one tool into a bar before another tool or at its end, and KEEPS a bar it empties (empty toolbars stay, 2026-11-11)', () => {
@@ -458,6 +458,16 @@ describe('withoutRetiredTools — THE WAVEFORM BUTTON IS RETIRED (2026-11-19)', 
   it('no seed carries it', () => {
     for (const ws of ['classic', 'modern', 'music', 'spectral-editing'] as const) {
       expect(JSON.stringify(defaultToolbarLayout(ws))).not.toContain('waveform-view');
+    }
+  });
+});
+
+describe('the status bar seed (2026-11-19, the ruler readout)', () => {
+  it('no seed puts the selection timecodes on a toolbar', () => {
+    for (const ws of ['classic', 'modern', 'music', 'spectral-editing'] as const) {
+      const json = JSON.stringify(defaultToolbarLayout(ws));
+      expect(json).not.toContain('selection-timecodes');
+      expect(json).not.toContain('selection-duration');
     }
   });
 });

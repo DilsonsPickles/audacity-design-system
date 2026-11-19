@@ -235,11 +235,12 @@ export function withTitleBarItem(layout: ToolbarLayout, id: string): ToolbarLayo
 /** The project tools hidden by default (Customise toolbar brings them back) */
 export const PROJECT_TOOLS_HIDDEN_BY_DEFAULT: ReadonlyArray<string> = ['mixer-button', 'get-effects'];
 
-/** The status bar's seed: the Figma Status/Info bar's two slots, then the
- *  selection timecodes and the duration */
+/** The status bar's seed: the Figma Status/Info bar's two slots. The
+ *  selection timecodes and the duration were here too until 2026-11-19 —
+ *  off by default since the ruler shows the selection's numbers over it;
+ *  still tools, added back from the tool bank or Edit toolbars… */
 const statusBars = (): ToolbarBar[] => [
   { id: 'status', tools: ['status-cue', 'status-info'] },
-  { id: 'selection', tools: ['selection-timecodes', 'selection-duration'] },
 ];
 
 const bar = (id: string, tools: string[]): ToolbarBar => ({ id, tools });

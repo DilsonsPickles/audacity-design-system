@@ -308,7 +308,8 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     expect(dock('top').contains(bar())).toBe(true);
     expect(dock('bottom').classList.contains('selection-toolbar')).toBe(true);
     expect(dock('bottom').querySelector('[data-toolbar-bar="status"] .selection-toolbar__status-text')?.textContent).toBe('Stopped');
-    expect(dock('bottom').querySelector('[data-toolbar-bar="status"] [aria-label="Selection start"]')).toBeTruthy();
+    // (the selection timecodes are off by default since 2026-11-19 — the ruler shows the selection)
+    expect(dock('bottom').querySelector('[aria-label="Selection start"]')).toBeNull();
 
     // Drag to the bottom edge: jsdom measures nothing, so the window's
     // edge stands in for the dock under the pointer (the old gripper's snap)
@@ -337,7 +338,7 @@ describe('Toolbar docks (2026-11-09, custom toolbars)', () => {
     const statusGrip = dock('bottom').querySelector('[data-toolbar-bar="status"] .toolbar-dock__grip') as HTMLElement;
     fireEvent.mouseDown(statusGrip, { clientX: 100, clientY: 100, button: 0 });
     fireEvent.mouseUp(document, { clientX: 100, clientY: 10 });
-    await waitFor(() => expect(dock('top').querySelector('[data-toolbar-bar="status"] [aria-label="Selection start"]')).toBeTruthy());
+    await waitFor(() => expect(dock('top').querySelector('[data-toolbar-bar="status"] .selection-toolbar__status-text')).toBeTruthy());
     expect(dock('bottom').querySelector('[data-toolbar-bar="status"]')).toBeNull();
   });
 
