@@ -178,9 +178,18 @@ body[data-toolbar-tool-drag] .toolbar-dock__spacer { outline: 1px dashed current
   font-size: 14px;
   line-height: 1;
   color: var(--toolbar-gripper-color, var(--toolbar-divider));
-  opacity: 0.55;
+  /* HIDDEN UNTIL THE GROUP IS HOVERED, IN EVERY STYLE (2026-11-19, "what if
+     show grippers on group hover now?" — the islands' rule, now the flat
+     style's too): 55% while the pointer is on the group or the keyboard in
+     it, full on the grip; every grip shows while a group or tool is in hand
+     (`data-drop-available`). The grip keeps its room, so nothing moves */
+  opacity: 0;
   transition: opacity 0.06s ease;
 }
+.toolbar-dock__bar:hover .toolbar-dock__grip-dots,
+.toolbar-dock__bar:focus-within .toolbar-dock__grip-dots,
+.toolbar-dock[data-drop-available] .toolbar-dock__grip-dots { opacity: 0.55; }
+.toolbar-dock__grip:focus-visible .toolbar-dock__grip-dots { opacity: 1; }
 .toolbar-dock__grip:hover,
 .toolbar-dock__bar--dragging .toolbar-dock__grip {
   background-color: color-mix(in srgb, var(--toolbar-gripper-color) 6%, transparent);
