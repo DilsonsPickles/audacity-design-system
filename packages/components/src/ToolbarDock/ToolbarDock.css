@@ -163,7 +163,11 @@ body[data-toolbar-tool-drag] .toolbar-dock__spacer { outline: 1px dashed current
   user-select: none;
   transition: background-color 0.06s ease;
 }
-.toolbar-dock__grip--leading { width: 16px; }
+/* BALANCED (2026-11-19, "match padding left and right? right now it's
+   unbalanced because of the gripper"): the slim dots sit in an 8px cell, so
+   a group's tools start 8px after its line, as they end 8px before the next
+   — the six-dot glyph needed 16 */
+.toolbar-dock__grip--leading { width: 8px; }
 .toolbar-dock__grip-line {
   position: absolute;
   top: 0;
@@ -210,7 +214,7 @@ body[data-toolbar-tool-drag] .toolbar-dock__spacer { outline: 1px dashed current
    then its dots in a 16px cell of their own — the leading toolbar's — so
    the line never runs through the dots: 8 + 1 + 16 = 25 */
 .toolbar-dock__grip:not(.toolbar-dock__grip--leading) {
-  width: 25px;
+  width: 17px;
   padding-left: 9px;
   box-sizing: border-box;
 }
@@ -429,8 +433,8 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 .toolbar-dock--vertical .toolbar-dock__tools { flex-direction: column; gap: 8px; }
 .toolbar-dock--vertical .toolbar-dock__tools .toolbar__button-group { flex-direction: column; }
 .toolbar-dock--vertical .toolbar-dock__grip { width: auto; height: 17px; margin: 0; }
-.toolbar-dock--vertical .toolbar-dock__grip:not(.toolbar-dock__grip--leading) { width: auto; height: 25px; padding-left: 0; padding-top: 9px; }
-.toolbar-dock--vertical .toolbar-dock__grip--leading { width: auto; height: 16px; }
+.toolbar-dock--vertical .toolbar-dock__grip:not(.toolbar-dock__grip--leading) { width: auto; height: 17px; padding-left: 0; padding-top: 9px; }
+.toolbar-dock--vertical .toolbar-dock__grip--leading { width: auto; height: 8px; }
 .toolbar-dock--vertical .toolbar-dock__grip-line { top: 8px; bottom: auto; left: 0; right: 0; width: auto; height: 1px; }
 .toolbar-dock--vertical .toolbar-dock__grip-dots { transform: rotate(90deg); }
 .toolbar-dock--vertical .toolbar-dock__insert { top: 7px; bottom: auto; left: 0; right: 0; width: auto; height: 3px; }

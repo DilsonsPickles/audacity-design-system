@@ -21,8 +21,8 @@ export type ToolDropTarget =
 
 /** The bar's leading strip that means "beside it", not "in it": its
  *  gutter, which is its grip (17px, the gap between two bars, 2026-11-10) */
-const GRIP_ZONE_PX = 25; // a following toolbar's grip, the line and its dots (2026-11-16)
-const GRIP_ZONE_VERTICAL_PX = 25;
+const GRIP_ZONE_PX = 17; // a following group's grip: 8px, the line, 8px of dots (2026-11-19; 25 with the six dots)
+const GRIP_ZONE_VERTICAL_PX = 17;
 /** Past a bar's last tool by this much is still that bar's end */
 const BAR_END_SLACK_PX = 4;
 
