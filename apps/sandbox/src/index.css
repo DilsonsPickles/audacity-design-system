@@ -86,11 +86,13 @@ html.pan-active * {
 .project-tab--active .project-tab__close,
 .project-tab__close:hover { color: var(--project-tabs-text, inherit); }
 .project-tab--dragging { opacity: 0.85; z-index: 1; }
-/* Renaming (2026-11-12): a field over the tab's label — after the icon,
-   short of the close × — the label hidden under it */
+/* Renaming (2026-11-12): a field over the tab's label — from the label's
+   start (no icon since 2026-11-19, "i don't think projects need icons in
+   tab names"; the label pulled 4px left for the field's padding), short of
+   the close × — the label hidden under it */
 .project-tab[data-renaming] .tab__label { visibility: hidden; }
 .project-tab__rename {
-  position: absolute; top: 50%; left: 36px; right: 32px; transform: translateY(-50%);
+  position: absolute; top: 50%; left: 12px; right: 32px; transform: translateY(-50%);
   height: 22px; min-width: 0; box-sizing: border-box; padding: 0 4px;
   font: inherit; font-size: 12px; color: var(--project-tabs-text, inherit);
   background: var(--project-tabs-field-bg, transparent);

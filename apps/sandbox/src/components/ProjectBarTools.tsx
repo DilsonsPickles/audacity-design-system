@@ -256,7 +256,6 @@ export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectT
                 <Tab
                   variant="document"
                   label={p.title}
-                  icon={<Icon name="waveform" size={16} />}
                   isActive={active}
                   onClick={() => onSelectProject(p.id)}
                 />
@@ -295,7 +294,6 @@ export function ProjectTabs({ activeMenuItem, onNavigate, projectTitle, projectT
         <Tab
           variant="document"
           label={projectTitle || 'Untitled project'}
-          icon={<Icon name="waveform" size={16} />}
           isActive={inProject}
           onClick={() => onNavigate('project')}
         />
