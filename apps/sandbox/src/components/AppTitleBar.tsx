@@ -17,6 +17,12 @@ import { ProjectTabs, type ProjectBarToolsDeps } from './ProjectBarTools';
  * browser for a preview with localStorage `audacity-title-bar` = '1'.
  */
 export const TRAFFIC_LIGHTS_PX = 76;
+/** A project tab's least width (index.css `.project-tab` min-width) */
+const TAB_MIN_PX = 96;
+/** The extra room a label waits for before it comes back */
+const COMPACT_HYSTERESIS_PX = 24;
+/** Stage changes allowed before the next task (a guard against a loop) */
+const MAX_COMPACT_CHANGES = 4;
 
 // THE RIGHT END (2026-11-11, the first row's buttons moved out) — THE
 // CORNER since 2026-11-16: the layout's app-level title bar items (Debug,
@@ -33,8 +39,74 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
   const [workspaceMenu, setWorkspaceMenu] = React.useState<{ x: number; y: number } | null>(null);
   const workspaceName = deps.workspaceOptions.find((o) => o.value === deps.workspace)?.label ?? deps.workspace;
   const { theme } = useTheme();
+  // THE LABELS GO WHEN THE BAR RUNS OUT OF ROOM (2026-11-19, "When we get
+  // down to smaller screen sizes, can the title bar buttons lose their
+  // labels? This behaviour can be seen in the real build"): the real build's
+  // top bar goes compact toolbar by toolbar in `compactPriorityOrder`
+  // (ProjectPage.qml) — the Workspaces toolbar first, then the Project
+  // toolbar's buttons. Here: once the tabs are squeezed to their least and
+  // nothing is left, stage 1 takes the Workspace label, stage 2 every other
+  // corner button's; each label comes back once the room it needs (measured
+  // as it went) is free again, with a margin so the edge does not flicker
+  const barRef = React.useRef<HTMLDivElement>(null);
+  const [compact, setCompact] = React.useState<0 | 1 | 2>(0);
+  const compactRef = React.useRef(compact);
+  compactRef.current = compact;
+  const savedRef = React.useRef<[number, number, number]>([0, 0, 0]);
+  const pendingRef = React.useRef<{ stage: 1 | 2; before: number } | null>(null);
+  // NEVER A LOOP (2026-11-19 — the first cut measured the corner's width
+  // two ways, read a squeezed one as the label's saving, and flipped
+  // stages until React aborted the app): the widths are both the corner's
+  // full content width, and at most MAX_COMPACT_CHANGES stage changes run
+  // before the next task; past that the stage is left as it is
+  const changesRef = React.useRef(0);
+  const mayChange = () => {
+    if (changesRef.current === 0) setTimeout(() => { changesRef.current = 0; }, 0);
+    changesRef.current += 1;
+    return changesRef.current <= MAX_COMPACT_CHANGES;
+  };
+  const measureCompact = React.useCallback(() => {
+    const bar = barRef.current;
+    const end = bar?.querySelector<HTMLElement>('.app-title-bar__end');
+    if (!bar || !end) return;
+    const stage = compactRef.current;
+    const pending = pendingRef.current;
+    if (pending && pending.stage === stage) {
+      savedRef.current[stage] = Math.max(0, pending.before - end.scrollWidth);
+      pendingRef.current = null;
+    }
+    // the room left once every project tab is at its least: the bar's own
+    // inset, the Home tab and + button as they are, each project tab at
+    // TAB_MIN_PX, and the corner at its full width — independent of how the
+    // browser happens to share the room out between tabs and corner
+    const tabs = bar.querySelector<HTMLElement>('.project-tabs');
+    const tabsLeast = tabs
+      ? Array.from(tabs.children).reduce((sum, c) => sum + (c.classList.contains('project-tab') ? TAB_MIN_PX : (c as HTMLElement).offsetWidth), 0)
+      : 0;
+    const inset = parseFloat(getComputedStyle(bar).paddingLeft) || 0;
+    const slack = bar.clientWidth - (inset + tabsLeast + end.scrollWidth);
+    if (slack < 0 && stage < 2) {
+      if (!mayChange()) return;
+      pendingRef.current = { stage: (stage + 1) as 1 | 2, before: end.scrollWidth };
+      setCompact((stage + 1) as 1 | 2);
+    } else if (stage > 0 && slack > savedRef.current[stage] + COMPACT_HYSTERESIS_PX) {
+      if (!mayChange()) return;
+      setCompact((stage - 1) as 0 | 1);
+    }
+  }, []);
+  React.useLayoutEffect(() => { measureCompact(); });
+  React.useEffect(() => {
+    const bar = barRef.current;
+    if (!bar || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => measureCompact());
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, [measureCompact]);
+  const labelOf = (label: string) => (compact >= 2 ? undefined : label);
   return (
     <div
+      ref={barRef}
+      data-compact={compact || undefined}
       className="app-title-bar"
       data-app-title-bar
       data-vibrancy={vibrancy || undefined}
@@ -92,12 +164,12 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
             switch (id) {
               case 'debug':
                 return deps.onOpenDebug ? (
-                  <GhostButton key={id} icon="menu" size="compact" label="Debug" ariaLabel="Debug panel"
+                  <GhostButton key={id} icon="menu" size="compact" label={labelOf('Debug')} ariaLabel="Debug panel"
                     onClick={() => { setWorkspaceMenu(null); deps.onOpenDebug?.(); }} />
                 ) : null;
               case 'audio-setup':
                 return (
-                  <GhostButton key={id} icon="cog" size="compact" label="Audio setup" ariaLabel="Audio setup"
+                  <GhostButton key={id} icon="cog" size="compact" label={labelOf('Audio setup')} ariaLabel="Audio setup"
                     onClick={(e) => {
                       // One title-bar menu at a time (2026-11-11)
                       setWorkspaceMenu(null);
@@ -113,7 +185,7 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
                       size="compact"
                       // THE UNSAVED DOT (2026-11-19): a made workspace that
                       // has drifted from its saved state
-                      label={`Workspace: ${workspaceName}${deps.workspaceModified ? ' •' : ''}`}
+                      label={compact >= 1 ? undefined : `Workspace: ${workspaceName}${deps.workspaceModified ? ' •' : ''}`}
                       ariaLabel={`Workspace: ${workspaceName}${deps.workspaceModified ? ', unsaved changes' : ''}`}
                       active={workspaceMenu !== null}
                       onClick={(e) => {
@@ -160,14 +232,14 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
                   </div>
                 );
               case 'share-audio':
-                return <GhostButton key={id} icon="cloud" size="compact" label="Share audio" ariaLabel="Share audio" onClick={() => deps.onShareAudio()} />;
+                return <GhostButton key={id} icon="cloud" size="compact" label={labelOf('Share audio')} ariaLabel="Share audio" onClick={() => deps.onShareAudio()} />;
               case 'get-effects':
                 return (
-                  <GhostButton key={id} icon="plugins" size="compact" label="Get effects" ariaLabel="Get effects"
+                  <GhostButton key={id} icon="plugins" size="compact" label={labelOf('Get effects')} ariaLabel="Get effects"
                     onClick={(e) => { setWorkspaceMenu(null); deps.onGetEffects(e.currentTarget.getBoundingClientRect()); }} />
                 );
               case 'mixer-button':
-                return deps.showMixer ? <GhostButton key={id} icon="mixer" size="compact" label="Mixer" ariaLabel="Mixer" onClick={() => deps.onToggleMixer()} /> : null;
+                return deps.showMixer ? <GhostButton key={id} icon="mixer" size="compact" label={labelOf('Mixer')} ariaLabel="Mixer" onClick={() => deps.onToggleMixer()} /> : null;
               default:
                 return null;
             }
