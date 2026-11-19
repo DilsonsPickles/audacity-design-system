@@ -45,7 +45,10 @@
 
 .toolbar-dock__row-divider {
   height: 1px;
-  background-color: var(--toolbar-divider);
+  /* the toolbar's own edge line (2026-11-19, "line under first toolbar
+     too dark and then line under second toolbar not dark enough": it was
+     the darker divider token, the line under the last row the border) */
+  background-color: var(--toolbar-border);
   margin: 0;
 }
 
