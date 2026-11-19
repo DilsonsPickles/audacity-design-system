@@ -76,4 +76,11 @@ describe('SelectionMeasure (2026-11-19, D2: a dimension line under the selection
       unmount();
     }
   });
+
+  it('sits ABOVE the clips (their layers reach 900, the stereo divider) and under the playhead (1000) — "It\'s being hidden under clips"', () => {
+    const { container } = renderMeasure(1, 3);
+    const z = Number(container.querySelector<HTMLElement>('[data-selection-measure]')!.style.zIndex);
+    expect(z).toBeGreaterThan(900);
+    expect(z).toBeLessThan(1000);
+  });
 });

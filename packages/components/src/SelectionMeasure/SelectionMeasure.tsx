@@ -32,6 +32,10 @@ const TICK_HEIGHT = 13;
 const LINE_Y = 8;
 const PILL_HEIGHT = 17;
 const TIME_TOP = 18;
+/** Above every clip layer — the tracks' highest is the stereo divider at
+ *  900 — and under the playhead and the focused track's bars at 1000
+ *  (2026-11-19, "It's being hidden under clips": it was 6) */
+const MEASURE_Z = 950;
 
 /**
  * THE SELECTION MEASURE (2026-11-19, D2 of the mockups — "I like D2"): a
@@ -88,7 +92,7 @@ export function SelectionMeasure({ startTime, endTime, pixelsPerSecond, top, vis
         <span ref={endRef} style={{ ...time, ...hidden }}>{parts.end}</span>
       </span>
       {place && (
-        <div data-selection-measure="" aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: 0, height: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 6 }}>
+        <div data-selection-measure="" aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: 0, height: 0, overflow: 'visible', pointerEvents: 'none', zIndex: MEASURE_Z }}>
           {!line && (
             <>
               <div data-selection-line="" style={{ position: 'absolute', left: `${startX}px`, width: `${endX - startX}px`, top: `${top + LINE_Y}px`, height: 1, background: ink }} />
