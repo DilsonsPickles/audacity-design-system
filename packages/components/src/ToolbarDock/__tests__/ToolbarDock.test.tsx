@@ -647,4 +647,21 @@ describe('A GROUP WITHOUT DIVIDERS STILL BREAKS (2026-11-19, "they not breaking 
       expect(Array.from(container.querySelectorAll('[data-toolbar-tool]')).map((t) => t.getAttribute('data-toolbar-tool'))).toEqual(tools);
     } finally { restore(); }
   });
+
+  it('a broken group READS AS ONE: every piece but the last runs to its line\'s end and is marked as continuing; the last is not', () => {
+    const restore = measured();
+    try {
+      const { container } = render(
+        <ThemeProvider>
+          <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
+            <ToolbarDock region="top" groupStyle="islands" rows={[[{ id: 'g', tools: ['t1', 't2', 't3', 't4', 't5', 't6'] }]]} renderTool={(id) => <button aria-label={id}>{id}</button>} />
+          </AccessibilityProfileProvider>
+        </ThemeProvider>,
+      );
+      const pieces = Array.from(container.querySelectorAll<HTMLElement>('[data-toolbar-bar="g"], [data-toolbar-bar-continued="g"]'));
+      expect(pieces.length).toBeGreaterThan(1);
+      pieces.slice(0, -1).forEach((p) => expect(p.hasAttribute('data-toolbar-continues')).toBe(true));
+      expect(pieces[pieces.length - 1].hasAttribute('data-toolbar-continues')).toBe(false);
+    } finally { restore(); }
+  });
 });

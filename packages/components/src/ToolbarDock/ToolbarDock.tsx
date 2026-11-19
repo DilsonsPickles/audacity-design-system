@@ -485,6 +485,8 @@ export function ToolbarDock({
       // a sized meter group at its size, the least it takes (2026-11-19)
       const w = d.grow && d.size === undefined ? GROW_BAR_PACK_WIDTH
         : d.fill ? (d.size ?? naturalOf(d.nodes.map((t) => t.id)))
+        // (a piece that continues stretches to its line's end: it packs at its natural width)
+        : d.split && !d.last ? naturalOf(d.nodes.map((t) => t.id))
         : (el?.offsetWidth ?? 0);
       // (each bar's width carries its gutter: the grip is the gap)
       if (!line || line.row !== d.row || (available > 0 && line.ids.length > 0 && used + w > available)) {
@@ -584,10 +586,14 @@ export function ToolbarDock({
     <div
       key={d.key}
       ref={(el) => { if (el) barRefs.current.set(d.key, el); else barRefs.current.delete(d.key); }}
-      className={`toolbar-dock__bar${d.grow ? ' toolbar-dock__bar--grow' : ''}${d.size !== undefined ? ' toolbar-dock__bar--sized' : ''}${d.fill ? ' toolbar-dock__bar--fill' : ''}${draggingBarId === d.bar.id ? ' toolbar-dock__bar--dragging' : ''}`}
+      className={`toolbar-dock__bar${d.grow ? ' toolbar-dock__bar--grow' : ''}${d.size !== undefined ? ' toolbar-dock__bar--sized' : ''}${d.fill ? ' toolbar-dock__bar--fill' : ''}${d.split && !d.last ? ' toolbar-dock__bar--continues' : ''}${draggingBarId === d.bar.id ? ' toolbar-dock__bar--dragging' : ''}`}
       style={d.size !== undefined ? (d.fill && !vertical ? { [axis]: d.size, minWidth: d.size } : { [axis]: d.size }) : undefined}
       data-toolbar-bar={d.continued ? undefined : d.bar.id}
       data-toolbar-bar-continued={d.continued ? d.bar.id : undefined}
+      // A BROKEN GROUP READS AS ONE (2026-11-19, "what if the group extends to
+      // the end so it looks like the groups are a continuation?"): every piece
+      // but the last runs to its line's end, its joining edges open
+      data-toolbar-continues={d.split && !d.last ? '' : undefined}
     >
       <span
         className={`toolbar-dock__grip${leading ? ' toolbar-dock__grip--leading' : ''}${d.continued ? ' toolbar-dock__grip--continued' : ''}`}

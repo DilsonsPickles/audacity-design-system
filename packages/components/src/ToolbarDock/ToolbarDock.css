@@ -693,3 +693,20 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
   background-color: var(--toolbar-bg);
   border-color: var(--toolbar-island-stroke-strong, var(--toolbar-island-border));
 }
+
+/* A BROKEN GROUP READS AS ONE (2026-11-19, "what if the group extends to the
+   end so it looks like the groups are a continuation?"): a piece that
+   continues on the next line runs to its line's end, and where the pieces
+   join the card is OPEN — no border, no rounded corners — so the group reads
+   as one carrying on, as a line of text does */
+.toolbar-dock--horizontal .toolbar-dock__bar--continues { flex: 1 1 auto; }
+.toolbar-dock--islands .toolbar-dock__bar--continues {
+  border-right-color: transparent;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.toolbar-dock--islands [data-toolbar-bar-continued] {
+  border-left-color: transparent;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
