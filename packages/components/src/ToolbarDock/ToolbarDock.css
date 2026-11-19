@@ -630,3 +630,20 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 .toolbar-dock__bar:hover .toolbar-dock__empty-add,
 .toolbar-dock__empty-add:focus-visible { opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .toolbar-dock__empty-add { transition: none; } }
+
+/* THE LANDING LINE SITS IN THE GAP (2026-11-19, "when we drag a toolbar
+   group, can we make the destination line actually sit in the right
+   space?"): its offsets were the flat style's 17px gutter, so in the islands
+   it landed 7px INSIDE the group it would go before (and 7px past the gap at
+   a row's end). Here the 3px line is centred in the 4px gap — the card's own
+   1px border counted, since the line is placed from inside it — and runs the
+   card's full height: before a group, 2px before its outer edge; at a row's
+   end, 2px after the last group; the same down a column */
+.toolbar-dock--islands .toolbar-dock__insert { left: -4.5px; top: -1px; bottom: -1px; }
+.toolbar-dock--islands .toolbar-dock__insert--end { left: auto; top: auto; bottom: auto; margin: 0 -3px 0 -3.5px; }
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__insert { left: -1px; right: -1px; top: -4.5px; bottom: auto; }
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__insert--end { left: auto; right: auto; top: auto; margin: -3.5px 0 -3px; }
+/* …and before a column's FIRST group it sits on the card's top edge: with
+   no padding above the column (a top toolbar's 4px is the gap) the gap's
+   line would fall outside the column and be clipped */
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__row > .toolbar-dock__bar:first-child .toolbar-dock__insert:not(.toolbar-dock__insert--end) { top: -1px; }
