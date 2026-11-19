@@ -50,7 +50,9 @@ as it exists. Precise entry moves to a dialog.
 - **Fields:** Start, End and Length, each the alt-variant timecode Go to… uses,
   prefilled from the current selection (or the playhead, with a zero length).
   Editing Start or Length moves End; editing End changes Length.
-- **Applies** on Set / Enter, as one undo step; Escape cancels. The selection's
+- **Applies** on Set / Enter (a time selection is not on the undo chain, so
+  it is not an undo step — as a drag is not), parking the playhead at the
+  start as a finished drag does; Escape cancels. The selection's
   tracks: the current selection's, else the track you are on, else every
   track — the keyboard range rule.
 
