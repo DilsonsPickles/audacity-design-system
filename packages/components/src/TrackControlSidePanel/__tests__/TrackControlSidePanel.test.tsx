@@ -49,13 +49,15 @@ describe('TrackControlSidePanel — Add-new button rail override', () => {
     );
   });
 
-  // Locks the approved light-mode design: the token values must equal the
+  // Locks the approved light-mode design (lifted a step 2026-11-19 with the
+  // rail, "does the track header panel grey seem too grey now?"): the token
+  // values must equal the
   // hexes that used to live only as CSS fallbacks.
   it('light addButton tokens preserve the original approved greys', () => {
     expect(lightTheme.background.trackHeader.addButton).toEqual({
-      idle: '#C0C1C9',
-      hover: '#B4B5BE',
-      active: '#A8AAB3',
+      idle: '#D3D4DA',
+      hover: '#C9CAD1',
+      active: '#BFC0C8',
     });
   });
 
