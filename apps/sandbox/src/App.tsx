@@ -378,6 +378,10 @@ function CanvasDemoContent() {
   // Debug › Toolbars: a group broken across lines reads as one — its pieces
   // but the last run to their line's end, the joins open (2026-11-19)
   const [joinBrokenGroups, setJoinBrokenGroups] = React.useState(true);
+  // Debug › Toolbars › Group spacing (2026-11-19, "What if we tried 6 or 8px
+  // spacing?"): the islands' gap between cards, round the toolbars' edges
+  // and round the editor card — one CSS variable, --toolbar-island-gap
+  const [toolbarIslandGap, setToolbarIslandGap] = React.useState<4 | 6 | 8>(4);
   // Debug › Selection: how the selection is measured under itself — one line
   // (the edge times beside the length, the dragged edge lit) or the
   // dimension line (2026-11-19, "let's try the way you liked" after D2)
@@ -1849,6 +1853,7 @@ function CanvasDemoContent() {
     <TransportToolbarContainer {...transportToolbarProps}>
     <div data-editor-island={editorIsland && activeMenuItem !== 'home' ? '' : undefined} style={{
       display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw',
+      ['--toolbar-island-gap' as string]: `${toolbarIslandGap}px`,
       // Over the window's vibrancy (macOS): the title bar's 40px stay
       // see-through, everything below is the app's solid surface
       ...(window.electronShell?.titleBarVibrancy
@@ -2556,6 +2561,8 @@ function CanvasDemoContent() {
         onEditorIslandChange={setEditorIsland}
         joinBrokenGroups={joinBrokenGroups}
         onJoinBrokenGroupsChange={setJoinBrokenGroups}
+        toolbarIslandGap={toolbarIslandGap}
+        onToolbarIslandGapChange={setToolbarIslandGap}
         selectionMeasureStyle={selectionMeasureStyle}
         onSelectionMeasureStyleChange={setSelectionMeasureStyle}
         setUseVarispeedSlider={setUseVarispeedSlider}

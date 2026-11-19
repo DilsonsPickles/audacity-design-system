@@ -75,6 +75,9 @@ export interface DebugPanelProps {
   onToolbarGroupStyleChange?: (value: 'lines' | 'islands' | 'filled' | 'stroked' | 'open') => void;
   editorIsland?: boolean;
   joinBrokenGroups?: boolean;
+  /** The islands' gap between groups, px (Debug › Toolbars › Group spacing) */
+  toolbarIslandGap?: 4 | 6 | 8;
+  onToolbarIslandGapChange?: (value: 4 | 6 | 8) => void;
   onJoinBrokenGroupsChange?: (value: boolean) => void;
   selectionMeasureStyle?: 'line' | 'dimension';
   onSelectionMeasureStyleChange?: (value: 'line' | 'dimension') => void;
@@ -195,6 +198,8 @@ export function DebugPanel({
   onToolbarGroupStyleChange,
   editorIsland = true,
   joinBrokenGroups = true,
+  toolbarIslandGap = 4,
+  onToolbarIslandGapChange,
   onJoinBrokenGroupsChange,
   selectionMeasureStyle = 'line',
   onSelectionMeasureStyleChange,
@@ -550,6 +555,21 @@ export function DebugPanel({
                 />
               ))}
             </div>
+            {onToolbarIslandGapChange && (
+              <div role="radiogroup" aria-label="Group spacing" style={{ display: 'flex', gap: 16, marginTop: 12, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: 'var(--debug-text)' }}>Group spacing</span>
+                {([4, 6, 8] as const).map((value) => (
+                  <LabeledRadio
+                    key={value}
+                    label={`${value}px`}
+                    name="toolbar-island-gap"
+                    value={String(value)}
+                    checked={toolbarIslandGap === value}
+                    onChange={(on) => { if (on) onToolbarIslandGapChange(value); }}
+                  />
+                ))}
+              </div>
+            )}
             {onJoinBrokenGroupsChange && (
               <div style={{ marginTop: 8 }}>
                 <LabeledCheckbox

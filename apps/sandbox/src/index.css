@@ -286,7 +286,8 @@ body[data-rail-resize], body[data-rail-resize] * { cursor: ew-resize !important;
    island" turns it off. */
 [data-editor-island] .toolbar-dock:not(.toolbar-dock--inner):not([data-toolbar-preview]) { border-width: 0; }
 .editor-island {
-  margin: 4px;
+  /* the groups' gap (Debug › Toolbars › Group spacing, 2026-11-19) */
+  margin: var(--toolbar-island-gap, 4px);
   border: 1px solid var(--editor-island-border);
   border-radius: 8px;
   overflow: hidden;

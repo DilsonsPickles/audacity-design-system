@@ -504,13 +504,18 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 .toolbar-dock--islands {
   background-color: var(--toolbar-bg);
 }
-.toolbar-dock--islands .toolbar-dock__row { padding: 4px var(--toolbar-dock-end-pad, 4px) 4px 4px; gap: 4px; }
+/* THE GAP IS ONE NUMBER (2026-11-19, "What if we tried 6 or 8px spacing? Can we
+   add that in debug?"): --toolbar-island-gap (4px unless the host sets it —
+   Debug › Toolbars › Group spacing) is the space between cards, round the
+   row's edge and above a column; a row is the 36px card plus a gap either
+   side, and every offset below that sits "in the gap" is worked from it */
+.toolbar-dock--islands .toolbar-dock__row { padding: var(--toolbar-island-gap, 4px) var(--toolbar-dock-end-pad, var(--toolbar-island-gap, 4px)) var(--toolbar-island-gap, 4px) var(--toolbar-island-gap, 4px); gap: var(--toolbar-island-gap, 4px); height: calc(36px + 2 * var(--toolbar-island-gap, 4px)); }
 /* STACKED LINES DO NOT DOUBLE THE GAP (2026-11-19, "If the horizontal
    toolbar wraps, I don't want to double up on the spacing between the two
    rows"): every line kept 4px above and below, so two lines' groups sat 8px
    apart against 4px everywhere else; a line after the first — a wrap or a
    row of its own — drops its top 4px and is 40px, so it is 4 card to card */
-.toolbar-dock--islands.toolbar-dock--horizontal .toolbar-dock__row ~ .toolbar-dock__row { padding-top: 0; height: 40px; }
+.toolbar-dock--islands.toolbar-dock--horizontal .toolbar-dock__row ~ .toolbar-dock__row { padding-top: 0; height: calc(36px + var(--toolbar-island-gap, 4px)); }
 .toolbar-dock--islands .toolbar-dock__bar {
   height: 36px;
   box-sizing: border-box;
@@ -548,9 +553,9 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 /* the sized clip box reached through the old 8px row padding */
 .toolbar-dock--islands.toolbar-dock--horizontal .toolbar-dock__bar--sized .toolbar-dock__tools { margin: -3px 0; padding: 3px 0; }
 /* the resize edge sits in the 4px gap after the card */
-.toolbar-dock--islands .toolbar-dock__resize { top: -4px; bottom: -4px; right: -5px; width: 6px; }
+.toolbar-dock--islands .toolbar-dock__resize { top: calc(-1 * var(--toolbar-island-gap, 4px)); bottom: calc(-1 * var(--toolbar-island-gap, 4px)); right: -5px; width: 6px; }
 /* a column: cards stacked 4px apart, 40 wide in the 48px column */
-.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__row { padding: 4px; gap: 4px; min-width: 48px; }
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__row { padding: var(--toolbar-island-gap, 4px); gap: var(--toolbar-island-gap, 4px); min-width: calc(40px + 2 * var(--toolbar-island-gap, 4px)); height: auto; }
 .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__bar { height: auto; padding: 0 3px 6px; }
 .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__grip,
 .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__grip:not(.toolbar-dock__grip--leading) {
@@ -639,10 +644,10 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
    1px border counted, since the line is placed from inside it — and runs the
    card's full height: before a group, 2px before its outer edge; at a row's
    end, 2px after the last group; the same down a column */
-.toolbar-dock--islands .toolbar-dock__insert { left: -4.5px; top: -1px; bottom: -1px; }
-.toolbar-dock--islands .toolbar-dock__insert--end { left: auto; top: auto; bottom: auto; margin: 0 -3px 0 -3.5px; }
-.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__insert { left: -1px; right: -1px; top: -4.5px; bottom: auto; }
-.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__insert--end { left: auto; right: auto; top: auto; margin: -3.5px 0 -3px; }
+.toolbar-dock--islands .toolbar-dock__insert { left: calc(-2.5px - var(--toolbar-island-gap, 4px) / 2); top: -1px; bottom: -1px; }
+.toolbar-dock--islands .toolbar-dock__insert--end { left: auto; top: auto; bottom: auto; margin: 0 -3px 0 calc(-1.5px - var(--toolbar-island-gap, 4px) / 2); }
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__insert { left: -1px; right: -1px; top: calc(-2.5px - var(--toolbar-island-gap, 4px) / 2); bottom: auto; }
+.toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__insert--end { left: auto; right: auto; top: auto; margin: calc(-1.5px - var(--toolbar-island-gap, 4px) / 2) 0 -3px; }
 /* …and before a column's FIRST group it sits on the card's top edge: with
    no padding above the column (a top toolbar's 4px is the gap) the gap's
    line would fall outside the column and be clipped */

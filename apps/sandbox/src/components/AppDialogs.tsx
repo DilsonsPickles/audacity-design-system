@@ -134,6 +134,8 @@ export interface AppDialogsProps {
   editorIsland: boolean;
   joinBrokenGroups: boolean;
   onJoinBrokenGroupsChange: (value: boolean) => void;
+  toolbarIslandGap: 4 | 6 | 8;
+  onToolbarIslandGapChange: (value: 4 | 6 | 8) => void;
   selectionMeasureStyle: 'line' | 'dimension';
   onSelectionMeasureStyleChange: (value: 'line' | 'dimension') => void;
   onEditorIslandChange: (value: boolean) => void;
@@ -201,7 +203,7 @@ export function AppDialogs(props: AppDialogsProps) {
     activeProfile, profiles, setProfile,
     useSplitRecordButton, setUseSplitRecordButton,
     useVarispeedSlider, setUseVarispeedSlider,
-    toolbarGroupStyle, onToolbarGroupStyleChange, editorIsland, onEditorIslandChange, joinBrokenGroups, onJoinBrokenGroupsChange, selectionMeasureStyle, onSelectionMeasureStyleChange,
+    toolbarGroupStyle, onToolbarGroupStyleChange, editorIsland, onEditorIslandChange, joinBrokenGroups, onJoinBrokenGroupsChange, toolbarIslandGap, onToolbarIslandGapChange, selectionMeasureStyle, onSelectionMeasureStyleChange,
     slowMediaSeconds, setSlowMediaSeconds,
     showMixer, setShowMixer,
     setActiveMenuItem,
@@ -1228,6 +1230,8 @@ export function AppDialogs(props: AppDialogsProps) {
         onEditorIslandChange={onEditorIslandChange}
         joinBrokenGroups={joinBrokenGroups}
         onJoinBrokenGroupsChange={onJoinBrokenGroupsChange}
+        toolbarIslandGap={toolbarIslandGap}
+        onToolbarIslandGapChange={onToolbarIslandGapChange}
         selectionMeasureStyle={selectionMeasureStyle}
         onSelectionMeasureStyleChange={onSelectionMeasureStyleChange}
         slowMediaSeconds={slowMediaSeconds}
