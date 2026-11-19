@@ -569,7 +569,11 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 /* …a card HUGS its tools unless something in it takes the room — a meter,
    the info line, a flexible space: the row's last group no longer stretches
    into a long empty card */
-.toolbar-dock--islands .toolbar-dock__bar--fill:not(:has(.toolbar-dock__tool--stretch, .toolbar-dock__tool--grow, .toolbar-dock__tool--spacer)) { flex: 0 0 auto; }
+/* …IN EVERY STYLE since 2026-11-19 ("Because the last group stretches to
+   the end, it's really hard to append another group onto the end"): the
+   flat style's last group ran to the row's end, so the empty room past its
+   tools was ITS — a drop there joined it instead of landing after it */
+.toolbar-dock__bar--fill:not(:has(.toolbar-dock__tool--stretch, .toolbar-dock__tool--grow, .toolbar-dock__tool--spacer)) { flex: 0 0 auto; }
 
 /* A TOOLBAR THAT CAN TAKE WHAT IS IN HAND (2026-11-18, "there's no
    affordance when I drag a group to show that I can drag it into a side
