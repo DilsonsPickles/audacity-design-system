@@ -17,6 +17,12 @@ describe('formatSelectionReadout (2026-11-19, the ruler readout)', () => {
   it('beats and bars: bar.beat positions, the length in beats (120 bpm, 4/4: a beat is 0.5 s)', () => {
     expect(formatSelectionReadout(0.5, 4, { format: 'beats-measures', bpm: 120, beatsPerMeasure: 4, noteValue: 4 })).toEqual({ full: '7 beats · 1.2 – 3.1', short: '7 beats' });
   });
+  it('a length between whole beats reads to a tenth (final review: 0.3 beats read "0 beats")', () => {
+    const opts = { format: 'beats-measures' as const, bpm: 120, beatsPerMeasure: 4, noteValue: 4 };
+    expect(formatSelectionReadout(0, 0.15, opts).short).toBe('0.3 beats');
+    expect(formatSelectionReadout(0, 1.75, opts).short).toBe('3.5 beats');
+    expect(formatSelectionReadout(0, 0.5, opts).short).toBe('1 beat');
+  });
 });
 
 describe('placeSelectionReadout', () => {

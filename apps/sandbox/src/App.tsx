@@ -19,7 +19,7 @@ import { InstallerWizardDialog } from './components/InstallerWizardDialog';
 import { setTrackDeleteConfirmHandler } from './utils/confirmTrackDelete';
 import { EditorLayout } from './components/EditorLayout';
 import { GoToDialog } from './components/GoToDialog';
-import { SetSelectionDialog } from './components/SetSelectionDialog';
+import { SetSelectionDialog, selectionActionsFor } from './components/SetSelectionDialog';
 import { rangeScopeFor } from './hooks/handlers/playheadSelectionHandlers';
 import { TimerRecordDialog } from './components/TimerRecordDialog';
 import { TimerRecordWaitDialog } from './components/TimerRecordWaitDialog';
@@ -2409,10 +2409,7 @@ function CanvasDemoContent() {
         initialEnd={state.timeSelection ? Math.max(state.timeSelection.startTime, state.timeSelection.endTime) : state.playheadPosition}
         format={timeCodeFormat}
         onFormatChange={setTimeCodeFormat}
-        onSet={(start, end) => {
-          dispatch({ type: 'SET_TIME_SELECTION', payload: { startTime: start, endTime: end, tracks: rangeScopeFor(state) } });
-          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: start });
-        }}
+        onSet={(start, end) => selectionActionsFor(start, end, rangeScopeFor(state)).forEach((action) => dispatch(action))}
         onClose={() => setIsSetSelectionOpen(false)}
         os={preferences.operatingSystem}
       />

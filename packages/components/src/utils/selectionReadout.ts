@@ -46,8 +46,11 @@ export function formatSelectionReadout(start: number, end: number, opts: Selecti
       const n = Math.floor(t / beat + 1e-9);
       return `${Math.floor(n / perBar) + 1}.${(n % perBar) + 1}`;
     };
-    const beats = Math.round((b - a) / beat);
-    const short = `${beats} ${beats === 1 ? 'beat' : 'beats'}`;
+    // whole beats read whole, anything between to a tenth (final review,
+    // 2026-11-19: an unsnapped drag of 0.3 beats read "0 beats")
+    const tenths = Math.round(((b - a) / beat) * 10) / 10;
+    const beats = Number.isInteger(tenths) ? String(tenths) : tenths.toFixed(1);
+    const short = `${beats} ${tenths === 1 ? 'beat' : 'beats'}`;
     return { full: `${short} · ${at(a)} – ${at(b)}`, short };
   }
   const short = length(b - a);

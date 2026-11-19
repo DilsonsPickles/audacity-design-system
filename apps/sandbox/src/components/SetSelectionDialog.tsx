@@ -17,6 +17,21 @@ export function applySelectionField(range: SelectionRange, field: 'start' | 'end
   return { start: range.start, end: v };
 }
 
+/** What Set does: the selection over the range on `tracks`, the playhead at
+ *  its start — and a ZERO-LENGTH range clears the selection and only parks
+ *  the playhead (final review, 2026-11-19: an empty time selection was
+ *  stored, and Delete / Copy / Cut on a focused clip then quietly did
+ *  nothing) */
+export type SetSelectionAction =
+  | { type: 'SET_TIME_SELECTION'; payload: { startTime: number; endTime: number; tracks: number[] | undefined } | null }
+  | { type: 'SET_PLAYHEAD_POSITION'; payload: number };
+export function selectionActionsFor(start: number, end: number, tracks: number[] | undefined): SetSelectionAction[] {
+  return [
+    { type: 'SET_TIME_SELECTION', payload: end > start ? { startTime: start, endTime: end, tracks } : null },
+    { type: 'SET_PLAYHEAD_POSITION', payload: start },
+  ];
+}
+
 export interface SetSelectionDialogProps {
   isOpen: boolean;
   /** Prefill: the current selection, or the playhead with no length */
@@ -41,7 +56,16 @@ export interface SetSelectionDialogProps {
  * the opener.
  */
 export function SetSelectionDialog({ isOpen, initialStart, initialEnd, format, onFormatChange, onSet, onClose, os = 'macos' }: SetSelectionDialogProps) {
-  const [range, setRange] = React.useState<SelectionRange>({ start: initialStart, end: initialEnd });
+  const [range, setRangeState] = React.useState<SelectionRange>({ start: initialStart, end: initialEnd });
+  // THE LATEST RANGE IN A REF (final review, 2026-11-19): a time TYPED into a
+  // field commits its change and its Enter in one tick, so Set read the range
+  // from before the edit and applied the old values; every edit writes the
+  // ref at once and Set reads it
+  const rangeRef = React.useRef(range);
+  const setRange = (next: SelectionRange | ((r: SelectionRange) => SelectionRange)) => {
+    rangeRef.current = typeof next === 'function' ? next(rangeRef.current) : next;
+    setRangeState(rangeRef.current);
+  };
   const openerRef = React.useRef<HTMLElement | null>(null);
   React.useEffect(() => {
     if (!isOpen) return;
@@ -59,8 +83,9 @@ export function SetSelectionDialog({ isOpen, initialStart, initialEnd, format, o
     if (opener && opener.isConnected) requestAnimationFrame(() => opener.focus());
   };
   const set = () => {
-    if (!valid) return;
-    onSet(range.start, range.end);
+    const r = rangeRef.current;
+    if (r.end < r.start) return;
+    onSet(r.start, r.end);
     close();
   };
   const field = (label: string, aria: string, value: number, onChange: (v: number) => void, autoEdit = false) => (

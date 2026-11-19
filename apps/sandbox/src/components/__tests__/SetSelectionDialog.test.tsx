@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import { ThemeProvider } from '@audacity-ui/components';
-import { SetSelectionDialog, applySelectionField } from '../SetSelectionDialog';
+import { SetSelectionDialog, applySelectionField, selectionActionsFor } from '../SetSelectionDialog';
 
 afterEach(cleanup);
 
@@ -45,5 +45,26 @@ describe('Set selection… (2026-11-19)', () => {
     fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
     expect(onClose).toHaveBeenCalled();
     expect(onSet).not.toHaveBeenCalled();
+  });
+
+  it('a time TYPED into a field and Entered applies the typed time (final review: it applied the old values)', () => {
+    const { onSet } = setup(1, 3);
+    const start = document.body.querySelector('[aria-label="Set start"]')!;
+    fireEvent.doubleClick(start.querySelector('.timecode__display')!);
+    const input = document.body.querySelector<HTMLInputElement>('[data-timecode-text-input]')!;
+    fireEvent.change(input, { target: { value: '5' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onSet).toHaveBeenCalledWith(5, 7);
+  });
+
+  it('a zero-length Set clears the selection and parks the playhead (final review: it stored an empty selection)', () => {
+    expect(selectionActionsFor(2, 2, [0])).toEqual([
+      { type: 'SET_TIME_SELECTION', payload: null },
+      { type: 'SET_PLAYHEAD_POSITION', payload: 2 },
+    ]);
+    expect(selectionActionsFor(1, 3, [0])).toEqual([
+      { type: 'SET_TIME_SELECTION', payload: { startTime: 1, endTime: 3, tracks: [0] } },
+      { type: 'SET_PLAYHEAD_POSITION', payload: 1 },
+    ]);
   });
 });
