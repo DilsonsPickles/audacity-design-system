@@ -375,6 +375,9 @@ function CanvasDemoContent() {
   // in it as one rounded card — the groups' 4px gap and rounded corners —
   // with no lines along the docks' edges. Debug › Toolbars switches it off
   const [editorIsland, setEditorIsland] = React.useState(true);
+  // Debug › Toolbars: a group broken across lines reads as one — its pieces
+  // but the last run to their line's end, the joins open (2026-11-19)
+  const [joinBrokenGroups, setJoinBrokenGroups] = React.useState(true);
   // Debug › Selection: how the selection is measured under itself — one line
   // (the edge times beside the length, the dragged edge lit) or the
   // dimension line (2026-11-19, "let's try the way you liked" after D2)
@@ -1910,6 +1913,7 @@ function CanvasDemoContent() {
       {activeMenuItem !== 'home' && (
         <AppToolbarDock
           groupStyle={toolbarGroupStyle}
+          joinBrokenGroups={joinBrokenGroups}
           region="top"
           // In the desktop app the window's title bar draws the Title bar
           // toolbar, so the docks do not (2026-11-16)
@@ -2066,6 +2070,7 @@ function CanvasDemoContent() {
         {/* The LEFT DOCK (2026-11-09): bars stacked beside the tracks */}
         <AppToolbarDock
           groupStyle={toolbarGroupStyle}
+          joinBrokenGroups={joinBrokenGroups}
           region="left"
           rows={toolbarLayout.layout.left}
           renderExtraTool={renderAppTool}
@@ -2105,6 +2110,7 @@ function CanvasDemoContent() {
           innerLeftToolbarDock={(
             <AppToolbarDock
               groupStyle={toolbarGroupStyle}
+          joinBrokenGroups={joinBrokenGroups}
               region="left-inner"
               rows={toolbarLayout.layout['left-inner'] ?? []}
               renderExtraTool={renderAppTool}
@@ -2121,6 +2127,7 @@ function CanvasDemoContent() {
           innerRightToolbarDock={(
             <AppToolbarDock
               groupStyle={toolbarGroupStyle}
+          joinBrokenGroups={joinBrokenGroups}
               region="right-inner"
               rows={toolbarLayout.layout['right-inner'] ?? []}
               renderExtraTool={renderAppTool}
@@ -2197,6 +2204,7 @@ function CanvasDemoContent() {
         {/* The RIGHT DOCK, before the meters' columns, which keep the far edge */}
         <AppToolbarDock
           groupStyle={toolbarGroupStyle}
+          joinBrokenGroups={joinBrokenGroups}
           region="right"
           rows={toolbarLayout.layout.right}
           renderExtraTool={renderAppTool}
@@ -2218,6 +2226,7 @@ function CanvasDemoContent() {
       {activeMenuItem !== 'home' && (
         <AppToolbarDock
           groupStyle={toolbarGroupStyle}
+          joinBrokenGroups={joinBrokenGroups}
           region="bottom"
           rows={toolbarLayout.layout.bottom}
           renderExtraTool={renderAppTool}
@@ -2342,6 +2351,7 @@ function CanvasDemoContent() {
           // inert (the edit mode's), keeping the size it has in its row
           <AppToolbarDock
             groupStyle={toolbarGroupStyle}
+          joinBrokenGroups={joinBrokenGroups}
             region={region}
             rows={[[bar]]}
             renderExtraTool={renderAppTool}
@@ -2544,6 +2554,8 @@ function CanvasDemoContent() {
         onToolbarGroupStyleChange={setToolbarGroupStyle}
         editorIsland={editorIsland}
         onEditorIslandChange={setEditorIsland}
+        joinBrokenGroups={joinBrokenGroups}
+        onJoinBrokenGroupsChange={setJoinBrokenGroups}
         selectionMeasureStyle={selectionMeasureStyle}
         onSelectionMeasureStyleChange={setSelectionMeasureStyle}
         setUseVarispeedSlider={setUseVarispeedSlider}

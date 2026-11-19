@@ -43,6 +43,8 @@ export interface AppToolbarDockProps {
   lastFillsRow?: boolean;
   /** Groups drawn flat with lines, or as islands (2026-11-18) */
   groupStyle?: 'lines' | 'islands' | 'filled' | 'stroked' | 'open';
+  /** A broken group's pieces run to their line's end — Debug › Toolbars */
+  joinBrokenGroups?: boolean;
   /** Groups kept in `rows` but not drawn (the title bar's, in the desktop app) */
   hiddenBarIds?: ReadonlyArray<string>;
 }
@@ -55,7 +57,7 @@ export interface AppToolbarDockProps {
  */
 export function AppToolbarDock({
   region, rows, renderExtraTool, extraToolMeta, drag, onBarResize, onBarMenu, onEmptyBarAdd,
-  trailing, className, tabGroupId, ariaLabel, style, dataAttrs, lastFillsRow, groupStyle, hiddenBarIds,
+  trailing, className, tabGroupId, ariaLabel, style, dataAttrs, lastFillsRow, groupStyle, joinBrokenGroups, hiddenBarIds,
 }: AppToolbarDockProps) {
   const { renderTool, toolMeta, hidden } = useTransportTools();
   if (hidden) return null;
@@ -98,6 +100,7 @@ export function AppToolbarDock({
       style={style}
       lastFillsRow={lastFillsRow}
       groupStyle={groupStyle}
+      joinBrokenGroups={joinBrokenGroups}
       hiddenBarIds={hiddenBarIds}
     />
   );

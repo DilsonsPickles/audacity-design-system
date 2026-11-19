@@ -103,6 +103,9 @@ export interface ToolbarDockProps {
    *  the islands as a TONE in both themes, no stroke — light's 5% darker
    *  shade, dark's 9% lift */
   groupStyle?: 'lines' | 'islands' | 'filled' | 'stroked' | 'open';
+  /** A BROKEN GROUP READS AS ONE: its pieces but the last run to their line's
+   *  end with the joins open (on by default; a Debug option, 2026-11-19) */
+  joinBrokenGroups?: boolean;
   /** Groups kept in `rows` but NOT DRAWN here (2026-11-18): the desktop
    *  window's title bar draws the Title bar group, so the top dock passes
    *  every row — the row numbers it reports stay the layout's own — and
@@ -168,7 +171,7 @@ export function ToolbarDock({
   region, rows, renderTool, toolMeta, onBarResize,
   onGripMouseDown, onBarMenu, onEmptyBarAdd, draggingBarId = null, insert = null, insertAfterBarId = null, insertRefused = false,
   editing = false, onToolMouseDown, draggingToolId = null, toolInsert = null,
-  trailing, className = '', tabGroupId, ariaLabel, dataAttrs, style: styleProp, lastFillsRow = true, groupStyle = 'lines', hiddenBarIds,
+  trailing, className = '', tabGroupId, ariaLabel, dataAttrs, style: styleProp, lastFillsRow = true, groupStyle = 'lines', joinBrokenGroups = true, hiddenBarIds,
 }: ToolbarDockProps) {
   const { theme } = useTheme();
   const vertical = isVerticalRegion(region);
@@ -586,14 +589,14 @@ export function ToolbarDock({
     <div
       key={d.key}
       ref={(el) => { if (el) barRefs.current.set(d.key, el); else barRefs.current.delete(d.key); }}
-      className={`toolbar-dock__bar${d.grow ? ' toolbar-dock__bar--grow' : ''}${d.size !== undefined ? ' toolbar-dock__bar--sized' : ''}${d.fill ? ' toolbar-dock__bar--fill' : ''}${d.split && !d.last ? ' toolbar-dock__bar--continues' : ''}${draggingBarId === d.bar.id ? ' toolbar-dock__bar--dragging' : ''}`}
+      className={`toolbar-dock__bar${d.grow ? ' toolbar-dock__bar--grow' : ''}${d.size !== undefined ? ' toolbar-dock__bar--sized' : ''}${d.fill ? ' toolbar-dock__bar--fill' : ''}${joinBrokenGroups && d.split && !d.last ? ' toolbar-dock__bar--continues' : ''}${draggingBarId === d.bar.id ? ' toolbar-dock__bar--dragging' : ''}`}
       style={d.size !== undefined ? (d.fill && !vertical ? { [axis]: d.size, minWidth: d.size } : { [axis]: d.size }) : undefined}
       data-toolbar-bar={d.continued ? undefined : d.bar.id}
       data-toolbar-bar-continued={d.continued ? d.bar.id : undefined}
       // A BROKEN GROUP READS AS ONE (2026-11-19, "what if the group extends to
       // the end so it looks like the groups are a continuation?"): every piece
       // but the last runs to its line's end, its joining edges open
-      data-toolbar-continues={d.split && !d.last ? '' : undefined}
+      data-toolbar-continues={joinBrokenGroups && d.split && !d.last ? '' : undefined}
     >
       <span
         className={`toolbar-dock__grip${leading ? ' toolbar-dock__grip--leading' : ''}${d.continued ? ' toolbar-dock__grip--continued' : ''}`}

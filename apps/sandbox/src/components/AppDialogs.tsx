@@ -132,6 +132,8 @@ export interface AppDialogsProps {
   toolbarGroupStyle: 'lines' | 'islands' | 'filled' | 'stroked' | 'open';
   onToolbarGroupStyleChange: (value: 'lines' | 'islands' | 'filled' | 'stroked' | 'open') => void;
   editorIsland: boolean;
+  joinBrokenGroups: boolean;
+  onJoinBrokenGroupsChange: (value: boolean) => void;
   selectionMeasureStyle: 'line' | 'dimension';
   onSelectionMeasureStyleChange: (value: 'line' | 'dimension') => void;
   onEditorIslandChange: (value: boolean) => void;
@@ -199,7 +201,7 @@ export function AppDialogs(props: AppDialogsProps) {
     activeProfile, profiles, setProfile,
     useSplitRecordButton, setUseSplitRecordButton,
     useVarispeedSlider, setUseVarispeedSlider,
-    toolbarGroupStyle, onToolbarGroupStyleChange, editorIsland, onEditorIslandChange, selectionMeasureStyle, onSelectionMeasureStyleChange,
+    toolbarGroupStyle, onToolbarGroupStyleChange, editorIsland, onEditorIslandChange, joinBrokenGroups, onJoinBrokenGroupsChange, selectionMeasureStyle, onSelectionMeasureStyleChange,
     slowMediaSeconds, setSlowMediaSeconds,
     showMixer, setShowMixer,
     setActiveMenuItem,
@@ -1224,6 +1226,8 @@ export function AppDialogs(props: AppDialogsProps) {
         onToolbarGroupStyleChange={onToolbarGroupStyleChange}
         editorIsland={editorIsland}
         onEditorIslandChange={onEditorIslandChange}
+        joinBrokenGroups={joinBrokenGroups}
+        onJoinBrokenGroupsChange={onJoinBrokenGroupsChange}
         selectionMeasureStyle={selectionMeasureStyle}
         onSelectionMeasureStyleChange={onSelectionMeasureStyleChange}
         slowMediaSeconds={slowMediaSeconds}

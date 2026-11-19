@@ -664,4 +664,20 @@ describe('A GROUP WITHOUT DIVIDERS STILL BREAKS (2026-11-19, "they not breaking 
       expect(pieces[pieces.length - 1].hasAttribute('data-toolbar-continues')).toBe(false);
     } finally { restore(); }
   });
+
+  it('with joinBrokenGroups off (a Debug option) the pieces keep their own width and closed edges', () => {
+    const restore = measured();
+    try {
+      const { container } = render(
+        <ThemeProvider>
+          <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
+            <ToolbarDock region="top" groupStyle="islands" joinBrokenGroups={false} rows={[[{ id: 'g', tools: ['t1', 't2', 't3', 't4', 't5', 't6'] }]]} renderTool={(id) => <button aria-label={id}>{id}</button>} />
+          </AccessibilityProfileProvider>
+        </ThemeProvider>,
+      );
+      expect(container.querySelectorAll('[data-toolbar-bar-continued="g"]').length).toBeGreaterThan(0);
+      expect(container.querySelector('[data-toolbar-continues]')).toBeNull();
+      expect(container.querySelector('.toolbar-dock__bar--continues')).toBeNull();
+    } finally { restore(); }
+  });
 });

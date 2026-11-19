@@ -74,6 +74,8 @@ export interface DebugPanelProps {
   toolbarGroupStyle?: 'lines' | 'islands' | 'filled' | 'stroked' | 'open';
   onToolbarGroupStyleChange?: (value: 'lines' | 'islands' | 'filled' | 'stroked' | 'open') => void;
   editorIsland?: boolean;
+  joinBrokenGroups?: boolean;
+  onJoinBrokenGroupsChange?: (value: boolean) => void;
   selectionMeasureStyle?: 'line' | 'dimension';
   onSelectionMeasureStyleChange?: (value: 'line' | 'dimension') => void;
   onEditorIslandChange?: (value: boolean) => void;
@@ -192,6 +194,8 @@ export function DebugPanel({
   toolbarGroupStyle = 'islands',
   onToolbarGroupStyleChange,
   editorIsland = true,
+  joinBrokenGroups = true,
+  onJoinBrokenGroupsChange,
   selectionMeasureStyle = 'line',
   onSelectionMeasureStyleChange,
   onEditorIslandChange,
@@ -546,6 +550,15 @@ export function DebugPanel({
                 />
               ))}
             </div>
+            {onJoinBrokenGroupsChange && (
+              <div style={{ marginTop: 8 }}>
+                <LabeledCheckbox
+                  label="Run a wrapped group to the line's end"
+                  checked={joinBrokenGroups}
+                  onChange={onJoinBrokenGroupsChange}
+                />
+              </div>
+            )}
             {onEditorIslandChange && (
               <div style={{ marginTop: 8 }}>
                 <LabeledCheckbox
