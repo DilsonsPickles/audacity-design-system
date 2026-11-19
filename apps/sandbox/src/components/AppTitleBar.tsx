@@ -129,12 +129,12 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
         // DARKER IN DARK MODE (2026-11-19, "could the electron chrome be
         // darker?"): the bar is ours, not the OS's, and over the window's
         // glass its 35% tint let the lighter dark material through — in dark
-        // it is the toolbar 25% darker, 85% solid, so it sits clearly below
+        // it is the toolbar 40% darker, 95% solid ("can we go darker?" — it was 25% and 85% for an hour), so it sits clearly below
         // the toolbar; light keeps 10% and 35%
         '--app-title-bar-bg': (() => {
           const dark = !isLightColour(theme.background.toolbar);
-          const base = `color-mix(in srgb, ${theme.background.toolbar}, black ${dark ? 25 : 10}%)`;
-          return vibrancy ? `color-mix(in srgb, ${base} ${dark ? 85 : 35}%, transparent)` : base;
+          const base = `color-mix(in srgb, ${theme.background.toolbar}, black ${dark ? 40 : 10}%)`;
+          return vibrancy ? `color-mix(in srgb, ${base} ${dark ? 95 : 35}%, transparent)` : base;
         })(),
         '--app-title-bar-active': theme.background.toolbar,
         '--app-title-bar-border': theme.border.onSurface,
