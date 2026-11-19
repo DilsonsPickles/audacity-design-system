@@ -34,6 +34,24 @@
   position: relative;
 }
 
+/* THE TRACK'S COLOUR ON THE LEFT EDGE (2026-11-19): a 4px strip, the
+   header's own left corners — muted (mixed into the card) while the track
+   is not selected, the full colour while it is */
+.track-control-panel__colour-edge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: var(--tcp-radius-md) 0 0 var(--tcp-radius-md);
+  background: color-mix(in srgb, var(--tcp-colour-edge) 40%, transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+.track-control-panel__colour-edge[data-track-colour-edge='bright'] {
+  background: var(--tcp-colour-edge);
+}
+
 /* Focus state - blue border when whole track is focused (via click or keyboard) */
 /* Uses state-based focus (isFocused prop) instead of DOM focus, so it persists when window loses focus */
 /* Using ::before for top bar and box-shadow for bottom bar (to free up ::after for DOM focus) */

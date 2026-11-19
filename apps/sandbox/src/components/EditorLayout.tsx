@@ -8,6 +8,7 @@ import { EffectPickerMenu } from './EffectPickerMenu';
 import { useMuseHub } from '../contexts/MuseHubContext';
 import { TrackControlSidePanel, TrackControlPanel, TimelineRuler, PlayheadCursor, VerticalRulerPanel, CustomScrollbar, TrackType, ThemeProvider, RulerFlyout, useTabOrder, useAccessibilityProfile, useEditingBehaviorPrefs, useAppearancePrefs, useGeneralPrefs, DockPanel, ContextMenu, ContextMenuItem, type PanelHeaderTab } from '@audacity-ui/components';
 import type { SpectrogramScale, WaveformRulerFormat, ThemeTokens } from '@audacity-ui/components';
+import { trackColourEdge } from '../utils/trackColourEdge';
 import type { EnvelopePointStyleKey } from '@audacity-ui/core';
 import { useTracks } from '../contexts/useTracks';
 import { useDialogs } from '../contexts/DialogContext';
@@ -244,7 +245,7 @@ export function EditorLayout(props: EditorLayoutProps) {
   const { trackSelectionMode } = useEditingBehaviorPrefs();
   // Label text size — surfaced in the label track's context menu (global
   // preference; all label tracks share it).
-  const { labelTextSizePt, trackPanelWidth, updatePreference: updateAppearancePreference } = useAppearancePrefs();
+  const { labelTextSizePt, trackPanelWidth, clipStyle, updatePreference: updateAppearancePreference } = useAppearancePrefs();
   const { operatingSystem } = useGeneralPrefs();
   const { setIsSpectrogramSettingsOpen, setIsPluginManagerOpen } = useDialogs();
   const {
@@ -1237,6 +1238,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                 onAddLabelClick={() => onTrackAddLabelClick(index)}
                 onMenuClick={(e) => onTrackMenuClick(e, index)}
                 state={state.selectedTrackIndices.includes(index) ? 'active' : 'idle'}
+                trackColor={trackColourEdge(track, index, theme, clipStyle)}
                 height={heightState}
                 trackHeight={trackHeight}
                 onClick={() => onTrackPanelClick(index)}

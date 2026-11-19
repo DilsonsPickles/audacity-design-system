@@ -89,6 +89,10 @@ export interface TrackControlPanelProps {
   onRangeSelection?: () => void; // Shift+Click for range selection
   className?: string;
   state?: 'idle' | 'hover' | 'active';
+  /** The track's colour (any CSS colour) — drawn as a strip on the header's
+   *  left edge, muted while the track is not selected and bright while it is
+   *  (2026-11-19); absent = no strip */
+  trackColor?: string;
   height?: 'default' | 'truncated' | 'collapsed';
   trackHeight?: number; // Actual pixel height for fine-grained responsive behavior
   tabIndex?: number;
@@ -170,6 +174,7 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
   onRangeSelection,
   className = '',
   state = 'idle',
+  trackColor,
   height = 'default',
   trackHeight,
   tabIndex,
@@ -974,6 +979,18 @@ export const TrackControlPanel: React.FC<TrackControlPanelProps> = ({
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}
     >
+      {/* THE TRACK'S COLOUR ON THE LEFT EDGE (2026-11-19, "Let's try adding
+          the track colour on the left edge of the header. Make it muted if
+          it's deselected and bright if it is selected") — the header reads
+          as a track, not a toolbar card */}
+      {trackColor && (
+        <span
+          aria-hidden="true"
+          className="track-control-panel__colour-edge"
+          data-track-colour-edge={state === 'active' ? 'bright' : 'muted'}
+          style={{ '--tcp-colour-edge': trackColor } as React.CSSProperties}
+        />
+      )}
       <div className="track-control-panel__main">
         {/* Header */}
         <div className="track-control-panel__header">
