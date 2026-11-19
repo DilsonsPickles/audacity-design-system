@@ -310,10 +310,10 @@ body[data-rail-resize], body[data-rail-resize] * { cursor: ew-resize !important;
    more like the Figma ones?", then "The container is very fitted"): in the
    islands, the card HUGS its buttons — 3px all round (the grip keeps its
    10px at the start), its corner the buttons' own plus that padding, so the
-   radii nest — the buttons 6px round, and an ON toggle is a raised chip (the
-   card's tone lifted, a hairline and a soft shadow) with its icon in the
-   accent, not a filled blue square. Debug › Toolbars › "Figma-style
-   buttons" (App's `data-toolbar-buttons`) */
+   radii nest — and the buttons 6px round. (A raised ON chip with an accent
+   icon was tried the same hour and taken out: "It wasn't really the toggle
+   I was interested in, it was the container tightness and vibe".) Debug ›
+   Toolbars › "Fitted cards" (App's `data-toolbar-buttons`) */
 [data-toolbar-buttons='figma'] .toolbar-dock--islands .toolbar-dock__bar { padding: 3px 3px 3px 0; border-radius: 10px; }
 [data-toolbar-buttons='figma'] .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__bar { padding: 0 3px 3px; }
 [data-toolbar-buttons='figma'] .toolbar-dock--islands .toolbar-dock__grip,
@@ -321,10 +321,3 @@ body[data-rail-resize], body[data-rail-resize] * { cursor: ew-resize !important;
 [data-toolbar-buttons='figma'] .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__grip,
 [data-toolbar-buttons='figma'] .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__grip:not(.toolbar-dock__grip--leading) { border-radius: 9px 9px 0 0; }
 [data-toolbar-buttons='figma'] .toolbar-dock--islands :is(.tool-button, .transport-button, .toggle-tool-button) { border-radius: 6px; }
-[data-toolbar-buttons='figma'] .toolbar-dock--islands :is(.toggle-tool-button--on, .toggle-tool-button--on-hover) {
-  background-color: var(--toolbar-figma-on-bg);
-  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.16);
-}
-[data-toolbar-buttons='figma'] .toolbar-dock--islands :is(.toggle-tool-button--on, .toggle-tool-button--on-hover) .icon {
-  color: var(--toolbar-dock-accent) !important;
-}

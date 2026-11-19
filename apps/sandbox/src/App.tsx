@@ -382,9 +382,9 @@ function CanvasDemoContent() {
   // spacing?"): the islands' gap between cards, round the toolbars' edges
   // and round the editor card — one CSS variable, --toolbar-island-gap
   const [toolbarIslandGap, setToolbarIslandGap] = React.useState<4 | 6 | 8>(4);
-  // Debug › Toolbars › Figma-style buttons (2026-11-19, a trial — on while
-  // it is looked at): fitted cards, rounder buttons, an ON toggle as a raised
-  // chip with an accent icon (index.css, `data-toolbar-buttons`)
+  // Debug › Toolbars › Fitted cards (2026-11-19, a trial after Figma's — on
+  // while it is looked at): cards hugging their buttons, rounder buttons
+  // (index.css, `data-toolbar-buttons`)
   const [figmaButtons, setFigmaButtons] = React.useState(true);
   // Debug › Selection: how the selection is measured under itself — one line
   // (the edge times beside the length, the dragged edge lit) or the
@@ -1858,8 +1858,6 @@ function CanvasDemoContent() {
     <div data-editor-island={editorIsland && activeMenuItem !== 'home' ? '' : undefined} data-toolbar-buttons={figmaButtons ? 'figma' : undefined} style={{
       display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw',
       ['--toolbar-island-gap' as string]: `${toolbarIslandGap}px`,
-      // the ON chip: white on the light toolbar, the dark toolbar lifted
-      ['--toolbar-figma-on-bg' as string]: baseTheme.background.toolbar === lightTheme.background.toolbar ? '#FFFFFF' : `color-mix(in srgb, ${baseTheme.background.toolbar}, white 18%)`,
       // Over the window's vibrancy (macOS): the title bar's 40px stay
       // see-through, everything below is the app's solid surface
       ...(window.electronShell?.titleBarVibrancy

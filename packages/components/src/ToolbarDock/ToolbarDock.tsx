@@ -562,9 +562,11 @@ export function ToolbarDock({
     // in dark the divider token — the dark border, #373E46 on the #2E353C
     // strip, all but vanished
     '--toolbar-island-stroke-strong': isLightColour(theme.background.toolbar) ? theme.border.default : theme.border.divider,
-    // FILLED ISLANDS (Debug › Toolbars): the tone in both themes, no stroke
+    // FILLED ISLANDS (Debug › Toolbars): the tone in both themes, no stroke;
+    // light 10% toward the text since 2026-11-19 ("filled islands in light
+    // mode need to be darker" — it was 5%)
     '--toolbar-island-fill': isLightColour(theme.background.toolbar)
-      ? `color-mix(in srgb, ${theme.background.toolbar}, ${theme.foreground.text.primary} 5%)`
+      ? `color-mix(in srgb, ${theme.background.toolbar}, ${theme.foreground.text.primary} 10%)`
       : `color-mix(in srgb, ${theme.background.toolbar}, white 9%)`,
     // The end of every line keeps the cog's place free
     ...(!vertical && trailingWidth ? { '--toolbar-dock-end-pad': `${ROW_END_PAD + trailingWidth + ROW_END_PAD}px` } : null),

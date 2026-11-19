@@ -78,7 +78,7 @@ export interface DebugPanelProps {
   /** The islands' gap between groups, px (Debug › Toolbars › Group spacing) */
   toolbarIslandGap?: 4 | 6 | 8;
   onToolbarIslandGapChange?: (value: 4 | 6 | 8) => void;
-  /** Figma-style toolbar buttons (a trial) */
+  /** Fitted toolbar cards, Figma-style (a trial) */
   figmaButtons?: boolean;
   onFigmaButtonsChange?: (value: boolean) => void;
   onJoinBrokenGroupsChange?: (value: boolean) => void;
@@ -577,7 +577,7 @@ export function DebugPanel({
             )}
             {onFigmaButtonsChange && (
               <div style={{ marginTop: 8 }}>
-                <LabeledCheckbox label="Figma-style buttons (fitted cards, raised on-state)" checked={figmaButtons} onChange={onFigmaButtonsChange} />
+                <LabeledCheckbox label="Fitted cards (Figma-style: tight padding, rounder buttons)" checked={figmaButtons} onChange={onFigmaButtonsChange} />
               </div>
             )}
             {onJoinBrokenGroupsChange && (
