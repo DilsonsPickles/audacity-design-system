@@ -523,6 +523,21 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
   border-radius: 5px 0 0 5px;
 }
 .toolbar-dock--islands .toolbar-dock__grip-line { display: none; }
+/* THE GRIPS SHOW ON HOVER (2026-11-19, after a side-by-side with the real
+   build — the six-dot grips were the most repeated mark in the chrome, one
+   per group, and the least used): in the islands a group's dots are hidden
+   at rest and come back while the pointer is on the GROUP or the keyboard is
+   in it, full strength on the grip itself (above); every grip shows while a
+   group or tool is in hand anywhere (`data-drop-available` docks — the
+   targets) and in the edit mode. The grip keeps its room, so nothing moves */
+.toolbar-dock--islands .toolbar-dock__grip-dots { opacity: 0; }
+.toolbar-dock--islands .toolbar-dock__bar:hover .toolbar-dock__grip-dots,
+.toolbar-dock--islands .toolbar-dock__bar:focus-within .toolbar-dock__grip-dots,
+.toolbar-dock--islands[data-drop-available] .toolbar-dock__grip-dots { opacity: 0.55; }
+.toolbar-dock--islands .toolbar-dock__grip:hover .toolbar-dock__grip-dots,
+.toolbar-dock--islands .toolbar-dock__grip:focus-visible .toolbar-dock__grip-dots,
+.toolbar-dock--islands .toolbar-dock__bar--dragging .toolbar-dock__grip-dots,
+.toolbar-dock--islands.toolbar-dock--editing .toolbar-dock__grip-dots { opacity: 1; }
 /* the sized clip box reached through the old 8px row padding */
 .toolbar-dock--islands.toolbar-dock--horizontal .toolbar-dock__bar--sized .toolbar-dock__tools { margin: -3px 0; padding: 3px 0; }
 /* the resize edge sits in the 4px gap after the card */
