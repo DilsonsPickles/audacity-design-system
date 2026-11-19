@@ -367,14 +367,17 @@ function CanvasDemoContent() {
   // more contained. Like floating islands"): Debug › Toolbars switches back
   // to the flat groups with lines between them; session state, for comparing
   // Debug › Toolbars: how a group is drawn — flat lines, islands, or OPEN
-  // (no container at rest, 2026-11-19); islands by default
-  const [toolbarGroupStyle, setToolbarGroupStyle] = React.useState<'lines' | 'islands' | 'filled' | 'stroked' | 'open'>('islands');
+  // (no container at rest, 2026-11-19). FLAT LINES BY DEFAULT since the same
+  // day ("I think this is my preferred rendering. The island starts getting
+  // a bit far away from Audacity"): a toolbar is one band split by dividers,
+  // the editor flush to it; the island styles stay here to compare
+  const [toolbarGroupStyle, setToolbarGroupStyle] = React.useState<'lines' | 'islands' | 'filled' | 'stroked' | 'open'>('lines');
   // THE EDITOR IS AN ISLAND TOO (2026-11-19, "a hard grey right angle edge
   // where the track header panel meets the toolbars... soften those hard
   // edges"): the toolbars are the frame, and the track panel and canvas sit
   // in it as one rounded card — the groups' 4px gap and rounded corners —
   // with no lines along the docks' edges. Debug › Toolbars switches it off
-  const [editorIsland, setEditorIsland] = React.useState(true);
+  const [editorIsland, setEditorIsland] = React.useState(false);
   // Debug › Toolbars: a group broken across lines reads as one — its pieces
   // but the last run to their line's end, the joins open (2026-11-19)
   const [joinBrokenGroups, setJoinBrokenGroups] = React.useState(true);
@@ -385,7 +388,7 @@ function CanvasDemoContent() {
   // Debug › Toolbars › Fitted cards (2026-11-19, a trial after Figma's — on
   // while it is looked at): cards hugging their buttons, rounder buttons
   // (index.css, `data-toolbar-buttons`)
-  const [figmaButtons, setFigmaButtons] = React.useState(true);
+  const [figmaButtons, setFigmaButtons] = React.useState(false);
   // Debug › Selection: how the selection is measured under itself — one line
   // (the edge times beside the length, the dragged edge lit) or the
   // dimension line (2026-11-19, "let's try the way you liked" after D2)
