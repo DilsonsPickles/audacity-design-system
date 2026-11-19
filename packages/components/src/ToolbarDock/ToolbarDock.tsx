@@ -361,10 +361,25 @@ export function ToolbarDock({
     // the first carry the toolbar's grip (it moves the whole toolbar) and no
     // resize edge. A sized toolbar keeps its overflow button instead.
     if (vertical || size !== undefined || grow || lineRoom <= 0 || naturalOf(nodes.map((t) => t.id)) <= lineRoom) return [whole];
-    const groups: Array<typeof nodes> = [[]];
+    const byDivider: Array<typeof nodes> = [[]];
     for (const t of nodes) {
-      if (isToolSeparator(t.id)) groups.push([t]); else groups[groups.length - 1].push(t);
+      if (isToolSeparator(t.id)) byDivider.push([t]); else byDivider[byDivider.length - 1].push(t);
     }
+    // …and A GROUP WITHOUT DIVIDERS STILL BREAKS (2026-11-19, "they not
+    // breaking or wrapping right now": a group with no separator, wider than
+    // a line, had nowhere to break and ran off the dock's end, cut off) —
+    // a part still wider than a line breaks BETWEEN TOOLS, as many as fit,
+    // at least one a piece
+    const groups: Array<typeof nodes> = byDivider.flatMap((g) => {
+      if (naturalOf(g.map((t) => t.id)) <= lineRoom) return [g];
+      const pieces: Array<typeof nodes> = [];
+      for (const t of g) {
+        const cur = pieces[pieces.length - 1];
+        if (cur && naturalOf([...cur, t].map((x) => x.id)) <= lineRoom) cur.push(t);
+        else pieces.push([t]);
+      }
+      return pieces;
+    });
     const segments: Array<typeof nodes> = [];
     for (const g of groups) {
       const last = segments[segments.length - 1];

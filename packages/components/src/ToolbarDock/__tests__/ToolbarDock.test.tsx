@@ -611,3 +611,40 @@ describe('STROKED ISLANDS (2026-11-19, "make sure dark mode has a stroked island
     expect(root.classList.contains('toolbar-dock--stroked')).toBe(true);
   });
 });
+
+describe('A GROUP WITHOUT DIVIDERS STILL BREAKS (2026-11-19, "they not breaking or wrapping right now")', () => {
+  // jsdom measures nothing: a 150px dock, 28px tools, a bar its tools plus the gutter and gaps
+  const measured = () => {
+    const w = vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      if (this.hasAttribute('data-toolbar-tool')) return 28;
+      if (this.hasAttribute('data-toolbar-bar') || this.hasAttribute('data-toolbar-bar-continued')) {
+        const n = this.querySelectorAll('[data-toolbar-tool]').length;
+        return 17 + n * 28 + Math.max(0, n - 1) * 8;
+      }
+      return 0;
+    });
+    const cw = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.hasAttribute('data-toolbar-dock') ? 150 : 0;
+    });
+    return () => { w.mockRestore(); cw.mockRestore(); };
+  };
+
+  it('a group wider than a line with no dividers breaks between its tools, every piece fitting the line, no tool lost', () => {
+    const restore = measured();
+    try {
+      const tools = ['t1', 't2', 't3', 't4', 't5', 't6'];
+      const { container } = render(
+        <ThemeProvider>
+          <AccessibilityProfileProvider initialProfileId="au4-tab-groups">
+            <ToolbarDock region="top" rows={[[{ id: 'g', tools }]]} renderTool={(id) => <button aria-label={id}>{id}</button>} />
+          </AccessibilityProfileProvider>
+        </ThemeProvider>,
+      );
+      // natural 17 + 6×28 + 5×8 = 225 against 142 of room
+      expect(container.querySelectorAll('[data-toolbar-bar-continued="g"]').length).toBeGreaterThan(0);
+      const pieces = Array.from(container.querySelectorAll<HTMLElement>('[data-toolbar-bar="g"], [data-toolbar-bar-continued="g"]'));
+      for (const p of pieces) expect(p.offsetWidth).toBeLessThanOrEqual(142);
+      expect(Array.from(container.querySelectorAll('[data-toolbar-tool]')).map((t) => t.getAttribute('data-toolbar-tool'))).toEqual(tools);
+    } finally { restore(); }
+  });
+});
