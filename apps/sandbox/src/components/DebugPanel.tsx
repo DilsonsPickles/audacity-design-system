@@ -9,7 +9,7 @@
  */
 
 import type React from 'react';
-import { Dialog, DialogFooter, LabeledCheckbox, Button, Dropdown, toast, useTheme } from '@audacity-ui/components';
+import { Dialog, DialogFooter, LabeledCheckbox, LabeledRadio, Button, Dropdown, toast, useTheme } from '@audacity-ui/components';
 
 const SLOW_MEDIA_OPTIONS = [0, 3, 6, 10, 30].map((s) => ({ value: String(s), label: s === 0 ? 'No wait' : `${s} s` }));
 import type { Command } from '@audacity-ui/components';
@@ -71,8 +71,8 @@ export interface DebugPanelProps {
   useVarispeedSlider: boolean;
   onUseVarispeedSliderChange: (value: boolean) => void;
   /** Toolbar groups drawn as islands (true) or flat with lines (2026-11-18) */
-  toolbarGroupIslands?: boolean;
-  onToolbarGroupIslandsChange?: (value: boolean) => void;
+  toolbarGroupStyle?: 'lines' | 'islands' | 'filled' | 'open';
+  onToolbarGroupStyleChange?: (value: 'lines' | 'islands' | 'filled' | 'open') => void;
   editorIsland?: boolean;
   onEditorIslandChange?: (value: boolean) => void;
   /** Slow media: how long Save project as… blocks, in seconds (0 = none) */
@@ -187,8 +187,8 @@ export function DebugPanel({
   useSplitRecordButton,
   useVarispeedSlider,
   onUseVarispeedSliderChange,
-  toolbarGroupIslands = true,
-  onToolbarGroupIslandsChange,
+  toolbarGroupStyle = 'islands',
+  onToolbarGroupStyleChange,
   editorIsland = true,
   onEditorIslandChange,
   slowMediaSeconds,
@@ -516,17 +516,31 @@ export function DebugPanel({
           />
         </div>
 
-        {/* Toolbars (2026-11-18): groups as islands or flat with lines */}
-        {onToolbarGroupIslandsChange && (
+        {/* Toolbars (2026-11-18): how a group is drawn — flat with lines,
+            islands, or OPEN (no container at rest, 2026-11-19, "what if the
+            groups weren't contained at all?") */}
+        {onToolbarGroupStyleChange && (
           <div>
             <h3 style={{ fontSize: '14px', fontWeight: 600, lineHeight: '20px', color: 'var(--debug-text)', margin: '0 0 12px 0' }}>
               Toolbars
             </h3>
-            <LabeledCheckbox
-              label="Draw groups as islands"
-              checked={toolbarGroupIslands}
-              onChange={onToolbarGroupIslandsChange}
-            />
+            <div role="radiogroup" aria-label="Toolbar groups" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {([
+                ['islands', 'Groups as islands (stroke in light, fill in dark)'],
+                ['filled', 'Filled islands (fill, no stroke)'],
+                ['open', 'Open groups (no container until hovered)'],
+                ['lines', 'Flat groups with lines'],
+              ] as const).map(([value, label]) => (
+                <LabeledRadio
+                  key={value}
+                  label={label}
+                  name="toolbar-group-style"
+                  value={value}
+                  checked={toolbarGroupStyle === value}
+                  onChange={(on) => { if (on) onToolbarGroupStyleChange(value); }}
+                />
+              ))}
+            </div>
             {onEditorIslandChange && (
               <div style={{ marginTop: 8 }}>
                 <LabeledCheckbox

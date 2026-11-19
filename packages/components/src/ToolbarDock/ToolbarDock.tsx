@@ -97,7 +97,12 @@ export interface ToolbarDockProps {
    *  between groups (the default) — or 'islands', each group a contained,
    *  rounded card on a slightly darker strip (2026-11-18, "I wonder if we
    *  made the groups a bit more contained. Like floating islands") */
-  groupStyle?: 'lines' | 'islands';
+  /** 'open' (2026-11-19, "what if the groups weren't contained at all?"):
+   *  the islands' geometry with no container at rest — the group's card
+   *  shows on hover and while a drag is in hand. 'filled' (the same day):
+   *  the islands as a TONE in both themes, no stroke — light's 5% darker
+   *  shade, dark's 9% lift */
+  groupStyle?: 'lines' | 'islands' | 'filled' | 'open';
   /** Groups kept in `rows` but NOT DRAWN here (2026-11-18): the desktop
    *  window's title bar draws the Title bar group, so the top dock passes
    *  every row — the row numbers it reports stay the layout's own — and
@@ -530,6 +535,10 @@ export function ToolbarDock({
       ? theme.background.toolbar
       : `color-mix(in srgb, ${theme.background.toolbar}, white 9%)`,
     '--toolbar-island-stroke': isLightColour(theme.background.toolbar) ? theme.border.default : 'transparent',
+    // FILLED ISLANDS (Debug › Toolbars): the tone in both themes, no stroke
+    '--toolbar-island-fill': isLightColour(theme.background.toolbar)
+      ? `color-mix(in srgb, ${theme.background.toolbar}, ${theme.foreground.text.primary} 5%)`
+      : `color-mix(in srgb, ${theme.background.toolbar}, white 9%)`,
     // The end of every line keeps the cog's place free
     ...(!vertical && trailingWidth ? { '--toolbar-dock-end-pad': `${ROW_END_PAD + trailingWidth + ROW_END_PAD}px` } : null),
   } as React.CSSProperties;
@@ -748,7 +757,9 @@ export function ToolbarDock({
   const classes = [
     'toolbar-dock',
     `toolbar-dock--${region}`,
-    groupStyle === 'islands' ? 'toolbar-dock--islands' : '',
+    groupStyle === 'islands' || groupStyle === 'open' || groupStyle === 'filled' ? 'toolbar-dock--islands' : '',
+    groupStyle === 'filled' ? 'toolbar-dock--filled' : '',
+    groupStyle === 'open' ? 'toolbar-dock--open' : '',
     // (an inner dock is styled as the side it faces from)
     region !== regionSide(region) ? `toolbar-dock--${regionSide(region)} toolbar-dock--inner` : '',
     vertical ? 'toolbar-dock--vertical' : 'toolbar-dock--horizontal',

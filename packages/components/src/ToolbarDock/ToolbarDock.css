@@ -647,3 +647,41 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
    no padding above the column (a top toolbar's 4px is the gap) the gap's
    line would fall outside the column and be clipped */
 .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__row > .toolbar-dock__bar:first-child .toolbar-dock__insert:not(.toolbar-dock__insert--end) { top: -1px; }
+
+/* OPEN GROUPS (2026-11-19, "what if the groups weren't contained at all?"):
+   the islands' geometry with NO CONTAINER AT REST — tools on the strip,
+   spacing doing the grouping (4px between buttons, 17 round a divider, ~30
+   between groups: the 8px gap here plus the group's own 6px end and 16px
+   grip) — and the group's card (its tone in dark, its stroke in light) fades
+   in when the group is being worked with: the pointer on it, the keyboard
+   in it, it in hand, or any group in hand over a toolbar that takes it */
+.toolbar-dock--open .toolbar-dock__row { gap: 8px; }
+.toolbar-dock--open .toolbar-dock__bar {
+  background-color: transparent;
+  border-color: transparent;
+  transition: background-color 0.06s ease, border-color 0.06s ease;
+}
+.toolbar-dock--open .toolbar-dock__bar:hover,
+.toolbar-dock--open .toolbar-dock__bar:has(:focus-visible),
+.toolbar-dock--open .toolbar-dock__bar--dragging,
+.toolbar-dock--open[data-drop-available] .toolbar-dock__bar,
+.toolbar-dock--open.toolbar-dock--editing .toolbar-dock__bar {
+  background-color: var(--toolbar-island-bg, var(--toolbar-bg));
+  border-color: var(--toolbar-island-stroke, transparent);
+}
+/* the landing line sits in the middle of the wider gap */
+.toolbar-dock--open .toolbar-dock__insert { left: -6.5px; }
+.toolbar-dock--open .toolbar-dock__insert--end { left: auto; margin: 0 -3px 0 -5.5px; }
+.toolbar-dock--open.toolbar-dock--vertical .toolbar-dock__insert { left: -1px; top: -6.5px; }
+.toolbar-dock--open.toolbar-dock--vertical .toolbar-dock__insert--end { left: auto; top: auto; margin: -5.5px 0 -3px; }
+@media (prefers-reduced-motion: reduce) {
+  .toolbar-dock--open .toolbar-dock__bar { transition: none; }
+}
+
+/* FILLED ISLANDS (2026-11-19, "can you add the filled island (no stroke but
+   fill) into this debug?"): the islands as a tone in both themes and no
+   stroke — the light 5% darker shade the default gave up for a stroke */
+.toolbar-dock--filled .toolbar-dock__bar {
+  background-color: var(--toolbar-island-fill, var(--toolbar-island-bg));
+  border-color: transparent;
+}

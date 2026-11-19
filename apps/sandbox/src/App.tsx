@@ -363,8 +363,9 @@ function CanvasDemoContent() {
   // GROUPS AS ISLANDS (2026-11-18, "I wonder if we made the groups a bit
   // more contained. Like floating islands"): Debug › Toolbars switches back
   // to the flat groups with lines between them; session state, for comparing
-  const [toolbarGroupIslands, setToolbarGroupIslands] = React.useState(true);
-  const toolbarGroupStyle: 'lines' | 'islands' = toolbarGroupIslands ? 'islands' : 'lines';
+  // Debug › Toolbars: how a group is drawn — flat lines, islands, or OPEN
+  // (no container at rest, 2026-11-19); islands by default
+  const [toolbarGroupStyle, setToolbarGroupStyle] = React.useState<'lines' | 'islands' | 'filled' | 'open'>('islands');
   // THE EDITOR IS AN ISLAND TOO (2026-11-19, "a hard grey right angle edge
   // where the track header panel meets the toolbars... soften those hard
   // edges"): the toolbars are the frame, and the track panel and canvas sit
@@ -2517,8 +2518,8 @@ function CanvasDemoContent() {
         setProfile={setProfile}
         useSplitRecordButton={useSplitRecordButton}
         useVarispeedSlider={useVarispeedSlider}
-        toolbarGroupIslands={toolbarGroupIslands}
-        onToolbarGroupIslandsChange={setToolbarGroupIslands}
+        toolbarGroupStyle={toolbarGroupStyle}
+        onToolbarGroupStyleChange={setToolbarGroupStyle}
         editorIsland={editorIsland}
         onEditorIslandChange={setEditorIsland}
         setUseVarispeedSlider={setUseVarispeedSlider}

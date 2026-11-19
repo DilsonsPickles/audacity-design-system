@@ -129,8 +129,8 @@ export interface AppDialogsProps {
   useVarispeedSlider: boolean;
   setUseVarispeedSlider: React.Dispatch<React.SetStateAction<boolean>>;
   /** Debug › Toolbars: groups as islands (2026-11-18) */
-  toolbarGroupIslands: boolean;
-  onToolbarGroupIslandsChange: (value: boolean) => void;
+  toolbarGroupStyle: 'lines' | 'islands' | 'filled' | 'open';
+  onToolbarGroupStyleChange: (value: 'lines' | 'islands' | 'filled' | 'open') => void;
   editorIsland: boolean;
   onEditorIslandChange: (value: boolean) => void;
   /** Debug › Slow media: how long Save project as… blocks (s; 0 = none) */
@@ -197,7 +197,7 @@ export function AppDialogs(props: AppDialogsProps) {
     activeProfile, profiles, setProfile,
     useSplitRecordButton, setUseSplitRecordButton,
     useVarispeedSlider, setUseVarispeedSlider,
-    toolbarGroupIslands, onToolbarGroupIslandsChange, editorIsland, onEditorIslandChange,
+    toolbarGroupStyle, onToolbarGroupStyleChange, editorIsland, onEditorIslandChange,
     slowMediaSeconds, setSlowMediaSeconds,
     showMixer, setShowMixer,
     setActiveMenuItem,
@@ -1218,8 +1218,8 @@ export function AppDialogs(props: AppDialogsProps) {
         onUseSplitRecordButtonChange={setUseSplitRecordButton}
         useVarispeedSlider={useVarispeedSlider}
         onUseVarispeedSliderChange={setUseVarispeedSlider}
-        toolbarGroupIslands={toolbarGroupIslands}
-        onToolbarGroupIslandsChange={onToolbarGroupIslandsChange}
+        toolbarGroupStyle={toolbarGroupStyle}
+        onToolbarGroupStyleChange={onToolbarGroupStyleChange}
         editorIsland={editorIsland}
         onEditorIslandChange={onEditorIslandChange}
         slowMediaSeconds={slowMediaSeconds}
