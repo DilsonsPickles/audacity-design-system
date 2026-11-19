@@ -685,3 +685,11 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
   background-color: var(--toolbar-island-fill, var(--toolbar-island-bg));
   border-color: transparent;
 }
+
+/* STROKED ISLANDS (2026-11-19, "make sure dark mode has a stroked island
+   option too"): the islands as a STROKE in both themes — the card the
+   toolbar's own colour with the 1px border, dark mode included */
+.toolbar-dock--stroked .toolbar-dock__bar {
+  background-color: var(--toolbar-bg);
+  border-color: var(--toolbar-island-stroke-strong, var(--toolbar-island-border));
+}

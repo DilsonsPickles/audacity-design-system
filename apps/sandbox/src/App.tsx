@@ -368,7 +368,7 @@ function CanvasDemoContent() {
   // to the flat groups with lines between them; session state, for comparing
   // Debug › Toolbars: how a group is drawn — flat lines, islands, or OPEN
   // (no container at rest, 2026-11-19); islands by default
-  const [toolbarGroupStyle, setToolbarGroupStyle] = React.useState<'lines' | 'islands' | 'filled' | 'open'>('islands');
+  const [toolbarGroupStyle, setToolbarGroupStyle] = React.useState<'lines' | 'islands' | 'filled' | 'stroked' | 'open'>('islands');
   // THE EDITOR IS AN ISLAND TOO (2026-11-19, "a hard grey right angle edge
   // where the track header panel meets the toolbars... soften those hard
   // edges"): the toolbars are the frame, and the track panel and canvas sit

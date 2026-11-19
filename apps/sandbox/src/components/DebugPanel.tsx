@@ -71,8 +71,8 @@ export interface DebugPanelProps {
   useVarispeedSlider: boolean;
   onUseVarispeedSliderChange: (value: boolean) => void;
   /** Toolbar groups drawn as islands (true) or flat with lines (2026-11-18) */
-  toolbarGroupStyle?: 'lines' | 'islands' | 'filled' | 'open';
-  onToolbarGroupStyleChange?: (value: 'lines' | 'islands' | 'filled' | 'open') => void;
+  toolbarGroupStyle?: 'lines' | 'islands' | 'filled' | 'stroked' | 'open';
+  onToolbarGroupStyleChange?: (value: 'lines' | 'islands' | 'filled' | 'stroked' | 'open') => void;
   editorIsland?: boolean;
   onEditorIslandChange?: (value: boolean) => void;
   /** Slow media: how long Save project as… blocks, in seconds (0 = none) */
@@ -528,6 +528,7 @@ export function DebugPanel({
               {([
                 ['islands', 'Groups as islands (stroke in light, fill in dark)'],
                 ['filled', 'Filled islands (fill, no stroke)'],
+                ['stroked', 'Stroked islands (stroke in both themes)'],
                 ['open', 'Open groups (no container until hovered)'],
                 ['lines', 'Flat groups with lines'],
               ] as const).map(([value, label]) => (

@@ -129,8 +129,8 @@ export interface AppDialogsProps {
   useVarispeedSlider: boolean;
   setUseVarispeedSlider: React.Dispatch<React.SetStateAction<boolean>>;
   /** Debug › Toolbars: groups as islands (2026-11-18) */
-  toolbarGroupStyle: 'lines' | 'islands' | 'filled' | 'open';
-  onToolbarGroupStyleChange: (value: 'lines' | 'islands' | 'filled' | 'open') => void;
+  toolbarGroupStyle: 'lines' | 'islands' | 'filled' | 'stroked' | 'open';
+  onToolbarGroupStyleChange: (value: 'lines' | 'islands' | 'filled' | 'stroked' | 'open') => void;
   editorIsland: boolean;
   onEditorIslandChange: (value: boolean) => void;
   /** Debug › Slow media: how long Save project as… blocks (s; 0 = none) */

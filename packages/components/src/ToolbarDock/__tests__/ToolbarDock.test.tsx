@@ -602,3 +602,12 @@ describe('ToolbarDock (2026-11-09, custom toolbars)', () => {
     });
   });
 });
+
+describe('STROKED ISLANDS (2026-11-19, "make sure dark mode has a stroked island option too")', () => {
+  it('the stroked style draws the islands with the stroked class', () => {
+    const { container } = renderDock({ groupStyle: 'stroked' });
+    const root = container.querySelector('.toolbar-dock') as HTMLElement;
+    expect(root.classList.contains('toolbar-dock--islands')).toBe(true);
+    expect(root.classList.contains('toolbar-dock--stroked')).toBe(true);
+  });
+});

@@ -102,7 +102,7 @@ export interface ToolbarDockProps {
    *  shows on hover and while a drag is in hand. 'filled' (the same day):
    *  the islands as a TONE in both themes, no stroke — light's 5% darker
    *  shade, dark's 9% lift */
-  groupStyle?: 'lines' | 'islands' | 'filled' | 'open';
+  groupStyle?: 'lines' | 'islands' | 'filled' | 'stroked' | 'open';
   /** Groups kept in `rows` but NOT DRAWN here (2026-11-18): the desktop
    *  window's title bar draws the Title bar group, so the top dock passes
    *  every row — the row numbers it reports stay the layout's own — and
@@ -535,6 +535,10 @@ export function ToolbarDock({
       ? theme.background.toolbar
       : `color-mix(in srgb, ${theme.background.toolbar}, white 9%)`,
     '--toolbar-island-stroke': isLightColour(theme.background.toolbar) ? theme.border.default : 'transparent',
+    // STROKED ISLANDS' stroke (Debug › Toolbars): the border token in light;
+    // in dark the divider token — the dark border, #373E46 on the #2E353C
+    // strip, all but vanished
+    '--toolbar-island-stroke-strong': isLightColour(theme.background.toolbar) ? theme.border.default : theme.border.divider,
     // FILLED ISLANDS (Debug › Toolbars): the tone in both themes, no stroke
     '--toolbar-island-fill': isLightColour(theme.background.toolbar)
       ? `color-mix(in srgb, ${theme.background.toolbar}, ${theme.foreground.text.primary} 5%)`
@@ -757,8 +761,9 @@ export function ToolbarDock({
   const classes = [
     'toolbar-dock',
     `toolbar-dock--${region}`,
-    groupStyle === 'islands' || groupStyle === 'open' || groupStyle === 'filled' ? 'toolbar-dock--islands' : '',
+    groupStyle === 'islands' || groupStyle === 'open' || groupStyle === 'filled' || groupStyle === 'stroked' ? 'toolbar-dock--islands' : '',
     groupStyle === 'filled' ? 'toolbar-dock--filled' : '',
+    groupStyle === 'stroked' ? 'toolbar-dock--stroked' : '',
     groupStyle === 'open' ? 'toolbar-dock--open' : '',
     // (an inner dock is styled as the side it faces from)
     region !== regionSide(region) ? `toolbar-dock--${regionSide(region)} toolbar-dock--inner` : '',

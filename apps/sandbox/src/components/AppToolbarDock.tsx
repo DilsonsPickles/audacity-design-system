@@ -42,7 +42,7 @@ export interface AppToolbarDockProps {
   /** False for a preview of one toolbar: it keeps its own size */
   lastFillsRow?: boolean;
   /** Groups drawn flat with lines, or as islands (2026-11-18) */
-  groupStyle?: 'lines' | 'islands' | 'filled' | 'open';
+  groupStyle?: 'lines' | 'islands' | 'filled' | 'stroked' | 'open';
   /** Groups kept in `rows` but not drawn (the title bar's, in the desktop app) */
   hiddenBarIds?: ReadonlyArray<string>;
 }
