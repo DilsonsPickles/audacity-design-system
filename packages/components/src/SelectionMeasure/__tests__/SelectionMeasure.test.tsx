@@ -35,4 +35,29 @@ describe('SelectionMeasure (2026-11-19, D2: a dimension line under the selection
     const { container } = renderMeasure(1, 3);
     expect(container.querySelector<HTMLElement>('[data-selection-measure]')!.style.pointerEvents).toBe('none');
   });
+
+  it('the ONE-LINE style: no bracket, the edge times beside the length on one row', () => {
+    const { container } = render(
+      <ThemeProvider>
+        <SelectionMeasure variant="line" startTime={1.3} endTime={2.55} pixelsPerSecond={200} top={300} visibleLeft={0} visibleWidth={1000} />
+      </ThemeProvider>,
+    );
+    const m = container.querySelector('[data-selection-measure]')!;
+    expect(m.querySelector('[data-selection-line]')).toBeNull();
+    expect(m.querySelectorAll('[data-selection-tick]')).toHaveLength(0);
+    // one row: each time's top within the length pill's 17px band (centred on it)
+    const top = (q: string) => parseFloat((m.querySelector(q) as HTMLElement).style.top);
+    for (const q of ['[data-selection-start]', '[data-selection-end]']) {
+      expect(Math.abs(top(q) - top('[data-selection-length]'))).toBeLessThan(17);
+    }
+  });
+  it('the edge in hand is marked active, the other is not', () => {
+    const { container } = render(
+      <ThemeProvider>
+        <SelectionMeasure variant="line" activeEdge="end" startTime={1} endTime={3} pixelsPerSecond={200} top={300} visibleLeft={0} visibleWidth={1000} />
+      </ThemeProvider>,
+    );
+    expect(container.querySelector('[data-selection-end]')!.hasAttribute('data-active')).toBe(true);
+    expect(container.querySelector('[data-selection-start]')!.hasAttribute('data-active')).toBe(false);
+  });
 });

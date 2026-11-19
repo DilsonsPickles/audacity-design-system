@@ -15,6 +15,12 @@ export interface SelectionMeasureProps {
   /** The content x of time 0 (the clips' own offset) */
   leftOffset?: number;
   timeFormat?: SelectionReadoutFormat['format'];
+  /** 'dimension' — the measuring bracket (D2, the default); 'line' — the
+   *  edge times beside the length on one row, no bracket (D1 at rest, D3 while
+   *  dragging: the edge in hand lit), to compare in Debug (2026-11-19) */
+  variant?: 'dimension' | 'line';
+  /** The edge being dragged — lit in the accent */
+  activeEdge?: 'start' | 'end' | null;
   bpm?: number;
   beatsPerMeasure?: number;
   noteValue?: number;
@@ -36,7 +42,7 @@ const TIME_TOP = 18;
  * (only when that tick is in view and there is room). No pointer events. It
  * replaced a label in the ruler ("It shouldn't be in the ruler").
  */
-export function SelectionMeasure({ startTime, endTime, pixelsPerSecond, top, visibleLeft, visibleWidth, leftOffset = CLIP_CONTENT_OFFSET, timeFormat = 'minutes-seconds', bpm, beatsPerMeasure, noteValue }: SelectionMeasureProps) {
+export function SelectionMeasure({ startTime, endTime, pixelsPerSecond, top, visibleLeft, visibleWidth, leftOffset = CLIP_CONTENT_OFFSET, timeFormat = 'minutes-seconds', bpm, beatsPerMeasure, noteValue, variant = 'dimension', activeEdge = null }: SelectionMeasureProps) {
   const { theme } = useTheme();
   const parts = formatSelectionParts(startTime, endTime, { format: timeFormat, bpm, beatsPerMeasure, noteValue });
   const pillRef = React.useRef<HTMLSpanElement>(null);
@@ -63,6 +69,14 @@ export function SelectionMeasure({ startTime, endTime, pixelsPerSecond, top, vis
   };
   const time: React.CSSProperties = { position: 'absolute', fontSize: 11, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: ink };
   const hidden: React.CSSProperties = { visibility: 'hidden', left: 0, top: 0 };
+  const line = variant === 'line';
+  // In the one-line style every reading sits on one row, centred on the pill;
+  // the edge in hand is a pill of its own in the accent
+  const timeTop = line ? top + 2 + (PILL_HEIGHT - 13) / 2 : top + TIME_TOP;
+  const pillTop = line ? top + 2 : top + LINE_Y - PILL_HEIGHT / 2;
+  const edgeStyle = (edge: 'start' | 'end'): React.CSSProperties => (activeEdge === edge
+    ? { ...pill, color: theme.foreground.text.primary, border: `1px solid ${theme.accent.primary}`, top: `${pillTop}px` }
+    : { ...time, top: `${timeTop}px` });
   return (
     <>
       <span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: 0, height: 0, overflow: 'hidden' }}>
@@ -72,12 +86,16 @@ export function SelectionMeasure({ startTime, endTime, pixelsPerSecond, top, vis
       </span>
       {place && (
         <div data-selection-measure="" aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, width: 0, height: 0, overflow: 'visible', pointerEvents: 'none', zIndex: 6 }}>
-          <div data-selection-line="" style={{ position: 'absolute', left: `${startX}px`, width: `${endX - startX}px`, top: `${top + LINE_Y}px`, height: 1, background: ink }} />
-          <div data-selection-tick="" style={{ position: 'absolute', left: `${startX}px`, top: `${top + TICK_TOP}px`, width: 1, height: TICK_HEIGHT, background: ink }} />
-          <div data-selection-tick="" style={{ position: 'absolute', left: `${endX - 1}px`, top: `${top + TICK_TOP}px`, width: 1, height: TICK_HEIGHT, background: ink }} />
-          <span data-selection-length="" style={{ ...pill, left: `${place.pillLeft}px`, top: `${top + LINE_Y - PILL_HEIGHT / 2}px` }}>{parts.length}</span>
-          {place.showStart && <span data-selection-start="" style={{ ...time, left: `${startX - widths.start / 2}px`, top: `${top + TIME_TOP}px` }}>{parts.start}</span>}
-          {place.showEnd && <span data-selection-end="" style={{ ...time, left: `${endX - widths.end / 2}px`, top: `${top + TIME_TOP}px` }}>{parts.end}</span>}
+          {!line && (
+            <>
+              <div data-selection-line="" style={{ position: 'absolute', left: `${startX}px`, width: `${endX - startX}px`, top: `${top + LINE_Y}px`, height: 1, background: ink }} />
+              <div data-selection-tick="" style={{ position: 'absolute', left: `${startX}px`, top: `${top + TICK_TOP}px`, width: 1, height: TICK_HEIGHT, background: ink }} />
+              <div data-selection-tick="" style={{ position: 'absolute', left: `${endX - 1}px`, top: `${top + TICK_TOP}px`, width: 1, height: TICK_HEIGHT, background: ink }} />
+            </>
+          )}
+          <span data-selection-length="" style={{ ...pill, left: `${place.pillLeft}px`, top: `${pillTop}px` }}>{parts.length}</span>
+          {place.showStart && <span data-selection-start="" data-active={activeEdge === 'start' ? '' : undefined} style={{ ...edgeStyle('start'), left: `${startX - widths.start / 2}px` }}>{parts.start}</span>}
+          {place.showEnd && <span data-selection-end="" data-active={activeEdge === 'end' ? '' : undefined} style={{ ...edgeStyle('end'), left: `${endX - widths.end / 2}px` }}>{parts.end}</span>}
         </div>
       )}
     </>

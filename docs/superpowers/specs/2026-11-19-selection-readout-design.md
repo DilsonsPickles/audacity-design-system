@@ -95,3 +95,10 @@ plain text, one line, dimension line, edge in hand) and picked **D2**:
   gives way to the three parts (length, start, end) the bracket needs.
 - Left as is: it does not flip inside when the lowest track's bottom is below
   the view (the canvas's scroll buffer leaves room under the last track).
+
+## Revision — one line, the dragged edge lit (2026-11-19, later still)
+
+"Let's try the way you liked": D1 at rest (each edge's time under its edge,
+the length boxed between them, one row, no bracket) and D3 while dragging
+(the edge in hand lit in the accent). It is the default; D2's bracket stays
+as the other choice under Debug › Selection.

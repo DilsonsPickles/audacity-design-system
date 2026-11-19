@@ -116,6 +116,10 @@ export interface CanvasProps {
    *  its length label over the visible part of the selection (2026-11-19) */
   visibleLeft?: number;
   visibleWidth?: number;
+  /** The selection measure's style: 'line' (the edge times beside the length,
+   *  the dragged edge lit; the default) or 'dimension' (the measuring
+   *  bracket) — Debug › Selection (2026-11-19) */
+  selectionMeasureStyle?: 'line' | 'dimension';
   /**
    * Extra vertical space rendered below the last track. Used to let
    * the user scroll content into the upper part of the viewport.
@@ -228,6 +232,7 @@ export function Canvas({
   viewportHeight = 0,
   visibleLeft = 0,
   visibleWidth = 0,
+  selectionMeasureStyle = 'line',
   bottomBuffer = 0,
   recordingClipId = null,
   selectionAnchor = null,
@@ -875,6 +880,8 @@ export function Canvas({
             bpm={bpm}
             beatsPerMeasure={beatsPerMeasure}
             noteValue={noteValue}
+            variant={selectionMeasureStyle}
+            activeEdge={selection.selection.dragEdge}
           />
         );
       })()}

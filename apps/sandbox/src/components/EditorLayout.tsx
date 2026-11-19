@@ -169,6 +169,9 @@ export interface EditorLayoutProps {
     onClose: () => void;
   };
 
+  /** The selection measure's style (Debug › Selection, 2026-11-19) */
+  selectionMeasureStyle?: 'line' | 'dimension';
+
   // MuseHub marketplace modal — lifted to App.tsx so the project toolbar
   // can trigger it from outside the track UI.
   marketplaceModal: {
@@ -1438,6 +1441,7 @@ export function EditorLayout(props: EditorLayoutProps) {
                     controlPointStyle={controlPointStyle}
                     viewportHeight={scrollContainerRef.current?.clientHeight || 0}
                     visibleLeft={scrollX}
+                    selectionMeasureStyle={props.selectionMeasureStyle}
                     visibleWidth={rulerViewportWidth || scrollContainerRef.current?.clientWidth || 0}
                     bottomBuffer={scrollBuffer}
                     recordingClipId={recordingClipId}

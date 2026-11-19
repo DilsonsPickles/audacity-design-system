@@ -74,6 +74,8 @@ export interface DebugPanelProps {
   toolbarGroupStyle?: 'lines' | 'islands' | 'filled' | 'stroked' | 'open';
   onToolbarGroupStyleChange?: (value: 'lines' | 'islands' | 'filled' | 'stroked' | 'open') => void;
   editorIsland?: boolean;
+  selectionMeasureStyle?: 'line' | 'dimension';
+  onSelectionMeasureStyleChange?: (value: 'line' | 'dimension') => void;
   onEditorIslandChange?: (value: boolean) => void;
   /** Slow media: how long Save project as… blocks, in seconds (0 = none) */
   slowMediaSeconds: number;
@@ -190,6 +192,8 @@ export function DebugPanel({
   toolbarGroupStyle = 'islands',
   onToolbarGroupStyleChange,
   editorIsland = true,
+  selectionMeasureStyle = 'line',
+  onSelectionMeasureStyleChange,
   onEditorIslandChange,
   slowMediaSeconds,
   onSlowMediaSecondsChange,
@@ -551,6 +555,30 @@ export function DebugPanel({
                 />
               </div>
             )}
+          </div>
+        )}
+
+        {/* Selection (2026-11-19): how the selection is measured under itself */}
+        {onSelectionMeasureStyleChange && (
+          <div>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, lineHeight: '20px', color: 'var(--debug-text)', margin: '0 0 12px 0' }}>
+              Selection
+            </h3>
+            <div role="radiogroup" aria-label="Selection measure" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {([
+                ['line', 'One line (the dragged edge lit)'],
+                ['dimension', 'Dimension line'],
+              ] as const).map(([value, label]) => (
+                <LabeledRadio
+                  key={value}
+                  label={label}
+                  name="selection-measure-style"
+                  value={value}
+                  checked={selectionMeasureStyle === value}
+                  onChange={(on) => { if (on) onSelectionMeasureStyleChange(value); }}
+                />
+              ))}
+            </div>
           </div>
         )}
 

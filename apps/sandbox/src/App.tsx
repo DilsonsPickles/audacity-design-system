@@ -375,6 +375,10 @@ function CanvasDemoContent() {
   // in it as one rounded card — the groups' 4px gap and rounded corners —
   // with no lines along the docks' edges. Debug › Toolbars switches it off
   const [editorIsland, setEditorIsland] = React.useState(true);
+  // Debug › Selection: how the selection is measured under itself — one line
+  // (the edge times beside the length, the dragged edge lit) or the
+  // dimension line (2026-11-19, "let's try the way you liked" after D2)
+  const [selectionMeasureStyle, setSelectionMeasureStyle] = React.useState<'line' | 'dimension'>('line');
   const [rollInTimeEnabled, setRollInTimeEnabled] = React.useState(false);
   const [snapEnabled, setSnapEnabled] = React.useState(false);
   const [snapMode, setSnapMode] = React.useState<import('@audacity-ui/components').SnapMode>('musical');
@@ -2187,6 +2191,7 @@ function CanvasDemoContent() {
           showMixer={mixerPanelOpen}
           marketplaceModal={marketplaceModal}
           setMarketplaceModal={setMarketplaceModal}
+          selectionMeasureStyle={selectionMeasureStyle}
         />
         </div>
         {/* The RIGHT DOCK, before the meters' columns, which keep the far edge */}
@@ -2539,6 +2544,8 @@ function CanvasDemoContent() {
         onToolbarGroupStyleChange={setToolbarGroupStyle}
         editorIsland={editorIsland}
         onEditorIslandChange={setEditorIsland}
+        selectionMeasureStyle={selectionMeasureStyle}
+        onSelectionMeasureStyleChange={setSelectionMeasureStyle}
         setUseVarispeedSlider={setUseVarispeedSlider}
         slowMediaSeconds={slowMediaSeconds}
         setSlowMediaSeconds={setSlowMediaSeconds}

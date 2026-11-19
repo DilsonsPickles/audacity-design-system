@@ -88,6 +88,12 @@ export interface UseTimeSelectionReturn {
   cursorStyle: string;
   /** The selection edge under a resting pointer, or null */
   hoverEdge: 'start' | 'end' | null;
+  /** THE EDGE IN HAND during a drag (2026-11-19, the selection measure lights
+   *  it): the edge the pointer is moving — a new selection's by which side of
+   *  the press the pointer is on, a resize's by which side of the edge it
+   *  keeps (so an edge dragged past the other reads as that other); null at
+   *  rest */
+  dragEdge: 'start' | 'end' | null;
   /** Function to start a time selection drag - call from container's onMouseDown */
   startDrag: (x: number, y: number, allowConversionToSpectral?: boolean, fixedTimeBounds?: { startTime: number; endTime: number }) => void;
   /** Function to handle mouse move for cursor updates - call from container's onMouseMove */
@@ -232,6 +238,9 @@ export function useTimeSelection({
       const y = e.clientY - rect.top;
 
       const { mode, initialSelection, initialSelectedTracks } = dragStateRef.current;
+      // every drag records where the pointer is — the edge in hand reads it
+      // (it was recorded for a new selection only)
+      dragStateRef.current.currentX = x;
 
       // Grid snap for the edge in hand: the host's switch, inverted by
       // Shift, read live on each move (2026-10-01). The guideline marks
@@ -570,8 +579,20 @@ export function useTimeSelection({
     }
   };
 
+  // The edge in hand, from the drag in progress (read at render, as isDragging is)
+  const dragEdge = ((): 'start' | 'end' | null => {
+    const d = dragStateRef.current;
+    if (!d || d.currentX === undefined) return null;
+    const moving = pixelsToTime(d.currentX, pixelsPerSecond, CLIP_CONTENT_OFFSET);
+    const fixed = d.mode === 'resize-start' && d.initialSelection ? d.initialSelection.endTime
+      : d.mode === 'resize-end' && d.initialSelection ? d.initialSelection.startTime
+      : pixelsToTime(d.startX, pixelsPerSecond, CLIP_CONTENT_OFFSET);
+    return moving < fixed ? 'start' : 'end';
+  })();
+
   return {
     isDragging: dragStateRef.current !== null,
+    dragEdge,
     cursorStyle,
     hoverEdge,
     startDrag,
