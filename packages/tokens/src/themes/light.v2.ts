@@ -199,29 +199,22 @@ export const lightTheme: ThemeTokens = {
       selectedBorder: '#677CE4', // Accent blue
     },
 
-    // THE LADDER WAS LIFTED ONE STEP (2026-11-19, "does the track header panel
-    // grey seem too grey now?" — once the chrome went near-white and the
-    // editor an island card, the #D5D5DB rail was the darkest light surface
-    // on screen, a flat grey slab in an empty project): rail #D5D5DB →
-    // #E4E5E9, card #ECECEF → #F2F2F4, selected #F8F8F9 → #FFFFFF, group
-    // #B4B5BE → #C9CAD1, the add button a step lighter — the steps between
-    // them kept, the whole set nearer the chrome
     trackHeader: {
-      idle: '#F2F2F4',           // Track-panel idle — brighter than parent so headers separate cleanly from the rail
-      hover: '#F2F2F4',          // Hover intentionally matches idle — hover state disabled while we settle the idle/selected contrast
-      selected: '#FFFFFF',       // Track-panel active — white, pops off the neutral idle rows
-      parent: '#E4E5E9',         // Knocked-back parent panel — pushes the track rows forward so selected vs idle contrast reads better
-      group: '#C9CAD1',          // Track-group band — darker than BOTH the rail and the track cards, so the parent reads as holding its children
+      idle: '#ECECEF',           // Track-panel idle — brighter than parent so headers separate cleanly from the rail
+      hover: '#ECECEF',          // Hover intentionally matches idle — hover state disabled while we settle the idle/selected contrast
+      selected: '#F8F8F9',       // Track-panel active — near-white, pops off the neutral idle rows
+      parent: '#D5D5DB',         // Knocked-back parent panel — pushes the track rows forward so selected vs idle contrast reads better
+      group: '#B4B5BE',          // Track-group band — darker than BOTH the rail (#D5D5DB) and the track cards (#ECECEF), so the parent reads as holding its children
       addButton: {               // Add-new button on the recessed rail — darker than the shared secondary button so it separates from `parent`
-        idle: '#D3D4DA',
-        hover: '#C9CAD1',
-        active: '#BFC0C8',
+        idle: '#C0C1C9',
+        hover: '#B4B5BE',
+        active: '#A8AAB3',
       },
     },
 
     panel: {
       ruler: '#262932',          // Vertical ruler (dark, sits over canvas)
-      timeline: '#E4E5E9',       // Horizontal timeline ruler — matches trackHeader.parent so the top rail and the side rail read as one recessed surface
+      timeline: '#D5D5DB',       // Horizontal timeline ruler — matches trackHeader.parent so the top rail and the side rail read as one recessed surface
     },
 
     toolbar: '#F8F8F9',          // Main + project toolbar surface

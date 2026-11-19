@@ -28,13 +28,13 @@
    etc. as INLINE STYLE, which beats a scoped rule — hence
    !important on the background properties directly. */
 .track-control-side-panel__header .button--secondary {
-  background-color: var(--tcsp-add-btn-bg-idle, #D3D4DA) !important;
+  background-color: var(--tcsp-add-btn-bg-idle, #C0C1C9) !important;
 }
 .track-control-side-panel__header .button--secondary:hover:not(.button--disabled) {
-  background-color: var(--tcsp-add-btn-bg-hover, #C9CAD1) !important;
+  background-color: var(--tcsp-add-btn-bg-hover, #B4B5BE) !important;
 }
 .track-control-side-panel__header .button--secondary:active:not(.button--disabled) {
-  background-color: var(--tcsp-add-btn-bg-active, #BFC0C8) !important;
+  background-color: var(--tcsp-add-btn-bg-active, #A8AAB3) !important;
 }
 
 .track-control-side-panel__title {
