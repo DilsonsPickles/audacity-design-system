@@ -513,7 +513,7 @@ export function ToolbarDock({
     // toolbar colour lifted toward white — most of the way on a light
     // toolbar, a little on a dark one — so it reads as raised in both themes
     // and the buttons' darker hover fills still show on it
-    '--toolbar-island-bg': `color-mix(in srgb, ${theme.background.toolbar}, white ${isLightColour(theme.background.toolbar) ? 65 : 5}%)`,
+    '--toolbar-island-bg': `color-mix(in srgb, ${theme.background.toolbar}, white ${isLightColour(theme.background.toolbar) ? 65 : 9}%)`,
     // The end of every line keeps the cog's place free
     ...(!vertical && trailingWidth ? { '--toolbar-dock-end-pad': `${ROW_END_PAD + trailingWidth + ROW_END_PAD}px` } : null),
   } as React.CSSProperties;
