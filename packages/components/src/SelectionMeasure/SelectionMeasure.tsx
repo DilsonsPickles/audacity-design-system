@@ -65,17 +65,20 @@ export function SelectionMeasure({ startTime, endTime, pixelsPerSecond, top, vis
   const pill: React.CSSProperties = {
     position: 'absolute', height: PILL_HEIGHT, display: 'inline-flex', alignItems: 'center', padding: '0 6px',
     boxSizing: 'border-box', borderRadius: 3, fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-    color: theme.foreground.text.primary, background: theme.background.surface.elevated, border: `1px solid ${theme.border.default}`,
+    // BLACK WITH WHITE TEXT, every reading (2026-11-19, "I'd rather the time
+    // stamps were black, with white text") — in both themes
+    color: '#ffffff', background: '#000000', border: '1px solid #000000',
   };
-  const time: React.CSSProperties = { position: 'absolute', fontSize: 11, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: ink };
+  // the edge times are pills like the length, in both styles
+  const time: React.CSSProperties = { ...pill, fontWeight: 500 };
   const hidden: React.CSSProperties = { visibility: 'hidden', left: 0, top: 0 };
   const line = variant === 'line';
   // In the one-line style every reading sits on one row, centred on the pill;
   // the edge in hand is a pill of its own in the accent
-  const timeTop = line ? top + 2 + (PILL_HEIGHT - 13) / 2 : top + TIME_TOP;
+  const timeTop = line ? top + 2 : top + TIME_TOP;
   const pillTop = line ? top + 2 : top + LINE_Y - PILL_HEIGHT / 2;
   const edgeStyle = (edge: 'start' | 'end'): React.CSSProperties => (activeEdge === edge
-    ? { ...pill, color: theme.foreground.text.primary, border: `1px solid ${theme.accent.primary}`, top: `${pillTop}px` }
+    ? { ...time, border: `1px solid ${theme.accent.primary}`, top: `${timeTop}px` }
     : { ...time, top: `${timeTop}px` });
   return (
     <>

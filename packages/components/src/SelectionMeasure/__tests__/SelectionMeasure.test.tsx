@@ -60,4 +60,20 @@ describe('SelectionMeasure (2026-11-19, D2: a dimension line under the selection
     expect(container.querySelector('[data-selection-end]')!.hasAttribute('data-active')).toBe(true);
     expect(container.querySelector('[data-selection-start]')!.hasAttribute('data-active')).toBe(false);
   });
+
+  it('every reading is BLACK with WHITE text (2026-11-19, "I\'d rather the time stamps were black, with white text")', () => {
+    for (const variant of ['line', 'dimension'] as const) {
+      const { container, unmount } = render(
+        <ThemeProvider>
+          <SelectionMeasure variant={variant} activeEdge="end" startTime={1} endTime={3} pixelsPerSecond={200} top={300} visibleLeft={0} visibleWidth={1000} />
+        </ThemeProvider>,
+      );
+      for (const q of ['[data-selection-start]', '[data-selection-length]', '[data-selection-end]']) {
+        const el = container.querySelector(q) as HTMLElement;
+        expect(el.style.background).toBe('rgb(0, 0, 0)');
+        expect(el.style.color).toBe('rgb(255, 255, 255)');
+      }
+      unmount();
+    }
+  });
 });
