@@ -71,3 +71,27 @@ as it exists. Precise entry moves to a dialog.
 
 - No pointer tag during a drag (approach B) for now.
 - No change to how a selection is made or its edges dragged.
+
+## Revision — D2, a dimension line under the selection (2026-11-19, later)
+
+The user did not like the label in the ruler ("It shouldn't be in the ruler.
+More like underneath the selection or inset inside"), saw two rounds of
+mockups (inset top / inset bottom / underneath / split; then stacked, flag,
+plain text, one line, dimension line, edge in hand) and picked **D2**:
+
+- **Where:** on the CANVAS, just under the bottom edge of the selection's
+  lowest track (the selection's scope, else every track), in content
+  coordinates like the snap guideline. Nothing in the ruler any more.
+- **What:** a measuring bracket — a 1px horizontal line the selection's width
+  with a short tick at each end — the LENGTH in a small pill centred on the
+  line, and each edge's TIME in plain text under its tick.
+- **Fitting:** the pill stays over the visible part of the selection (the
+  view's horizontal scroll passed in); an edge whose tick is off screen shows
+  no time; when the selection is too narrow for the pill and both times, the
+  times go and the pill stays; no length, no bracket.
+- **Look:** the line, ticks and times in the secondary text colour; the pill
+  as before; no pointer events.
+- The ruler readout (`SelectionReadout`) is removed; `formatSelectionReadout`
+  gives way to the three parts (length, start, end) the bracket needs.
+- Left as is: it does not flip inside when the lowest track's bottom is below
+  the view (the canvas's scroll buffer leaves room under the last track).
