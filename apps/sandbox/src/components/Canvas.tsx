@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
-import { useAudioSelection, SpectralSelectionOverlay, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme } from '@audacity-ui/components';
+import { useAudioSelection, SpectralSelectionOverlay, SelectionMeasure, CLIP_CONTENT_OFFSET, useAccessibilityProfile, useTabOrder, useTheme } from '@audacity-ui/components';
 import type { SpectrogramScale } from '@audacity-ui/components';
-import { type EnvelopePointStyleKey, type SnapGrid } from '@audacity-ui/core';
+import { type EnvelopePointStyleKey, type SnapGrid, trackIndexToY, effectiveRowHeight } from '@audacity-ui/core';
 import { type Track } from '../contexts/TracksContext';
 import { useTracksState, useTracksDispatch } from '../contexts/useTracks';
 import { useSpectralSelection } from '../contexts/SpectralSelectionContext';
@@ -112,6 +112,10 @@ export interface CanvasProps {
    * @default 0
    */
   viewportHeight?: number;
+  /** The view's horizontal scroll and width, px — the selection measure keeps
+   *  its length label over the visible part of the selection (2026-11-19) */
+  visibleLeft?: number;
+  visibleWidth?: number;
   /**
    * Extra vertical space rendered below the last track. Used to let
    * the user scroll content into the upper part of the viewport.
@@ -222,6 +226,8 @@ export function Canvas({
   trackDragPreview = null,
   controlPointStyle = 'default',
   viewportHeight = 0,
+  visibleLeft = 0,
+  visibleWidth = 0,
   bottomBuffer = 0,
   recordingClipId = null,
   selectionAnchor = null,
@@ -844,6 +850,34 @@ export function Canvas({
           shadow={snapGuidelineShadow}
         />
       )}
+
+      {/* THE SELECTION MEASURE (2026-11-19, D2): a dimension line under the
+          time selection's lowest track — its length on the line, each edge's
+          time under its tick; the status bar's selection timecodes are off
+          by default */}
+      {(() => {
+        if (!timeSelection || timeSelection.endTime === timeSelection.startTime) return null;
+        const scope = timeSelection.tracks && timeSelection.tracks.length > 0 ? timeSelection.tracks : tracks.map((_, i) => i);
+        const shown = scope.filter((i) => i < tracks.length && effectiveRowHeight(tracks, i, DEFAULT_TRACK_HEIGHT) > 0);
+        if (shown.length === 0) return null;
+        const lowest = Math.max(...shown);
+        const top = trackIndexToY(lowest, tracks, TOP_GAP, TRACK_GAP, DEFAULT_TRACK_HEIGHT) + effectiveRowHeight(tracks, lowest, DEFAULT_TRACK_HEIGHT) + 2;
+        return (
+          <SelectionMeasure
+            startTime={timeSelection.startTime}
+            endTime={timeSelection.endTime}
+            pixelsPerSecond={pixelsPerSecond}
+            top={top}
+            visibleLeft={visibleLeft}
+            visibleWidth={visibleWidth || width}
+            leftOffset={leftPadding}
+            timeFormat={timeFormat}
+            bpm={bpm}
+            beatsPerMeasure={beatsPerMeasure}
+            noteValue={noteValue}
+          />
+        );
+      })()}
 
       {/* Split-tool preview line. Bare hover shows it spanning just the
           hovered track; Shift held extends it across all tracks. */}

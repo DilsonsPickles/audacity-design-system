@@ -1,43 +1,41 @@
 import { describe, it, expect } from 'vitest';
-import { formatSelectionReadout, placeSelectionReadout } from '../selectionReadout';
+import { formatSelectionParts, placeSelectionMeasure } from '../selectionReadout';
 
-describe('formatSelectionReadout (2026-11-19, the ruler readout)', () => {
-  it('seconds: the length then the range', () => {
-    expect(formatSelectionReadout(1.3, 2.55, { format: 'minutes-seconds' })).toEqual({ full: '1.250 s · 0:01.300 – 0:02.550', short: '1.250 s' });
+describe('formatSelectionParts (2026-11-19, the selection measure)', () => {
+  it('seconds: the length and each edge', () => {
+    expect(formatSelectionParts(1.3, 2.55, { format: 'minutes-seconds' })).toEqual({ length: '1.250 s', start: '0:01.300', end: '0:02.550' });
   });
-  it('a range past an hour carries hours', () => {
-    expect(formatSelectionReadout(3600, 3725.4, { format: 'minutes-seconds' }).full).toBe('2:05.400 · 1:00:00.000 – 1:02:05.400');
-  });
-  it('lengths of a minute or more read m:ss.mmm', () => {
-    expect(formatSelectionReadout(0, 65, { format: 'minutes-seconds' }).short).toBe('1:05.000');
+  it('a range past an hour carries hours; a length past a minute reads m:ss.mmm', () => {
+    expect(formatSelectionParts(3600, 3725.4, { format: 'minutes-seconds' })).toEqual({ length: '2:05.400', start: '1:00:00.000', end: '1:02:05.400' });
   });
   it('reversed input reads start-first', () => {
-    expect(formatSelectionReadout(2.55, 1.3, { format: 'minutes-seconds' }).full).toBe('1.250 s · 0:01.300 – 0:02.550');
+    expect(formatSelectionParts(2.55, 1.3, { format: 'minutes-seconds' }).start).toBe('0:01.300');
   });
-  it('beats and bars: bar.beat positions, the length in beats (120 bpm, 4/4: a beat is 0.5 s)', () => {
-    expect(formatSelectionReadout(0.5, 4, { format: 'beats-measures', bpm: 120, beatsPerMeasure: 4, noteValue: 4 })).toEqual({ full: '7 beats · 1.2 – 3.1', short: '7 beats' });
+  it('beats and bars: bar.beat edges, the length in beats (120 bpm, 4/4: a beat is 0.5 s)', () => {
+    expect(formatSelectionParts(0.5, 4, { format: 'beats-measures', bpm: 120, beatsPerMeasure: 4, noteValue: 4 })).toEqual({ length: '7 beats', start: '1.2', end: '3.1' });
   });
   it('a length between whole beats reads to a tenth (final review: 0.3 beats read "0 beats")', () => {
     const opts = { format: 'beats-measures' as const, bpm: 120, beatsPerMeasure: 4, noteValue: 4 };
-    expect(formatSelectionReadout(0, 0.15, opts).short).toBe('0.3 beats');
-    expect(formatSelectionReadout(0, 1.75, opts).short).toBe('3.5 beats');
-    expect(formatSelectionReadout(0, 0.5, opts).short).toBe('1 beat');
+    expect(formatSelectionParts(0, 0.15, opts).length).toBe('0.3 beats');
+    expect(formatSelectionParts(0, 1.75, opts).length).toBe('3.5 beats');
+    expect(formatSelectionParts(0, 0.5, opts).length).toBe('1 beat');
   });
 });
 
-describe('placeSelectionReadout', () => {
-  it('centred over the selection when the full label fits', () => {
-    expect(placeSelectionReadout({ startX: 100, endX: 400, labelWidth: 200, viewportWidth: 1000, fullWidth: 200 })).toEqual({ left: 150, full: true });
+describe('placeSelectionMeasure', () => {
+  const base = { pillWidth: 60, startWidth: 50, endWidth: 50, visibleLeft: 0, visibleRight: 1000 };
+  it('the pill centred on the selection, both edge times when there is room', () => {
+    expect(placeSelectionMeasure({ ...base, startX: 100, endX: 400 })).toEqual({ pillLeft: 220, showStart: true, showEnd: true });
   });
-  it('a selection narrower than the full label shows the short one', () => {
-    expect(placeSelectionReadout({ startX: 100, endX: 160, labelWidth: 60, viewportWidth: 1000, fullWidth: 200 })?.full).toBe(false);
+  it('too narrow for the pill and both times: the times go, the pill stays', () => {
+    expect(placeSelectionMeasure({ ...base, startX: 100, endX: 180 })).toEqual({ pillLeft: 110, showStart: false, showEnd: false });
   });
-  it('kept inside the ruler when the selection runs off an edge', () => {
-    expect(placeSelectionReadout({ startX: -300, endX: 120, labelWidth: 200, viewportWidth: 1000, fullWidth: 200 })?.left).toBe(4);
-    expect(placeSelectionReadout({ startX: 900, endX: 1400, labelWidth: 200, viewportWidth: 1000, fullWidth: 200 })?.left).toBe(796);
+  it('an edge off screen shows no time, and the pill stays over the visible part', () => {
+    expect(placeSelectionMeasure({ ...base, startX: -300, endX: 400 })).toEqual({ pillLeft: 170, showStart: false, showEnd: true });
+    expect(placeSelectionMeasure({ ...base, startX: 600, endX: 1600 })).toEqual({ pillLeft: 770, showStart: true, showEnd: false });
   });
   it('nothing when the selection is wholly off screen or has no length', () => {
-    expect(placeSelectionReadout({ startX: -500, endX: -10, labelWidth: 60, viewportWidth: 1000, fullWidth: 200 })).toBeNull();
-    expect(placeSelectionReadout({ startX: 200, endX: 200, labelWidth: 60, viewportWidth: 1000, fullWidth: 200 })).toBeNull();
+    expect(placeSelectionMeasure({ ...base, startX: -500, endX: -10 })).toBeNull();
+    expect(placeSelectionMeasure({ ...base, startX: 200, endX: 200 })).toBeNull();
   });
 });
