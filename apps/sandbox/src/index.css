@@ -305,3 +305,26 @@ body[data-rail-resize], body[data-rail-resize] * { cursor: ew-resize !important;
    populated top or bottom toolbar, 4px against the window's edge. */
 [data-editor-island]:has(.toolbar-dock--top:not(.toolbar-dock--empty):not([data-toolbar-preview])) [data-editor-row] > .toolbar-dock--vertical .toolbar-dock__row { padding-top: 0; }
 [data-editor-island]:has(.toolbar-dock--bottom:not(.toolbar-dock--empty):not([data-toolbar-preview])) [data-editor-row] > .toolbar-dock--vertical .toolbar-dock__row { padding-bottom: 0; }
+
+/* FIGMA-STYLE BUTTONS — A TRIAL (2026-11-19, "What if the buttons looked
+   more like the Figma ones?", then "The container is very fitted"): in the
+   islands, the card HUGS its buttons — 3px all round (the grip keeps its
+   10px at the start), its corner the buttons' own plus that padding, so the
+   radii nest — the buttons 6px round, and an ON toggle is a raised chip (the
+   card's tone lifted, a hairline and a soft shadow) with its icon in the
+   accent, not a filled blue square. Debug › Toolbars › "Figma-style
+   buttons" (App's `data-toolbar-buttons`) */
+[data-toolbar-buttons='figma'] .toolbar-dock--islands .toolbar-dock__bar { padding: 3px 3px 3px 0; border-radius: 10px; }
+[data-toolbar-buttons='figma'] .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__bar { padding: 0 3px 3px; }
+[data-toolbar-buttons='figma'] .toolbar-dock--islands .toolbar-dock__grip,
+[data-toolbar-buttons='figma'] .toolbar-dock--islands .toolbar-dock__grip:not(.toolbar-dock__grip--leading) { border-radius: 9px 0 0 9px; }
+[data-toolbar-buttons='figma'] .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__grip,
+[data-toolbar-buttons='figma'] .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__grip:not(.toolbar-dock__grip--leading) { border-radius: 9px 9px 0 0; }
+[data-toolbar-buttons='figma'] .toolbar-dock--islands :is(.tool-button, .transport-button, .toggle-tool-button) { border-radius: 6px; }
+[data-toolbar-buttons='figma'] .toolbar-dock--islands :is(.toggle-tool-button--on, .toggle-tool-button--on-hover) {
+  background-color: var(--toolbar-figma-on-bg);
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.16);
+}
+[data-toolbar-buttons='figma'] .toolbar-dock--islands :is(.toggle-tool-button--on, .toggle-tool-button--on-hover) .icon {
+  color: var(--toolbar-dock-accent) !important;
+}
