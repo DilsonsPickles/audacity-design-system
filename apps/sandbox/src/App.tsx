@@ -1841,7 +1841,7 @@ function CanvasDemoContent() {
       // Over the window's vibrancy (macOS): the title bar's 40px stay
       // see-through, everything below is the app's solid surface
       ...(window.electronShell?.titleBarVibrancy
-        ? { background: `linear-gradient(to bottom, transparent 28px, ${baseTheme.background.surface.default} 28px)` }
+        ? { background: `linear-gradient(to bottom, transparent 36px, ${baseTheme.background.surface.default} 36px)` }
         : {}),
     }}>
       {customTitleBar && (

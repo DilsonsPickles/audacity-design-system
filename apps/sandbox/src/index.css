@@ -113,9 +113,10 @@ html.pan-active * {
   display: flex;
   align-items: stretch;
   flex-shrink: 0;
-  /* 28px since 2026-11-19 ("drop height of mac-style header bar to 28px";
-     it was 40) — the window buttons re-centred in main.cjs to match */
-  height: 28px;
+  /* 36px since 2026-11-19 ("drop height of mac-style header bar to 28px",
+     then "let's try 36px"; it was 40) — the window buttons re-centred in
+     main.cjs to match */
+  height: 36px;
   box-sizing: border-box;
   background: var(--app-title-bar-bg);
   border-bottom: 1px solid var(--app-title-bar-border);

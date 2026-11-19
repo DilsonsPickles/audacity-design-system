@@ -168,8 +168,9 @@ function createWindow(url) {
       ? {
           titleBarStyle: 'hiddenInset',
           // (y = the bar's middle − 8: the dot sits 2pt below the button's
-          // frame and is 12pt — 28px bar since 2026-11-19, so 6; it was 12)
-          trafficLightPosition: { x: 12, y: 6 },
+          // frame and is 12pt — a 36px bar since 2026-11-19, so 10; it was
+          // 12 for the 40px bar, 6 for an hour at 28px)
+          trafficLightPosition: { x: 12, y: 10 },
           // THE TITLE BAR IS GLASS (2026-11-11, "try vibrancy on the title
           // bar"): the native under-window material, which shows only
           // where the page is transparent — the renderer leaves the bar's
