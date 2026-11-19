@@ -150,7 +150,9 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
           return vibrancy ? `color-mix(in srgb, ${base} ${dark ? 85 : 35}%, transparent)` : base;
         })(),
         '--app-title-bar-active': theme.background.toolbar,
-        '--app-title-bar-border': theme.border.onSurface,
+        // half strength (2026-11-19, "line under first toolbar too dark") —
+        // the bar's own darker tone already separates it from the toolbar
+        '--app-title-bar-border': `color-mix(in srgb, ${theme.border.onSurface} 50%, transparent)`,
         // The short dividers between the right-hand controls: the text
         // colour at 20%, so they read on the bar in either theme (the
         // border colour is lighter than the bar in light mode)

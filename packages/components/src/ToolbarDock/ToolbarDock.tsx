@@ -529,7 +529,10 @@ export function ToolbarDock({
   const style = {
     ...styleProp,
     '--toolbar-bg': theme.background.toolbar,
-    '--toolbar-border': theme.border.onSurface,
+    // the toolbars' edge lines: the standard border in light (2026-11-19,
+    // "line under second toolbar not dark enough" — onSurface #E9E9E9 all but
+    // vanished against the #E4E5E9 rail below); dark keeps onSurface
+    '--toolbar-border': isLightColour(theme.background.toolbar) ? theme.border.default : theme.border.onSurface,
     '--toolbar-divider': theme.border.divider,
     '--toolbar-gripper-color': theme.foreground.text.primary,
     '--toolbar-dock-accent': theme.accent.primary,
