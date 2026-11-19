@@ -22,6 +22,7 @@ import { useCanvasPointerHandlers } from '../hooks/useCanvasPointerHandlers';
 import { CanvasTrackList } from './canvas/CanvasTrackList';
 import { GridOverlay } from './GridOverlay';
 import { SnapGuideline } from './canvas/SnapGuideline';
+import { canvasCursor } from '../utils/canvasCursor';
 import { SplitPreviewLine } from './canvas/SplitPreviewLine';
 import { MarqueeRect } from './canvas/MarqueeRect';
 import { computeCanvasHeights } from '../utils/canvasLayout';
@@ -918,7 +919,7 @@ export function Canvas({
         // and which edge of the time selection the pointer rests on
         data-canvas-pointer
         data-selection-edge={selection.selection.hoverEdge ?? undefined}
-        style={{ ...containerProps.style, height: `${Math.max(containerHeight, viewportHeight)}px`, userSelect: 'none', cursor: 'text' } as React.CSSProperties}
+        style={{ ...containerProps.style, height: `${Math.max(containerHeight, viewportHeight)}px`, userSelect: 'none', cursor: canvasCursor(containerProps.style.cursor) } as React.CSSProperties}
       >
         <CanvasTrackList
           dragPreview={trackDragPreview}

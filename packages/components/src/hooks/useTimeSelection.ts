@@ -146,8 +146,14 @@ export function useTimeSelection({
   const getEdgeProximity = useCallback((x: number): 'start' | 'end' | null => {
     if (!currentTimeSelection) return null;
 
-    const startX = timeToPixels(currentTimeSelection.startTime, pixelsPerSecond, 0);
-    const endX = timeToPixels(currentTimeSelection.endTime, pixelsPerSecond, 0);
+    // THE EDGE YOU SEE IS THE EDGE YOU GRAB (2026-11-19, "if we hover cursor on
+    // edge of selection, we should be able to grab the edge … this is in real
+    // audacity build"): measured from the clips' own offset, as the drag maths
+    // (pixelsToTime) and the drawing place every time — it was measured from
+    // 0, so the grab zone sat 12px left of the drawn edge, past the 6px reach,
+    // and a press on the edge started a new selection instead
+    const startX = timeToPixels(currentTimeSelection.startTime, pixelsPerSecond, CLIP_CONTENT_OFFSET);
+    const endX = timeToPixels(currentTimeSelection.endTime, pixelsPerSecond, CLIP_CONTENT_OFFSET);
 
     if (Math.abs(x - startX) <= edgeThreshold) {
       return 'start';

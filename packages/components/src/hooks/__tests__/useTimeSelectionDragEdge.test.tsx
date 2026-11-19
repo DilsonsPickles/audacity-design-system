@@ -38,6 +38,7 @@ function Host({ initial = null }: { initial?: TimeSelection | null }) {
       ref={ref}
       data-canvas
       data-drag-edge={dragEdge ?? ''}
+      data-sel={sel ? `${Math.round(sel.startTime * 100) / 100}-${Math.round(sel.endTime * 100) / 100}` : ''}
       style={{ width: 1000, height: 200 }}
       onMouseDown={(e) => {
         const r = e.currentTarget.getBoundingClientRect();
@@ -75,11 +76,21 @@ describe('useTimeSelection — the edge in hand', () => {
 
   it('a resized edge is in hand, and an edge dragged past the other reads as that other', () => {
     const { canvas, x } = renderHost({ startTime: 1, endTime: 3 });
-    // the edge hit test measures from 0 (getEdgeProximity), so the press lands on 3 s at 300px
-    fireEvent.mouseDown(canvas, { button: 0, clientX: 300, clientY: 50 });
+    fireEvent.mouseDown(canvas, { button: 0, clientX: x(3), clientY: 50 });
     fireEvent.mouseMove(document, { clientX: x(4), clientY: 50 });
     expect(canvas.getAttribute('data-drag-edge')).toBe('end');
     fireEvent.mouseMove(document, { clientX: x(0.5), clientY: 50 });
     expect(canvas.getAttribute('data-drag-edge')).toBe('start');
+  });
+});
+
+describe('useTimeSelection — the edge you SEE is the edge you grab (2026-11-19, "if we hover cursor on edge of selection, we should be able to grab the edge … this is in real audacity build")', () => {
+  it('a press on the DRAWN end edge (12px clip offset included) resizes the selection, not a new one', () => {
+    const { canvas, x } = renderHost({ startTime: 1, endTime: 3 });
+    fireEvent.mouseDown(canvas, { button: 0, clientX: x(3), clientY: 50 });
+    fireEvent.mouseMove(document, { clientX: x(4), clientY: 50 });
+    // resizing the end keeps the start where it was
+    expect(canvas.getAttribute('data-drag-edge')).toBe('end');
+    expect(canvas.getAttribute('data-sel')).toBe('1-4');
   });
 });
