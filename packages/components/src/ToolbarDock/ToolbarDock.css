@@ -510,9 +510,11 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
   height: 36px;
   box-sizing: border-box;
   padding: 3px 6px 3px 0;
-  border: 1px solid var(--toolbar-island-border);
+  /* (no stroke since 2026-11-19 — the card's own tone draws it; the 1px
+     stays, transparent, so nothing inside moves) */
+  border: 1px solid transparent;
   border-radius: 6px;
-  background-color: var(--toolbar-bg);
+  background-color: var(--toolbar-island-bg, var(--toolbar-bg));
 }
 .toolbar-dock--islands .toolbar-dock__row-divider { display: none; }
 .toolbar-dock--islands .toolbar-dock__grip,

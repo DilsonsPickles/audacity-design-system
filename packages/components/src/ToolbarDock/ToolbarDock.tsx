@@ -122,6 +122,16 @@ const OVERFLOW_BUTTON = 28;
 const MIN_BAR_SIZE = GUTTER + OVERFLOW_BUTTON;
 /** A resize lands on the bar's natural size within this distance */
 const RESIZE_SNAP_PX = 6;
+/** Whether a #rrggbb colour is light (relative luminance over a half) */
+function isLightColour(hex: string): boolean {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return true;
+  const n = parseInt(m[1], 16);
+  const lin = (c: number) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const l = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return l > 0.5;
+}
+
 /** What a grow / stretch tool needs when it states no minSize */
 const DEFAULT_MIN_STRETCH = 80;
 /** A row's padding at its end, and above / below (ToolbarDock.css) */
@@ -498,6 +508,12 @@ export function ToolbarDock({
     '--toolbar-dock-empty-hover': `color-mix(in srgb, ${theme.foreground.text.primary} 10%, transparent)`,
     '--toolbar-dock-refuse': theme.semantic.error.border,
     '--toolbar-island-border': theme.border.default,
+    // THE GROUPS ARE A TONE, NOT A STROKE (2026-11-19, "reduce the amount of
+    // strokes by choosing a different colour for the groups"): a card is the
+    // toolbar colour lifted toward white — most of the way on a light
+    // toolbar, a little on a dark one — so it reads as raised in both themes
+    // and the buttons' darker hover fills still show on it
+    '--toolbar-island-bg': `color-mix(in srgb, ${theme.background.toolbar}, white ${isLightColour(theme.background.toolbar) ? 65 : 5}%)`,
     // The end of every line keeps the cog's place free
     ...(!vertical && trailingWidth ? { '--toolbar-dock-end-pad': `${ROW_END_PAD + trailingWidth + ROW_END_PAD}px` } : null),
   } as React.CSSProperties;
