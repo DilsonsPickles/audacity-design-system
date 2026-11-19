@@ -513,6 +513,13 @@ export function ToolbarDock({
     // toolbar colour lifted toward white — most of the way on a light
     // toolbar, a little on a dark one — so it reads as raised in both themes
     // and the buttons' darker hover fills still show on it
+    // …and its DIVIDERS read on it (the same day, "perhaps the dividers in
+    // dark mode need to be a bit lighter too?" — the divider token, #4F5760,
+    // all but vanished on the lifted dark card): on a dark toolbar the text
+    // colour at 30%; a light toolbar keeps its divider token
+    '--toolbar-island-divider': isLightColour(theme.background.toolbar)
+      ? theme.border.divider
+      : `color-mix(in srgb, ${theme.foreground.text.primary} 30%, transparent)`,
     '--toolbar-island-bg': `color-mix(in srgb, ${theme.background.toolbar}, white ${isLightColour(theme.background.toolbar) ? 65 : 9}%)`,
     // The end of every line keeps the cog's place free
     ...(!vertical && trailingWidth ? { '--toolbar-dock-end-pad': `${ROW_END_PAD + trailingWidth + ROW_END_PAD}px` } : null),

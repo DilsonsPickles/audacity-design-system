@@ -438,6 +438,7 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
   background: var(--toolbar-divider);
 }
 .toolbar-dock--vertical .toolbar-dock__separator { width: 16px; height: 1px; }
+.toolbar-dock--islands .toolbar-dock__separator { background: var(--toolbar-island-divider, var(--toolbar-divider)); }
 
 /* AN EMPTY TOOLBAR: a dashed slot the tools' height, so it shows and its
    grip can move it; filled from the toolbar builder */

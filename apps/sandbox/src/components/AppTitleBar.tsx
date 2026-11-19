@@ -17,6 +17,14 @@ import { ProjectTabs, type ProjectBarToolsDeps } from './ProjectBarTools';
  * browser for a preview with localStorage `audacity-title-bar` = '1'.
  */
 export const TRAFFIC_LIGHTS_PX = 76;
+/** Whether a #rrggbb colour is light (relative luminance over a half) */
+function isLightColour(hex: string): boolean {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return true;
+  const n = parseInt(m[1], 16);
+  const lin = (c: number) => { const v = c / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255) > 0.5;
+}
 /** A project tab's least width (index.css `.project-tab` min-width) */
 const TAB_MIN_PX = 96;
 /** The extra room a label waits for before it comes back */
@@ -118,15 +126,22 @@ export function AppTitleBar({ deps, insetForTrafficLights, vibrancy = false }: {
         // matched in light only — in dark the toolbar is #2E353C, and
         // elevated is the LIGHTER grey). Over the window's vibrancy the bar
         // is a light tint of it, so the native glass shows through.
-        '--app-title-bar-bg': vibrancy
-          ? `color-mix(in srgb, color-mix(in srgb, ${theme.background.toolbar}, black 10%) 35%, transparent)`
-          : `color-mix(in srgb, ${theme.background.toolbar}, black 10%)`,
+        // DARKER IN DARK MODE (2026-11-19, "could the electron chrome be
+        // darker?"): the bar is ours, not the OS's, and over the window's
+        // glass its 35% tint let the lighter dark material through — in dark
+        // it is the toolbar 25% darker, 85% solid, so it sits clearly below
+        // the toolbar; light keeps 10% and 35%
+        '--app-title-bar-bg': (() => {
+          const dark = !isLightColour(theme.background.toolbar);
+          const base = `color-mix(in srgb, ${theme.background.toolbar}, black ${dark ? 25 : 10}%)`;
+          return vibrancy ? `color-mix(in srgb, ${base} ${dark ? 85 : 35}%, transparent)` : base;
+        })(),
         '--app-title-bar-active': theme.background.toolbar,
         '--app-title-bar-border': theme.border.onSurface,
         // The short dividers between the right-hand controls: the text
         // colour at 20%, so they read on the bar in either theme (the
         // border colour is lighter than the bar in light mode)
-        '--app-title-bar-divider': `color-mix(in srgb, ${theme.foreground.text.primary} 20%, transparent)`,
+        '--app-title-bar-divider': `color-mix(in srgb, ${theme.foreground.text.primary} ${isLightColour(theme.background.toolbar) ? 20 : 30}%, transparent)`,
         paddingLeft: insetForTrafficLights ? TRAFFIC_LIGHTS_PX : 0,
       } as React.CSSProperties}
       // THE BAR'S EMPTY STRIP TAKES A RIGHT-CLICK TOO (2026-11-17): the
