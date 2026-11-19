@@ -520,7 +520,13 @@ export function ToolbarDock({
     '--toolbar-island-divider': isLightColour(theme.background.toolbar)
       ? theme.border.divider
       : `color-mix(in srgb, ${theme.foreground.text.primary} 30%, transparent)`,
-    '--toolbar-island-bg': `color-mix(in srgb, ${theme.background.toolbar}, white ${isLightColour(theme.background.toolbar) ? 65 : 9}%)`,
+    // (a LIGHT toolbar is near white, #F8F8F9, so a lift had nowhere to go —
+    // "In light mode the groups are basically invisible", the same day: there
+    // the card is the toolbar with 5% of the text colour, a step DOWN that
+    // still sits above the buttons' darker hover fills)
+    '--toolbar-island-bg': isLightColour(theme.background.toolbar)
+      ? `color-mix(in srgb, ${theme.background.toolbar}, ${theme.foreground.text.primary} 5%)`
+      : `color-mix(in srgb, ${theme.background.toolbar}, white 9%)`,
     // The end of every line keeps the cog's place free
     ...(!vertical && trailingWidth ? { '--toolbar-dock-end-pad': `${ROW_END_PAD + trailingWidth + ROW_END_PAD}px` } : null),
   } as React.CSSProperties;
