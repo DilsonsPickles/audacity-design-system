@@ -114,7 +114,10 @@ export interface ToolbarDockProps {
   hiddenBarIds?: ReadonlyArray<string>;
 }
 
-const GRIP_GLYPH = '';
+// A SLIM GRIP (2026-11-19, "perhaps we use a slimmer icon? like F347?" —
+// against the empty room a hover-only grip leaves): one column of dots, 2.6px
+// of ink against the six-dot \uF3A2's 7px, so the grip can be narrower
+const GRIP_GLYPH = '\uF347';
 
 /** A bar's gutter (its grip), the gap between tools, and the overflow
  *  button — the numbers the dock's sizing is made of (ToolbarDock.css) */

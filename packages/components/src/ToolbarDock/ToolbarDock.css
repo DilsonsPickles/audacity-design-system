@@ -529,7 +529,8 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 .toolbar-dock--islands .toolbar-dock__row-divider { display: none; }
 .toolbar-dock--islands .toolbar-dock__grip,
 .toolbar-dock--islands .toolbar-dock__grip:not(.toolbar-dock__grip--leading) {
-  width: 16px;
+  /* 10px since the slim glyph (2026-11-19) — it was 16 for the six dots */
+  width: 10px;
   padding: 0;
   margin: -3px 0;
   border-radius: 5px 0 0 5px;
@@ -560,7 +561,7 @@ body[data-toolbar-resize="height"] * { cursor: ns-resize !important; }
 .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__grip,
 .toolbar-dock--islands.toolbar-dock--vertical .toolbar-dock__grip:not(.toolbar-dock__grip--leading) {
   width: auto;
-  height: 16px;
+  height: 10px;
   margin: 0 -3px;
   align-self: stretch;
   border-radius: 5px 5px 0 0;
