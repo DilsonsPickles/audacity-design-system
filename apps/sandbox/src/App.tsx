@@ -19,6 +19,8 @@ import { InstallerWizardDialog } from './components/InstallerWizardDialog';
 import { setTrackDeleteConfirmHandler } from './utils/confirmTrackDelete';
 import { EditorLayout } from './components/EditorLayout';
 import { GoToDialog } from './components/GoToDialog';
+import { SetSelectionDialog } from './components/SetSelectionDialog';
+import { rangeScopeFor } from './hooks/handlers/playheadSelectionHandlers';
 import { TimerRecordDialog } from './components/TimerRecordDialog';
 import { TimerRecordWaitDialog } from './components/TimerRecordWaitDialog';
 import { CopyingProjectDialog } from './components/CopyingProjectDialog';
@@ -186,6 +188,7 @@ function CanvasDemoContent() {
     setIsShareDialogOpen,
     setIsSaveProjectModalOpen, setIsPreferencesModalOpen,
     isGoToOpen, setIsGoToOpen,
+    isSetSelectionOpen, setIsSetSelectionOpen,
     isTimerRecordOpen, setIsTimerRecordOpen,
     setIsCommandPaletteOpen,
     isKeyboardMapOpen, setIsKeyboardMapOpen,
@@ -1534,6 +1537,7 @@ function CanvasDemoContent() {
     setIsLabelEditorOpen,
     setIsPreferencesModalOpen,
     setIsGoToOpen,
+    setIsSetSelectionOpen,
     setIsTimerRecordOpen,
     setIsKeyboardMapOpen,
     setIsDebugPanelOpen,
@@ -2394,6 +2398,22 @@ function CanvasDemoContent() {
         onFormatChange={setTimeCodeFormat}
         onGo={(seconds) => dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: seconds })}
         onClose={() => setIsGoToOpen(false)}
+        os={preferences.operatingSystem}
+      />
+      {/* Set selection… (Edit › Set selection…, or the palette, 2026-11-19): the
+          selection's start, end and length by keyboard — the status bar's
+          selection timecodes are off by default since the ruler shows them */}
+      <SetSelectionDialog
+        isOpen={isSetSelectionOpen}
+        initialStart={state.timeSelection ? Math.min(state.timeSelection.startTime, state.timeSelection.endTime) : state.playheadPosition}
+        initialEnd={state.timeSelection ? Math.max(state.timeSelection.startTime, state.timeSelection.endTime) : state.playheadPosition}
+        format={timeCodeFormat}
+        onFormatChange={setTimeCodeFormat}
+        onSet={(start, end) => {
+          dispatch({ type: 'SET_TIME_SELECTION', payload: { startTime: start, endTime: end, tracks: rangeScopeFor(state) } });
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: start });
+        }}
+        onClose={() => setIsSetSelectionOpen(false)}
         os={preferences.operatingSystem}
       />
       {/* Timer record (Record › Timer record…, or the palette): arm a scheduled recording (2026-10-19) */}

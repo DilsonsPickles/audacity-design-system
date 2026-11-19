@@ -17,6 +17,7 @@ export interface UseMenuDefinitionsOptions {
   setIsLabelEditorOpen: (open: boolean) => void;
   setIsPreferencesModalOpen: (open: boolean) => void;
   setIsGoToOpen: (open: boolean) => void;
+  setIsSetSelectionOpen?: (open: boolean) => void;
   setIsTimerRecordOpen: (open: boolean) => void;
   setIsKeyboardMapOpen: (open: boolean) => void;
   /** Help › Debug panel… (2026-11-11) */
@@ -85,6 +86,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     setIsLabelEditorOpen,
     setIsPreferencesModalOpen,
     setIsGoToOpen,
+    setIsSetSelectionOpen,
     setIsTimerRecordOpen,
     setIsKeyboardMapOpen,
     setIsDebugPanelOpen,
@@ -209,6 +211,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onOpenLabelEditor: () => setIsLabelEditorOpen(true),
     onOpenPreferences: () => setIsPreferencesModalOpen(true),
     onOpenGoTo: () => setIsGoToOpen(true),
+    onOpenSetSelection: setIsSetSelectionOpen ? () => setIsSetSelectionOpen(true) : undefined,
     canGroupClips: selectedClipGroupIds.count >= 2,
     canUngroupClips: selectedClipGroupIds.ids.length > 0,
     onGroupClips: () => dispatch({ type: 'GROUP_SELECTED_CLIPS' }),

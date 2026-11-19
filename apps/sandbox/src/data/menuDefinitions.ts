@@ -32,6 +32,8 @@ export interface MenuDefinitionDeps {
   // Edit menu deps
   onOpenLabelEditor: () => void;
   onOpenGoTo: () => void;
+  /** Edit › Set selection… — start, end and length by keyboard (2026-11-19) */
+  onOpenSetSelection?: () => void;
   /** Edit › Group clips / Ungroup clips (2026-10-14): the clip menu lost
    *  its Group / Ungroup rows to the Figma frame, so the pair moved here,
    *  where the real build's app menu keeps them (appmenumodel.cpp, Clip);
@@ -131,6 +133,7 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       label: 'Go to...',
       onClick: deps.onOpenGoTo,
     },
+    ...(deps.onOpenSetSelection ? [{ label: 'Set selection...', onClick: deps.onOpenSetSelection }] : []),
     {
       label: 'Group clips',
       disabled: !deps.canGroupClips,
