@@ -50,6 +50,24 @@ describe('ToolbarBarMenu', () => {
     expect(m.layout().top[1][0].tools).toEqual(['play', 'timecode']);
   });
 
+  // ADD DIVIDER (2026-11-19, "Adding dividers isn't working": it went to the
+  // group's END, where a divider is never drawn, so nothing appeared)
+  it('Add divider goes in the gap right-clicked; at a group\'s start or end, where none is drawn, it is dimmed', () => {
+    const atGap = renderMenu('main', { toolId: 'play', beforeToolId: 'timecode' });
+    fireEvent.click(atGap.item('Add divider before Timecode'));
+    expect(atGap.layout().top[1][0].tools).toEqual(['play', 'separator-1', 'timecode']);
+    cleanup();
+    const onTool = renderMenu('main', { toolId: 'timecode' });
+    fireEvent.click(onTool.item('Add divider before Timecode'));
+    expect(onTool.layout().top[1][0].tools).toEqual(['play', 'separator-1', 'timecode']);
+    cleanup();
+    const atEnd = renderMenu('main', { toolId: 'timecode', beforeToolId: null });
+    expect(atEnd.item('Add divider').className).toMatch(/disabled/);
+    cleanup();
+    const atStart = renderMenu('main', { toolId: 'play', beforeToolId: 'play' });
+    expect(atStart.item('Add divider').className).toMatch(/disabled/);
+  });
+
   // MOVE TOOLBAR TO (2026-11-18, "what if we wanted to move an entire toolbar?")
   it('Move toolbar to moves every group on the toolbar — from a group\'s menu or the toolbar\'s empty space — and dims the sides while a tool cannot stand in a column, naming it', () => {
     const fromGroup = renderMenu('main', { toolFits: (id) => id !== 'timecode' });

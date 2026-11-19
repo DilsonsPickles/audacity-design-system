@@ -133,6 +133,20 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
   const spaceLabel = spaceAtStart ? 'Add flexible space at the start'
     : !isLayoutItem(spaceBefore ?? '') ? `Add flexible space before ${toolName(spaceBefore ?? '')}`
     : 'Add flexible space here';
+  // WHERE A DIVIDER GOES (2026-11-19, "Adding dividers isn't working": it
+  // went to the group's END, and a divider at a group's start or end is never
+  // drawn, so nothing appeared): the gap nearest the pointer, as the flexible
+  // space's — only BETWEEN two tools, with no divider already either side;
+  // at an end the item is dimmed rather than doing nothing visible
+  const dividerBefore = (() => {
+    if (!bar || !gap) return null;
+    const at = bar.tools.indexOf(gap);
+    if (at <= 0 || isToolSeparator(gap) || isToolSeparator(bar.tools[at - 1])) return null;
+    return gap;
+  })();
+  const dividerLabel = !dividerBefore ? 'Add divider'
+    : !isLayoutItem(dividerBefore) ? `Add divider before ${toolName(dividerBefore)}`
+    : 'Add divider here';
   const portal = typeof document === 'undefined' ? null : document.body;
 
   // ADD TOOL (2026-11-17, the flyout to add tools straight onto a toolbar):
@@ -448,9 +462,9 @@ export function ToolbarBarMenu({ menu, onClose, layout, editLayout, fitsVertical
               />
             ) : (
               <ContextMenuItem
-                label="Add divider"
-                disabled={!hasTools}
-                onClick={() => editLayout((base) => insertSeparator(base, bar.id, null))}
+                label={dividerLabel}
+                disabled={!dividerBefore}
+                onClick={() => { if (dividerBefore) editLayout((base) => insertSeparator(base, bar.id, dividerBefore)); }}
                 onClose={onClose}
               />
             )}
