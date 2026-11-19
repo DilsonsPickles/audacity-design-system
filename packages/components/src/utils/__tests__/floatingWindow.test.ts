@@ -6,7 +6,9 @@ afterEach(() => vi.restoreAllMocks());
 /** Open a 189 × 319 window at a viewport spot and return the features it asked for */
 function featuresFor(viewportX: number, viewportY: number): string {
   const popup = document.implementation.createHTMLDocument('');
-  const open = vi.spyOn(window, 'open').mockReturnValue({ document: popup } as unknown as Window);
+  // a whole fake window: its close-with-the-page listener stays on `window`
+  // and a later test's pagehide calls it (it had no close, and threw)
+  const open = vi.spyOn(window, 'open').mockReturnValue({ document: popup, closed: false, close: () => {} } as unknown as Window);
   vi.spyOn(window, 'screenX', 'get').mockReturnValue(35);
   vi.spyOn(window, 'screenY', 'get').mockReturnValue(33);
   vi.spyOn(window, 'outerHeight', 'get').mockReturnValue(949);
