@@ -321,7 +321,9 @@ export const availableCommands: Command[] = [
   { id: 'file-save-as', name: 'Save as', category: 'Project & files' },
   { id: 'file-save-to-cloud', name: 'Save to cloud', category: 'Project & files' },
   { id: 'file-share-audio', name: 'Share audio', category: 'Project & files' },
-  { id: 'export-audio', name: 'Export audio', category: 'Project & files' },
+  // The macro's Export step (2026-11-24): its own settings window,
+  // ExportStepDialog, opened for the name EXPORT_STEP_COMMAND
+  { id: 'export-audio', name: 'Export', category: 'Project & files' },
   { id: 'export-midi', name: 'Export MIDI', category: 'Project & files' },
   { id: 'file-close', name: 'Close project', category: 'Project & files' },
   { id: 'project-show-in-folder', name: 'Show in Finder', category: 'Project & files' },

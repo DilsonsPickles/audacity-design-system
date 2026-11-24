@@ -1586,6 +1586,7 @@ function CanvasDemoContent() {
     onNewProject: () => { void newProjectInTab(); },
     onCloseProject: currentProjectId ? () => projectTabs.closeProject(currentProjectId) : undefined,
     onSaveProjectAs: currentProjectId ? () => { void handleSaveProjectAs(); } : undefined,
+    onExportAudio: () => { setInitialExportType('full-project'); setIsExportModalOpen(true); },
     onOpenPlotSpectrum: () => setIsPlotSpectrumOpen(true),
     onResetWorkspace: activeMenuItem === 'home' ? undefined : resetWorkspace,
     resetWorkspaceLabel,

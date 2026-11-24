@@ -57,6 +57,8 @@ export interface UseMenuDefinitionsOptions {
   onNewProject?: () => void;
   /** File › Save project as… (2026-11-16) */
   onSaveProjectAs?: () => void;
+  /** File › Export audio… (2026-11-24) */
+  onExportAudio?: () => void;
   /** Analyze › Plot spectrum… (2026-11-16) */
   onOpenPlotSpectrum?: () => void;
   onResetWorkspace?: () => void;
@@ -117,6 +119,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onNewProject,
     onCloseProject,
     onSaveProjectAs,
+    onExportAudio,
     onOpenPlotSpectrum,
     onResetWorkspace,
     onSaveWorkspace,
@@ -200,6 +203,7 @@ export function useMenuDefinitions(options: UseMenuDefinitionsOptions): Record<s
     onNewProject,
     onCloseProject,
     onSaveProjectAs,
+    onExportAudio,
     onOpenPlotSpectrum,
     onResetWorkspace,
     onSaveWorkspace,

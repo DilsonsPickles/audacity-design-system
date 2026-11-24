@@ -11,6 +11,9 @@ export interface MenuDefinitionDeps {
   /** File › Save project as… ⌘⇧S — a copy, behind the "Copying project"
    *  block that simulates slow media (2026-11-16) */
   onSaveProjectAs?: () => void;
+  /** File › Export audio… (2026-11-24): the export modal's door — its only
+   *  button was on the hidden Export tab */
+  onExportAudio?: () => void;
   /** Analyze › Plot spectrum… (2026-11-16, the Figma flow in 44 - Analyzers) */
   onOpenPlotSpectrum?: () => void;
   onResetWorkspace?: () => void;
@@ -121,6 +124,7 @@ export function createMenuDefinitions(deps: MenuDefinitionDeps): Record<string, 
       }
     },
     ...(deps.onSaveProjectAs ? [{ label: 'Save project as...', shortcut: 'Ctrl+Shift+S', onClick: deps.onSaveProjectAs }] : []),
+    ...(deps.onExportAudio ? [{ label: 'Export audio...', onClick: deps.onExportAudio }] : []),
   ];
 
   const editMenuItems: MenuItem[] = [

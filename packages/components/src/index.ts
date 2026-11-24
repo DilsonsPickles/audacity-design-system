@@ -114,6 +114,7 @@ export * from './MacroBuilderDialog';
 export * from './RunMacroOnFilesDialog';
 export * from './CommandPalette';
 export * from './CommandParametersDialog';
+export * from './ExportStepDialog';
 export * from './SelectCommandDialog';
 export * from './VSTEffectOptionsDialog';
 

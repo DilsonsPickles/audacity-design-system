@@ -8,6 +8,7 @@ import { Icon } from '../Icon';
 import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { CommandParametersDialog, type CommandParameter } from '../CommandParametersDialog';
+import { ExportStepDialog, EXPORT_STEP_COMMAND } from '../ExportStepDialog';
 import { RenameMacroDialog } from '../MacroManager/MacroDialogs';
 import { EditStepDialog } from '../MacroEditorDialog/MacroEditorDialog';
 import type { Command } from '../SelectCommandDialog';
@@ -1342,6 +1343,19 @@ export function MacroBuilderDialog({
           setEditingStepIndex(null);
           if (index !== null) returnFocus(() => focusGridCell({ row: index + 1, col: 'command' }));
         };
+        // The Export step has a dialog of its own, in the export
+        // dialog's layout (2026-11-24)
+        if (editingStep && editingStep.command === EXPORT_STEP_COMMAND) {
+          return (
+            <ExportStepDialog
+              isOpen
+              initialParameters={editingStep.parameters}
+              onClose={closeEditor}
+              onSubmit={save}
+              os={os}
+            />
+          );
+        }
         if (editingStep && schema) {
           return (
             <CommandParametersDialog

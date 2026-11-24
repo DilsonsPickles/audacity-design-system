@@ -53,11 +53,30 @@
   margin: 0;
 }
 
-/* Field layout - same as PreferencesModal */
+/* FIELD LAYOUT (2026-11-24, after the export dialog review): a label
+   column only as wide as the longest label, then ONE control column whose
+   every control ends on the same right edge — no short dropdowns beside
+   full-width fields, no invisible buttons holding a line. */
+.export-modal,
+.export-form {
+  --export-label-width: 96px;
+  --export-label-gap: 12px;
+}
+
 .export-modal__field {
   display: flex;
-  gap: 8px;
+  gap: var(--export-label-gap);
   align-items: center;
+}
+
+.export-modal__field > :not(.export-modal__label) {
+  flex: 1;
+  min-width: 0;
+}
+
+/* A row with no label (a checkbox, Edit mapping…) starts in the control column */
+.export-modal__field--inset {
+  padding-left: calc(var(--export-label-width) + var(--export-label-gap));
 }
 
 .export-modal__field--radio-group {
@@ -65,14 +84,12 @@
   padding: 4px 0;
 }
 
-/* Label styles */
 .export-modal__label {
   display: flex;
   align-items: center;
-  min-width: 146px;
-  width: 146px;
+  width: var(--export-label-width);
+  min-width: var(--export-label-width);
   height: 28px;
-  padding: 10px 0;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 400;
@@ -82,7 +99,19 @@
   flex-shrink: 0;
 }
 
-/* Radio group */
+/* The name a field resolves to, as helper text under that field */
+.export-modal__hint {
+  margin-top: -4px;
+  padding-left: calc(var(--export-label-width) + var(--export-label-gap) + 1px);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--txt-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .export-modal__radio-group {
   display: flex;
   gap: 16px;
@@ -91,38 +120,14 @@
   padding: 4px 0;
 }
 
-/* Field width classes - consistent with PreferencesModal */
-.export-modal__field--small {
-  max-width: 316px; /* 146px label + 8px gap + 162px field */
-}
-
-.export-modal__field--small > .dropdown {
-  width: 162px;
-}
-
-.export-modal__field--medium {
-  max-width: 474px; /* 146px label + 8px gap + 320px field */
-}
-
-.export-modal__field--medium > .dropdown {
-  width: 320px;
-}
-
-.export-modal__field--large {
-  /* Full width - no max-width constraint */
-}
-
-/* Input/Dropdown containers */
 .export-modal__input-wrapper {
   display: flex;
   gap: 8px;
   align-items: center;
-  flex: 1;
   min-width: 0;
 }
 
-.export-modal__input-wrapper > .text-input,
-.export-modal__input-wrapper > .dropdown {
+.export-modal__input-wrapper > :first-child {
   flex: 1;
   min-width: 0;
 }
@@ -140,4 +145,12 @@
 .export-modal__button-group {
   display: flex;
   gap: 8px;
+}
+
+/* The macro's Export step (ExportStepDialog) lays its fields out the same
+   way, inside the design system's Dialog */
+.export-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }

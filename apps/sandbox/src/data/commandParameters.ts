@@ -10,7 +10,7 @@
  * parameters match real Audacity 1:1.
  */
 
-import { serializeMacroParameters, type CommandParameter } from '@audacity-ui/components';
+import { serializeMacroParameters, EXPORT_STEP_DEFAULTS, EXPORT_STEP_KEYS, type CommandParameter } from '@audacity-ui/components';
 
 const num = (key: string, label: string, defaultValue: string): CommandParameter =>
   ({ key, label, type: 'number', defaultValue });
@@ -74,6 +74,9 @@ const HAND_SCHEMAS: Record<string, CommandParameter[]> = {
     num('gain1', 'End gain (%)', '100'),
     choice('preset', 'Handy presets', ['None', 'Linear in', 'Linear out', 'Exponential in', 'Exponential out'], 'None', false),
   ],
+  // The Export step's keys and defaults; its window is ExportStepDialog,
+  // not the generic one, so only the defaults are read from here
+  'Export': EXPORT_STEP_KEYS.map((key) => text(key, key, EXPORT_STEP_DEFAULTS[key])),
   'Fade In': [],
   'Fade Out': [],
   'Invert': [],

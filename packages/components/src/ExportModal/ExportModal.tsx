@@ -94,6 +94,18 @@ function getFileExtension(format: string): string {
   return extensionMap[format] || 'wav';
 }
 
+/**
+ * The name one file of a multi-file export resolves to: an optional
+ * number, the prefix, the track or label name, the extension —
+ * "01-Show.TrackName.mp3". Exported for tests.
+ */
+export function exportFilePreview({ prefix, item, numbered, extension }: {
+  prefix: string; item: string; numbered: boolean; extension: string;
+}): string {
+  const p = prefix.trim();
+  return `${numbered ? '01-' : ''}${p ? `${p}.` : ''}${item}.${extension}`;
+}
+
 const exportTypeOptions: DropdownOption[] = [
   { value: 'full-project', label: 'Export full project audio' },
   { value: 'selected-audio', label: 'Export selected audio' },
@@ -434,6 +446,16 @@ export function ExportModal({
     onClose();
   };
 
+  // The multi-file exports name each file from a prefix; the helper text
+  // under the prefix field says what one of them will be called
+  const isMultiFile = exportType === 'separate-tracks' || exportType === 'label-audio' || exportType === 'label-subtitle';
+  const multiFilePreview = exportFilePreview({
+    prefix: fileNamePrefix,
+    item: exportType === 'label-audio' ? 'LabelName' : exportType === 'label-subtitle' ? 'Labels' : 'TrackName',
+    numbered: includeNumbers && exportType !== 'label-subtitle',
+    extension: exportType === 'label-subtitle' ? 'srt' : getFileExtension(format),
+  });
+
   const handleBrowseFolder = () => {
     // In a real implementation, this would open a file browser
   };
@@ -441,6 +463,9 @@ export function ExportModal({
   const style = {
     '--bg-dialog-body': theme.background.dialog.body,
     '--bg-dialog-footer': theme.background.dialog.footer,
+    '--txt-primary': theme.foreground.text.primary,
+    '--txt-secondary': theme.foreground.text.secondary,
+    '--stroke-primary': theme.border.default,
   } as React.CSSProperties;
 
   if (!isOpen) return null;
@@ -452,13 +477,13 @@ export function ExportModal({
         style={style}
         onClick={(e) => e.stopPropagation()}
       >
-        <DialogHeader title="Export" onClose={onClose} os={os} />
+        <DialogHeader title="Export audio" onClose={onClose} os={os} />
 
         <div className="export-modal__body">
         {/* Export type section */}
         <section className="export-modal__section">
           <h3 className="export-modal__section-title">Export</h3>
-          <div className="export-modal__field export-modal__field--medium">
+          <div className="export-modal__field">
             <label className="export-modal__label">Type</label>
             <TabGroupField
               groupId="export-type"
@@ -485,14 +510,47 @@ export function ExportModal({
         <section className="export-modal__section">
           <h3 className="export-modal__section-title">File</h3>
 
-          {/* File name field - label changes based on export type */}
-          <div className="export-modal__field export-modal__field--large">
-            <label className="export-modal__label">
-              {exportType === 'separate-tracks' || exportType === 'label-audio' || exportType === 'label-subtitle'
-                ? 'File name preview'
-                : 'File name'}
-            </label>
-            <div className="export-modal__input-wrapper">
+          {/* FILE NAME (2026-11-24): the field, and under it — never above,
+              never a row of its own — the name that field resolves to, as
+              helper text. A single export's field IS the name; the multi-file
+              exports take a prefix and resolve per track / label. */}
+          {isMultiFile ? (
+            <>
+              <div className="export-modal__field">
+                <label className="export-modal__label">Name prefix</label>
+                <TabGroupField
+                  groupId="file"
+                  itemIndex={0}
+                  totalItems={4}
+                  itemRefs={fileRefs}
+                  activeIndexRef={fileActiveIndexRef}
+                  activeIndex={fileActiveIndex}
+                  onActiveIndexChange={setFileActiveIndex}
+                  resetKey="export-modal"
+                >
+                  <TextInput
+                    value={fileNamePrefix}
+                    onChange={setFileNamePrefix}
+                    placeholder="None"
+                  />
+                </TabGroupField>
+              </div>
+              <div className="export-modal__hint" data-export-file-preview>
+                {multiFilePreview}
+              </div>
+              {(exportType === 'separate-tracks' || exportType === 'label-audio') && (
+                <div className="export-modal__field export-modal__field--inset">
+                  <LabeledCheckbox
+                    label={exportType === 'label-audio' ? 'Number files in label order' : 'Number files in track order'}
+                    checked={includeNumbers}
+                    onChange={setIncludeNumbers}
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="export-modal__field">
+              <label className="export-modal__label">File name</label>
               <TabGroupField
                 groupId="file"
                 itemIndex={0}
@@ -503,50 +561,16 @@ export function ExportModal({
                 onActiveIndexChange={setFileActiveIndex}
                 resetKey="export-modal"
               >
-                {/* Show editable input for full-project, selected-audio, and loop-region, read-only preview for others */}
-                {exportType === 'full-project' || exportType === 'selected-audio' || exportType === 'loop-region' ? (
-                  <TextInput
-                    value={fileName}
-                    onChange={setFileName}
-                  />
-                ) : (
-                  <TextInput
-                    value={`TrackName.${getFileExtension(format)}`}
-                    onChange={() => {}}
-                    disabled
-                  />
-                )}
-              </TabGroupField>
-              {/* Invisible button matching Browse button below for perfect alignment */}
-              <div style={{ visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
-                <Button variant="secondary" tabIndex={-1}>
-                  Browse...
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* File name prefix - only for separate-tracks and label-audio */}
-          {(exportType === 'separate-tracks' || exportType === 'label-audio') && (
-            <div className="export-modal__field export-modal__field--large">
-              <label className="export-modal__label">File name prefix</label>
-              <div className="export-modal__input-wrapper">
                 <TextInput
-                  value={fileNamePrefix}
-                  onChange={setFileNamePrefix}
+                  value={fileName}
+                  onChange={setFileName}
                 />
-                {/* Invisible button for alignment */}
-                <div style={{ visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
-                  <Button variant="secondary" tabIndex={-1}>
-                    Browse...
-                  </Button>
-                </div>
-              </div>
+              </TabGroupField>
             </div>
           )}
 
           {/* Folder field */}
-          <div className="export-modal__field export-modal__field--large">
+          <div className="export-modal__field">
             <label className="export-modal__label">Folder</label>
             <div className="export-modal__input-wrapper">
               <TabGroupField
@@ -575,15 +599,15 @@ export function ExportModal({
                 resetKey="export-modal"
               >
                 <Button variant="secondary" onClick={handleBrowseFolder}>
-                  Browse...
+                  Browse…
                 </Button>
               </TabGroupField>
             </div>
           </div>
 
-          {/* Format dropdown */}
-          <div className="export-modal__field export-modal__field--small">
-            <label className="export-modal__label">Format</label>
+          {/* File type: it sets the extension the name above resolves to */}
+          <div className="export-modal__field">
+            <label className="export-modal__label">File type</label>
             <TabGroupField
               groupId="file"
               itemIndex={3}
@@ -601,17 +625,6 @@ export function ExportModal({
               />
             </TabGroupField>
           </div>
-
-          {/* Checkbox - only for separate-tracks and label-audio */}
-          {(exportType === 'separate-tracks' || exportType === 'label-audio') && (
-            <div className="export-modal__field export-modal__field--checkbox" style={{ paddingLeft: '154px' }}>
-              <LabeledCheckbox
-                label={exportType === 'label-audio' ? 'Include label numbers' : 'Include track numbers'}
-                checked={includeNumbers}
-                onChange={setIncludeNumbers}
-              />
-            </div>
-          )}
         </section>
 
         <Separator />
@@ -681,7 +694,7 @@ export function ExportModal({
               </div>
 
               {/* Edit mapping button - shown when Custom mapping is selected */}
-              <div className="export-modal__field" style={{ paddingLeft: '154px', display: channels === 'custom' ? 'block' : 'none' }}>
+              <div className="export-modal__field export-modal__field--inset" style={{ display: channels === 'custom' ? undefined : 'none' }}>
                 <TabGroupField
                   groupId="audio-options"
                   itemIndex={3}
@@ -711,7 +724,7 @@ export function ExportModal({
 
           {/* Sample rate - shown for all formats except Custom FFmpeg and External program */}
           {format !== 'custom-ffmpeg' && format !== 'external' && (
-            <div className="export-modal__field export-modal__field--small">
+            <div className="export-modal__field">
               <label className="export-modal__label">Sample rate</label>
               <TabGroupField
                 groupId="audio-options"
@@ -735,7 +748,7 @@ export function ExportModal({
           {/* Format-specific fields */}
           {/* WAV: Encoding */}
           {format === 'wav' && (
-            <div className="export-modal__field export-modal__field--small">
+            <div className="export-modal__field">
               <label className="export-modal__label">Encoding</label>
               <TabGroupField
                 groupId="audio-options"
@@ -758,7 +771,7 @@ export function ExportModal({
 
           {/* AIFF: Encoding */}
           {format === 'aiff' && (
-            <div className="export-modal__field export-modal__field--small">
+            <div className="export-modal__field">
               <label className="export-modal__label">Encoding</label>
               <TabGroupField
                 groupId="audio-options"
@@ -782,7 +795,7 @@ export function ExportModal({
           {/* Other uncompressed: Header, Encoding */}
           {format === 'other-uncompressed' && (
             <>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Header</label>
                 <Dropdown
                   options={headerOptions}
@@ -790,7 +803,7 @@ export function ExportModal({
                   onChange={setHeader}
                 />
               </div>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Encoding</label>
                 <Dropdown
                   options={encodingOptions}
@@ -804,7 +817,7 @@ export function ExportModal({
           {/* MP3: Bit rate mode, Quality */}
           {format === 'mp3' && (
             <>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Bit rate mode</label>
                 <Dropdown
                   options={bitRateModeOptions}
@@ -812,7 +825,7 @@ export function ExportModal({
                   onChange={setBitRateMode}
                 />
               </div>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Quality</label>
                 <Dropdown
                   options={qualityOptions}
@@ -825,7 +838,7 @@ export function ExportModal({
 
           {/* Ogg Vorbis: Quality */}
           {format === 'ogg' && (
-            <div className="export-modal__field export-modal__field--small">
+            <div className="export-modal__field">
               <label className="export-modal__label">Quality</label>
               <Dropdown
                 options={qualityOptions}
@@ -838,7 +851,7 @@ export function ExportModal({
           {/* Opus: Quality, VBR mode, Optimize for, Cut off */}
           {format === 'opus' && (
             <>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Quality</label>
                 <Dropdown
                   options={qualityOptions}
@@ -846,7 +859,7 @@ export function ExportModal({
                   onChange={setQuality}
                 />
               </div>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">VBR mode</label>
                 <Dropdown
                   options={vbrModeOptions}
@@ -854,7 +867,7 @@ export function ExportModal({
                   onChange={setVbrMode}
                 />
               </div>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Optimize for</label>
                 <Dropdown
                   options={optimizeForOptions}
@@ -862,7 +875,7 @@ export function ExportModal({
                   onChange={setOptimizeFor}
                 />
               </div>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Cut off</label>
                 <Dropdown
                   options={cutoffOptions}
@@ -876,7 +889,7 @@ export function ExportModal({
           {/* FLAC: Bit depth, Level */}
           {format === 'flac' && (
             <>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Bit depth</label>
                 <Dropdown
                   options={bitDepthOptions}
@@ -884,7 +897,7 @@ export function ExportModal({
                   onChange={setBitDepth}
                 />
               </div>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Level</label>
                 <Dropdown
                   options={levelOptions}
@@ -898,7 +911,7 @@ export function ExportModal({
           {/* WavPack: Quality, Bit depth */}
           {format === 'wavpack' && (
             <>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Quality</label>
                 <Dropdown
                   options={qualityOptions}
@@ -906,7 +919,7 @@ export function ExportModal({
                   onChange={setQuality}
                 />
               </div>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Bit depth</label>
                 <Dropdown
                   options={bitDepthOptions}
@@ -919,7 +932,7 @@ export function ExportModal({
 
           {/* M4A: Quality with stepper */}
           {format === 'm4a' && (
-            <div className="export-modal__field export-modal__field--large">
+            <div className="export-modal__field">
               <label className="export-modal__label">Quality</label>
               <div className="export-modal__input-wrapper">
                 <TextInput
@@ -927,19 +940,13 @@ export function ExportModal({
                   onChange={() => {}}
                   disabled
                 />
-                {/* Invisible button for alignment */}
-                <div style={{ visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
-                  <Button variant="secondary" tabIndex={-1}>
-                    Browse...
-                  </Button>
-                </div>
               </div>
             </div>
           )}
 
           {/* AC3: Bit rate */}
           {format === 'ac3' && (
-            <div className="export-modal__field export-modal__field--small">
+            <div className="export-modal__field">
               <label className="export-modal__label">Bit rate</label>
               <Dropdown
                 options={bitRateOptions}
@@ -951,7 +958,7 @@ export function ExportModal({
 
           {/* AMR: Bit rate */}
           {format === 'amr' && (
-            <div className="export-modal__field export-modal__field--small">
+            <div className="export-modal__field">
               <label className="export-modal__label">Bit rate</label>
               <Dropdown
                 options={bitRateOptions}
@@ -963,7 +970,7 @@ export function ExportModal({
 
           {/* WMA: Bit rate */}
           {format === 'wma' && (
-            <div className="export-modal__field export-modal__field--small">
+            <div className="export-modal__field">
               <label className="export-modal__label">Bit rate</label>
               <Dropdown
                 options={bitRateOptions}
@@ -976,7 +983,7 @@ export function ExportModal({
           {/* MP2: Version, Bit rate */}
           {format === 'mp2' && (
             <>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Version</label>
                 <Dropdown
                   options={mp2VersionOptions}
@@ -984,7 +991,7 @@ export function ExportModal({
                   onChange={setMp2Version}
                 />
               </div>
-              <div className="export-modal__field export-modal__field--small">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Bit rate</label>
                 <Dropdown
                   options={bitRateOptions}
@@ -998,37 +1005,27 @@ export function ExportModal({
           {/* Custom FFmpeg: Button, Current format, Current codec */}
           {format === 'custom-ffmpeg' && (
             <>
-              <div className="export-modal__field" style={{ paddingLeft: '154px' }}>
+              <div className="export-modal__field export-modal__field--inset">
                 <Button variant="secondary" onClick={() => console.log('Open FFmpeg options')}>
                   Open custom FFmpeg format options
                 </Button>
               </div>
-              <div className="export-modal__field export-modal__field--large">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Current format</label>
                 <div className="export-modal__input-wrapper">
                   <TextInput
                     value={currentFormat}
                     onChange={setCurrentFormat}
                   />
-                  <div style={{ visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
-                    <Button variant="secondary" tabIndex={-1}>
-                      Browse...
-                    </Button>
-                  </div>
                 </div>
               </div>
-              <div className="export-modal__field export-modal__field--large">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Current codec</label>
                 <div className="export-modal__input-wrapper">
                   <TextInput
                     value={currentCodec}
                     onChange={setCurrentCodec}
                   />
-                  <div style={{ visibility: 'hidden', pointerEvents: 'none' }} aria-hidden="true">
-                    <Button variant="secondary" tabIndex={-1}>
-                      Browse...
-                    </Button>
-                  </div>
                 </div>
               </div>
             </>
@@ -1037,7 +1034,7 @@ export function ExportModal({
           {/* External program: Help text, Command, Show output checkbox */}
           {format === 'external' && (
             <>
-              <div className="export-modal__field" style={{ paddingLeft: '154px' }}>
+              <div className="export-modal__field export-modal__field--inset">
                 <div style={{
                   padding: '8px',
                   backgroundColor: '#ebedf0',
@@ -1049,7 +1046,7 @@ export function ExportModal({
                   Data will be piped to standard in. "%f" uses the file name in the export window.
                 </div>
               </div>
-              <div className="export-modal__field export-modal__field--large">
+              <div className="export-modal__field">
                 <label className="export-modal__label">Command</label>
                 <div className="export-modal__input-wrapper">
                   <div style={{ flex: 1 }} />
@@ -1058,7 +1055,7 @@ export function ExportModal({
                   </Button>
                 </div>
               </div>
-              <div className="export-modal__field export-modal__field--checkbox" style={{ paddingLeft: '154px' }}>
+              <div className="export-modal__field export-modal__field--inset">
                 <LabeledCheckbox
                   label="Show output"
                   checked={showOutput}
@@ -1074,6 +1071,7 @@ export function ExportModal({
         {/* Rendering section */}
         <section className="export-modal__section">
           <h3 className="export-modal__section-title">Rendering</h3>
+          <div className="export-modal__field export-modal__field--inset">
           <TabGroupField
             groupId="rendering"
             itemIndex={0}
@@ -1090,6 +1088,7 @@ export function ExportModal({
               onChange={setTrimBlankSpace}
             />
           </TabGroupField>
+          </div>
         </section>
       </div>
 
@@ -1106,7 +1105,7 @@ export function ExportModal({
           resetKey="export-modal"
         >
           <Button variant="secondary" onClick={onEditMetadata}>
-            Edit metadata
+            Edit metadata…
           </Button>
         </TabGroupField>
         <div className="export-modal__button-group">

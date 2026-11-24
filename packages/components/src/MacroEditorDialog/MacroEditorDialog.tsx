@@ -9,6 +9,7 @@ import { ContextMenu } from '../ContextMenu';
 import { ContextMenuItem } from '../ContextMenuItem';
 import { SelectCommandDialog, Command } from '../SelectCommandDialog';
 import { CommandParametersDialog, type CommandParameter } from '../CommandParametersDialog';
+import { ExportStepDialog, EXPORT_STEP_COMMAND } from '../ExportStepDialog';
 import { RenameMacroDialog } from '../MacroManager/MacroDialogs';
 import type { Macro, MacroStep } from '../MacroManager/macroTypes';
 import './MacroEditorDialog.css';
@@ -530,7 +531,20 @@ export function MacroEditorDialog({
         os={os}
       />
 
-      {pendingCommand && (
+      {pendingCommand && pendingCommand.name === EXPORT_STEP_COMMAND && (
+        <ExportStepDialog
+          isOpen
+          onClose={() => setPendingCommand(null)}
+          onSubmit={(parameters) => {
+            onAddCommand?.(macro.id, pendingCommand, parameters);
+            setPendingCommand(null);
+            setIsSelectCommandDialogOpen(false);
+          }}
+          os={os}
+        />
+      )}
+
+      {pendingCommand && pendingCommand.name !== EXPORT_STEP_COMMAND && (
         <CommandParametersDialog
           isOpen
           commandName={pendingCommand.name}
@@ -564,6 +578,19 @@ export function MacroEditorDialog({
             onEditStep?.(macro.id, editingStepIndex, parameters);
           }
         };
+        // The Export step has a dialog of its own, in the export
+        // dialog's layout (2026-11-24)
+        if (editingStep && editingStep.command === EXPORT_STEP_COMMAND) {
+          return (
+            <ExportStepDialog
+              isOpen
+              initialParameters={editingStep.parameters}
+              onClose={() => setEditingStepIndex(null)}
+              onSubmit={save}
+              os={os}
+            />
+          );
+        }
         if (editingStep && schema) {
           return (
             <CommandParametersDialog
