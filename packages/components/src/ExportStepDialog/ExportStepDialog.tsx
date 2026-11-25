@@ -124,7 +124,14 @@ export function ExportStepDialog({
   const batchSafe = /\{(ProjectName|N)\}/.test(values.FileName);
   // ONE LINE under the name, always drawn: the error, the batch note, or
   // nothing — so the dialog never grows or shrinks as you type
-  const nameMessage = submitError ?? (resolved.ok && !batchSafe ? 'Several files? Add {ProjectName} so each gets its own name' : '');
+  // The preview shows ONE file; on "Run on files…" {ProjectName} is each
+  // file's own name, which a single preview cannot show — so the line
+  // says it (2026-11-25, "if we did this on multiple files wouldn't they
+  // all be called the same thing?")
+  const usesProjectName = values.FileName.includes('{ProjectName}');
+  const nameMessage = submitError ?? (!resolved.ok ? ''
+    : usesProjectName ? "On files, {ProjectName} is each file's own name"
+      : !batchSafe ? 'Several files? Add {ProjectName} so each gets its own name' : '');
 
   const handleOk = () => {
     if (!resolved.ok) {

@@ -757,6 +757,7 @@ export function AppDialogs(props: AppDialogsProps) {
           command search + step list in ONE window, no stacked picker. */}
       <MacroBuilderDialog
         isOpen={macrosCtx.editingMacroId !== null}
+        projectName={indexedDBProjects.find((p) => p.id === currentProjectId)?.title}
         macro={macrosCtx.macros.find((m) => m.id === macrosCtx.editingMacroId) ?? null}
         onClose={() => {
           // Hand focus back to the macro the window was opened from —

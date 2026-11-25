@@ -15,6 +15,11 @@ describe('resolveExportTemplate', () => {
       .toEqual({ ok: true, name: 'Podcast_2026-11-24_15-03-00_N-1' });
   });
 
+  it('a project name becomes a file name: characters a path cannot hold turn to hyphens', () => {
+    expect(resolveExportTemplate('{ProjectName}', { projectName: 'New Project 11/19/2026, 15:54', now: NOW, run: 1 }))
+      .toEqual({ ok: true, name: 'New Project 11-19-2026, 15-54' });
+  });
+
   it('names an unknown tag, and refuses an empty name', () => {
     expect(resolveExportTemplate('{Projct}', { projectName: 'P', now: NOW, run: 1 })).toEqual({ ok: false, error: 'Unknown tag {Projct}' });
     expect(resolveExportTemplate('  ', { projectName: 'P', now: NOW, run: 1 })).toEqual({ ok: false, error: 'Enter a file name' });
@@ -47,7 +52,6 @@ describe('ExportStepDialog', () => {
     const d = renderDialog('FileName="{ProjectName}_{Date}" Folder="~/Exports/" Format="FLAC"');
     expect(d.nameInput().value).toBe('{ProjectName}_{Date}');
     expect(d.preview().textContent).toBe('~/Exports/Podcast_2026-11-24.flac');
-    expect(d.message().textContent).toBe('');
   });
 
   it('no row comes or goes: the message slot and the type\'s setting row are always drawn', () => {
@@ -85,7 +89,15 @@ describe('ExportStepDialog', () => {
     fireEvent.change(d.nameInput(), { target: { value: 'asd_{N}' } });
     expect(note()).toBeNull();
     fireEvent.change(d.nameInput(), { target: { value: '{ProjectName}' } });
-    expect(note()).toBeNull();
+    expect(note()).toBe("On files, {ProjectName} is each file's own name");
+  });
+
+  it('a name with {ProjectName} says what it becomes on files', () => {
+    const d = renderDialog('FileName="{ProjectName}_001"');
+    expect(d.preview().textContent).toBe('~/Documents/Audacity/Podcast_001.wav');
+    expect(d.message().textContent).toBe("On files, {ProjectName} is each file's own name");
+    fireEvent.change(d.nameInput(), { target: { value: 'Take_{N}' } });
+    expect(d.message().textContent).toBe('');
   });
 
   it('OK serializes every setting in key order', () => {

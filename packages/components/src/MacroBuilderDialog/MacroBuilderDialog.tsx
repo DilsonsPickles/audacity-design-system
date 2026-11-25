@@ -21,6 +21,9 @@ import './MacroBuilderDialog.css';
 export interface MacroBuilderDialogProps {
   /** Whether the dialog is open */
   isOpen: boolean;
+  /** The open project's name, which the Export step's preview fills
+   *  {ProjectName} with (2026-11-25) */
+  projectName?: string;
   /** The macro being edited (null renders nothing while closed) */
   macro: Macro | null;
   /** Callback when the dialog should close. Edits apply live (auto-save) —
@@ -180,6 +183,7 @@ export function MacroBuilderDialog({
   availableCommands = [],
   getCommandParameters,
   os = 'macos',
+  projectName,
 }: MacroBuilderDialogProps) {
   const { theme } = useTheme();
   // THE DIALOG FOLLOWS THE THEME (2026-10-13, "check macro manager… in
@@ -1349,6 +1353,7 @@ export function MacroBuilderDialog({
           return (
             <ExportStepDialog
               isOpen
+              projectName={projectName}
               initialParameters={editingStep.parameters}
               onClose={closeEditor}
               onSubmit={save}

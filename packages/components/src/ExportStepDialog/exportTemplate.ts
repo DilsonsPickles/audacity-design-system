@@ -25,7 +25,9 @@ export function resolveExportTemplate(template: string, ctx: ExportTemplateConte
   const unknown: string[] = [];
   const name = template.replace(/\{([^{}]*)\}/g, (whole, tag: string) => {
     switch (tag) {
-      case 'ProjectName': return ctx.projectName;
+      // A project title can hold what a file name cannot ("New Project
+      // 11/19/2026, 15:54"): those characters become hyphens
+      case 'ProjectName': return ctx.projectName.replace(/[\\/:*?"<>|]/g, '-');
       case 'Date': return `${ctx.now.getFullYear()}-${pad(ctx.now.getMonth() + 1)}-${pad(ctx.now.getDate())}`;
       case 'Time': return `${pad(ctx.now.getHours())}-${pad(ctx.now.getMinutes())}-${pad(ctx.now.getSeconds())}`;
       case 'N': return String(ctx.run);

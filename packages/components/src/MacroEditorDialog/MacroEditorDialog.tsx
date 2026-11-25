@@ -17,6 +17,9 @@ import './MacroEditorDialog.css';
 export interface MacroEditorDialogProps {
   /** Whether the dialog is open */
   isOpen: boolean;
+  /** The open project's name, which the Export step's preview fills
+   *  {ProjectName} with (2026-11-25) */
+  projectName?: string;
   /** The macro being edited (null renders nothing while closed) */
   macro: Macro | null;
   /** Callback when the dialog should close. Edits apply live (auto-save) —
@@ -282,6 +285,7 @@ export function MacroEditorDialog({
   getCommandParameters,
   availableCommands = [],
   os = 'macos',
+  projectName,
 }: MacroEditorDialogProps) {
   const { theme } = useTheme();
   const editorVars = editorVarsFor(theme);
@@ -534,6 +538,7 @@ export function MacroEditorDialog({
       {pendingCommand && pendingCommand.name === EXPORT_STEP_COMMAND && (
         <ExportStepDialog
           isOpen
+          projectName={projectName}
           onClose={() => setPendingCommand(null)}
           onSubmit={(parameters) => {
             onAddCommand?.(macro.id, pendingCommand, parameters);
@@ -584,6 +589,7 @@ export function MacroEditorDialog({
           return (
             <ExportStepDialog
               isOpen
+              projectName={projectName}
               initialParameters={editingStep.parameters}
               onClose={() => setEditingStepIndex(null)}
               onSubmit={save}
