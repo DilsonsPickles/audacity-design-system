@@ -170,6 +170,34 @@
   position: absolute;
 }
 
+/* A clip in hand rides above the track strips and the ruler */
+.mobile-editor__clip[data-dragging] {
+  z-index: 4;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+}
+
+/* The selected clip's header is its grab handle: 28px tall (the 20px
+   header and a little of the body) for a finger; touch-action: none so a
+   drag here moves the clip instead of scrolling the project */
+.mobile-editor__grab {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  z-index: 10; /* above the Clip's own header layers */
+  touch-action: none;
+  cursor: grab;
+}
+
+.mobile-editor__clip[data-dragging] .mobile-editor__grab {
+  cursor: grabbing;
+}
+
+.mobile-editor__lane[data-drop] {
+  background: var(--m-lane-selected);
+}
+
 .mobile-editor__add {
   position: sticky;
   left: 0;
