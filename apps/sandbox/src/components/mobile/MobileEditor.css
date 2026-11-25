@@ -1,0 +1,291 @@
+/* The phone editor (feat/mobile spike). Colours come from the theme
+   through the --m-* variables MobileEditor sets on its root. */
+
+.mobile-editor {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--m-canvas);
+  color: var(--m-text);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Touch-sized versions of the library's 28px buttons: same faces, a
+   40px target */
+.mobile-editor .transport-button,
+.mobile-editor .tool-button {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.mobile-editor__bar,
+.mobile-editor__transport {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  background: var(--m-surface);
+}
+
+.mobile-editor__bar {
+  height: 48px;
+  padding-top: env(safe-area-inset-top);
+  border-bottom: 1px solid var(--m-border);
+}
+
+.mobile-editor__title {
+  flex: 1;
+  min-width: 0;
+  padding-left: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-editor__transport {
+  height: 56px;
+  border-bottom: 1px solid var(--m-border);
+}
+
+.mobile-editor__spacer {
+  flex: 1;
+}
+
+.mobile-editor__scroll {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.mobile-editor__content {
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+.mobile-editor__ruler {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 26px;
+  background: var(--m-surface);
+  border-bottom: 1px solid var(--m-border);
+}
+
+.mobile-editor__tick {
+  position: absolute;
+  bottom: 0;
+  width: 1px;
+  background: var(--m-text-secondary);
+}
+
+.mobile-editor__tick-label {
+  position: absolute;
+  top: 4px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mobile-editor__grid {
+  position: absolute;
+  top: 26px;
+  bottom: 0;
+  width: 1px;
+  background: var(--m-grid);
+  pointer-events: none;
+}
+
+.mobile-editor__track {
+  position: relative;
+  margin-bottom: 2px;
+}
+
+/* The track header, squeezed from the side column into a strip: it stays
+   on screen while the lane scrolls sideways */
+.mobile-editor__strip {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 100vw;
+  max-width: 100%;
+  box-sizing: border-box;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 8px;
+  background: var(--m-card);
+}
+
+.mobile-editor__strip[data-selected] {
+  background: var(--m-card-selected);
+  box-shadow: inset 0 0 0 2px var(--m-accent);
+}
+
+.mobile-editor__edge {
+  width: 4px;
+  align-self: stretch;
+  margin-right: 4px;
+}
+
+.mobile-editor__track-name {
+  width: 80px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-editor__volume {
+  flex: 1;
+  min-width: 60px;
+  display: flex;
+  align-items: center;
+}
+
+.mobile-editor__volume > * {
+  width: 100%;
+}
+
+.mobile-editor__lane {
+  position: relative;
+  background: var(--m-lane);
+}
+
+.mobile-editor__lane[data-selected] {
+  background: var(--m-lane-selected);
+}
+
+.mobile-editor__clip {
+  position: absolute;
+}
+
+.mobile-editor__add {
+  position: sticky;
+  left: 0;
+  width: 100vw;
+  max-width: 100%;
+  padding: 12px 8px;
+  box-sizing: border-box;
+}
+
+.mobile-editor__add-button {
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--m-card);
+  color: var(--m-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+}
+
+.mobile-editor__playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: #FFFFFF;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.mobile-editor__status {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 34px;
+  padding: 0 12px env(safe-area-inset-bottom);
+  background: var(--m-surface);
+  border-top: 1px solid var(--m-border);
+}
+
+.mobile-editor__status-cue {
+  width: 64px;
+}
+
+.mobile-editor__status-info {
+  color: var(--m-text-secondary);
+}
+
+/* The clip's actions: the context menu as a bottom sheet */
+.mobile-editor__sheet {
+  flex-shrink: 0;
+  background: var(--m-menu);
+  border-top: 1px solid var(--m-border);
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+  padding: 4px 0 calc(12px + env(safe-area-inset-bottom));
+}
+
+.mobile-editor__sheet-head {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 16px;
+}
+
+.mobile-editor__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.mobile-editor__sheet-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mobile-editor__sheet-range {
+  flex: 1;
+  color: var(--m-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.mobile-editor__item {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--m-text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+}
+
+.mobile-editor__item:active:not(:disabled) {
+  background: var(--m-menu-hover);
+}
+
+.mobile-editor__item:disabled {
+  opacity: 0.4;
+}
+
+.mobile-editor__item-slot {
+  width: 16px;
+}
+
+.mobile-editor__divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--m-divider);
+}

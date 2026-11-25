@@ -118,6 +118,8 @@ import { useProjectLifecycle } from './hooks/useProjectLifecycle';
 import { useProjectTabs } from './hooks/useProjectTabs';
 import { useMenuDefinitions } from './hooks/useMenuDefinitions';
 import { useElectronMenuBridge } from './hooks/useElectronMenuBridge';
+import { MobileEditor } from './components/mobile/MobileEditor';
+import { useMobileLayout } from './hooks/useMobileLayout';
 import { WorkspaceNameDialog } from './components/WorkspaceNameDialog';
 import { WORKSPACE_NAMES, isBuiltinWorkspace, activeWorkspaceId, hiddenToolsOf, workspaceResetState, sameWorkspaceState } from './utils/workspaces';
 
@@ -1685,6 +1687,7 @@ function CanvasDemoContent() {
   // The open project's title — the Project tab's text (2026-11-11, the
   // Figma-style tabs)
   const projectTitle = indexedDBProjects.find((p) => p.id === currentProjectId)?.title;
+  const mobileLayout = useMobileLayout();
   const navigateProject = useProjectNavigation({ setActiveMenuItem, setHomeTabKey, setIndexedDBProjects, currentProjectId, createNewProject });
   const projectToolDeps: ProjectBarToolsDeps = {
     activeMenuItem,
@@ -1854,6 +1857,25 @@ function CanvasDemoContent() {
       onVerticalMeterSizeChange: (size: 'slim' | 'wide') => updatePreference('verticalMeterSize', size),
     },
   };
+
+  // THE PHONE EDITOR (feat/mobile spike, 2026-11-25): on a narrow screen,
+  // or with ?mobile in the URL, the whole window is the portrait editor
+  if (mobileLayout) {
+    return (
+      <PlaybackProvider value={playback}>
+        <MobileEditor
+          state={state}
+          dispatch={dispatch}
+          projectTitle={projectTitle ?? 'Untitled project'}
+          isPlaying={isPlaying}
+          onPlay={() => { void handlePlay(); }}
+          onStop={() => { void handleStopAll(); }}
+          onRecord={() => { void handleRecord(); }}
+          onStopRecording={() => { void handleStopRecording(); }}
+        />
+      </PlaybackProvider>
+    );
+  }
 
   return (
     <PlaybackProvider value={playback}>
