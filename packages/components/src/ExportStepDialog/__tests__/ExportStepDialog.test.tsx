@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, cleanup, fireEvent } from '@testing-library/react';
+import { render, cleanup, fireEvent, act } from '@testing-library/react';
 import { ThemeProvider } from '../../ThemeProvider/ThemeProvider';
 import { ExportStepDialog } from '../ExportStepDialog';
 import { resolveExportTemplate } from '../exportTemplate';
@@ -98,6 +98,32 @@ describe('ExportStepDialog', () => {
     expect(d.message().textContent).toBe("On files, {ProjectName} is each file's own name");
     fireEvent.change(d.nameInput(), { target: { value: 'Take_{N}' } });
     expect(d.message().textContent).toBe('');
+  });
+
+  it('a cut-off preview shows the whole path in a tooltip on hover; one that fits shows none', () => {
+    vi.useFakeTimers();
+    try {
+      const d = renderDialog('FileName="{ProjectName}_001"');
+      const box = document.querySelector('.export-modal__value') as HTMLElement;
+      const size = (scroll: number, client: number) => {
+        Object.defineProperty(box, 'scrollWidth', { configurable: true, value: scroll });
+        Object.defineProperty(box, 'clientWidth', { configurable: true, value: client });
+      };
+      const tip = () => document.querySelector('.tooltip__content');
+      size(200, 300);
+      fireEvent.mouseEnter(box);
+      act(() => { vi.advanceTimersByTime(400); });
+      expect(tip()).toBeNull();
+      fireEvent.mouseLeave(box);
+      size(500, 300);
+      fireEvent.mouseEnter(box);
+      act(() => { vi.advanceTimersByTime(400); });
+      expect(tip()?.textContent).toBe(d.preview().textContent);
+      fireEvent.mouseLeave(box);
+      expect(tip()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('OK serializes every setting in key order', () => {

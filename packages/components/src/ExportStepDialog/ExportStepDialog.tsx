@@ -6,6 +6,8 @@ import { Dropdown, type DropdownOption } from '../Dropdown';
 import { Button } from '../Button';
 import { Separator } from '../Separator';
 import { useTheme } from '../ThemeProvider';
+import { Tooltip } from '../Tooltip';
+import { TOOLTIP_DELAY_MS } from '../ClipPropertiesPanel/ClipPropertiesPanel';
 import { parseMacroParameters, serializeMacroParameters } from '../CommandParametersDialog/macroParams';
 import { resolveExportTemplate } from './exportTemplate';
 import '../ExportModal/ExportModal.css';
@@ -62,6 +64,15 @@ const TYPE_SETTING: Record<string, { label: string; options: DropdownOption[]; f
 const CHANNEL_OPTIONS = opts(['Auto', 'Mono', 'Stereo']);
 const SAMPLE_RATE_OPTIONS = opts(['Project rate', '44100 Hz', '48000 Hz', '96000 Hz']);
 
+/** The Tooltip's width for a line of text: 12px Inter, 6px padding and a
+ *  1px border each side (Tooltip.css) */
+function measureTipWidth(text: string): number {
+  const ctx = document.createElement('canvas').getContext('2d');
+  if (!ctx) return 0;
+  ctx.font = '12px Inter, system-ui, sans-serif';
+  return Math.ceil(ctx.measureText(text).width) + 14;
+}
+
 export interface ExportStepDialogProps {
   isOpen: boolean;
   /** The step's current serialized parameters */
@@ -91,6 +102,34 @@ export function ExportStepDialog({
   // should see the error"): the error appears when OK finds it and goes
   // as soon as the name is edited
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+
+  // A CUT-OFF PREVIEW SHOWS ITS WHOLE PATH ON HOVER (2026-11-25, "if the
+  // file name truncates we need to be able to hover over it and see the
+  // name in a tooltip"): the design system's Tooltip, after the panels'
+  // delay, only when the line is actually clipped
+  const [previewTip, setPreviewTip] = React.useState<{ x: number; y: number } | null>(null);
+  const tipTimer = React.useRef<number | null>(null);
+  const clearTip = () => {
+    if (tipTimer.current !== null) window.clearTimeout(tipTimer.current);
+    tipTimer.current = null;
+    setPreviewTip(null);
+  };
+  React.useEffect(() => clearTip, []);
+  const armTip = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    if (el.scrollWidth <= el.clientWidth) return;
+    clearTip();
+    tipTimer.current = window.setTimeout(() => {
+      const rect = el.getBoundingClientRect();
+      // Centred on the row, but kept 8px inside the window: a full path
+      // is wide, and the Tooltip centres itself on x
+      const width = measureTipWidth(el.textContent ?? '');
+      const half = width / 2;
+      const center = rect.left + rect.width / 2;
+      const x = Math.max(half + 8, Math.min(center, window.innerWidth - half - 8));
+      setPreviewTip({ x, y: rect.top });
+    }, TOOLTIP_DELAY_MS);
+  };
 
   React.useEffect(() => {
     if (!isOpen) return;
@@ -185,7 +224,13 @@ export function ExportStepDialog({
               and the name together, so it answers for both fields. One
               line; a long path loses its START, so the file name stays */}
           {field('Preview', (
-            <div className="export-modal__value" data-export-file-preview>
+            <div
+              className="export-modal__value"
+              data-export-file-preview
+              onMouseEnter={armTip}
+              onMouseLeave={clearTip}
+              onMouseDown={clearTip}
+            >
               <span dir="ltr">{resolved.ok ? `${folder}/${resolved.name}.${extension}` : '—'}</span>
             </div>
           ), 'Preview')}
@@ -219,6 +264,9 @@ export function ExportStepDialog({
           {field('Sample rate', <Dropdown options={SAMPLE_RATE_OPTIONS} value={values.SampleRate} onChange={set('SampleRate')} />, 'SampleRate')}
         </section>
       </div>
+      {previewTip && resolved.ok && (
+        <Tooltip content={`${folder}/${resolved.name}.${extension}`} x={previewTip.x} y={previewTip.y} />
+      )}
     </Dialog>
   );
 }
