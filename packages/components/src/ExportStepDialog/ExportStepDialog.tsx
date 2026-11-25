@@ -39,10 +39,26 @@ export const EXPORT_STEP_KEYS = Object.keys(EXPORT_STEP_DEFAULTS) as ExportStepK
 const opts = (labels: string[]): DropdownOption[] =>
   labels.map((label) => ({ value: label.replace(/\s+/g, ''), label }));
 
+const EXPORT_STEP_DEFAULTS_ENCODING = 'Signed16-bitPCM';
 const FORMAT_OPTIONS = opts(['WAV', 'AIFF', 'MP3', 'FLAC', 'Ogg Vorbis']);
 const EXTENSIONS: Record<string, string> = { WAV: 'wav', AIFF: 'aiff', MP3: 'mp3', FLAC: 'flac', OggVorbis: 'ogg' };
 const ENCODING_OPTIONS = opts(['Signed 16-bit PCM', 'Signed 24-bit PCM', 'Signed 32-bit PCM', '32-bit float']);
 const QUALITY_OPTIONS = opts(['Standard, 170-210 kbps', 'Medium, 145-185 kbps', 'Extreme, 220-260 kbps', 'Insane, 320 kbps']);
+const BIT_DEPTH_OPTIONS = opts(['16-bit', '24-bit']);
+const OGG_QUALITY_OPTIONS = opts(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
+
+/**
+ * EVERY FILE TYPE HAS ONE SETTING, so the row is always there (2026-11-25,
+ * "I really don't like modals changing height"): its label and choices
+ * follow the type, the row never comes or goes
+ */
+const TYPE_SETTING: Record<string, { label: string; options: DropdownOption[]; fallback: string }> = {
+  WAV: { label: 'Encoding', options: ENCODING_OPTIONS, fallback: EXPORT_STEP_DEFAULTS_ENCODING },
+  AIFF: { label: 'Encoding', options: ENCODING_OPTIONS, fallback: EXPORT_STEP_DEFAULTS_ENCODING },
+  MP3: { label: 'Quality', options: QUALITY_OPTIONS, fallback: QUALITY_OPTIONS[0].value },
+  FLAC: { label: 'Bit depth', options: BIT_DEPTH_OPTIONS, fallback: BIT_DEPTH_OPTIONS[0].value },
+  OggVorbis: { label: 'Quality', options: OGG_QUALITY_OPTIONS, fallback: '5' },
+};
 const CHANNEL_OPTIONS = opts(['Auto', 'Mono', 'Stereo']);
 const SAMPLE_RATE_OPTIONS = opts(['Project rate', '44100 Hz', '48000 Hz', '96000 Hz']);
 
@@ -70,6 +86,11 @@ export function ExportStepDialog({
 }: ExportStepDialogProps) {
   const { theme } = useTheme();
   const [values, setValues] = React.useState<Record<ExportStepKey, string>>({ ...EXPORT_STEP_DEFAULTS });
+  // CHECKED ON OK, NOT AS YOU TYPE (2026-11-25, "no need for realtime
+  // validation… if the field is empty and we press OK that's when we
+  // should see the error"): the error appears when OK finds it and goes
+  // as soon as the name is edited
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!isOpen) return;
@@ -77,28 +98,39 @@ export function ExportStepDialog({
     const next = { ...EXPORT_STEP_DEFAULTS } as Record<ExportStepKey, string>;
     for (const key of EXPORT_STEP_KEYS) if (parsed[key] !== undefined) next[key] = parsed[key];
     setValues(next);
+    setSubmitError(null);
   }, [isOpen, initialParameters]);
 
-  const set = (key: ExportStepKey) => (value: string) => setValues((prev) => ({ ...prev, [key]: value }));
+  const set = (key: ExportStepKey) => (value: string) => {
+    if (key === 'FileName') setSubmitError(null);
+    setValues((prev) => ({ ...prev, [key]: value }));
+  };
   // Encoding is the file type's own setting (PCM for WAV / AIFF, quality
   // for MP3, none for the rest): a new type starts at its default
   const setFormat = (format: string) => setValues((prev) => ({
     ...prev,
     Format: format,
-    Encoding: format === 'MP3' ? QUALITY_OPTIONS[0].value : EXPORT_STEP_DEFAULTS.Encoding,
+    Encoding: (TYPE_SETTING[format] ?? TYPE_SETTING.WAV).fallback,
   }));
 
   const resolved = resolveExportTemplate(values.FileName, { projectName, now: now ?? new Date(), run: 1 });
   const extension = EXTENSIONS[values.Format] ?? 'wav';
-  const pcm = values.Format === 'WAV' || values.Format === 'AIFF';
+  const typeSetting = TYPE_SETTING[values.Format] ?? TYPE_SETTING.WAV;
+  const folder = values.Folder.replace(/\/+$/, '');
   // A macro run on several files writes each with this name; a fixed one
   // overwrites itself. {ProjectName} or {N} keeps them apart. A note, not
   // an error: run on the open project the step is fine (the real build's
   // red "Add {ProjectName}…" read as blocking and blocked nothing)
   const batchSafe = /\{(ProjectName|N)\}/.test(values.FileName);
+  // ONE LINE under the name, always drawn: the error, the batch note, or
+  // nothing — so the dialog never grows or shrinks as you type
+  const nameMessage = submitError ?? (resolved.ok && !batchSafe ? 'Several files? Add {ProjectName} so each gets its own name' : '');
 
   const handleOk = () => {
-    if (!resolved.ok) return;
+    if (!resolved.ok) {
+      setSubmitError(resolved.error);
+      return;
+    }
     onSubmit?.(serializeMacroParameters(EXPORT_STEP_KEYS.map((key) => [key, values[key]])));
     onClose?.();
   };
@@ -129,32 +161,39 @@ export function ExportStepDialog({
           secondaryText="Cancel"
           onPrimaryClick={handleOk}
           onSecondaryClick={onClose}
-          primaryDisabled={!resolved.ok}
         />
       }
     >
       <div className="export-form" style={style} data-export-step-dialog>
         <section className="export-modal__section">
           <h3 className="export-modal__section-title">File</h3>
-          {field('File name', <TextInput value={values.FileName} onChange={set('FileName')} error={!resolved.ok} />, 'FileName')}
-          <div
-            className="export-modal__hint"
-            data-export-file-preview
-            data-error={resolved.ok ? undefined : ''}
-            role={resolved.ok ? undefined : 'alert'}
-            style={resolved.ok ? undefined : { color: theme.foreground.text.error }}
-          >
-            {resolved.ok ? `${resolved.name}.${extension}` : resolved.error}
-            {resolved.ok && !batchSafe && (
-              <span data-export-batch-note> · Running on several files? Add {'{ProjectName}'} so each gets its own name</span>
-            )}
-          </div>
+          {field('File name', <TextInput value={values.FileName} onChange={set('FileName')} error={submitError !== null} />, 'FileName')}
           {field('Folder', (
             <div className="export-modal__input-wrapper">
               <TextInput value={values.Folder} onChange={set('Folder')} />
               <Button variant="secondary" onClick={() => {}}>Browse…</Button>
             </div>
           ), 'Folder')}
+          {/* THE PREVIEW IS A ROW OF ITS OWN (2026-11-25): it is the folder
+              and the name together, so it answers for both fields. One
+              line; a long path loses its START, so the file name stays */}
+          {field('Preview', (
+            <div className="export-modal__value" data-export-file-preview>
+              <span dir="ltr">{resolved.ok ? `${folder}/${resolved.name}.${extension}` : '—'}</span>
+            </div>
+          ), 'Preview')}
+          {/* The message line closes the section, under Preview: always drawn,
+              so nothing moves, and empty it reads as the section's foot,
+              not a gap under the field (2026-11-25) */}
+          <div
+            className="export-modal__hint export-modal__hint--slot"
+            data-export-name-message
+            data-error={submitError === null ? undefined : ''}
+            role={submitError === null ? undefined : 'alert'}
+            style={submitError === null ? undefined : { color: theme.foreground.text.error }}
+          >
+            {nameMessage}
+          </div>
         </section>
 
         <Separator />
@@ -162,11 +201,7 @@ export function ExportStepDialog({
         <section className="export-modal__section">
           <h3 className="export-modal__section-title">Format</h3>
           {field('File type', <Dropdown options={FORMAT_OPTIONS} value={values.Format} onChange={setFormat} />, 'Format')}
-          {pcm
-            ? field('Encoding', <Dropdown options={ENCODING_OPTIONS} value={values.Encoding} onChange={set('Encoding')} />, 'Encoding')
-            : values.Format === 'MP3'
-              ? field('Quality', <Dropdown options={QUALITY_OPTIONS} value={values.Encoding} onChange={set('Encoding')} />, 'Encoding')
-              : null}
+          {field(typeSetting.label, <Dropdown options={typeSetting.options} value={values.Encoding} onChange={set('Encoding')} />, 'Encoding')}
         </section>
 
         <Separator />

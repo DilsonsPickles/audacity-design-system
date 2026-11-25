@@ -37,30 +37,50 @@ describe('ExportStepDialog', () => {
       </ThemeProvider>,
     );
     const preview = () => document.querySelector('[data-export-file-preview]') as HTMLElement;
+    const message = () => document.querySelector('[data-export-name-message]') as HTMLElement;
     const nameInput = () => document.querySelector('[data-export-step-field="FileName"] input') as HTMLInputElement;
     const ok = () => Array.from(document.querySelectorAll('button')).find((b) => b.textContent === 'OK') as HTMLButtonElement;
-    return { onSubmit, preview, nameInput, ok };
+    return { onSubmit, preview, message, nameInput, ok };
   };
 
-  it('shows what the file name resolves to UNDER the field, with the file type\'s extension', () => {
-    const d = renderDialog('FileName="{ProjectName}_{Date}" Format="FLAC"');
+  it('the Preview row is the folder and the resolved name, with the file type\'s extension', () => {
+    const d = renderDialog('FileName="{ProjectName}_{Date}" Folder="~/Exports/" Format="FLAC"');
     expect(d.nameInput().value).toBe('{ProjectName}_{Date}');
-    expect(d.preview().textContent).toBe('Podcast_2026-11-24.flac');
+    expect(d.preview().textContent).toBe('~/Exports/Podcast_2026-11-24.flac');
+    expect(d.message().textContent).toBe('');
   });
 
-  it('an unknown tag shows the error there and dims OK', () => {
+  it('no row comes or goes: the message slot and the type\'s setting row are always drawn', () => {
+    for (const format of ['WAV', 'MP3', 'FLAC', 'OggVorbis']) {
+      const d = renderDialog(`FileName="{ProjectName}" Format="${format}"`);
+      expect(d.message()).not.toBeNull();
+      expect(document.querySelector('[data-export-step-field="Encoding"]')).not.toBeNull();
+      cleanup();
+    }
+  });
+
+  it('checks the name on OK, not as you type: an empty name errors on OK, and editing clears it', () => {
     const d = renderDialog();
+    fireEvent.change(d.nameInput(), { target: { value: '' } });
+    expect(d.message().textContent).toBe('');
+    expect(d.ok().disabled).toBe(false);
+    fireEvent.click(d.ok());
+    expect(d.onSubmit).not.toHaveBeenCalled();
+    expect(d.message().textContent).toBe('Enter a file name');
+    expect(d.message().hasAttribute('data-error')).toBe(true);
     fireEvent.change(d.nameInput(), { target: { value: '{Projct}' } });
-    expect(d.preview().textContent).toBe('Unknown tag {Projct}');
-    expect(d.preview().hasAttribute('data-error')).toBe(true);
-    expect(d.ok().disabled).toBe(true);
+    expect(d.message().hasAttribute('data-error')).toBe(false);
+    fireEvent.click(d.ok());
+    expect(d.message().textContent).toBe('Unknown tag {Projct}');
+    expect(d.preview().textContent).toBe('—');
   });
 
   it('a fixed name says, quietly, that a batch would overwrite; {ProjectName} or {N} answer it', () => {
     const d = renderDialog('FileName="asd"');
-    const note = () => document.querySelector('[data-export-batch-note]');
-    expect(d.preview().textContent).toBe('asd.wav · Running on several files? Add {ProjectName} so each gets its own name');
-    expect(d.preview().hasAttribute('data-error')).toBe(false);
+    const note = () => d.message().textContent || null;
+    expect(note()).toBe('Several files? Add {ProjectName} so each gets its own name');
+    expect(d.preview().textContent).toBe('~/Documents/Audacity/asd.wav');
+    expect(d.message().hasAttribute('data-error')).toBe(false);
     expect(d.ok().disabled).toBe(false);
     fireEvent.change(d.nameInput(), { target: { value: 'asd_{N}' } });
     expect(note()).toBeNull();

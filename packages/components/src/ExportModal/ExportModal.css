@@ -22,7 +22,13 @@
   box-shadow: 0px 10px 30px 0px rgba(20, 21, 26, 0.3);
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  /* ONE HEIGHT, whatever the type or file type (2026-11-25, "I really
+     don't like modals changing height"): the tallest layout — stems as
+     Opus with a custom channel mapping, 704px of content + the 28px
+     header, 53px footer and border — measured; shorter ones leave room
+     at the foot, and a short window scrolls the body. Re-measure when a
+     file type gains rows */
+  height: min(787px, 90vh);
   overflow: hidden;
 }
 
@@ -97,6 +103,30 @@
   color: var(--txt-primary);
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+/* A read-only value in the control column: one line, clipped at its
+   START so the end (a file name) stays in view */
+.export-modal__value {
+  height: 28px;
+  line-height: 28px;
+  overflow: hidden;
+  direction: rtl;
+  text-align: left;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--txt-primary);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.export-modal__value > span {
+  unicode-bidi: isolate;
+}
+
+/* A message slot that keeps its line whether or not it has anything to say */
+.export-modal__hint--slot {
+  min-height: 16px;
 }
 
 /* The name a field resolves to, as helper text under that field */
