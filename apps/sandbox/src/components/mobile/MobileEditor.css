@@ -184,7 +184,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 28px;
+  height: 28px; /* HEADER_TAP_PX */
   z-index: 10; /* above the Clip's own header layers */
   touch-action: none;
   cursor: grab;

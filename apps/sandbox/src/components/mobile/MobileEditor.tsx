@@ -3,8 +3,9 @@
 // library's own components (TransportButton, TimeCode, ToolButton,
 // ToggleButton, Slider, Icon, Clip) over the real project state, so it
 // looks like the desktop app and acts on the same tracks. Stripped back:
-// one strip per track above its lane, tap a clip to select it and get a
-// sheet of actions, the transport and timecode on top.
+// one strip per track above its lane, tap a clip's HEADER to select it and
+// get a sheet of actions (a tap on its body parks the playhead, as the lane
+// does), the transport and timecode on top.
 //
 // MOVING A CLIP (2026-11-25, "I should be able to select a clip and move it
 // around via the head right?"): a SELECTED clip's header is a grab handle —
@@ -36,6 +37,8 @@ const LANE_HEIGHT = 96;
 const CLIP_INSET = 2;
 const RULER_STEP_SECONDS = 1;
 const DEFAULT_FADE_SECONDS = 0.5;
+/** A clip's header as a finger target: the 20px header and a little of the body */
+const HEADER_TAP_PX = 28;
 /** How far the finger travels before a press on the header is a drag */
 const DRAG_THRESHOLD_PX = 4;
 /** The band at the scroller's edges that scrolls the view during a drag */
@@ -239,11 +242,19 @@ export function MobileEditor({
   };
 
   const onLaneTap = (e: React.MouseEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest('[data-mobile-clip]')) return;
+    // A tap a clip's header took (select / deselect) is not a playhead tap;
+    // a tap on a clip's body is, as on the bare lane
+    if (e.defaultPrevented) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const time = Math.max(0, (e.clientX - rect.left) / PIXELS_PER_SECOND);
     dispatch({ type: 'DESELECT_ALL_CLIPS' });
     dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: time });
+  };
+
+  /** A tap on a clip's header: select it alone, or deselect it if it was */
+  const toggleClip = (trackIndex: number, clipId: number, wasSelected: boolean) => {
+    dispatch({ type: 'DESELECT_ALL_CLIPS' });
+    if (!wasSelected) dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId } });
   };
 
   const splitSelected = () => {
@@ -398,11 +409,16 @@ export function MobileEditor({
                         top: CLIP_INSET,
                         transform: offset ? `translate(${offset.x}px, ${offset.y}px)` : undefined,
                       }}
-                      onClick={() => {
-                        if (suppressClickRef.current) { suppressClickRef.current = false; return; }
-                        if (clip.selected) { dispatch({ type: 'DESELECT_ALL_CLIPS' }); return; }
-                        dispatch({ type: 'DESELECT_ALL_CLIPS' });
-                        dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: index, clipId: clip.id } });
+                      onClick={(e) => {
+                        if (suppressClickRef.current) { suppressClickRef.current = false; e.preventDefault(); return; }
+                        // Only the header selects (the Clip's header stops its own
+                        // click and reports it through onHeaderClick; the 8px of
+                        // body under it count too, for a finger); the rest of the
+                        // body passes the tap on to the lane
+                        const y = e.clientY - e.currentTarget.getBoundingClientRect().top;
+                        if (y > HEADER_TAP_PX) return;
+                        e.preventDefault();
+                        toggleClip(index, clip.id, !!clip.selected);
                       }}
                     >
                       <ClipView
@@ -421,6 +437,7 @@ export function MobileEditor({
                         envelope={clip.envelopePoints}
                         fadeRegions={fadeRegionsOf(clip)}
                         clipStartTime={clip.start}
+                        onHeaderClick={() => toggleClip(index, clip.id, !!clip.selected)}
                         handlesHidden
                       />
                       {clip.selected && (
@@ -490,7 +507,7 @@ export function MobileEditor({
         <footer className="mobile-editor__status">
           <span className="mobile-editor__status-cue">{recording ? 'Recording' : isPlaying ? 'Playing' : 'Stopped'}</span>
           <span className="mobile-editor__status-info">
-            {audioTracks.length === 0 ? 'Add a track or press Record' : 'Tap a clip to edit it'}
+            {audioTracks.length === 0 ? 'Add a track or press Record' : 'Tap a clip’s header to edit it'}
           </span>
         </footer>
       )}
