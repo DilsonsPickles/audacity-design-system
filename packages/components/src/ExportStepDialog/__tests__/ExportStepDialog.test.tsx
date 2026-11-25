@@ -56,6 +56,18 @@ describe('ExportStepDialog', () => {
     expect(d.ok().disabled).toBe(true);
   });
 
+  it('a fixed name says, quietly, that a batch would overwrite; {ProjectName} or {N} answer it', () => {
+    const d = renderDialog('FileName="asd"');
+    const note = () => document.querySelector('[data-export-batch-note]');
+    expect(d.preview().textContent).toBe('asd.wav · Running on several files? Add {ProjectName} so each gets its own name');
+    expect(d.preview().hasAttribute('data-error')).toBe(false);
+    expect(d.ok().disabled).toBe(false);
+    fireEvent.change(d.nameInput(), { target: { value: 'asd_{N}' } });
+    expect(note()).toBeNull();
+    fireEvent.change(d.nameInput(), { target: { value: '{ProjectName}' } });
+    expect(note()).toBeNull();
+  });
+
   it('OK serializes every setting in key order', () => {
     const d = renderDialog();
     fireEvent.change(d.nameInput(), { target: { value: 'Show_{N}' } });

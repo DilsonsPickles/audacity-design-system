@@ -91,6 +91,11 @@ export function ExportStepDialog({
   const resolved = resolveExportTemplate(values.FileName, { projectName, now: now ?? new Date(), run: 1 });
   const extension = EXTENSIONS[values.Format] ?? 'wav';
   const pcm = values.Format === 'WAV' || values.Format === 'AIFF';
+  // A macro run on several files writes each with this name; a fixed one
+  // overwrites itself. {ProjectName} or {N} keeps them apart. A note, not
+  // an error: run on the open project the step is fine (the real build's
+  // red "Add {ProjectName}…" read as blocking and blocked nothing)
+  const batchSafe = /\{(ProjectName|N)\}/.test(values.FileName);
 
   const handleOk = () => {
     if (!resolved.ok) return;
@@ -140,6 +145,9 @@ export function ExportStepDialog({
             style={resolved.ok ? undefined : { color: theme.foreground.text.error }}
           >
             {resolved.ok ? `${resolved.name}.${extension}` : resolved.error}
+            {resolved.ok && !batchSafe && (
+              <span data-export-batch-note> · Running on several files? Add {'{ProjectName}'} so each gets its own name</span>
+            )}
           </div>
           {field('Folder', (
             <div className="export-modal__input-wrapper">

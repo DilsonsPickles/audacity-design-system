@@ -104,12 +104,11 @@
   margin-top: -4px;
   padding-left: calc(var(--export-label-width) + var(--export-label-gap) + 1px);
   font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 16px;
   color: var(--txt-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* wraps rather than clips: helper text is never hidden */
+  overflow-wrap: anywhere;
 }
 
 .export-modal__radio-group {
