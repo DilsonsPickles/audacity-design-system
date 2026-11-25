@@ -180,7 +180,7 @@
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
 }
 
-/* The selected clip's header is its grab handle: 28px tall (the 20px
+/* Every clip's header is its grab handle: 28px tall (the 20px
    header and a little of the body) for a finger; touch-action: none so a
    drag here moves the clip instead of scrolling the project */
 .mobile-editor__grab {

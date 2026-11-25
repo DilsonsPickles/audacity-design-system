@@ -11,9 +11,12 @@
 // around via the head right?"): a SELECTED clip's header is a grab handle —
 // drag it sideways to move the clip in time, up or down to move it to
 // another track (it lands in the lane under the finger), released as one
-// MOVE_CLIP, one undo step. Only a selected clip's header takes the drag
-// (touch-action: none there alone), so a finger on anything else still
-// scrolls the project. Near the scroller's edges the view scrolls along.
+// MOVE_CLIP, one undo step. Near the scroller's edges the view scrolls
+// along. EVERY clip's header takes the drag, selected or not ("I should be
+// able to drag on a clip header to select and move a clip in one action"):
+// the drag's first movement selects the clip, a tap without movement still
+// toggles it. touch-action: none on the headers alone, so a finger on a
+// clip's body or the bare lane still scrolls the project.
 //
 // SELECTING TIME (2026-11-25, "dragging in the canvas space will make a
 // selection. We need to figure out how we pan around the project" → "try
@@ -253,7 +256,19 @@ export function MobileEditor({
   const moveClipDrag = (e: React.PointerEvent<HTMLDivElement>) => {
     if (dragRef.current?.pointerId !== e.pointerId) return;
     pointerRef.current = { x: e.clientX, y: e.clientY };
+    const wasMoved = dragRef.current.moved;
     updateDrag();
+    const current = dragRef.current;
+    // The drag's first movement selects the clip it picked up, alone, so a
+    // press on any header selects and moves in one action
+    if (current && current.moved && !wasMoved) {
+      const clip = state.tracks[current.fromTrack]?.clips.find((c) => c.id === current.clipId);
+      if (clip && !clip.selected) {
+        dispatch({ type: 'DESELECT_ALL_CLIPS' });
+        if (state.timeSelection) dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+        dispatch({ type: 'SELECT_CLIP', payload: { trackIndex: current.fromTrack, clipId: clip.id } });
+      }
+    }
   };
   const endClipDrag = (e: React.PointerEvent<HTMLDivElement>, commit: boolean) => {
     const current = dragRef.current;
@@ -623,17 +638,15 @@ export function MobileEditor({
                         onHeaderClick={() => toggleClip(index, clip.id, !!clip.selected)}
                         handlesHidden
                       />
-                      {clip.selected && (
-                        <div
-                          className="mobile-editor__grab"
-                          data-mobile-grab
-                          aria-hidden="true"
-                          onPointerDown={(e) => beginClipDrag(e, clip.id, index)}
-                          onPointerMove={moveClipDrag}
-                          onPointerUp={(e) => endClipDrag(e, true)}
-                          onPointerCancel={(e) => endClipDrag(e, false)}
-                        />
-                      )}
+                      <div
+                        className="mobile-editor__grab"
+                        data-mobile-grab
+                        aria-hidden="true"
+                        onPointerDown={(e) => beginClipDrag(e, clip.id, index)}
+                        onPointerMove={moveClipDrag}
+                        onPointerUp={(e) => endClipDrag(e, true)}
+                        onPointerCancel={(e) => endClipDrag(e, false)}
+                      />
                     </div>
                     );
                   })}
