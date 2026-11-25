@@ -14,6 +14,16 @@
 // MOVE_CLIP, one undo step. Only a selected clip's header takes the drag
 // (touch-action: none there alone), so a finger on anything else still
 // scrolls the project. Near the scroller's edges the view scrolls along.
+//
+// SELECTING TIME (2026-11-25, "dragging in the canvas space will make a
+// selection. We need to figure out how we pan around the project" → "try
+// 1", hold then drag): a one-finger drag still SCROLLS, natively; a finger
+// HELD STILL for HOLD_MS on a lane, then dragged, makes a time selection —
+// the phone's own text-selection gesture. Dragging up or down takes in the
+// tracks between. The finished selection has a knob at each edge (the
+// start's at the top, the end's at the bottom, as text selection draws
+// them) that drags that edge; a tap anywhere else clears it. A mouse needs
+// no hold: a plain drag selects, the wheel scrolls.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Clip as ClipView,
@@ -44,6 +54,29 @@ const DRAG_THRESHOLD_PX = 4;
 /** The band at the scroller's edges that scrolls the view during a drag */
 const AUTOSCROLL_EDGE_PX = 40;
 const AUTOSCROLL_MAX_PX = 12;
+/** How long a finger rests on a lane before a drag selects time instead of scrolling */
+const HOLD_MS = 300;
+/** Travel during the hold that makes it a scroll after all */
+const HOLD_SLOP_PX = 8;
+/** A selection narrower than this on release is a hold that went nowhere */
+const MIN_RANGE_SECONDS = 0.01;
+
+interface RangeGesture {
+  pointerId: number;
+  /** 'pending' waits for the hold (or, for a mouse, the threshold) */
+  phase: 'pending' | 'drag';
+  mouse: boolean;
+  startX: number;
+  startY: number;
+  /** The edge that stays put */
+  anchorTime: number;
+  anchorTrack: number;
+  /** An edge knob's drag keeps the tracks it had */
+  keepTracks?: number[];
+  timer?: number;
+  /** The selection as last set, read on release (the state may not have caught up) */
+  last?: { startTime: number; endTime: number };
+}
 
 interface ClipDrag {
   clipId: number;
@@ -122,6 +155,12 @@ export function MobileEditor({
   const dragRef = useRef<ClipDrag | null>(null);
   const pointerRef = useRef({ x: 0, y: 0 });
   const suppressClickRef = useRef(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const rangeRef = useRef<RangeGesture | null>(null);
+  const timeSelection = state.timeSelection;
+  const rangeTracks = timeSelection
+    ? (timeSelection.tracks ?? audioTracks.map(({ index }) => index))
+    : [];
 
   /** The track whose section (strip + lane) is under y; past the ends, the end one */
   const trackAt = useCallback((y: number): number | null => {
@@ -241,19 +280,144 @@ export function MobileEditor({
     return { x: Math.max(drag.dx, -clip.start * PIXELS_PER_SECOND), y: drag.dy };
   };
 
+  /** The project time under a screen x */
+  const timeAt = useCallback((x: number) => {
+    const rect = contentRef.current?.getBoundingClientRect();
+    return rect ? Math.max(0, (x - rect.left) / PIXELS_PER_SECOND) : 0;
+  }, []);
+
+  // The audio tracks' indices in order, read live by the range gesture
+  const audioIndicesRef = useRef<number[]>([]);
+  audioIndicesRef.current = audioTracks.map(({ index }) => index);
+
+  /** Sets the selection from the gesture's anchor to where the pointer is */
+  const updateRange = useCallback((x: number, y: number) => {
+    const g = rangeRef.current;
+    if (!g) return;
+    const time = timeAt(x);
+    let tracks = g.keepTracks;
+    if (!tracks) {
+      const order = audioIndicesRef.current;
+      const here = trackAt(y) ?? g.anchorTrack;
+      const a = order.indexOf(g.anchorTrack);
+      const b = order.indexOf(here);
+      tracks = a < 0 || b < 0 ? [g.anchorTrack] : order.slice(Math.min(a, b), Math.max(a, b) + 1);
+    }
+    g.last = { startTime: Math.min(g.anchorTime, time), endTime: Math.max(g.anchorTime, time) };
+    dispatch({ type: 'SET_TIME_SELECTION', payload: { ...g.last, tracks } });
+  }, [dispatch, timeAt, trackAt]);
+
+  const beginRange = useCallback(() => {
+    const g = rangeRef.current;
+    if (!g || g.phase === 'drag') return;
+    g.phase = 'drag';
+    window.clearTimeout(g.timer);
+    // The hold has become a selection: say so under the finger
+    navigator.vibrate?.(10);
+    dispatch({ type: 'DESELECT_ALL_CLIPS' });
+    updateRange(g.startX, g.startY);
+  }, [dispatch, updateRange]);
+
+  // The range gesture's moves and release are the window's, bound once
+  // (the ref-mirror rule): a held finger may wander anywhere. While a
+  // selection is being dragged, touchmove is cancelled so the browser never
+  // starts the scroll the finger would otherwise make.
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      const g = rangeRef.current;
+      if (!g || g.pointerId !== e.pointerId) return;
+      const far = Math.hypot(e.clientX - g.startX, e.clientY - g.startY);
+      if (g.phase === 'pending') {
+        if (g.mouse && far > DRAG_THRESHOLD_PX) beginRange();
+        else if (!g.mouse && far > HOLD_SLOP_PX) {
+          // It moved before the hold: a scroll, not a selection
+          window.clearTimeout(g.timer);
+          rangeRef.current = null;
+          return;
+        }
+        if (g.phase === 'pending') return;
+      }
+      updateRange(e.clientX, e.clientY);
+    };
+    const onEnd = (e: PointerEvent) => {
+      const g = rangeRef.current;
+      if (!g || g.pointerId !== e.pointerId) return;
+      window.clearTimeout(g.timer);
+      rangeRef.current = null;
+      if (g.phase !== 'drag') return;
+      // The click that ends a selection must not clear it
+      suppressClickRef.current = true;
+      const sel = g.last;
+      if (!sel || e.type === 'pointercancel' || sel.endTime - sel.startTime < MIN_RANGE_SECONDS) {
+        dispatch({ type: 'SET_TIME_SELECTION', payload: null });
+        return;
+      }
+      dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: sel.startTime });
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (rangeRef.current?.phase === 'drag' && e.cancelable) e.preventDefault();
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+      window.removeEventListener('touchmove', onTouchMove);
+    };
+  }, [beginRange, dispatch, updateRange]);
+
+  /** A press on a lane: the start of a hold (a finger) or a drag (a mouse) */
+  const onLanePointerDown = (e: React.PointerEvent<HTMLDivElement>, trackIndex: number) => {
+    if (e.button !== 0 || recording || rangeRef.current || dragRef.current) return;
+    const mouse = e.pointerType === 'mouse';
+    const g: RangeGesture = {
+      pointerId: e.pointerId,
+      phase: 'pending',
+      mouse,
+      startX: e.clientX,
+      startY: e.clientY,
+      anchorTime: timeAt(e.clientX),
+      anchorTrack: trackIndex,
+    };
+    if (!mouse) g.timer = window.setTimeout(beginRange, HOLD_MS);
+    rangeRef.current = g;
+  };
+
+  /** A press on one of the selection's knobs: that edge follows the pointer */
+  const onKnobPointerDown = (e: React.PointerEvent<HTMLDivElement>, edge: 'start' | 'end') => {
+    if (e.button !== 0 || !timeSelection) return;
+    e.stopPropagation();
+    rangeRef.current = {
+      pointerId: e.pointerId,
+      phase: 'drag',
+      mouse: e.pointerType === 'mouse',
+      startX: e.clientX,
+      startY: e.clientY,
+      anchorTime: edge === 'start' ? timeSelection.endTime : timeSelection.startTime,
+      anchorTrack: rangeTracks[0] ?? 0,
+      keepTracks: rangeTracks,
+    };
+  };
+
   const onLaneTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
     // A tap a clip's header took (select / deselect) is not a playhead tap;
     // a tap on a clip's body is, as on the bare lane
     if (e.defaultPrevented) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const time = Math.max(0, (e.clientX - rect.left) / PIXELS_PER_SECOND);
     dispatch({ type: 'DESELECT_ALL_CLIPS' });
+    if (state.timeSelection) dispatch({ type: 'SET_TIME_SELECTION', payload: null });
     dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: time });
   };
 
   /** A tap on a clip's header: select it alone, or deselect it if it was */
   const toggleClip = (trackIndex: number, clipId: number, wasSelected: boolean) => {
     dispatch({ type: 'DESELECT_ALL_CLIPS' });
+    if (state.timeSelection) dispatch({ type: 'SET_TIME_SELECTION', payload: null });
     if (!wasSelected) dispatch({ type: 'SELECT_CLIP', payload: { trackIndex, clipId } });
   };
 
@@ -341,8 +505,26 @@ export function MobileEditor({
       </div>
 
       <div className="mobile-editor__scroll" ref={scrollRef}>
-        <div className="mobile-editor__content" style={{ width: contentWidth }}>
+        <div
+          className="mobile-editor__content"
+          ref={contentRef}
+          style={{ width: contentWidth }}
+          // A new press starts afresh: a click a long press never fired must
+          // not swallow this one
+          onPointerDownCapture={() => { suppressClickRef.current = false; }}
+          // A long press is the selection's, not the browser's menu
+          onContextMenu={(e) => e.preventDefault()}
+        >
           <div className="mobile-editor__ruler" aria-hidden="true" onClick={onLaneTap}>
+            {timeSelection && (
+              <span
+                className="mobile-editor__ruler-range"
+                style={{
+                  left: timeSelection.startTime * PIXELS_PER_SECOND,
+                  width: (timeSelection.endTime - timeSelection.startTime) * PIXELS_PER_SECOND,
+                }}
+              />
+            )}
             {ticks.map((s) => (
               <React.Fragment key={s}>
                 <span className="mobile-editor__tick" style={{ left: s * PIXELS_PER_SECOND, height: s % 5 === 0 ? 9 : 4 }} />
@@ -395,6 +577,7 @@ export function MobileEditor({
                   data-drop={drag?.moved && drag.toTrack === index && drag.toTrack !== drag.fromTrack ? '' : undefined}
                   style={{ height: LANE_HEIGHT }}
                   onClick={onLaneTap}
+                  onPointerDown={(e) => onLanePointerDown(e, index)}
                 >
                   {track.clips.map((clip) => {
                     const offset = dragOffsetOf(clip);
@@ -454,6 +637,37 @@ export function MobileEditor({
                     </div>
                     );
                   })}
+                  {timeSelection && rangeTracks.includes(index) && (
+                    <span
+                      className="mobile-editor__range"
+                      data-mobile-range
+                      aria-hidden="true"
+                      style={{
+                        left: timeSelection.startTime * PIXELS_PER_SECOND,
+                        width: (timeSelection.endTime - timeSelection.startTime) * PIXELS_PER_SECOND,
+                      }}
+                    />
+                  )}
+                  {timeSelection && index === rangeTracks[0] && (
+                    <div
+                      className="mobile-editor__knob mobile-editor__knob--start"
+                      data-mobile-knob="start"
+                      aria-hidden="true"
+                      style={{ left: timeSelection.startTime * PIXELS_PER_SECOND }}
+                      onPointerDown={(e) => onKnobPointerDown(e, 'start')}
+                      onClick={(e) => e.preventDefault()}
+                    />
+                  )}
+                  {timeSelection && index === rangeTracks[rangeTracks.length - 1] && (
+                    <div
+                      className="mobile-editor__knob mobile-editor__knob--end"
+                      data-mobile-knob="end"
+                      aria-hidden="true"
+                      style={{ left: timeSelection.endTime * PIXELS_PER_SECOND }}
+                      onPointerDown={(e) => onKnobPointerDown(e, 'end')}
+                      onClick={(e) => e.preventDefault()}
+                    />
+                  )}
                 </div>
               </section>
             );
@@ -507,7 +721,11 @@ export function MobileEditor({
         <footer className="mobile-editor__status">
           <span className="mobile-editor__status-cue">{recording ? 'Recording' : isPlaying ? 'Playing' : 'Stopped'}</span>
           <span className="mobile-editor__status-info">
-            {audioTracks.length === 0 ? 'Add a track or press Record' : 'Tap a clip’s header to edit it'}
+            {timeSelection
+              ? `${formatClock(timeSelection.startTime)} – ${formatClock(timeSelection.endTime)} · ${(timeSelection.endTime - timeSelection.startTime).toFixed(1)} s`
+              : audioTracks.length === 0
+                ? 'Add a track or press Record'
+                : 'Hold and drag to select · tap a clip’s header to edit it'}
           </span>
         </footer>
       )}

@@ -12,6 +12,10 @@
   font-size: 12px;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
+  /* A long press is the time selection's: no text selection, no callout */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Touch-sized versions of the library's 28px buttons: same faces, a
@@ -196,6 +200,65 @@
 
 .mobile-editor__lane[data-drop] {
   background: var(--m-lane-selected);
+}
+
+/* The time selection over a lane: the desktop canvas's white veil */
+.mobile-editor__range {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: inset 1px 0 0 #FFFFFF, inset -1px 0 0 #FFFFFF;
+  z-index: 9; /* over the clips' own layers, under a selected clip's grab */
+  pointer-events: none;
+}
+
+.mobile-editor__ruler-range {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--m-accent);
+  opacity: 0.35;
+}
+
+/* An edge's knob, as text selection draws them: the start's at the top of
+   the first lane, the end's at the bottom of the last. The 44px box is the
+   finger's; the dot is drawn inside it */
+.mobile-editor__knob {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  margin-left: -22px;
+  z-index: 11;
+  touch-action: none;
+  cursor: ew-resize;
+}
+
+.mobile-editor__knob--start {
+  top: -14px;
+}
+
+.mobile-editor__knob--end {
+  bottom: -14px;
+}
+
+.mobile-editor__knob::after {
+  content: '';
+  position: absolute;
+  left: 15px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--m-accent);
+  box-shadow: 0 0 0 2px #FFFFFF;
+}
+
+.mobile-editor__knob--start::after {
+  top: 8px;
+}
+
+.mobile-editor__knob--end::after {
+  bottom: 8px;
 }
 
 .mobile-editor__add {
