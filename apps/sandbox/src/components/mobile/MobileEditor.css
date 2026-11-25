@@ -380,3 +380,55 @@
   margin: 4px 0;
   background: var(--m-divider);
 }
+
+/* The time selection's edit bar, as a phone draws it over selected text:
+   a dark pill of actions above the selection, a caret under it. The bubble
+   form is the lone Paste a lane tap offers */
+.mobile-editor__edit-bar {
+  position: absolute;
+  z-index: 12;
+  height: 40px; /* EDIT_BAR_HEIGHT_PX */
+  display: flex;
+  align-items: stretch;
+  border-radius: 8px;
+  background: #1C1E22;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.mobile-editor__edit-bar--bubble {
+  transform: translateX(-50%);
+}
+
+.mobile-editor__edit-bar::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  margin-left: -6px;
+  border: 6px solid transparent;
+  border-bottom: 0;
+  border-top-color: #1C1E22;
+}
+
+.mobile-editor__edit-bar > button {
+  min-width: 52px;
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  color: #FFFFFF;
+  font: inherit;
+  font-size: 14px;
+}
+
+.mobile-editor__edit-bar > button + button {
+  box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.18);
+}
+
+.mobile-editor__edit-bar > button:first-child { border-radius: 8px 0 0 8px; }
+.mobile-editor__edit-bar > button:last-child { border-radius: 0 8px 8px 0; }
+
+.mobile-editor__edit-bar > button:active {
+  background: rgba(255, 255, 255, 0.14);
+}

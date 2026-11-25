@@ -60,7 +60,8 @@ import { ToolbarBuilderDialog } from './components/ToolbarBuilderDialog';
 import { ToolbarBarMenu, type ToolbarBarMenuState } from './components/ToolbarBarMenu';
 import { ProjectTabRail } from './components/ProjectTabRail';
 import { computeFitTrackHeight, buildNewTrack } from './utils/trackManagement';
-import { handlePaste } from './hooks/handlers/clipboardHandlers';
+import { handleCopy, handleCut, handlePaste } from './hooks/handlers/clipboardHandlers';
+import { handleDelete } from './hooks/handlers/deleteHandlers';
 import type { TrackType } from '@audacity-ui/components';
 import { resolveTracksImOn as resolveTracksImOnRule } from './utils/tracksImOn';
 import { collapseTracks, expandTracks, resetTracks, isCollapsedHeight, type HeightMemory, type HeightUpdate } from './utils/trackHeightMemory';
@@ -1861,6 +1862,32 @@ function CanvasDemoContent() {
   // THE PHONE EDITOR (feat/mobile spike, 2026-11-25): on a narrow screen,
   // or with ?mobile in the URL, the whole window is the portrait editor
   if (mobileLayout) {
+    // The desktop's own cut / copy / paste / delete, so the phone edits by
+    // the same rules (time selection first, then the selected clips)
+    const clipboardDeps = {
+      state, dispatch, clipboard, setClipboard, audioManagerRef,
+      pastePrefs: {
+        mode: preferences.pastingBehavior,
+        pushScope: preferences.pastingPushesBehavior,
+        asNewClip: preferences.alwaysPasteAsNewClip,
+      },
+    };
+    const mobileEdit = {
+      canPaste: !!clipboard && (clipboard.clips.length > 0 || !!clipboard.labels?.length),
+      copy: () => handleCopy(clipboardDeps),
+      cut: () => handleCut(clipboardDeps),
+      remove: () => handleDelete({ state, dispatch, selectionAnchorRef, selectionEdgesRef, isKeyboardNavigating: false }),
+      // Over a time selection the paste REPLACES it, on its first track;
+      // at a point it lands there, on that track
+      paste: (trackIndex: number, at?: { time: number }) => {
+        if (at) {
+          dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: at.time });
+          handlePaste(clipboardDeps, { time: at.time, trackIndex });
+        } else {
+          handlePaste({ ...clipboardDeps, state: { ...state, focusedTrackIndex: trackIndex } });
+        }
+      },
+    };
     return (
       <PlaybackProvider value={playback}>
         <MobileEditor
@@ -1872,6 +1899,7 @@ function CanvasDemoContent() {
           onStop={() => { void handleStopAll(); }}
           onRecord={() => { void handleRecord(); }}
           onStopRecording={() => { void handleStopRecording(); }}
+          edit={mobileEdit}
         />
       </PlaybackProvider>
     );

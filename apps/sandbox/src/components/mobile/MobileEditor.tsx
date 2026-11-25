@@ -27,7 +27,17 @@
 // start's at the top, the end's at the bottom, as text selection draws
 // them) that drags that edge; a tap anywhere else clears it. A mouse needs
 // no hold: a plain drag selects, the wheel scrolls.
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+//
+// EDITING (2026-11-25, "Pop bar like selecting text"): a time selection
+// wears the phone's text-selection EDIT BAR — a dark pill of Cut · Copy ·
+// Paste · Delete floating above its first track, centred on the part of the
+// selection on screen, hidden while the selection is being dragged. With
+// something copied, a tap on a lane (which parks the playhead) also raises a
+// PASTE bubble there, as a tap in a text field does; it pastes on that
+// track at that time. The actions are the desktop's own handlers (App's
+// `edit`), so the rules are the desktop's: the time selection first, then
+// the selected clips. The clip sheet has Cut and Copy too.
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Clip as ClipView,
   Icon,
@@ -63,6 +73,13 @@ const HOLD_MS = 300;
 const HOLD_SLOP_PX = 8;
 /** A selection narrower than this on release is a hold that went nowhere */
 const MIN_RANGE_SECONDS = 0.01;
+/** The edit bar's gap above the selection's top knob, and its height */
+const EDIT_BAR_GAP_PX = 8;
+const EDIT_BAR_HEIGHT_PX = 40;
+/** How far the start knob reaches above its lane (the CSS's -14px) */
+const KNOB_REACH_PX = 14;
+/** How long Copy reads "Copied" */
+const COPIED_MS = 1200;
 
 interface RangeGesture {
   pointerId: number;
@@ -96,6 +113,16 @@ interface ClipDrag {
   moved: boolean;
 }
 
+/** The desktop's cut / copy / paste / delete, wired by the host */
+export interface MobileEditActions {
+  canPaste: boolean;
+  cut: () => void;
+  copy: () => void;
+  remove: () => void;
+  /** Over the time selection (no `at`), or at a point on that track */
+  paste: (trackIndex: number, at?: { time: number }) => void;
+}
+
 export interface MobileEditorProps {
   state: TracksState;
   dispatch: React.Dispatch<TracksAction>;
@@ -105,6 +132,7 @@ export interface MobileEditorProps {
   onStop: () => void;
   onRecord: () => void;
   onStopRecording: () => void;
+  edit: MobileEditActions;
 }
 
 /** The track's palette colour, as TrackNew picks it: its own, else by index */
@@ -127,7 +155,7 @@ function formatClock(seconds: number): string {
 }
 
 export function MobileEditor({
-  state, dispatch, projectTitle, isPlaying, onPlay, onStop, onRecord, onStopRecording,
+  state, dispatch, projectTitle, isPlaying, onPlay, onStop, onRecord, onStopRecording, edit,
 }: MobileEditorProps) {
   const { theme } = useTheme();
   const audioTracks = state.tracks
@@ -164,6 +192,16 @@ export function MobileEditor({
   const rangeTracks = timeSelection
     ? (timeSelection.tracks ?? audioTracks.map(({ index }) => index))
     : [];
+  /** A selection being drawn or an edge in hand: the edit bar waits */
+  const [ranging, setRanging] = useState(false);
+  /** Where a lane tap offered to paste */
+  const [pasteSpot, setPasteSpot] = useState<{ trackIndex: number; time: number; y: number } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef(0);
+  /** The scroller's visible span, for centring the edit bar on what is on screen */
+  const [view, setView] = useState({ left: 0, width: 0 });
+  const editBarRef = useRef<HTMLDivElement>(null);
+  const [editBarWidth, setEditBarWidth] = useState(0);
 
   /** The track whose section (strip + lane) is under y; past the ends, the end one */
   const trackAt = useCallback((y: number): number | null => {
@@ -327,6 +365,7 @@ export function MobileEditor({
     if (!g || g.phase === 'drag') return;
     g.phase = 'drag';
     window.clearTimeout(g.timer);
+    setRanging(true);
     // The hold has become a selection: say so under the finger
     navigator.vibrate?.(10);
     dispatch({ type: 'DESELECT_ALL_CLIPS' });
@@ -360,6 +399,7 @@ export function MobileEditor({
       window.clearTimeout(g.timer);
       rangeRef.current = null;
       if (g.phase !== 'drag') return;
+      setRanging(false);
       // The click that ends a selection must not clear it
       suppressClickRef.current = true;
       const sel = g.last;
@@ -405,6 +445,7 @@ export function MobileEditor({
   const onKnobPointerDown = (e: React.PointerEvent<HTMLDivElement>, edge: 'start' | 'end') => {
     if (e.button !== 0 || !timeSelection) return;
     e.stopPropagation();
+    setRanging(true);
     rangeRef.current = {
       pointerId: e.pointerId,
       phase: 'drag',
@@ -417,17 +458,70 @@ export function MobileEditor({
     };
   };
 
-  const onLaneTap = (e: React.MouseEvent<HTMLDivElement>) => {
+  const onLaneTap = (e: React.MouseEvent<HTMLDivElement>, trackIndex?: number) => {
     if (suppressClickRef.current) { suppressClickRef.current = false; return; }
     // A tap a clip's header took (select / deselect) is not a playhead tap;
     // a tap on a clip's body is, as on the bare lane
     if (e.defaultPrevented) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const time = Math.max(0, (e.clientX - rect.left) / PIXELS_PER_SECOND);
+    const hadSelection = !!state.timeSelection || !!selected;
     dispatch({ type: 'DESELECT_ALL_CLIPS' });
     if (state.timeSelection) dispatch({ type: 'SET_TIME_SELECTION', payload: null });
     dispatch({ type: 'SET_PLAYHEAD_POSITION', payload: time });
+    // With something to paste, a tap on a lane offers it there — as a tap in
+    // a text field offers Paste. A tap that only let go of a selection does not.
+    setPasteSpot(edit.canPaste && trackIndex !== undefined && !hadSelection
+      ? { trackIndex, time, y: e.clientY - rect.top }
+      : null);
   };
+
+  /** The edit bar's and the bubble's buttons: never a lane press or tap */
+  const barButton = (onPress: () => void) => ({
+    onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+    onClick: (e: React.MouseEvent) => { e.stopPropagation(); onPress(); },
+  });
+  const copyWithFeedback = () => {
+    edit.copy();
+    setCopied(true);
+    window.clearTimeout(copiedTimer.current);
+    copiedTimer.current = window.setTimeout(() => setCopied(false), COPIED_MS);
+  };
+  useEffect(() => () => window.clearTimeout(copiedTimer.current), []);
+
+  // While there is a selection, follow the scroll so the bar stays over the
+  // part of it on screen
+  const hasSelection = !!timeSelection;
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!hasSelection || !scroller) return;
+    const read = () => setView({ left: scroller.scrollLeft, width: scroller.clientWidth });
+    read();
+    scroller.addEventListener('scroll', read, { passive: true });
+    window.addEventListener('resize', read);
+    return () => {
+      scroller.removeEventListener('scroll', read);
+      window.removeEventListener('resize', read);
+    };
+  }, [hasSelection]);
+  useLayoutEffect(() => {
+    const width = editBarRef.current?.offsetWidth ?? 0;
+    if (width !== editBarWidth) setEditBarWidth(width);
+  });
+
+  /** The edit bar's left edge in content pixels: centred on the visible part
+   *  of the selection, kept 8px inside the screen; null when none of it shows */
+  const editBarLeft = (() => {
+    if (!timeSelection || view.width === 0) return null;
+    const a = Math.max(timeSelection.startTime * PIXELS_PER_SECOND, view.left);
+    const b = Math.min(timeSelection.endTime * PIXELS_PER_SECOND, view.left + view.width);
+    if (b < a) return null;
+    const centre = (a + b) / 2;
+    const min = view.left + 8;
+    const max = view.left + view.width - 8 - editBarWidth;
+    return Math.max(min, Math.min(max, centre - editBarWidth / 2));
+  })();
+  const showEditBar = !!timeSelection && !ranging && !drag?.moved && !recording && editBarLeft !== null;
 
   /** A tap on a clip's header: select it alone, or deselect it if it was */
   const toggleClip = (trackIndex: number, clipId: number, wasSelected: boolean) => {
@@ -526,7 +620,10 @@ export function MobileEditor({
           style={{ width: contentWidth }}
           // A new press starts afresh: a click a long press never fired must
           // not swallow this one
-          onPointerDownCapture={() => { suppressClickRef.current = false; }}
+          onPointerDownCapture={(e) => {
+            suppressClickRef.current = false;
+            if (!(e.target as Element).closest('[data-mobile-paste]')) setPasteSpot(null);
+          }}
           // A long press is the selection's, not the browser's menu
           onContextMenu={(e) => e.preventDefault()}
         >
@@ -591,7 +688,7 @@ export function MobileEditor({
                   data-selected={trackSelected ? '' : undefined}
                   data-drop={drag?.moved && drag.toTrack === index && drag.toTrack !== drag.fromTrack ? '' : undefined}
                   style={{ height: LANE_HEIGHT }}
-                  onClick={onLaneTap}
+                  onClick={(e) => onLaneTap(e, index)}
                   onPointerDown={(e) => onLanePointerDown(e, index)}
                 >
                   {track.clips.map((clip) => {
@@ -681,6 +778,44 @@ export function MobileEditor({
                       onClick={(e) => e.preventDefault()}
                     />
                   )}
+                  {showEditBar && index === rangeTracks[0] && (
+                    <div
+                      ref={editBarRef}
+                      role="toolbar"
+                      aria-label="Edit selection"
+                      className="mobile-editor__edit-bar"
+                      data-mobile-edit-bar
+                      style={{ left: editBarLeft ?? 0, top: -(KNOB_REACH_PX + EDIT_BAR_GAP_PX + EDIT_BAR_HEIGHT_PX) }}
+                    >
+                      <button type="button" {...barButton(edit.cut)}>Cut</button>
+                      <button type="button" {...barButton(copyWithFeedback)}>{copied ? 'Copied' : 'Copy'}</button>
+                      {edit.canPaste && (
+                        <button type="button" {...barButton(() => edit.paste(rangeTracks[0]))}>Paste</button>
+                      )}
+                      <button type="button" {...barButton(edit.remove)}>Delete</button>
+                    </div>
+                  )}
+                  {pasteSpot && pasteSpot.trackIndex === index && !timeSelection && edit.canPaste && (
+                    <div
+                      role="toolbar"
+                      aria-label="Paste"
+                      className="mobile-editor__edit-bar mobile-editor__edit-bar--bubble"
+                      data-mobile-paste
+                      style={{
+                        left: pasteSpot.time * PIXELS_PER_SECOND,
+                        top: pasteSpot.y - EDIT_BAR_HEIGHT_PX - 24,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        {...barButton(() => {
+                          const spot = pasteSpot;
+                          setPasteSpot(null);
+                          edit.paste(spot.trackIndex, { time: spot.time });
+                        })}
+                      >Paste</button>
+                    </div>
+                  )}
                 </div>
               </section>
             );
@@ -724,6 +859,14 @@ export function MobileEditor({
               <span>{selected.clip.fadeOut ? 'Remove fade-out' : 'Fade out'}</span>
             </button>
             <div role="separator" className="mobile-editor__divider" />
+            <button type="button" role="menuitem" className="mobile-editor__item" onClick={edit.cut}>
+              <Icon name="cut" size={16} />
+              <span>Cut</span>
+            </button>
+            <button type="button" role="menuitem" className="mobile-editor__item" onClick={copyWithFeedback}>
+              <Icon name="copy" size={16} />
+              <span>{copied ? 'Copied' : 'Copy'}</span>
+            </button>
             <button type="button" role="menuitem" className="mobile-editor__item" onClick={deleteSelected}>
               <Icon name="trash" size={16} />
               <span>Delete</span>
